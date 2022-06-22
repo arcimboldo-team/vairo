@@ -1,0 +1,1 @@
+mode = assembly_from_pdb, template = 1ixc, add_to_msa = False, add_to_templates = True, polyala_res_list = [], sum_prob = None
