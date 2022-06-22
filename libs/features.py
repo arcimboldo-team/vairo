@@ -1,12 +1,10 @@
-import sys
-sys.path.append('/cri4/albert/repos/arcimboldo_air/alphafold')
 from Bio.PDB import PDBParser, MMCIFIO, PDBList, PDBIO
 from Bio.PDB import MMCIFParser, Selection
 import os
 import re
 from pathlib import Path
-from alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_identifiers
-from alphafold.common import residue_constants
+from ALPHAFOLD.alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_identifiers
+from ALPHAFOLD.alphafold.common import residue_constants
 import numpy as np
 import subprocess
 import string

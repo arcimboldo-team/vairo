@@ -1,7 +1,6 @@
 import pickle5 as pickle
 import sys
-sys.path.append('/cri4/albert/repos/arcimboldo_air_v4/alphafold')
-from alphafold.common import residue_constants
+from ALPHAFOLD.alphafold.common import residue_constants
 import numpy as np
 
 # features_pkl_path = '/home/albert/Desktop/JOBS/4/features.pkl'
