@@ -1,5 +1,6 @@
 import sys
-sys.path.append('/cri4/albert/repos/arcimboldo_air/alphafold')
+sys.path.append('/home/albert/repos/arcimboldo-air/alphafold')
+import alphafold
 from Bio.PDB import PDBParser, MMCIFIO, PDBList, PDBIO
 from Bio.PDB import MMCIFParser, Selection
 import os
@@ -53,8 +54,6 @@ def download_pdb(pdb_id, out_dir):
     os.system('rm -r obsolete')
 
 
-
-
 def pdb2mmcif(pdb_in_path, cif_out_path):
 
     with open('/tmp/maxit.sh','w') as f:
@@ -84,7 +83,7 @@ def extract_query_sequence(query_fasta_path):
     return fasta_name, query_sequence
 
 
-def empty_msa_features(query_sequence): # TODO
+def empty_msa_features(query_sequence):
 
     msa = {'a3m': f'>query\n{query_sequence}'}
     custom_msa = parsers.parse_a3m(msa['a3m'])
