@@ -173,9 +173,5 @@ def af_summary(af_job_path):
 
 
 
-#af_summary(af_job_path='/cri4/albert/Desktop/polyala_vs_sequence/6_ranked_0_atzr-3fxqWithoutSidechains')
-
-
-
 
 

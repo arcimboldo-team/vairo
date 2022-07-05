@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/home/albert/repos/arcimboldo-air/alphafold')
+sys.path.append('/cri4/albert/repos/arcimboldo-air/alphafold')
 import alphafold
 from Bio.PDB import PDBParser, MMCIFIO, PDBList, PDBIO
 from Bio.PDB import MMCIFParser, Selection
