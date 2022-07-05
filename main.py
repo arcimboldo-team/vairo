@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 from libs.features import *
 from libs.analyse import af_summary
 import copy
