@@ -1,4 +1,8 @@
 import sys
+<<<<<<< HEAD
+=======
+sys.path.append('/cri4/albert/repos/arcimboldo-air/alphafold')
+>>>>>>> 670461bdd74b612a2717a860752b6346e2c48698
 import alphafold
 from Bio.PDB import PDBParser, MMCIFIO, PDBList, PDBIO
 from Bio.PDB import MMCIFParser, Selection
