@@ -1,1 +1,10 @@
+[GENERAL]
+OUTPUT_DIR = /home/albert/Desktop/atzr_DNA/pep
+QUERY_FASTA_PATH = /home/albert/Desktop/atzr_DNA/atzr.fasta
+NUM_OF_SEQS = 4
+BOR_PATH = /home/albert/repos/arcimboldo-air/config.bor
+AF2_DBS_PATH = /storage2/af2/af2_dbs
+RUN_AF2 = False
+
+[ARCIMBOLDO_AIR]
 mode = assembly_from_pdb, template = 1ixc, add_to_msa = False, add_to_templates = True, polyala_res_list = [], sum_prob = None

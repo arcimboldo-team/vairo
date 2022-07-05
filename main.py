@@ -4,6 +4,7 @@ from libs.features import *
 from libs.analyse import af_summary
 import copy
 import glob, os
+import sys
 
 def print_msg_box(msg, indent=1, title=None):
 
@@ -208,8 +209,8 @@ def generate_features(output_dir, num_of_seqs, query_sequence, mode, template, a
             list_of_paths_of_pdbs_to_merge = [f'{output_dir}/{ch}.pdb' for ch in new_chain_list]
             merge_pdbs(list_of_paths_of_pdbs_to_merge=list_of_paths_of_pdbs_to_merge,
                        merged_pdb_path=f'{output_dir}/{template}_template.pdb')
-            os.system(f'rm {output_dir}/[A-Z].pdb')
-            os.system(f'rm {output_dir}/{template}[A-Z]_template.pdb')
+            #os.system(f'rm {output_dir}/[A-Z].pdb')
+            #os.system(f'rm {output_dir}/{template}[A-Z]_template.pdb')
 
             name = template
 
@@ -339,15 +340,42 @@ num_of_seqs=n, query_fasta_path=fasta_path, mode=assembly_from_custom_template, 
 num_of_seqs=n, query_fasta_path=fasta_path, mode=assembly_from_aligned_custom_template, template=path, add_to_msa=Bool, add_to_templates=Bool, polyala_res_list=[], sum_prob = None
 '''
 
-OUTPUT_DIR = '/cri4/albert/Desktop/ATZR_PAPER'
-QUERY_FASTA_PATH = '/cri4/albert/Desktop/atzr.fasta'
-NUM_OF_SEQS = 4
+# OUTPUT_DIR = '/home/albert/Desktop/atzr_DNA/pep'
+# QUERY_FASTA_PATH = '/home/albert/Desktop/atzr_DNA/atzr.fasta'
+# NUM_OF_SEQS = 4
 
-BOR_PATH ='./config.bor'
-AF2_DBS_PATH = '/alpha/alphauser/af2_dbs'
+# BOR_PATH ='/home/albert/repos/arcimboldo-air/config.bor'
+# AF2_DBS_PATH = '/storage2/af2/af2_dbs'
 
-RUN_AF2 = False
+# RUN_AF2 = False
 
+
+BOR_PATH = sys.argv[1] 
+
+bor_text = open(BOR_PATH, 'r').read()
+
+print('\n')
+for line in bor_text.split('\n'):
+    if line.startswith('OUTPUT_DIR'):
+        OUTPUT_DIR = line.split('=')[1].replace(' ', '')
+        print('Output directory:', OUTPUT_DIR)
+    if line.startswith('QUERY_FASTA_PATH'):
+        QUERY_FASTA_PATH = line.split('=')[1].replace(' ', '')
+        print('Query fasta path:', QUERY_FASTA_PATH)
+    if line.startswith('NUM_OF_SEQS'):
+        NUM_OF_SEQS = int(line.split('=')[1].replace(' ', ''))
+        print('Number of sequences:', NUM_OF_SEQS)
+    if line.startswith('AF2_DBS_PATH'):
+        AF2_DBS_PATH = line.split('=')[1].replace(' ', '')
+    if line.startswith('RUN_AF2'):
+        RUN_AF2 = line.split('=')[1].replace(' ', '')
+        if RUN_AF2 == 'True':
+            RUN_AF2 = True
+            print('Run AF2:', RUN_AF2)
+        else:
+            RUN_AF2 = False
+            print('Run AF2:', RUN_AF2)
+         
 try:
     print('\n')
     for db in os.listdir(f'{AF2_DBS_PATH}'):
@@ -391,8 +419,10 @@ assembly_sequence_with_linkers = assembly_sequence_with_linkers[:-50]
 
 f = Features(query_sequence=assembly_sequence_with_linkers)
 
-text_lines = open(BOR_PATH, 'r').readlines()
-for num, line in enumerate(text_lines):
+job_parameters = bor_text[[m.end() for m in re.finditer(r'\[ARCIMBOLDO_AIR\]', bor_text)][0] + 1:]
+job_lines = job_parameters.split('\n')[:-1]
+
+for num, line in enumerate(job_lines):
     mode = line[:-1].split(',')[0].split('=')[1].replace(' ', '')
     template = line[:-1].split(',')[1].split('=')[1].replace(' ', '')
     add_to_msa = line[:-1].split(',')[2].split('=')[1].replace(' ', '')
