@@ -3,6 +3,8 @@ from libs.features import *
 from Bio.PDB.PDBIO import PDBIO
 from alphafold.data import parsers
 import glob
+from scipy.spatial import distance
+import matplotlib.pyplot as plt
 
 
 def extract_query_sequence(query_fasta_path):
@@ -218,7 +220,36 @@ def superpose_pdbs(query_pdb, target_pdb, output_superposition=True):
     return rmsd, nalign, quality_q, aligned_res_list
 
 
+def pdist(structure1, structure2):
 
+    res1_list = [res.id[1] for res in Selection.unfold_entities(structure1, 'R')]
+    res2_list = [res.id[1] for res in Selection.unfold_entities(structure2, 'R')]
+
+    common_res_list = list(set(res1_list) & set(res2_list))
+
+    res1_common_list = [res for res in Selection.unfold_entities(structure1, 'R') if res.id[1] in common_res_list]
+    res2_common_list = [res for res in Selection.unfold_entities(structure2, 'R') if res.id[1] in common_res_list]
+
+    CAs1_coords = [res['CA'].coord for res in res1_common_list]
+    CAs2_coords = [res['CA'].coord for res in res2_common_list]
+
+    pdist1 = distance.pdist(CAs1_coords, "euclidean")
+    pdist2 = distance.pdist(CAs2_coords, "euclidean")
+
+
+    pdist1_matrix = distance.squareform(pdist1)
+    pdist2_matrix = distance.squareform(pdist2)
+
+    diff_pdist_matrix = np.abs(pdist1_matrix - pdist2_matrix)
+
+    # fig, ax = plt.subplots(2,2)
+    # ax[0, 0].matshow(pdist1_matrix)
+    # ax[1, 0].matshow(pdist2_matrix)
+    # ax[0, 1].matshow(diff_pdist_matrix)
+    #
+    # plt.show()
+
+    return diff_pdist_matrix.mean()
 
 
 
@@ -266,11 +297,25 @@ list_of_templates = os.listdir(TEMPLATES_DIR)
 reference_template = list_of_templates[0][:-4]
 
 for template_name in list_of_templates[1:]:
-    print('\n')
-    for query_pdb in glob.glob(f'{OUTPUT_DIR}/{template_name[:-4]}/[0-90].pdb'):
-        for target_pdb in glob.glob(f'{OUTPUT_DIR}/{reference_template}/[0-90].pdb'):
+    query_pdb_list = glob.glob(f'{OUTPUT_DIR}/{template_name[:-4]}/[0-90].pdb')
+
+    for query_pdb in query_pdb_list:
+        print('\n')
+
+        target_pdb_list = glob.glob(f'{OUTPUT_DIR}/{reference_template}/[0-90].pdb')
+
+        for target_pdb in target_pdb_list:
             rmsd, nalign, quality_q, aligned_res_list = superpose_pdbs(query_pdb=query_pdb, target_pdb=target_pdb, output_superposition=False)
-            print(query_pdb, target_pdb, rmsd, nalign)
+
+
+            structure1 = PDBParser(QUIET=1).get_structure('query', query_pdb)
+            structure2 = PDBParser(QUIET=1).get_structure('ref', target_pdb)
+            diff = pdist(structure1=structure1, structure2=structure2)
+
+            print(query_pdb, target_pdb, rmsd, nalign, diff)
+
+
+
 
 
 
