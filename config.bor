@@ -1,21 +1,21 @@
-[GENERAL]
-OUTPUT_DIR = /cri4/albert/Desktop/ARCIMBOLDO_AIR_TESTS/monomer_3fxq
-QUERY_FASTA_PATH = /cri4/albert/Desktop/ARCIMBOLDO_AIR_TESTS/atzr.fasta
-NUM_OF_SEQS = 4
-AF2_DBS_PATH = /alpha/alphauser/af2_dbs
-RUN_AF2 = False
+output_directory = '/Users/pep/work/test/arcimboldo_air/output'
+fasta_path = '/Users/pep/work/test/arcimboldo_air/atzr.fasta'
+af2_dbs_path = '/Users/pep/work/test/arcimboldo_air/af2_dbs'
+num_of_copies = 1
 
-[ARCIMBOLDO_AIR]
-mode = monomer_from_pdb, template = 3fxqA, add_to_msa = True, add_to_templates = True, polyala_res_list = [], sum_prob = None
+[[template]]
+pdb = '8CY6'
+add_to_msa = false
 
+[[template]]
+pdb = '8CY6'
+add_to_msa = false
+aligned = true
 
-# MONOMER MODE:
-mode = monomer_from_pdb, template = pdb_chain_id, add_to_msa = Bool, add_to_templates = Bool, polyala_res_list = [], sum_prob = None
-mode = monomer_from_custom_template, template = path, add_to_msa=Bool, add_to_templates=Bool, polyala_res_list=[], sum_prob = None
-mode = monomer_from_aligned_custom_template, template = path, add_to_msa=Bool, add_to_templates=Bool, polyala_res_list=[], sum_prob = None
-
-
-# ASSEMBLY MODE:
-mode = assembly_from_pdb, template = 3fxq, add_to_msa = True, add_to_templates = True, polyala_res_list = [[1,89], [300, 450]], sum_prob = None
-mode = assembly_from_custom_template, template = 3fxq, add_to_msa = True, add_to_templates = True, polyala_res_list = [], sum_prob = None
-mode = assembly_from_aligned_custom_template, template = 3fxq, add_to_msa = True, add_to_templates = True, polyala_res_list = [], sum_prob = None
+#[[assembly]]
+#template = 
+#number_of_seqs = 
+#add_to_msa =
+#add_to_templates =
+#polyala_res_list =
+#sum_prob = None

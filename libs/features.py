@@ -1,14 +1,10 @@
 import sys
-<<<<<<< HEAD
-=======
-sys.path.append('/cri4/albert/repos/arcimboldo-air/alphafold')
->>>>>>> 670461bdd74b612a2717a860752b6346e2c48698
-import alphafold
 from Bio.PDB import PDBParser, MMCIFIO, PDBList, PDBIO
 from Bio.PDB import MMCIFParser, Selection
 import os
 import re
 from pathlib import Path
+from libs import utils
 from ALPHAFOLD.alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_identifiers
 from ALPHAFOLD.alphafold.common import residue_constants
 import numpy as np
@@ -46,44 +42,6 @@ def remove_hydrogens(pdb_path):
                 counter = counter + 1
                 output_file.write(line[:6] + str(counter).rjust(5) + line[11:])
     os.system(f'mv {path}/output.pdb {path}/{pdb_path.split("/")[-1]}')
-
-
-def download_pdb(pdb_id, out_dir):
-
-    logging.info(f'Downloading PDB {pdb_id}')
-
-    pdbl = PDBList()
-    pdbl.retrieve_pdb_file(pdb_id, pdir=f'{out_dir}', file_format='pdb', obsolete=False)
-    os.system('rm -r obsolete')
-
-
-def pdb2mmcif(pdb_in_path, cif_out_path):
-
-    with open('/tmp/maxit.sh','w') as f:
-        f.write(f'export RCSBROOT="/opt/maxit"\n')
-        f.write(f'/opt/maxit/bin/maxit -input {pdb_in_path} -output {cif_out_path} -o 1\n')
-    os.system('chmod +x /tmp/maxit.sh')
-    os.system('bash /tmp/maxit.sh')
-
-
-def cif2pdb(cif_in_path, pdb_out_path):
-
-    p = MMCIFParser(QUIET=True)
-    struc = p.get_structure('', f'{cif_in_path}')
-    io = PDBIO()
-    io.set_structure(struc)
-    io.save(f'{pdb_out_path}')
-
-
-def extract_query_sequence(query_fasta_path):
-
-    logging.info(f'Extracting query sequence from {query_fasta_path}')
-
-    with open(query_fasta_path, 'r') as f:
-        fasta_lines = f.readlines()
-        fasta_name, query_sequence = fasta_lines[0][1:-1], fasta_lines[1].split('\n')[0]
-
-    return fasta_name, query_sequence
 
 
 def empty_msa_features(query_sequence):
@@ -145,53 +103,6 @@ def empty_template_features(query_sequence):
         "template_sum_probs": np.tile(template_sum_probs, [0, 1])
     }
     return template_features
-
-
-def generate_hhsearch_db(template_cif_path, output_dir):
-
-    with open(f"{output_dir}/pdb70_a3m.ffdata", "w") as a3m, \
-         open(f"{output_dir}/pdb70_cs219.ffindex", "w") as cs219_index, \
-         open(f"{output_dir}/pdb70_a3m.ffindex", "w") as a3m_index, \
-         open(f"{output_dir}/pdb70_cs219.ffdata", "w") as cs219:
-        id = 1000000
-        index_offset = 0
-
-        parser = MMCIFParser(QUIET=True)
-        structure = parser.get_structure("test", template_cif_path)
-        models = list(structure.get_models())
-        if len(models) != 1:
-            raise ValueError(f"Only single model PDBs are supported. Found {len(models)} models.")
-        model = models[0]
-        for chain in model:
-            amino_acid_res = []
-            for res in chain:
-                # if res.id[2] != " ":
-                #     raise ValueError(f"PDB contains an insertion code at chain {chain.id} and residue index"
-                #                      f" {res.id[1]}. These are not supported.")
-                amino_acid_res.append(residue_constants.restype_3to1.get(res.resname, "X"))
-
-            protein_str = "".join(amino_acid_res)
-            a3m_str = f">{template_cif_path.split('/')[-1][:-4]}_{chain.id}\n{protein_str}\n\0"
-            a3m_str_len = len(a3m_str)
-            a3m_index.write(f"{id}\t{index_offset}\t{a3m_str_len}\n")
-            cs219_index.write(f"{id}\t{index_offset}\t{len(protein_str)}\n")
-            index_offset += a3m_str_len
-            a3m.write(a3m_str)
-            cs219.write("\n\0")
-            id += 1
-
-
-def run_hhsearch(query_fasta_path, pdb70_db, output_path):
-
-    print(f'Running hhsearch using {pdb70_db} as database.')
-
-    out = subprocess.Popen(['hhsearch', '-i', query_fasta_path, '-o', output_path, '-oa3m', '/home/albert/Desktop/test.a3m', '-maxseq',
-                            '1000000', '-d', pdb70_db, '-glob'],
-                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
-    hhr = stdout.decode('utf-8')
-
-    return hhr
 
 
 def read_remark_350(pdb_path, use_pisa=False):
@@ -326,13 +237,13 @@ def write_pkl_from_features(features, out_path):
 
 
 
-
-
 class Features:
 
-    def __init__(self, query_sequence):
+    def __init__(self, fasta_path: str, num_of_copies: int):
 
-        self.query_sequence = query_sequence
+        query_sequence = utils.extract_sequence(fasta_path=fasta_path)
+        self.query_sequence = (query_sequence + 50 * 'G') * (int(num_of_copies)-1) + query_sequence
+
         self.sequence_features = pipeline.make_sequence_features(sequence=self.query_sequence,
                                                                  description='Query',
                                                                  num_res=len(self.query_sequence))

@@ -1,27 +1,12 @@
 #! /usr/bin/env python3
 
-from libs.features import *
-from libs.analyse import af_summary
+from libs import utils, analyse, arcimboldo_air, features, hhsearch
 import copy
 import glob, os
 import sys
-
-def print_msg_box(msg, indent=1, title=None):
-
-    lines = msg.split('\n')
-    space = " " * indent
-
-    width = max(map(len, lines))
-    box = f'╔{"═" * (width + indent * 2)}╗\n'  # upper_border
-    if title:
-        box += f'║{space}{title:<{width}}{space}║\n'  # title
-        box += f'║{space}{"-" * len(title):<{width}}{space}║\n'  # underscore
-    box += ''.join([f'║{space}{line:<{width}}{space}║\n' for line in lines])
-    box += f'╚{"═" * (width + indent * 2)}╝'  # lower_border
-    print('\n')
-    print(box)
-    print('\n')
-
+import toml
+import shutil
+import logging
 
 def generate_features(output_dir, num_of_seqs, query_sequence, mode, template, add_to_msa, add_to_templates,
                       pdb70_db_path, sum_prob):
@@ -146,12 +131,7 @@ def generate_features(output_dir, num_of_seqs, query_sequence, mode, template, a
                 download_pdb(pdb_id=template, out_dir=output_dir)
                 os.system(f'mv {output_dir}/pdb{template}.ent {output_dir}/{template}.pdb')
 
-            print(f'Looking for alignment between {template} and query sequence using hhsearch:')
-            if os.path.exists(f'{output_dir}/output.hhr'):
-                print(f'hhr file already present in {output_dir}')
-            else:
-                run_hhsearch(query_fasta_path=QUERY_FASTA_PATH, pdb70_db=f'{pdb70_db_path}/pdb70',
-                             output_path=f'{output_dir}/output.hhr')
+
 
             chain_list, transformations_list = read_remark_350(f'{output_dir}/{template}.pdb', use_pisa=False)
             print('Assembly can be build using chain(s)', *chain_list, 'by applying the following transformations:')
@@ -224,7 +204,7 @@ def generate_features(output_dir, num_of_seqs, query_sequence, mode, template, a
             pdb2mmcif(pdb_in_path=template, cif_out_path=f'{output_dir}/{name}.cif')
             generate_hhsearch_db(template_cif_path=f'{output_dir}/{name}.cif', output_dir=output_dir)
 
-            run_hhsearch(query_fasta_path=QUERY_FASTA_PATH, pdb70_db=f'{output_dir}/pdb70',
+            run_hhsearch(fasta_path=QUERY_FASTA_PATH, pdb70_db=f'{output_dir}/pdb70',
                          output_path=f'{output_dir}/custom_output.hhr')
 
             chain_list, transformations_list = read_remark_350(pdb_path=f'{output_dir}/{name}.cif', use_pisa=True)
@@ -301,13 +281,22 @@ def generate_features(output_dir, num_of_seqs, query_sequence, mode, template, a
 
         return sequence_from_template, template_features
 
+
+def run_alphafold():
+
+    delattr(ALPHAFOLD.run_alphafold.flags.FLAGS,'data_dirs')
+    ALPHAFOLD.run_alphafold.flags.DEFINE_string('data_dir', "data", 'Path to directory of supporting data.')
+
 def af2_sh(output_dir):
+    #try:
+    #    print('\n')
 
-   with open(f'{output_dir}/run_af2.sh', 'w') as bash_file:
+    #except:
+    #    raise ValueError('Please, set all AF2 databases manually')
 
+    with open(f'{output_dir}/run_af2.sh', 'w') as bash_file:
         previous_path_to_output_dir = '/'.join(output_dir.split('/')[:-1])
         name = output_dir.split('/')[-1]
-
         bash_file.write('#!/bin/bash\n')
         bash_file.write(f'python ./alphafold/run_alphafold.py \\\n')
         bash_file.write(f'--fasta_paths={name}.fasta \\\n')
@@ -340,119 +329,54 @@ num_of_seqs=n, query_fasta_path=fasta_path, mode=assembly_from_custom_template, 
 num_of_seqs=n, query_fasta_path=fasta_path, mode=assembly_from_aligned_custom_template, template=path, add_to_msa=Bool, add_to_templates=Bool, polyala_res_list=[], sum_prob = None
 '''
 
-# OUTPUT_DIR = '/home/albert/Desktop/atzr_DNA/pep'
-# QUERY_FASTA_PATH = '/home/albert/Desktop/atzr_DNA/atzr.fasta'
-# NUM_OF_SEQS = 4
 
-# BOR_PATH ='/home/albert/repos/arcimboldo-air/config.bor'
-# AF2_DBS_PATH = '/storage2/af2/af2_dbs'
+def main():
 
-# RUN_AF2 = False
+    utils.create_logger()
 
+    if len(sys.argv) != 2:
+        raise Exception('Wrong command-line arguments.')
 
-BOR_PATH = sys.argv[1] 
+    input_path = os.path.abspath(sys.argv[1])
+    logging.info(f'Reading the configuration file for ARCIMBOLDO_AIR at {input_path}')
+    if not os.path.exists(input_path):
+        raise Exception('The given path for the configuration file either does not exist or you do not have the permissions to read it')
+    
+    try:
+        input_load = toml.load(input_path)
+    except:
+        raise Exception('It has not been possible to read the input file')
 
-bor_text = open(BOR_PATH, 'r').read()
+    arcimboldo = arcimboldo_air.ArcimboldoAir(input_load)
 
-print('\n')
-for line in bor_text.split('\n'):
-    if line.startswith('OUTPUT_DIR'):
-        OUTPUT_DIR = line.split('=')[1].replace(' ', '')
-        print('Output directory:', OUTPUT_DIR)
-    if line.startswith('QUERY_FASTA_PATH'):
-        QUERY_FASTA_PATH = line.split('=')[1].replace(' ', '')
-        print('Query fasta path:', QUERY_FASTA_PATH)
-    if line.startswith('NUM_OF_SEQS'):
-        NUM_OF_SEQS = int(line.split('=')[1].replace(' ', ''))
-        print('Number of sequences:', NUM_OF_SEQS)
-    if line.startswith('AF2_DBS_PATH'):
-        AF2_DBS_PATH = line.split('=')[1].replace(' ', '')
-    if line.startswith('RUN_AF2'):
-        RUN_AF2 = line.split('=')[1].replace(' ', '')
-        if RUN_AF2 == 'True':
-            RUN_AF2 = True
-            print('Run AF2:', RUN_AF2)
-        else:
-            RUN_AF2 = False
-            print('Run AF2:', RUN_AF2)
-         
-try:
-    print('\n')
-    for db in os.listdir(f'{AF2_DBS_PATH}'):
-        if 'mgnify' in db:
-            MGNIFY_DB_PATH = glob.glob(f'{AF2_DBS_PATH}/{db}/*.fa', recursive=True)[0]
-            print('Mgnify DB path:', MGNIFY_DB_PATH)
-        elif 'uniref90' in db:
-            UNIREF90_DB_PATH = glob.glob(f'{AF2_DBS_PATH}/{db}/*.fasta', recursive=True)[0]
-            print('Uniref90 DB path', UNIREF90_DB_PATH)
-        elif 'pdb_mmcif' in db:
-            MMCIF_DB_PATH = f'{AF2_DBS_PATH}/{db}/mmcif_files'
-            OBSOLETE_MMCIF_DB_PATH = f'{AF2_DBS_PATH}/{db}/obsolete.dat'
-            print('mmCIF DB path:', MMCIF_DB_PATH)
-            print('Obsolte mmCIF path:', OBSOLETE_MMCIF_DB_PATH)
-        elif 'bfd' in db:
-            BFD_DB_PATH = '_'.join(glob.glob(f'{AF2_DBS_PATH}/{db}/*', recursive=True)[0].split('_')[:-1])
-            print('BFD DB path:', BFD_DB_PATH)
-        elif 'uniclust30' in db:
-            for file in glob.glob(f'{AF2_DBS_PATH}/{db}/**/*', recursive=True):
-                if '.cs219' in file[-6:]:
-                    UNICLUST30_DB_PATH = file.split('.')[:-1][0]
-                    print('Uniclust30 DB path:', UNICLUST30_DB_PATH)
-        elif 'pdb70' in db:
-            PDB70_DB_PATH = f'{AF2_DBS_PATH}/{db}/pdb70'
-            print('PDB70 DB path:', PDB70_DB_PATH)
-except:
-    print('Please, set all AF2 databases manually')
-    sys.exit()
+    for template in filter(lambda x: x.aligned, arcimboldo.templates):
+        logging.info(f'Looking for alignment between {template.pdb} and query sequence using hhsearch:')
+
+        name_pdb = utils.get_path_name(template.pdb)
+        cif_path = f'{arcimboldo.output_dir}/{name_pdb}.cif'
+        utils.pdb2cif(pdb_in_path=template.pdb, cif_out_path=cif_path) 
+        hhsearch.generate_hhsearch_db(template_cif_path=cif_path, output_dir=arcimboldo.output_dir)
+        hhsearch.run_hhsearch(fasta_path=arcimboldo.fasta_path, pdb70_db=f'{arcimboldo.output_dir}/pdb70',
+                         output_path=f'{arcimboldo.output_dir}/custom_output.hhr')
 
 
-isExist = os.path.exists(OUTPUT_DIR)
-if not isExist:
-    os.makedirs(OUTPUT_DIR)
-os.system(f'cp {BOR_PATH} {OUTPUT_DIR}')
 
-fasta_name, query_sequence = extract_query_sequence(query_fasta_path=QUERY_FASTA_PATH)
-assembly_sequence_with_linkers = ''
-for num in range(NUM_OF_SEQS):
-    assembly_sequence_with_linkers = assembly_sequence_with_linkers + query_sequence + 50 * 'G'
-assembly_sequence_with_linkers = assembly_sequence_with_linkers[:-50]
 
-f = Features(query_sequence=assembly_sequence_with_linkers)
-
-job_parameters = bor_text[[m.end() for m in re.finditer(r'\[ARCIMBOLDO_AIR\]', bor_text)][0] + 1:]
-job_lines = job_parameters.split('\n')[:-1]
-
-for num, line in enumerate(job_lines):
-    mode = line[:-1].split(',')[0].split('=')[1].replace(' ', '')
-    template = line[:-1].split(',')[1].split('=')[1].replace(' ', '')
-    add_to_msa = line[:-1].split(',')[2].split('=')[1].replace(' ', '')
-    if add_to_msa == 'True':
-        add_to_msa = True
-    else:
-        add_to_msa = False
-    add_to_templates = line[:-1].split(',')[3].split('=')[1].replace(' ', '')
-    if add_to_templates == 'True':
-        add_to_templates = True
-    else:
-        add_to_templates = False
-    polyala_res_list = line[:-1].split(',')[4].split('=')[1].replace(' ', '')
-    sum_prob = line[:-1].split(',')[5].split('=')[1].replace(' ', '')
-    if sum_prob == 'None':
-        sum_prob = None
-
+        
+    sys.exit(1)
     sequence_from_template, template_features = generate_features(output_dir=OUTPUT_DIR,
-                                                                  num_of_seqs=NUM_OF_SEQS,
-                                                                  query_sequence=query_sequence,
-                                                                  mode=mode,
-                                                                  template=template,
-                                                                  add_to_msa=add_to_msa,
-                                                                  add_to_templates=add_to_templates,
-                                                                  pdb70_db_path=PDB70_DB_PATH,
-                                                                  sum_prob=sum_prob)
+                                                                    num_of_seqs=NUM_OF_SEQS,
+                                                                    query_sequence=query_sequence,
+                                                                    mode=mode,
+                                                                    template=template,
+                                                                    add_to_msa=add_to_msa,
+                                                                    add_to_templates=add_to_templates,
+                                                                    pdb70_db_path=PDB70_DB_PATH,
+                                                                    sum_prob=sum_prob)
     if 'assembly' not in mode:
         name = template.split("/")[-1][:-4]
-        if 'monomer_from_pdb' in mode:
-            name = f'{template[:-1]}_{template[-1]}'
+    if 'monomer_from_pdb' in mode:
+        name = f'{template[:-1]}_{template[-1]}'
     else:
         name = template
     if sequence_from_template:
@@ -462,30 +386,40 @@ for num, line in enumerate(job_lines):
         f.append_new_template_features(new_template_features=template_features, custom_sum_prob=sum_prob)
         print(f'Template \"{name}\" was already added to features.')
 
-features = merge_features(sequence_features=f.sequence_features,
-                          msa_features=f.msa_features,
-                          template_features=f.template_features)
-write_pkl_from_features(features=features, out_path=f'{OUTPUT_DIR}/features.pkl')
+    features = merge_features(sequence_features=f.sequence_features,
+                            msa_features=f.msa_features,
+                            template_features=f.template_features)
+    write_pkl_from_features(features=features, out_path=f'{OUTPUT_DIR}/features.pkl')
 
 
-if RUN_AF2:
-    af2_sh(output_dir=OUTPUT_DIR)
-    print('Running AF2')
-    af2_output = subprocess.Popen(['bash', f'{OUTPUT_DIR}/run_af2.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, stderr = af2_output.communicate()
-    with open(f'{OUTPUT_DIR}/af2_output.log', 'w') as f:
-        f.write(stdout.decode('utf-8'))
-    os.system(f'rm -r {OUTPUT_DIR}/msas')
-    af_summary(af_job_path=f'{OUTPUT_DIR}')
 
-features_file = open(f'{OUTPUT_DIR}/features.pkl','rb')
-features = pickle.load(features_file)
-features_file.close()
 
-print('\n')
-for key in features.keys():
-    print(key, features[key].shape)
 
+
+
+
+
+    if RUN_AF2:
+        af2_sh(output_dir=OUTPUT_DIR)
+        print('Running AF2')
+        af2_output = subprocess.Popen(['bash', f'{OUTPUT_DIR}/run_af2.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout, stderr = af2_output.communicate()
+        with open(f'{OUTPUT_DIR}/af2_output.log', 'w') as f:
+            f.write(stdout.decode('utf-8'))
+        os.system(f'rm -r {OUTPUT_DIR}/msas')
+        af_summary(af_job_path=f'{OUTPUT_DIR}')
+
+    features_file = open(f'{OUTPUT_DIR}/features.pkl','rb')
+    features = pickle.load(features_file)
+    features_file.close()
+
+    print('\n')
+    for key in features.keys():
+        print(key, features[key].shape)
+
+
+if __name__ == "__main__":
+    main()
 
 
 
