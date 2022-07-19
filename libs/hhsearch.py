@@ -1,4 +1,5 @@
 import logging
+import subprocess
 from Bio import PDB
 from ALPHAFOLD.alphafold.common import residue_constants
 
@@ -35,10 +36,9 @@ def generate_hhsearch_db(template_cif_path: str, output_dir: str):
             cs219.write("\n\0")
             id += 1
 
+def run_hhsearch(fasta_path: str, pdb70_db: str, output_path: str) -> str:
 
-def run_hhsearch(fasta_path: str, pdb70_db: str, output_dir: str) -> str:
-
-    logger.info(f'Running hhsearch using {pdb70_db} as database.')
+    logging.info(f'Running hhsearch using {pdb70_db} as database.')
 
     out = subprocess.Popen(['hhsearch', '-i', fasta_path, '-o', output_path, '-maxseq',
                             '1000000', '-d', pdb70_db, '-glob'],
