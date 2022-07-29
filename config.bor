@@ -5,12 +5,13 @@ num_of_copies = 1
 
 [[template]]
 pdb = '8CY6'
+chain = 'A'
 add_to_msa = false
 
 [[template]]
-pdb = '8CY6'
-add_to_msa = false
-aligned = true
+pdb = '/Users/pep/work/test/arcimboldo_air/output/template.pdb'
+chain = 'A'
+
 
 #[[assembly]]
 #template = 

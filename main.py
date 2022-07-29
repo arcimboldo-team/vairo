@@ -59,19 +59,17 @@ def main():
     except:
         raise Exception('It has not been possible to read the input file')
 
-    a_air = arcimboldo_air.ArcimboldoAir(input_load)
+    a_air = arcimboldo_air.ArcimboldoAir(parameters_dict=input_load)
 
     for template in a_air.templates:
-        logging.info(f'Looking for alignment between {template.pdb_id} and query sequence using hhsearch:')
-
         template.generate_features(a_air=a_air)
-
-        if template.sequence_from_template:
-            a_air.features.append_row_in_msa(sequence=template.sequence_from_template, msa_uniprot_accession_identifiers=template.pdb_name)
-            print(f'Sequence from template \"{template.pdb_id}\" was already added to features.')
-        if template.template_features:
+        if template.add_to_msa:
+            sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
+            a_air.features.append_row_in_msa(sequence=sequence_from_template, msa_uniprot_accession_identifiers=template.pdb_id)
+            print(f'Sequence from template \"{template.pdb_id}\" was added to msa.')
+        if template.add_to_templates:
             a_air.features.append_new_template_features(new_template_features=template.template_features, custom_sum_prob=template.sum_prob)
-            print(f'Template \"{template.pdb_id}\" was already added to features.')
+            print(f'Template \"{template.pdb_id}\" was added to templates.')
 
     a_air.features.write_pkl(output_dir=f'{a_air.output_dir}/features.pkl')
     

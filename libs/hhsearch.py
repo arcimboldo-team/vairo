@@ -3,7 +3,7 @@ import subprocess
 from Bio import PDB
 from ALPHAFOLD.alphafold.common import residue_constants
 
-def generate_hhsearch_db(template_cif_path: str, output_dir: str):
+def generate_hhsearch_db(pdb_id: str, template_cif_path: str, output_dir: str):
 
     with open(f"{output_dir}/pdb70_a3m.ffdata", "w") as a3m, \
          open(f"{output_dir}/pdb70_cs219.ffindex", "w") as cs219_index, \
@@ -13,7 +13,8 @@ def generate_hhsearch_db(template_cif_path: str, output_dir: str):
         index_offset = 0
 
         parser = PDB.MMCIFParser(QUIET=True)
-        structure = parser.get_structure("test", template_cif_path)
+        print(template_cif_path)
+        structure = parser.get_structure(pdb_id, template_cif_path)
         models = list(structure.get_models())
         if len(models) != 1:
             raise ValueError(f"Only single model PDBs are supported. Found {len(models)} models.")

@@ -1,5 +1,5 @@
 import sys
-from typing import Set
+from typing import Dict, Set
 from Bio.PDB import PDBParser, Selection
 import os
 import re
@@ -129,7 +129,6 @@ def convert_template_to_polyala(pdb_in_path, pdb_out_path, list_of_res_ranges):
                         num = num + 1
                         f_out.write(line[:7] + str(num).rjust(4) + line[11:])
 
-
 def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_id, mmcif_db): # TODO: template names must be in lowercase
 
     hhr_text = open(hhr_path, 'r').read()
@@ -141,12 +140,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
     for i in range(len(matches_positions) - 1):
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
-    if 'aligned_' in pdb_id:
-        hits_list = [detailed_lines for detailed_lines in detailed_lines_list if
-                    detailed_lines[1].split('_')[1] == f'{pdb_id.split("_")[-1]}']
-    else:
-        hits_list = [detailed_lines for detailed_lines in detailed_lines_list if
-                    detailed_lines[1].split('_')[0][1:] == f'{pdb_id}']
+    hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id in detailed_lines[1]]
 
     detailed_lines = hits_list[0]
 
@@ -160,8 +154,8 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
 
     mmcif_string = open(f'{mmcif_db}/{file_id}.cif').read()
     parsing_result = mmcif_parsing.parse(file_id=file_id, mmcif_string=mmcif_string)
-
-    template_features, realign_warning = templates._extract_template_features(
+    
+    template_features, _ = templates._extract_template_features(
             mmcif_object=parsing_result.mmcif_object,
             pdb_id=file_id,
             mapping=mapping,
@@ -178,7 +172,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
 
     return template_features
 
-def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_path, chain_ID):
+def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_path, chain_id):
 
     # WARNING: input PDB must be aligned to the MSA part in features #
 
@@ -187,11 +181,11 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_
     seq_length = len(query_sequence)
 
     parser = PDBParser(QUIET=True)
-    structure = parser.get_structuremerge_features('test', pdb_path)
+    structure = parser.get_structure('test', pdb_path)
 
     template_sequence = '-' * (seq_length)
     template_res_list = [res for res in Selection.unfold_entities(structure, "R")
-                            if res.get_parent().id == chain_ID and res.id[0] != 'W']
+                            if res.get_parent().id == chain_id and res.id[0] != 'W']
     for res in template_res_list:
         template_sequence = template_sequence[:res.id[1]] + three_to_one[res.resname] + template_sequence[
                                                                                         res.id[1]:]
@@ -217,14 +211,14 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_
         for j, atom in enumerate(res):
             if atom == 1.:
                 resi = [res for res in Selection.unfold_entities(structure, "R")
-                        if res.get_parent().id == chain_ID and res.id[0] != 'W' and res.id[1] == (i + 1)][0]
+                        if res.get_parent().id == chain_id and res.id[0] != 'W' and res.id[1] == (i + 1)][0]
                 res_container.append(resi[atom_types[j]].coord)
             else:
                 res_container.append(np.array([0.] * 3))
         template_container.append(res_container)
     template_all_atom_positions = np.array([template_container])
 
-    template_domain_names = np.array([(f'{name}_' + chain_ID).encode('ascii')])
+    template_domain_names = np.array([(f'{name}_' + chain_id).encode('ascii')])
 
     template_aatype_container = []
     for res in template_sequence[1:]:
@@ -255,19 +249,20 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_
 
 class Features:
 
-    def __init__(self, fasta_path: str, num_of_copies: int):
+    def __init__(self, query_sequence: str):
+        self.query_sequence: str
+        self.sequence_features: pipeline.FeatureDict
+        self.msa_features: Dict
+        self.template_features: Dict
 
-        self.query_sequence = bioutils.extract_sequence(fasta_path=fasta_path)
-        self.query_sequence_assembled = (self.query_sequence + 50 * 'G') * (int(num_of_copies)-1) + self.query_sequence
-
+        self.query_sequence = query_sequence
         self.sequence_features = pipeline.make_sequence_features(sequence=self.query_sequence,
                                                                  description='Query',
                                                                  num_res=len(self.query_sequence))
         self.msa_features = empty_msa_features(query_sequence=self.query_sequence)
         self.template_features = empty_template_features(query_sequence=self.query_sequence)
 
-
-    def append_new_template_features(self, new_template_features, custom_sum_prob = None):
+    def append_new_template_features(self, new_template_features: Dict, custom_sum_prob: int = None) -> Dict:
 
         self.template_features['template_all_atom_positions'] = np.vstack([self.template_features['template_all_atom_positions'], new_template_features['template_all_atom_positions']])
         self.template_features['template_all_atom_masks'] = np.vstack([self.template_features['template_all_atom_masks'], new_template_features['template_all_atom_masks']])
@@ -281,7 +276,7 @@ class Features:
 
         return self.template_features
 
-    def append_row_in_msa(self, sequence, msa_uniprot_accession_identifiers):
+    def append_row_in_msa(self, sequence: str, msa_uniprot_accession_identifiers):
 
         sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
         self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
@@ -290,7 +285,7 @@ class Features:
         self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
         self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape, len(self.msa_features['msa']))
 
-    def write_all_templates_in_features(self, output_path):
+    def write_all_templates_in_features(self, output_path: str):
 
         for i, pdb_name in enumerate(self.template_features['template_domain_names']):
             pdb, chain = pdb_name.decode('utf-8').split('_')[:-1][0], pdb_name.decode('utf-8').split('_')[-1]

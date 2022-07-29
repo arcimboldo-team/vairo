@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from typing import List, Tuple
 from Bio import SeqIO
 from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser
@@ -10,8 +11,6 @@ from libs import utils
 
 
 def download_pdb(pdb_id: str, output_dir: str):
-
-    logging.info(f'Downloading PDB {pdb_id}')
 
     pdbl = PDBList()
     result_ent = pdbl.retrieve_pdb_file(pdb_id, pdir=f'{output_dir}', file_format='pdb', obsolete=False)
@@ -22,22 +21,22 @@ def download_pdb(pdb_id: str, output_dir: str):
 
 def pdb2mmcif(pdb_in_path: str, cif_out_path: str):
 
-    with open('/tmp/maxit.sh','w') as f:
-        f.write(f'export RCSBROOT="/opt/maxit"\n')
-        f.write(f'/opt/maxit/bin/maxit -input {pdb_in_path} -output {cif_out_path} -o 1\n')
-    os.system('chmod +x /tmp/maxit.sh')
-    os.system('bash /tmp/maxit.sh')
+    with open('/tmp/pep/maxit.sh','w') as f:
+        f.write(f'export RCSBROOT="/Users/pep/Downloads/maxit-v11.100-prod-src"\n')
+        f.write(f'/Users/pep/Downloads/maxit-v11.100-prod-src/bin/maxit -input {pdb_in_path} -output {cif_out_path} -o 1\n')
+    os.system('chmod +x /tmp/pep/maxit.sh')
+    os.system('bash /tmp/pep/maxit.sh')
 
+def pdb2cif(pdb_id: str, pdb_in_path: str, cif_out_path: str):
 
-def pdb2cif(pdb_in_path: str, cif_out_path: str):
     p = PDBParser()
-    structure = p.get_structure("pdb", pdb_in_path)
+    structure = p.get_structure(pdb_id, pdb_in_path)
     io = MMCIFIO()
     io.set_structure(structure)
     io.save(cif_out_path)
 
 def cif2pdb(cif_in_path: str, pdb_out_path: str):
-
+    
     p = MMCIFParser(QUIET=True)
     struc = p.get_structure('', f'{cif_in_path}')
     io = PDBIO()
@@ -65,21 +64,24 @@ def merge_pdbs(list_of_paths_of_pdbs_to_merge: str, merged_pdb_path: str):
                     counter += 1
                     f.write(line[:4] + str(counter).rjust(7) + line[11:])
 
-def read_remark_350(pdb_path: str, use_pisa:bool = False) -> Tuple[ List[str], List[float] ]:
+def run_pisa(pdb_path: str):
 
-    pdb_id = pdb_path
+    print(f'Generating REMARK 350 for {pdb_path} with PISA.')
+    subprocess.Popen(['pisa', 'temp', '-analyse', pdb_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    pisa_output = subprocess.Popen(['pisa', 'temp', '-350'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
+    return pisa_output.decode('utf-8')
 
-    if not use_pisa:
-        logging.info(f'Reading REMARK 350 from {pdb_path}.')
-        pdb_text = open(pdb_id, 'r').read()
-    else:
-        print(f'Generating REMARK 350 for {pdb_path} with PISA.')
-        subprocess.Popen(['pisa', 'temp', '-analyse', pdb_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-        pisa_output = subprocess.Popen(['pisa', 'temp', '-350'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
-        pdb_text = pisa_output.decode('utf-8')
+def read_remark_350(pdb_path: str) -> Tuple[ List[str], List[float] ]:
 
+    pdb_text = open(pdb_path, 'r').read()
     match_biomolecules = [m.start() for m in re.finditer(r'REMARK 350 BIOMOLECULE:', pdb_text)] # to know how many biomolecules there are.
-    if len(match_biomolecules) == 1:
+    if len(match_biomolecules) == 0:
+        pdb_text = run_pisa(pdb_path)
+        match_biomolecules = [m.start() for m in re.finditer(r'REMARK 350 BIOMOLECULE:', pdb_text)] # to know how many biomolecules there are.
+
+    if len(match_biomolecules) == 0:
+        raise Exception(f'REMARK not found for template {pdb_path}.')
+    elif len(match_biomolecules) == 1:
         match_last_350 = [m.start() for m in re.finditer(r'REMARK 350', pdb_text)][-1]
         match_end_in_last_350 = [m.end() for m in re.finditer(r'\n', pdb_text[match_last_350:])][-1]
         remark_350_text = pdb_text[match_biomolecules[0]:(match_last_350+match_end_in_last_350)]
@@ -110,7 +112,6 @@ def read_remark_350(pdb_path: str, use_pisa:bool = False) -> Tuple[ List[str], L
 
     return chain_list, transformations_list
 
-
 def rot_and_trans(pdb_path: str, out_pdb_path: str, rot_tra_matrix: str):
 
     r11, r12, r13 = rot_tra_matrix[0]
@@ -127,7 +128,6 @@ def rot_and_trans(pdb_path: str, out_pdb_path: str, rot_tra_matrix: str):
         f.write('eof')
     subprocess.Popen(['bash', '/tmp/pdbset.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
     utils.rmsilent(f'/tmp/pdbset.sh')
-
 
 def change_chain_and_apply_offset_in_single_chain(pdb_in_path, pdb_out_path, offset=None, chain=None):
 

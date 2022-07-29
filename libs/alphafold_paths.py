@@ -39,3 +39,13 @@ class AlphaFoldPaths:
             elif 'pdb70' in db:
                 self.pdb70_db_path = f'{self.af2_dbs_path}/{db}/pdb70'
                 logging.info('PDB70 DB path:', self.pdb70_db_path)
+    
+    def __repr__(self):
+        logging.info('af2_dbs_path: ', self.af2_dbs_path)
+        logging.info('mgnify_db_path: ', self.mgnify_db_path)
+        logging.info('uniref90_db_path: ', self.uniref90_db_path)
+        logging.info('mmcif_db_path: ', self.mmcif_db_path)
+        logging.info('obsolete_mmcif_db_path: ', self.obsolete_mmcif_db_path)
+        logging.info('bfd_db_path: ', self.bfd_db_path)
+        logging.info('uniclust30_db_path: ', self.uniclust30_db_path)
+        logging.info('pdb70_db_path: ', self.pdb70_db_path)
