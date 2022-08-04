@@ -19,13 +19,13 @@ def download_pdb(pdb_id: str, output_dir: str):
     shutil.copy2(result_ent, f'{output_dir}/{pdb_id}.pdb')
     shutil.rmtree('obsolete')
 
-def pdb2mmcif(pdb_in_path: str, cif_out_path: str):
-
-    with open('/tmp/pep/maxit.sh','w') as f:
-        f.write(f'export RCSBROOT="/Users/pep/Downloads/maxit-v11.100-prod-src"\n')
-        f.write(f'/Users/pep/Downloads/maxit-v11.100-prod-src/bin/maxit -input {pdb_in_path} -output {cif_out_path} -o 1\n')
-    os.system('chmod +x /tmp/pep/maxit.sh')
-    os.system('bash /tmp/pep/maxit.sh')
+def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
+    maxit_dir = f'{output_dir}/maxit'
+    if not os.path.exists(maxit_dir):
+        os.mkdir(maxit_dir)
+        
+    subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    shutil.rmtree(maxit_dir)
 
 def pdb2cif(pdb_id: str, pdb_in_path: str, cif_out_path: str):
 

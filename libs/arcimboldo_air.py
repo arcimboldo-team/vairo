@@ -1,4 +1,5 @@
 from ast import Dict
+import logging
 import os
 from typing import List, Dict
 from libs import bioutils, template, utils, features, alphafold_paths, template
@@ -38,3 +39,12 @@ class ArcimboldoAir:
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
         self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path)
+
+    def __repr__(self):
+        return f' \
+        output_dir: {self.output_dir} \n \
+        fasta_path: {self.fasta_path} \n \
+        query_sequence: {self.query_sequence} \n \
+        query_sequence_assembled: {self.query_sequence_assembled} \n \
+        num_of_copies: {self.num_of_copies} \n \
+        run_af2: {self.run_af2}'

@@ -1,6 +1,8 @@
 #! /usr/bin/env python3
 
-from libs import arcimboldo_air, utils
+import pickle
+import subprocess
+from libs import alphafold_paths, analyse, arcimboldo_air, utils
 import os
 import sys
 import toml
@@ -12,12 +14,7 @@ def run_alphafold():
     delattr(ALPHAFOLD.run_alphafold.flags.FLAGS,'data_dirs')
     ALPHAFOLD.run_alphafold.flags.DEFINE_string('data_dir', "data", 'Path to directory of supporting data.')
 
-def af2_sh(output_dir):
-    #try:
-    #    print('\n')
-
-    #except:
-    #    raise ValueError('Please, set all AF2 databases manually')
+def create_af2(output_dir: str, alphafold_paths: alphafold_paths.AlphaFoldPaths):
 
     with open(f'{output_dir}/run_af2.sh', 'w') as bash_file:
         previous_path_to_output_dir = '/'.join(output_dir.split('/')[:-1])
@@ -26,16 +23,16 @@ def af2_sh(output_dir):
         bash_file.write(f'python ./alphafold/run_alphafold.py \\\n')
         bash_file.write(f'--fasta_paths={name}.fasta \\\n')
         bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
-        bash_file.write(f'--data_dir={AF2_DBS_PATH} \\\n')
-        bash_file.write(f'--uniref90_database_path={UNIREF90_DB_PATH} \\\n')
-        bash_file.write(f'--mgnify_database_path={MGNIFY_DB_PATH} \\\n')
-        bash_file.write(f'--template_mmcif_dir={MMCIF_DB_PATH} \\\n')
+        bash_file.write(f'--data_dir={alphafold_paths.af2_dbs_path} \\\n')
+        bash_file.write(f'--uniref90_database_path={alphafold_paths.uniref90_db_path} \\\n')
+        bash_file.write(f'--mgnify_database_path={alphafold_paths.mgnify_db_path} \\\n')
+        bash_file.write(f'--template_mmcif_dir={alphafold_paths.mmcif_db_path} \\\n')
         bash_file.write('--max_template_date=2022-03-09 \\\n')
-        bash_file.write(f'--obsolete_pdbs_path={OBSOLETE_MMCIF_DB_PATH} \\\n')
+        bash_file.write(f'--obsolete_pdbs_path={alphafold_paths.obsolete_mmcif_db_path} \\\n')
         bash_file.write('--model_preset=monomer \\\n')
-        bash_file.write(f'--bfd_database_path={BFD_DB_PATH} \\\n')
-        bash_file.write(f'--uniclust30_database_path={UNICLUST30_DB_PATH} \\\n')
-        bash_file.write(f'--pdb70_database_path={PDB70_DB_PATH} \\\n')
+        bash_file.write(f'--bfd_database_path={alphafold_paths.bfd_db_path} \\\n')
+        bash_file.write(f'--uniclust30_database_path={alphafold_paths.uniclust30_db_path} \\\n')
+        bash_file.write(f'--pdb70_database_path={alphafold_paths.pdb70_db_path} \\\n')
         bash_file.write('--read_features_pkl=True\n')
         bash_file.close()
 
@@ -72,27 +69,22 @@ def main():
             print(f'Template \"{template.pdb_id}\" was added to templates.')
 
     a_air.features.write_pkl(output_dir=f'{a_air.output_dir}/features.pkl')
-    
-    sys.exit(1)
-    
-    if RUN_AF2:
-        af2_sh(output_dir=OUTPUT_DIR)
-        print('Running AF2')
-        af2_output = subprocess.Popen(['bash', f'{OUTPUT_DIR}/run_af2.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        stdout, stderr = af2_output.communicate()
-        with open(f'{OUTPUT_DIR}/af2_output.log', 'w') as f:
-            f.write(stdout.decode('utf-8'))
-        os.system(f'rm -r {OUTPUT_DIR}/msas')
-        af_summary(af_job_path=f'{OUTPUT_DIR}')
 
-    features_file = open(f'{OUTPUT_DIR}/features.pkl','rb')
+    if a_air.run_af2:
+        create_af2(a_air.output_dir, a_air.alphafold_paths)
+        print('Running AF2')
+        af2_output = subprocess.Popen(['bash', f'{a_air.output_dir}/run_af2.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout, stderr = af2_output.communicate()
+        with open(f'{a_air.output_dir}/af2_output.log', 'w') as f:
+            f.write(stdout.decode('utf-8'))
+        analyse.af_summary(af_job_path=f'{a_air.output_dir}')
+
+    features_file = open(f'{a_air.output_dir}/features.pkl','rb')
     features = pickle.load(features_file)
     features_file.close()
 
-    print('\n')
     for key in features.keys():
         print(key, features[key].shape)
-
 
 if __name__ == "__main__":
     main()

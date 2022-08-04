@@ -17,14 +17,12 @@ class Template:
         self.template_path: str
         self.chain: str = ''
         self.polyala_res_list: List = []
-        self.custom: bool = True
         self.add_to_msa: bool = False
         self.add_to_templates: bool = False
         self.sum_prob: bool = False
         self.aligned: bool = False
         self.template_features: Dict = None
         
-        self.custom = parameters_list.get('custom', self.custom)
         self.pdb_path = self.__check_pdb(parameters_list['pdb'], output_dir)
         self.pdb_id = utils.get_path_name(self.pdb_path)
         self.chain = parameters_list.get('chain', self.chain)
@@ -32,7 +30,7 @@ class Template:
         self.add_to_msa = parameters_list.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_list.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_list.get('sum_prob', self.sum_prob)
-        self.aligned = parameters_list.get('aligned', self.aligned & self.custom)
+        self.aligned = parameters_list.get('aligned', self.aligned)
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
     
     def __check_pdb(self, pdb: str, output_dir: str) -> str:
@@ -41,7 +39,6 @@ class Template:
                 logging.info(f'{output_dir}/{pdb}.pdb already exists in {output_dir}.')
             else:
                 bioutils.download_pdb(pdb_id=pdb, output_dir=output_dir)
-            self.custom = False
             pdb = f'{output_dir}/{pdb}.pdb'           
         return pdb
     
@@ -54,7 +51,7 @@ class Template:
             print(f'Looking for alignment between {self.pdb_id} and query sequence using hhsearch:')
 
             if not self.aligned:
-                bioutils.pdb2mmcif(pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
+                bioutils.pdb2mmcif(output_dir=a_air.output_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
                 #bioutils.pdb2cif(pdb_id=self.pdb_id, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
                 hhsearch.generate_hhsearch_db(pdb_id=self.pdb_id, template_cif_path=f'{a_air.output_dir}/{self.pdb_id}.cif', output_dir=a_air.output_dir)
                 hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path, output_path=output_hhr)
@@ -77,13 +74,14 @@ class Template:
                 template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
                     query_sequence=a_air.query_sequence,
                     pdb_path=self.template_path,
-                    chain_id=self.chain)
+                    chain_id=self.chain,
+                    pdb_id=self.pdb_id)
 
             self.template_features = copy.deepcopy(template_features)
 
         else:
             if not self.aligned:
-                bioutils.pdb2mmcif(pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
+                bioutils.pdb2mmcif(output_dir=a_air.output_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
                 #bioutils.pdb2cif(pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
                 hhsearch.generate_hhsearch_db(pdb_id=self.pdb_id, template_cif_path=f'{a_air.output_dir}/{self.pdb_id}.cif', output_dir=a_air.output_dir)
 
@@ -108,7 +106,7 @@ class Template:
                         mmcif_db=a_air.output_dir)
                     g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
                     g.write_all_templates_in_features(output_path=a_air.output_dir)
-                    for num, transformation in enumerate(transformations_list):
+                    for transformation in transformations_list:
                         counter += 1
                         bioutils.rot_and_trans(pdb_path=self.template_path,
                                     out_pdb_path=f'{a_air.output_dir}/{counter}.pdb',
@@ -143,6 +141,20 @@ class Template:
             template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
                 query_sequence=a_air.query_sequence_assembled,
                 pdb_path=self.template_path,
-                chain_id='A')
+                chain_id='A',
+                pdb_id=self.pdb_id)
             
             self.template_features = copy.deepcopy(template_features)
+        
+    def __repr__(self):
+        return f' \
+        pdb_path: {self.pdb_path} \n \
+        pdb_id: {self.pdb_id} \n \
+        template_path: {self.template_path} \n \
+        chain: {self.chain} \n \
+        polyala_res_list: {self.polyala_res_list} \n \
+        add_to_msa: {self.add_to_msa} \n \
+        add_to_templates: {self.add_to_templates} \n \
+        sum_prob: {self.sum_prob} \n \
+        aligned: {self.aligned} \n \
+        template_features: {self.template_features}'
