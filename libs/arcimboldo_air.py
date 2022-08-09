@@ -35,7 +35,7 @@ class ArcimboldoAir:
             raise Exception('No templates detected. Check if the [[template]] tag exists.')
 
         for parameters_template in parameters_dict['template']:
-            self.templates.append(template.Template(parameters_template, self.output_dir))
+            self.templates.append(template.Template(parameters_template, self.output_dir, self.num_of_copies))
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
         self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path)

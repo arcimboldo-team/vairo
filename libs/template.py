@@ -5,12 +5,14 @@ import logging
 import shutil
 import string
 from ALPHAFOLD.alphafold.data import pipeline
+from Bio.PDB import PDBParser
+
 from libs import arcimboldo_air, bioutils, features, hhsearch, utils
 from typing import Dict, List
 
 class Template:
 
-    def __init__ (self, parameters_list: List, output_dir: str):
+    def __init__ (self, parameters_list: List, output_dir: str, num_of_copies: int):
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
@@ -24,13 +26,25 @@ class Template:
         
         self.pdb_path = self.__check_pdb(parameters_list['pdb'], output_dir)
         self.pdb_id = utils.get_path_name(self.pdb_path)
-        self.chain = parameters_list.get('chain', self.chain)
         self.polyala_res_list = parameters_list.get('polyala_res_list', self.polyala_res_list)
         self.add_to_msa = parameters_list.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_list.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_list.get('sum_prob', self.sum_prob)
         self.aligned = parameters_list.get('aligned', self.aligned)
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
+        self.chain = parameters_list.get('chain', self.chain)
+
+        if num_of_copies == 1:
+            structure = PDBParser().get_structure(self.pdb_id, self.pdb_path)
+            chains = [chain.get_id() for chain in structure.get_chains()]
+            if self.chain == '':
+                if len(chains) == 1:
+                    self.chain = chains.pop()
+                else:
+                    raise Exception('There is more than one chain in the structure. Select one in the configuration file.')
+            else:
+                if not self.chain in chains:
+                    raise Exception('The choosen chain does not exist in the structure.')
     
     def __check_pdb(self, pdb: str, output_dir: str) -> str:
         if not os.path.exists(pdb) and output_dir != '':
