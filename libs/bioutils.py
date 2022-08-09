@@ -3,7 +3,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 from typing import List, Tuple
 from Bio import SeqIO
 from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser
@@ -24,7 +23,7 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
     if not os.path.exists(maxit_dir):
         os.mkdir(maxit_dir)
         
-    subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], cwd=maxit_dir,stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     shutil.rmtree(maxit_dir)
 
 def pdb2cif(pdb_id: str, pdb_in_path: str, cif_out_path: str):

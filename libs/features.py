@@ -3,7 +3,6 @@ from typing import Dict, Set
 from Bio.PDB import PDBParser, Selection
 import os
 import re
-from libs import bioutils
 from ALPHAFOLD.alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
 from ALPHAFOLD.alphafold.common import residue_constants
 import numpy as np

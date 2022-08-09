@@ -85,6 +85,8 @@ def main():
 
     for key in features.keys():
         print(key, features[key].shape)
+    
+    utils.clean_files(a_air.output_dir)
 
 if __name__ == "__main__":
     main()

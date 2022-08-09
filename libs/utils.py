@@ -1,4 +1,5 @@
 import errno
+import glob
 import os
 import logging
 import io
@@ -33,12 +34,22 @@ def get_path_name(path: str) -> str:
 
     return os.path.splitext(os.path.basename(path))[0]
 
-def rmsilent(file_path):
-    try:
-        os.remove(file_path)
-    except OSError as e:
-        if e.errno != errno.ENOENT:
-            raise
+def rmsilent(file_path: str):
+    for file in glob.glob(file_path):
+        try:
+            os.remove(file)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
+
+def clean_files(output_dir : str):
+    rmsilent(f'{output_dir}/*.ffindex')
+    rmsilent(f'{output_dir}/*.ffdata')
+    rmsilent(f'{output_dir}/*.custom_output.hhr')
+    rmsilent(f'{output_dir}/*.cif')
+    rmsilent(f'{output_dir}/[A-Z].pdb')
+    rmsilent(f'{output_dir}/*[A-Z]_template.pdb')
+    rmsilent(f'{output_dir}/[0-9].pdb')
 
 def create_logger():
     """

@@ -4,7 +4,6 @@ import os
 import logging
 import shutil
 import string
-import sys
 from ALPHAFOLD.alphafold.data import pipeline
 from libs import arcimboldo_air, bioutils, features, hhsearch, utils
 from typing import Dict, List
@@ -63,11 +62,6 @@ class Template:
                                             chain_id=self.chain,
                                             mmcif_db=a_air.output_dir)
 
-                utils.rmsilent(f'{a_air.output_dir}/*.ffindex')
-                utils.rmsilent(f'{a_air.output_dir}/*.ffdata')
-                utils.rmsilent(f'{a_air.output_dir}/*.custom_output.hhr')
-                #utils.rmsilent(f'{a_air.output_dir}/{self.pdb_id}.cif')
-
             else:
                 shutil.copyfile(self.pdb_path, self.template_path)
 
@@ -90,13 +84,20 @@ class Template:
 
                 chain_list, transformations_list = bioutils.read_remark_350(pdb_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
                 new_chain_list = list(string.ascii_uppercase)[:len(transformations_list) * len(chain_list)]
+        
                 print('Assembly can be build using chain(s)', *chain_list, 'by applying the following transformations:')
                 for matrix in transformations_list:
                     print(*matrix)
+                
+                if len(new_chain_list) != a_air.num_of_copies:
+                    raise Exception(f'Assembly description from REMARK 350 contains {len(new_chain_list)} subunits. Please, try to '
+                        f'generate a new REMARK 350 (manually or using e.g. PISA) for considering a new assembly with '
+                        f'{a_air.num_of_copies} subunits')
 
                 query_seq_length = len(a_air.query_sequence)
+                counter = 0
                 g = features.Features(query_sequence=a_air.query_sequence)
-                counter = 0 
+
                 for chain in chain_list:
                     template_features = features.extract_template_features_from_pdb(
                         query_sequence=a_air.query_sequence,
@@ -104,11 +105,12 @@ class Template:
                         pdb_id=self.pdb_id,
                         chain_id=chain,
                         mmcif_db=a_air.output_dir)
+                                            
                     g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
                     g.write_all_templates_in_features(output_path=a_air.output_dir)
                     for transformation in transformations_list:
                         counter += 1
-                        bioutils.rot_and_trans(pdb_path=self.template_path,
+                        bioutils.rot_and_trans(pdb_path=f'{a_air.output_dir}/{self.pdb_id}{chain}_template.pdb', 
                                     out_pdb_path=f'{a_air.output_dir}/{counter}.pdb',
                                     rot_tra_matrix=transformation)
 
@@ -126,14 +128,6 @@ class Template:
                 list_of_paths_of_pdbs_to_merge = [f'{a_air.output_dir}/{ch}.pdb' for ch in new_chain_list]
                 bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=list_of_paths_of_pdbs_to_merge,
                         merged_pdb_path=self.template_path)
-                
-                utils.rmsilent(f'{a_air.output_dir}/[A-Z].pdb')
-                utils.rmsilent(f'{a_air.output_dir}/{self.pdb_id}[A-Z]_template.pdb')
-                utils.rmsilent(f'{a_air.output_dir}/[0-9].pdb')
-                utils.rmsilent(f'{a_air.output_dir}/*ffdata')
-                utils.rmsilent(f'{a_air.output_dir}/*ffindex')
-                utils.rmsilent(f'{a_air.output_dir}/custom_output.hhr')
-                #utils.rmsilent(f'{a_air.output_dir}/{self.pdb_id}.cif')
 
             else:
                 shutil.copyfile(self.pdb_path, self.template_path)
