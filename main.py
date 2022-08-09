@@ -9,18 +9,13 @@ import toml
 import logging
 
 
-def run_alphafold():
-
-    delattr(ALPHAFOLD.run_alphafold.flags.FLAGS,'data_dirs')
-    ALPHAFOLD.run_alphafold.flags.DEFINE_string('data_dir', "data", 'Path to directory of supporting data.')
-
 def create_af2(output_dir: str, alphafold_paths: alphafold_paths.AlphaFoldPaths):
 
     with open(f'{output_dir}/run_af2.sh', 'w') as bash_file:
         previous_path_to_output_dir = '/'.join(output_dir.split('/')[:-1])
         name = output_dir.split('/')[-1]
         bash_file.write('#!/bin/bash\n')
-        bash_file.write(f'python ./alphafold/run_alphafold.py \\\n')
+        bash_file.write(f'python ./ALPHAFOLD/alphafold/run_alphafold.py \\\n')
         bash_file.write(f'--fasta_paths={name}.fasta \\\n')
         bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
         bash_file.write(f'--data_dir={alphafold_paths.af2_dbs_path} \\\n')
@@ -63,16 +58,16 @@ def main():
         if template.add_to_msa:
             sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
             a_air.features.append_row_in_msa(sequence=sequence_from_template, msa_uniprot_accession_identifiers=template.pdb_id)
-            print(f'Sequence from template \"{template.pdb_id}\" was added to msa.')
+            logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa.')
         if template.add_to_templates:
             a_air.features.append_new_template_features(new_template_features=template.template_features, custom_sum_prob=template.sum_prob)
-            print(f'Template \"{template.pdb_id}\" was added to templates.')
+            logging.info(f'Template \"{template.pdb_id}\" was added to templates.')
 
     a_air.features.write_pkl(output_dir=f'{a_air.output_dir}/features.pkl')
 
     if a_air.run_af2:
         create_af2(a_air.output_dir, a_air.alphafold_paths)
-        print('Running AF2')
+        logging.info('Running AF2')
         af2_output = subprocess.Popen(['bash', f'{a_air.output_dir}/run_af2.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         stdout, stderr = af2_output.communicate()
         with open(f'{a_air.output_dir}/af2_output.log', 'w') as f:
