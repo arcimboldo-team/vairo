@@ -15,7 +15,7 @@ def create_af2(output_dir: str, alphafold_paths: alphafold_paths.AlphaFoldPaths)
         previous_path_to_output_dir = '/'.join(output_dir.split('/')[:-1])
         name = output_dir.split('/')[-1]
         bash_file.write('#!/bin/bash\n')
-        bash_file.write(f'python ./ALPHAFOLD/run_alphafold.py \\\n')
+        bash_file.write(f'python {os.path.dirname(os.path.abspath(__file__))}/ALPHAFOLD/run_alphafold.py \\\n')
         bash_file.write(f'--fasta_paths={name}.fasta \\\n')
         bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
         bash_file.write(f'--data_dir={alphafold_paths.af2_dbs_path} \\\n')
@@ -30,8 +30,6 @@ def create_af2(output_dir: str, alphafold_paths: alphafold_paths.AlphaFoldPaths)
         bash_file.write(f'--pdb70_database_path={alphafold_paths.pdb70_db_path} \\\n')
         bash_file.write('--read_features_pkl=True\n')
         bash_file.close()
-
-
 
 def main():
 
