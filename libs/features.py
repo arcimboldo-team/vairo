@@ -151,7 +151,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
             hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
             query_sequence)
 
-    mmcif_string = open(f'{mmcif_db}/{file_id}.cif').read()
+    mmcif_string = open(f'{mmcif_db}/{pdb_id}.cif').read()
     parsing_result = mmcif_parsing.parse(file_id=file_id, mmcif_string=mmcif_string)
     
     template_features, _ = templates._extract_template_features(
