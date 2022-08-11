@@ -99,7 +99,7 @@ class Template:
                 chain_list, transformations_list = bioutils.read_remark_350(pdb_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
                 new_chain_list = list(string.ascii_uppercase)[:len(transformations_list) * len(chain_list)]
         
-                print('Assembly can be build using chain(s)', *chain_list, 'by applying the following transformations:')
+                logging.info('Assembly can be build using chain(s)', *chain_list, 'by applying the following transformations:')
                 for matrix in transformations_list:
                     print(*matrix)
                 
