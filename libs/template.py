@@ -1,10 +1,8 @@
-from audioop import rms
 import copy
 import os
 import logging
 import shutil
 import string
-from ALPHAFOLD.alphafold.data import pipeline
 from Bio.PDB import PDBParser
 
 from libs import arcimboldo_air, bioutils, features, hhsearch, utils

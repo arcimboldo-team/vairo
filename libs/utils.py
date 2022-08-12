@@ -5,7 +5,6 @@ import logging
 import io
 import sys
 
-
 def print_msg_box(msg, indent=1, title=None):
 
     lines = msg.split('\n')

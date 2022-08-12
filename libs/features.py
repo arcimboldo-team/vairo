@@ -1,4 +1,3 @@
-import sys
 from typing import Dict, Set
 from Bio.PDB import PDBParser, Selection
 import os
@@ -23,21 +22,6 @@ atom_types = ['N', 'CA', 'C', 'CB', 'O', 'CG', 'CG1', 'CG2', 'OG', 'OG1', 'SG', 
               'OE2', 'CH2', 'NH1', 'NH2', 'OH', 'CZ', 'CZ2', 'CZ3', 'NZ', 'OXT']
 atom_order = {atom_type: i for i, atom_type in enumerate(atom_types)}
 order_atom = {v: k for k, v in atom_order.items()}
-
-
-def remove_hydrogens(pdb_path):
-
-    path = "/".join(pdb_path.split('/')[:-1])
-
-    output_file = open(f'{path}/output.pdb', 'w')
-
-    counter = 0
-    with open(f'{pdb_path}', 'r') as f:
-        for line in f.readlines():
-            if line.split()[-1] in ['N', 'C', 'O', 'S']:
-                counter = counter + 1
-                output_file.write(line[:6] + str(counter).rjust(5) + line[11:])
-    os.system(f'mv {path}/output.pdb {path}/{pdb_path.split("/")[-1]}')
 
 
 def empty_msa_features(query_sequence):
@@ -99,34 +83,6 @@ def empty_template_features(query_sequence):
         "template_sum_probs": np.tile(template_sum_probs, [0, 1])
     }
     return template_features
-
-
-
-def convert_template_to_polyala(pdb_in_path, pdb_out_path, list_of_res_ranges):
-
-    ala_res_list = []
-
-    if len(list_of_res_ranges) > 1:
-        for item in list_of_res_ranges:
-            ala_res_list.extend(list(range(int(item[0]),int(item[1]))))
-    else:
-        ala_res_list = list(range(int(list_of_res_ranges[0][0]), int(list_of_res_ranges[0][1])))
-
-    ala_atoms_list = ['N', 'CA', 'C', 'CB', 'O']
-
-    with open(f'{pdb_out_path}', 'w') as f_out:
-        with open(f'{pdb_in_path}') as f_in:
-            lines = f_in.readlines()
-            num = 0
-            for line in lines:
-                if line[:4] == 'ATOM':
-                    if int(line[22:26].replace(' ', '')) in ala_res_list:
-                        if line[13:16].replace(' ', '') in ala_atoms_list:
-                            num = num + 1
-                            f_out.write(line[:7] + str(num).rjust(4) + line[11:17] + 'ALA' + line[20:])
-                    else:
-                        num = num + 1
-                        f_out.write(line[:7] + str(num).rjust(4) + line[11:])
 
 def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_id, mmcif_db): # TODO: template names must be in lowercase
 

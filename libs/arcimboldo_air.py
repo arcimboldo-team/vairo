@@ -1,5 +1,3 @@
-from ast import Dict
-import logging
 import os
 from typing import List, Dict
 from libs import bioutils, template, utils, features, alphafold_paths, template

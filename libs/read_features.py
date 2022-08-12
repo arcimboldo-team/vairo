@@ -3,8 +3,7 @@ import sys
 from ALPHAFOLD.alphafold.common import residue_constants
 import numpy as np
 
-# features_pkl_path = '/home/albert/Desktop/JOBS/4/features.pkl'
-features_pkl_path = '/localdata/albert/SEQUENCE_DEPENDENCE_PAPER/JOBS/ATZR/2_fixed_Nter_polyalaCter/features.pkl'
+features_pkl_path = '/Users/pep/Desktop/features_irini.pkl'
 
 with open(f"{features_pkl_path}", "rb") as input_file:
     features = pickle.load(input_file)
