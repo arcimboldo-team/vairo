@@ -29,7 +29,7 @@ def get_mandatory_value(input_load: str, value: str) -> str:
     return read_value
 
 
-def get_path_name(path: str) -> str:
+def get_file_name(path: str) -> str:
 
     return os.path.splitext(os.path.basename(path))[0]
 

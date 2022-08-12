@@ -23,7 +23,7 @@ class Template:
         self.template_features: Dict = None
         
         self.pdb_path = self.__check_pdb(parameters_list['pdb'], output_dir)
-        self.pdb_id = utils.get_path_name(self.pdb_path)
+        self.pdb_id = utils.get_file_name(self.pdb_path)
         self.polyala_res_list = parameters_list.get('polyala_res_list', self.polyala_res_list)
         self.add_to_msa = parameters_list.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_list.get('add_to_templates', self.add_to_templates)
@@ -80,8 +80,7 @@ class Template:
                 template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
                     query_sequence=a_air.query_sequence,
                     pdb_path=self.template_path,
-                    chain_id=self.chain,
-                    pdb_id=self.pdb_id)
+                    chain_id=self.chain)
 
             self.template_features = copy.deepcopy(template_features)
 
@@ -97,7 +96,7 @@ class Template:
                 chain_list, transformations_list = bioutils.read_remark_350(pdb_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
                 new_chain_list = list(string.ascii_uppercase)[:len(transformations_list) * len(chain_list)]
         
-                logging.info('Assembly can be build using chain(s)', *chain_list, 'by applying the following transformations:')
+                logging.info('Assembly can be build using chain(s) '+ str(chain_list) + ' by applying the following transformations:')
                 for matrix in transformations_list:
                     print(*matrix)
                 
@@ -147,8 +146,7 @@ class Template:
             template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
                 query_sequence=a_air.query_sequence_assembled,
                 pdb_path=self.template_path,
-                chain_id='A',
-                pdb_id=self.pdb_id)
+                chain_id='A')
             
             self.template_features = copy.deepcopy(template_features)
         

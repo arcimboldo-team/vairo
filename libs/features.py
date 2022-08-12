@@ -8,6 +8,8 @@ import numpy as np
 import pickle
 import logging
 
+from libs import utils
+
 
 three_to_one = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ILE': 'I', 'PRO': 'P',
                 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R',
@@ -127,13 +129,14 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
 
     return template_features
 
-def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_path, chain_id, pdb_id):
+def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_path, chain_id):
 
     # WARNING: input PDB must be aligned to the MSA part in features #
 
     seq_length = len(query_sequence)
 
     parser = PDBParser(QUIET=True)
+    pdb_id = utils.get_file_name(pdb_path)
     structure = parser.get_structure(pdb_id, pdb_path)
 
     template_sequence = '-' * (seq_length)
@@ -171,7 +174,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_
         template_container.append(res_container)
     template_all_atom_positions = np.array([template_container])
 
-    template_domain_names = np.array([(f'{pdb_id}_' + chain_id).encode('ascii')])
+    template_domain_names = np.array([(pdb_id).encode('ascii')])
 
     template_aatype_container = []
     for res in template_sequence[1:]:
