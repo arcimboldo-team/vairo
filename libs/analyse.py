@@ -8,14 +8,19 @@ from Bio.PDB import PDBParser, Selection
 def analyse_output(output_dir: str, run_dir: str, features: Features):
     
     plots_path = f'{output_dir}/plots'
+    templates_path = f'{output_dir}/templates'
     rmsd_path = f'{plots_path}/rmsd.log'
 
     if os.path.exists(plots_path):
         shutil.rmtree(plots_path)
     os.makedirs(plots_path)
 
+    if os.path.exists(templates_path):
+        shutil.rmtree(templates_path)
+    os.makedirs(templates_path)
+
     ranked_models_dict = {os.path.basename(ranked): os.path.join(run_dir, ranked) for ranked in os.listdir(run_dir) if ranked.startswith('ranked_')}
-    template_dict = features.write_all_templates_in_features(output_dir)
+    template_dict = features.write_all_templates_in_features(templates_path)
 
     for ranked, ranked_path in ranked_models_dict.items():
         shutil.copy2(ranked_path, output_dir)

@@ -45,16 +45,16 @@ def main():
     if a_air.run_af2:
         #bioutils.run_af2(output_dir=a_air.run_dir, alphafold_paths=a_air.alphafold_paths)
         analyse.analyse_output(output_dir=a_air.output_dir, run_dir=a_air.run_dir, features=a_air.features)
-
-    features_file = open(f'{a_air.run_dir}/features.pkl','rb')
-    features = pickle.load(features_file)
-    features_file.close()
-
-    for key in features.keys():
-        print(key, features[key].shape)
     
-    utils.clean_files(a_air.output_dir)
+    if not a_air.verbose:
+        with open(f'{a_air.run_dir}/features.pkl','rb') as features_file:
+            features = pickle.load(features_file)
 
+        for key in features.keys():
+            print(key, features[key].shape)
+
+        utils.clean_files(run_dir=a_air.run_dir)
+        
 if __name__ == "__main__":
     main()
 

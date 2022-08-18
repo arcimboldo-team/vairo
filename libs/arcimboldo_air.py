@@ -15,7 +15,7 @@ class ArcimboldoAir:
         self.alphafold_paths: alphafold_paths.AlphaFoldPaths
         self.templates: List[template.Template] = []
         self.run_af2: bool = False
-        self.keep_working_dir: bool = True
+        self.verbose: bool = True
         
         self.output_dir = utils.get_mandatory_value(input_load = parameters_dict, value = 'output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, "run"))
@@ -23,6 +23,7 @@ class ArcimboldoAir:
         self.num_of_copies = utils.get_mandatory_value(input_load = parameters_dict, value = 'num_of_copies')
         af2_dbs_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
+        self.verbose = parameters_dict.get('verbose', self.verbose)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
         self.query_sequence_assembled = (self.query_sequence + 50 * 'G') * (int(self.num_of_copies)-1) + self.query_sequence
 

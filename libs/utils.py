@@ -3,6 +3,7 @@ import glob
 import os
 import logging
 import io
+import shutil
 import sys
 
 def print_msg_box(msg, indent=1, title=None):
@@ -42,14 +43,9 @@ def rmsilent(file_path: str):
             if e.errno != errno.ENOENT:
                 raise
 
-def clean_files(output_dir : str):
-    rmsilent(f'{output_dir}/*.ffindex')
-    rmsilent(f'{output_dir}/*.ffdata')
-    rmsilent(f'{output_dir}/*.custom_output.hhr')
-    rmsilent(f'{output_dir}/*.cif')
-    rmsilent(f'{output_dir}/[A-Z].pdb')
-    rmsilent(f'{output_dir}/*[A-Z]_template.pdb')
-    rmsilent(f'{output_dir}/[0-9].pdb')
+def clean_files(run_dir : str):
+    
+    shutil.rmtree(run_dir)
 
 def create_logger():
 

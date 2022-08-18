@@ -8,8 +8,6 @@ import numpy as np
 import pickle
 import logging
 
-from libs import utils
-
 
 three_to_one = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ILE': 'I', 'PRO': 'P',
                 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R',
@@ -129,13 +127,12 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
 
     return template_features
 
-def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_path, chain_id):
+def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str, pdb_path: str, pdb_id: str, chain_id: str):
 
     # WARNING: input PDB must be aligned to the MSA part in features #
 
     seq_length = len(query_sequence)
 
-    pdb_id = utils.get_file_name(pdb_path)
     parser = PDBParser(QUIET=True)
     structure = parser.get_structure(pdb_id, pdb_path)
 

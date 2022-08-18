@@ -88,7 +88,8 @@ class Template:
                 template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
                     query_sequence=a_air.query_sequence,
                     pdb_path=self.template_path,
-                    chain_id=self.chain)
+                    pdb_id=self.pdb_id,
+                    chain_id='A')
 
             self.template_features = copy.deepcopy(template_features)
 
@@ -154,6 +155,7 @@ class Template:
             template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
                 query_sequence=a_air.query_sequence_assembled,
                 pdb_path=self.template_path,
+                pdb_id=self.pdb_id,
                 chain_id='A')
             
             self.template_features = copy.deepcopy(template_features)
