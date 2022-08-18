@@ -1,4 +1,4 @@
-from typing import Dict, Set
+from typing import Dict, List, Set
 from Bio.PDB import PDBParser, Selection
 import os
 import re
@@ -135,8 +135,8 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_
 
     seq_length = len(query_sequence)
 
-    parser = PDBParser(QUIET=True)
     pdb_id = utils.get_file_name(pdb_path)
+    parser = PDBParser(QUIET=True)
     structure = parser.get_structure(pdb_id, pdb_path)
 
     template_sequence = '-' * (seq_length)
@@ -174,7 +174,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence, pdb_
         template_container.append(res_container)
     template_all_atom_positions = np.array([template_container])
 
-    template_domain_names = np.array([(pdb_id).encode('ascii')])
+    template_domain_names = np.array([(f'{pdb_id}_{chain_id}').encode('ascii')])
 
     template_aatype_container = []
     for res in template_sequence[1:]:
@@ -241,49 +241,48 @@ class Features:
         self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
         self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape, len(self.msa_features['msa']))
 
-    def write_all_templates_in_features(self, output_path: str):
+    def write_all_templates_in_features(self, output_path: str) -> Dict:
 
-        for i, pdb_name in enumerate(self.template_features['template_domain_names']):
-            pdb, chain = pdb_name.decode('utf-8').split('_')[:-1][0], pdb_name.decode('utf-8').split('_')[-1]
+        templates_dict = {}
 
-            # pdb, chain = pdb_name.decode('utf-8').split('_')
-            output_pdb = open(output_path + '/' + pdb + chain + '_template.pdb', 'w')
-            template_domain_index = np.where(self.template_features['template_domain_names'] == pdb_name)[0][0]
-            true_seq = ''
-            atom_num_int = 0  # AQUI
-            for index, atoms_mask in enumerate(self.template_features['template_all_atom_masks'][template_domain_index][:]):
-                template_residue_masks = self.template_features['template_aatype'][template_domain_index][index]
-                template_residue_masks_index = np.where(template_residue_masks == 1)[0][0]
-                res_type = ID_TO_HHBLITS_AA_3LETTER_CODE[template_residue_masks_index]
-                list_of_atoms_in_residue = [order_atom[i] for i, atom in enumerate(atoms_mask) if atom == 1]
-                for atom in list_of_atoms_in_residue:
-                    atom_num_int = atom_num_int + 1
-                    atom_remark = 'ATOM'.ljust(6)
-                    atom_num = str(atom_num_int).rjust(5)
-                    atom_name = atom.ljust(4)
-                    res_name = res_type.ljust(3)
-                    chain_id = pdb_name.decode('utf-8').split('_')[-1].rjust(1)
-                    # chain_id = pdb_name.decode('utf-8').split('_')[1].rjust(1)
-                    res_num = str(index + 1).rjust(4)
-                    x_coord = str('%8.3f' % (float(str(
-                        self.template_features['template_all_atom_positions'][template_domain_index][index][
-                            atom_types.index(atom)][
-                            0])))).rjust(8)
-                    y_coord = str('%8.3f' % (float(str(
-                        self.template_features['template_all_atom_positions'][template_domain_index][index][
-                            atom_types.index(atom)][
-                            1])))).rjust(8)
-                    z_coord = str('%8.3f' % (float(str(
-                        self.template_features['template_all_atom_positions'][template_domain_index][index][
-                            atom_types.index(atom)][
-                            2])))).rjust(8)
-                    occ = str('%6.2f' % (float('1.0'))).rjust(6)
-                    bfact = str('%6.2f' % (float('25.0'))).ljust(6)
-                    atom_type = atom[0].rjust(12)
-                    output_pdb.write(
-                        f'{atom_remark}{atom_num}  {atom_name}{res_name} {chain_id}{res_num}    {x_coord}{y_coord}{z_coord}{occ}{bfact}{atom_type}\n')
+        for pdb_name in self.template_features['template_domain_names']:
+            pdb = pdb_name.decode('utf-8')
+            pdb_path = os.path.join(output_path,f'{pdb}_template.pdb')
+            templates_dict[pdb] = pdb_path
+            with open(pdb_path, 'w') as output_pdb:
+                template_domain_index = np.where(self.template_features['template_domain_names'] == pdb_name)[0][0]
+                atom_num_int = 0
+                for index, atoms_mask in enumerate(self.template_features['template_all_atom_masks'][template_domain_index][:]):
+                    template_residue_masks = self.template_features['template_aatype'][template_domain_index][index]
+                    template_residue_masks_index = np.where(template_residue_masks == 1)[0][0]
+                    res_type = ID_TO_HHBLITS_AA_3LETTER_CODE[template_residue_masks_index]
+                    list_of_atoms_in_residue = [order_atom[i] for i, atom in enumerate(atoms_mask) if atom == 1]
+                    for atom in list_of_atoms_in_residue:
+                        atom_num_int = atom_num_int + 1
+                        atom_remark = 'ATOM'.ljust(6)
+                        atom_num = str(atom_num_int).rjust(5)
+                        atom_name = atom.ljust(4)
+                        res_name = res_type.ljust(3)
+                        res_num = str(index + 1).rjust(4)
+                        x_coord = str('%8.3f' % (float(str(
+                            self.template_features['template_all_atom_positions'][template_domain_index][index][
+                                atom_types.index(atom)][
+                                0])))).rjust(8)
+                        y_coord = str('%8.3f' % (float(str(
+                            self.template_features['template_all_atom_positions'][template_domain_index][index][
+                                atom_types.index(atom)][
+                                1])))).rjust(8)
+                        z_coord = str('%8.3f' % (float(str(
+                            self.template_features['template_all_atom_positions'][template_domain_index][index][
+                                atom_types.index(atom)][
+                                2])))).rjust(8)
+                        occ = str('%6.2f' % (float('1.0'))).rjust(6)
+                        bfact = str('%6.2f' % (float('25.0'))).ljust(6)
+                        atom_type = atom[0].rjust(12)
+                        output_pdb.write(
+                            f'{atom_remark}{atom_num}  {atom_name}{res_name} A{res_num}    {x_coord}{y_coord}{z_coord}{occ}{bfact}{atom_type}\n')
 
-            output_pdb.close()
+        return templates_dict
 
     def complete_msa_from_template_features(self, template_features):
 

@@ -11,11 +11,12 @@ from typing import Dict, List
 class Template:
 
     def __init__ (self, parameters_list: List, output_dir: str, num_of_copies: int):
+
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
         self.chain: str = ''
-        self.polyala_res_list: List = []
+        self.polyala_res_dict: Dict = None
         self.add_to_msa: bool = False
         self.add_to_templates: bool = False
         self.sum_prob: bool = False
@@ -24,7 +25,6 @@ class Template:
         
         self.pdb_path = self.__check_pdb(parameters_list['pdb'], output_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
-        self.polyala_res_list = parameters_list.get('polyala_res_list', self.polyala_res_list)
         self.add_to_msa = parameters_list.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_list.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_list.get('sum_prob', self.sum_prob)
@@ -33,7 +33,8 @@ class Template:
         self.chain = parameters_list.get('chain', self.chain)
 
         if num_of_copies == 1:
-            structure = PDBParser().get_structure(self.pdb_id, self.pdb_path)
+            parser = PDBParser(QUIET=True)
+            structure = parser.get_structure(self.pdb_id, self.pdb_path)
             chains = [chain.get_id() for chain in structure.get_chains()]
             if self.chain == '':
                 if len(chains) == 1:
@@ -44,7 +45,14 @@ class Template:
                 if not self.chain in chains:
                     raise Exception('The choosen chain does not exist in the structure.')
     
+        polyala_res = parameters_list.get('polyala_res', self.polyala_res_dict)
+        if polyala_res is not None:
+            pdb_out_path = os.path.join(output_dir, self.pdb_id +"_polyala.pdb")
+            self.polyala_res_dict = bioutils.convert_template_to_polyala(pdb_in_path=self.pdb_path, pdb_out_path=pdb_out_path, polyala_res=polyala_res)
+            self.pdb_path = pdb_out_path
+
     def __check_pdb(self, pdb: str, output_dir: str) -> str:
+
         if not os.path.exists(pdb) and output_dir != '':
             if os.path.exists(f'{output_dir}/{pdb}.pdb'):
                 logging.info(f'{output_dir}/{pdb}.pdb already exists in {output_dir}.')
@@ -55,16 +63,16 @@ class Template:
     
     def generate_features(self, a_air):
 
-        output_hhr = f'{a_air.output_dir}/output.hhr'
-        pdb70_path = f'{a_air.output_dir}/pdb70'
+        output_hhr = f'{a_air.run_dir}/output.hhr'
+        pdb70_path = f'{a_air.run_dir}/pdb70'
 
         if a_air.num_of_copies == 1:
             print(f'Looking for alignment between {self.pdb_id} and query sequence using hhsearch:')
 
             if not self.aligned:
-                bioutils.pdb2mmcif(output_dir=a_air.output_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
+                bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
                 #bioutils.pdb2cif(pdb_id=self.pdb_id, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
-                hhsearch.generate_hhsearch_db(pdb_id=self.pdb_id, template_cif_path=f'{a_air.output_dir}/{self.pdb_id}.cif', output_dir=a_air.output_dir)
+                hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
                 hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path, output_path=output_hhr)
 
                 template_features = features.extract_template_features_from_pdb(
@@ -72,7 +80,7 @@ class Template:
                                             hhr_path = output_hhr,
                                             pdb_id=self.pdb_id,
                                             chain_id=self.chain,
-                                            mmcif_db=a_air.output_dir)
+                                            mmcif_db=a_air.run_dir)
 
             else:
                 shutil.copyfile(self.pdb_path, self.template_path)
@@ -86,14 +94,14 @@ class Template:
 
         else:
             if not self.aligned:
-                bioutils.pdb2mmcif(output_dir=a_air.output_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
+                bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
                 #bioutils.pdb2cif(pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
-                hhsearch.generate_hhsearch_db(pdb_id=self.pdb_id, template_cif_path=f'{a_air.output_dir}/{self.pdb_id}.cif', output_dir=a_air.output_dir)
+                hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
 
                 hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path,
                             output_path=output_hhr)
 
-                chain_list, transformations_list = bioutils.read_remark_350(pdb_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
+                chain_list, transformations_list = bioutils.read_remark_350(pdb_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
                 new_chain_list = list(string.ascii_uppercase)[:len(transformations_list) * len(chain_list)]
         
                 logging.info('Assembly can be build using chain(s) '+ str(chain_list) + ' by applying the following transformations:')
@@ -115,28 +123,28 @@ class Template:
                         hhr_path=output_hhr,
                         pdb_id=self.pdb_id,
                         chain_id=chain,
-                        mmcif_db=a_air.output_dir)
+                        mmcif_db=a_air.run_dir)
                                             
                     g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
-                    g.write_all_templates_in_features(output_path=a_air.output_dir)
+                    g.write_all_templates_in_features(output_path=a_air.run_dir)
                     for transformation in transformations_list:
                         counter += 1
-                        bioutils.rot_and_trans(pdb_path=f'{a_air.output_dir}/{self.pdb_id}{chain}_template.pdb', 
-                                    out_pdb_path=f'{a_air.output_dir}/{counter}.pdb',
+                        bioutils.rot_and_trans(pdb_path=f'{a_air.run_dir}/{self.pdb_id}_{chain}_template.pdb', 
+                                    out_pdb_path=f'{a_air.run_dir}/{counter}.pdb',
                                     rot_tra_matrix=transformation)
 
                         if counter == 1:
-                            bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.output_dir}/{counter}.pdb',
-                                                                        pdb_out_path=f'{a_air.output_dir}/{new_chain_list[counter - 1]}.pdb',
+                            bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.run_dir}/{counter}.pdb',
+                                                                        pdb_out_path=f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb',
                                                                         offset=None,
                                                                         chain='A')
                         else:
                             offset = query_seq_length * (counter - 1) + 50 * (counter - 1)  # 50 glycines as offset !!!
-                            bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.output_dir}/{counter}.pdb',
-                                                                        pdb_out_path=f'{a_air.output_dir}/{new_chain_list[counter - 1]}.pdb',
+                            bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.run_dir}/{counter}.pdb',
+                                                                        pdb_out_path=f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb',
                                                                         offset=offset,
                                                                         chain='A')
-                list_of_paths_of_pdbs_to_merge = [f'{a_air.output_dir}/{ch}.pdb' for ch in new_chain_list]
+                list_of_paths_of_pdbs_to_merge = [f'{a_air.run_dir}/{ch}.pdb' for ch in new_chain_list]
                 bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=list_of_paths_of_pdbs_to_merge,
                         merged_pdb_path=self.template_path)
 
@@ -151,6 +159,7 @@ class Template:
             self.template_features = copy.deepcopy(template_features)
         
     def __repr__(self):
+        
         return f' \
         pdb_path: {self.pdb_path} \n \
         pdb_id: {self.pdb_id} \n \

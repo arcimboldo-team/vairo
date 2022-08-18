@@ -34,6 +34,7 @@ def get_file_name(path: str) -> str:
     return os.path.splitext(os.path.basename(path))[0]
 
 def rmsilent(file_path: str):
+
     for file in glob.glob(file_path):
         try:
             os.remove(file)
@@ -51,11 +52,7 @@ def clean_files(output_dir : str):
     rmsilent(f'{output_dir}/[0-9].pdb')
 
 def create_logger():
-    """
-    Create logger: In case there is no working directory, the information
-    will be stored in a buffer instead of a file. The buffer can be dumped to
-    a file later.
-    """
+
     logstream = io.StringIO()
     formatter = logging.Formatter('%(message)s')
 

@@ -6,6 +6,7 @@ class ArcimboldoAir:
 
     def __init__ (self, parameters_dict: Dict):
         self.output_dir: str
+        self.run_dir: str
         self.fasta_path: str
         self.query_sequence: str
         self.query_sequence_assembled: str
@@ -14,8 +15,10 @@ class ArcimboldoAir:
         self.alphafold_paths: alphafold_paths.AlphaFoldPaths
         self.templates: List[template.Template] = []
         self.run_af2: bool = False
+        self.keep_working_dir: bool = True
         
-        self.output_dir = utils.get_mandatory_value(input_load = parameters_dict, value = 'output_directory')
+        self.output_dir = utils.get_mandatory_value(input_load = parameters_dict, value = 'output_dir')
+        self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, "run"))
         self.fasta_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'fasta_path')
         self.num_of_copies = utils.get_mandatory_value(input_load = parameters_dict, value = 'num_of_copies')
         af2_dbs_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'af2_dbs_path')
@@ -25,6 +28,8 @@ class ArcimboldoAir:
 
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
+        if not os.path.exists(self.run_dir):
+            os.makedirs(self.run_dir)
         if not os.path.exists(self.fasta_path):
             raise Exception('fasta_path does not exist')
         if not os.path.exists(af2_dbs_path):
@@ -33,7 +38,7 @@ class ArcimboldoAir:
             raise Exception('No templates detected. Check if the [[template]] tag exists.')
 
         for parameters_template in parameters_dict['template']:
-            self.templates.append(template.Template(parameters_template, self.output_dir, self.num_of_copies))
+            self.templates.append(template.Template(parameters_template, self.run_dir, self.num_of_copies))
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
         self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path)
