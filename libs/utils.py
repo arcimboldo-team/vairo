@@ -5,6 +5,7 @@ import logging
 import io
 import shutil
 import sys
+from typing import Dict
 
 def print_msg_box(msg, indent=1, title=None):
 
@@ -43,9 +44,36 @@ def rmsilent(file_path: str):
             if e.errno != errno.ENOENT:
                 raise
 
-def clean_files(run_dir : str):
+def clean_files(dir : str):
     
-    shutil.rmtree(run_dir)
+    shutil.rmtree(dir)
+
+def parse_aleph_annotate(file_path: str) -> Dict:
+
+    secondary_structure_dict = {}
+    compare_string = 'Percentage of residues annotated as '
+    with open(file_path, 'r') as f_in:
+        for line in f_in.readlines():
+            if compare_string in line:
+                line_list = line[len(compare_string):].split(' ')
+                if len(line_list) == 3:
+                    secondary_structure_dict[line_list[0]] = line_list[2].replace('\n','')
+    return secondary_structure_dict
+
+def sort_by_digit(container, item: int=0):
+
+    if isinstance(container, dict):
+        return sorted(container.items(), key=lambda x: int("".join([i for i in x[item] if i.isdigit()])))
+    elif isinstance(container, list):
+        return sorted(container, key=lambda x: int("".join([i for i in x if i.isdigit()])))
+
+def create_dir(dir_path: str, delete_if_exists: bool = False):
+
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    elif delete_if_exists:
+        shutil.rmtree(dir_path)
+        os.makedirs(dir_path)
 
 def create_logger():
 

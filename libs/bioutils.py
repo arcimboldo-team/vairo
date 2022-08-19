@@ -9,7 +9,6 @@ from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Select
 from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths
 
-
 def download_pdb(pdb_id: str, output_dir: str):
 
     pdbl = PDBList()
@@ -17,6 +16,7 @@ def download_pdb(pdb_id: str, output_dir: str):
     if not os.path.exists(result_ent):
         raise Exception(f'{pdb_id} could not be downloaded.')
     shutil.copy2(result_ent, f'{output_dir}/{pdb_id}.pdb')
+    os.remove(result_ent)
     shutil.rmtree('obsolete')
 
 def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
@@ -66,7 +66,7 @@ def merge_pdbs(list_of_paths_of_pdbs_to_merge: str, merged_pdb_path: str):
 
 def run_pisa(pdb_path: str) -> str:
 
-    print(f'Generating REMARK 350 for {pdb_path} with PISA.')
+    logging.info(f'Generating REMARK 350 for {pdb_path} with PISA.')
     subprocess.Popen(['pisa', 'temp', '-analyse', pdb_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     pisa_output = subprocess.Popen(['pisa', 'temp', '-350'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
     return pisa_output.decode('utf-8')
@@ -164,7 +164,7 @@ def rot_and_trans(pdb_path: str, out_pdb_path: str, rot_tra_matrix: str):
     subprocess.Popen(['bash', '/tmp/pdbset.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
     utils.rmsilent(f'/tmp/pdbset.sh')
 
-def change_chain_and_apply_offset_in_single_chain(pdb_in_path, pdb_out_path, offset=None, chain=None):
+def change_chain_and_apply_offset_in_single_chain(pdb_in_path: str , pdb_out_path: str , offset: str=None, chain: str=None):
 
     with open('/tmp/pdbset.sh', 'w') as f:
         f.write(f'pdbset xyzin {pdb_in_path} xyzout {pdb_out_path} << eof\n')
@@ -224,36 +224,69 @@ def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str , polyala_res
     ala_atoms_list = ['N', 'CA', 'C', 'CB', 'O']
     polyala_chains = polyala_res_dict.keys()
     atoms_del_list = []
+    atoms_change_list = []
 
     logging.info(f'The following residues are going to be converted to polyala: {polyala_res_dict}')
 
     for chain in polyala_chains:
         for res in structure[0][chain]:
-            if get_resseq(res) in polyala_res_dict[chain]:
-                res.resname = 'ALA'
+            if utils.get_resseq(res) in polyala_res_dict[chain]:
+                #res.resname = 'ALA'
                 for atom in res:
                     if not atom.name in ala_atoms_list:
                         atoms_del_list.append(atom.get_serial_number())
-                    
-    class Atom_select(Select):
-        def accept_atom(self, atom):
-            if atom.get_serial_number() in atoms_del_list:
-                return 0
-            else:
-                return 1
+                    else:
+                        atoms_change_list.append(atom.get_serial_number())
 
+    class Atom_select(Select):
+            def accept_atom(self, atom):
+                if atom.get_serial_number() in atoms_del_list:
+                    return 0
+                else:
+                    return 1
     io = PDBIO()
     io.set_structure(structure)
     io.save(pdb_out_path, select=Atom_select(), preserve_atom_numbering = True)
-    
+
     return polyala_res_dict
+
+
+"""    
+    with open(f'{pdb_in_path}') as f_in:
+        pdb_in_lines = f_in.readlines()
+
+    with open(f'{pdb_out_path}', 'w') as f_out:
+        counter = 0
+        for line in pdb_in_lines:
+            parsed_line = parse_pdb_line(line)
+            if parsed_line is not None:
+                parsed_line_trimmed = [s.replace(' ', '') for s in parsed_line]
+                if parsed_line_trimmed[0] == 'ATOM':
+                    if int(parsed_line_trimmed[1]) in atoms_change_list:
+                        parsed_line_trimmed[3] = 'ALA'
+                    elif int(parsed_line_trimmed[1]) in atoms_del_list:
+                        continue
+                    counter += 1
+                    parsed_line_trimmed[1] = counter
+                    unparse_pdb_line = unparse_pdb_line(parsed_line_trimmed)
+                    f_out.write(unparse_pdb_line) """
+    
 
 def get_resseq(residue: Residue) -> int:
 
     return residue.get_full_id()[3][1]
 
+def parse_pdb_line(line: str) -> List:
 
-def superpose_pdbs(query_pdb, target_pdb, output_superposition=True):
+    splitted_line = None
+    if line[:4] == 'ATOM' or line[:6] == "HETATM":
+        splitted_line = [line[:6], line[6:11], line[12:16], line[17:20], line[21], line[22:26], line[30:38], line[38:46], line[46:54]]
+    return splitted_line
+
+#def unparse_pdb_line(line: List) -> str:
+
+
+def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool=True):
 
     # WARNING: this function is only for PDBs containing only one chain and has to be executed in the same
     # query_pdb and target_pdb path

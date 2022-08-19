@@ -1,10 +1,12 @@
 from typing import Dict
 import matplotlib.pyplot as plt
 
+from libs import utils
+
 def plot_plddt(plots_path: str, ranked_models_dict: Dict):
     
     plt.clf()
-    for ranked, ranked_path in sorted(ranked_models_dict.items(), key=lambda x: int("".join([i for i in x[0] if i.isdigit()]))):
+    for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
         plddt_list = []
         with open(ranked_path) as f:
             for line in f.readlines():

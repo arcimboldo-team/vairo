@@ -10,7 +10,7 @@ from typing import Dict, List
 
 class Template:
 
-    def __init__ (self, parameters_list: List, output_dir: str, num_of_copies: int):
+    def __init__ (self, parameters_list: List, output_dir: str, input_dir: str, num_of_copies: int):
 
         self.pdb_path: str
         self.pdb_id: str
@@ -23,7 +23,7 @@ class Template:
         self.aligned: bool = False
         self.template_features: Dict = None
         
-        self.pdb_path = self.__check_pdb(parameters_list['pdb'], output_dir)
+        self.pdb_path = self.check_pdb(parameters_list['pdb'], input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
         self.add_to_msa = parameters_list.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_list.get('add_to_templates', self.add_to_templates)
@@ -51,14 +51,16 @@ class Template:
             self.polyala_res_dict = bioutils.convert_template_to_polyala(pdb_in_path=self.pdb_path, pdb_out_path=pdb_out_path, polyala_res=polyala_res)
             self.pdb_path = pdb_out_path
 
-    def __check_pdb(self, pdb: str, output_dir: str) -> str:
+    def check_pdb(self, pdb: str, output_dir: str) -> str:
 
-        if not os.path.exists(pdb) and output_dir != '':
-            if os.path.exists(f'{output_dir}/{pdb}.pdb'):
-                logging.info(f'{output_dir}/{pdb}.pdb already exists in {output_dir}.')
-            else:
-                bioutils.download_pdb(pdb_id=pdb, output_dir=output_dir)
-            pdb = f'{output_dir}/{pdb}.pdb'           
+        if not os.path.exists(pdb):
+            bioutils.download_pdb(pdb_id=pdb, output_dir=output_dir)
+            pdb = f'{output_dir}/{pdb}.pdb'
+        else:
+            pdb_aux = f'{output_dir}/{os.path.basename(pdb)}'
+            shutil.copy2(pdb, pdb_aux)
+            pdb = pdb_aux
+
         return pdb
     
     def generate_features(self, a_air):
@@ -107,7 +109,7 @@ class Template:
         
                 logging.info('Assembly can be build using chain(s) '+ str(chain_list) + ' by applying the following transformations:')
                 for matrix in transformations_list:
-                    print(*matrix)
+                    logging.info(str(matrix))
                 
                 if len(new_chain_list) != a_air.num_of_copies:
                     raise Exception(f'Assembly description from REMARK 350 contains {len(new_chain_list)} subunits. Please, try to '
@@ -167,7 +169,7 @@ class Template:
         pdb_id: {self.pdb_id} \n \
         template_path: {self.template_path} \n \
         chain: {self.chain} \n \
-        polyala_res_list: {self.polyala_res_list} \n \
+        polyala_res_dict: {self.polyala_res_dict} \n \
         add_to_msa: {self.add_to_msa} \n \
         add_to_templates: {self.add_to_templates} \n \
         sum_prob: {self.sum_prob} \n \

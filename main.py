@@ -2,7 +2,6 @@
 
 import pickle
 import shutil
-import subprocess
 from libs import alphafold_paths, analyse, arcimboldo_air, bioutils, plots, utils
 import os
 import sys
@@ -28,7 +27,7 @@ def main():
         raise Exception('It has not been possible to read the input file')
 
     a_air = arcimboldo_air.ArcimboldoAir(parameters_dict=input_load)
-    shutil.copy2(input_path, a_air.run_dir)
+    shutil.copy2(input_path, a_air.input_dir)
 
     for template in a_air.templates:
         template.generate_features(a_air=a_air)
@@ -53,7 +52,7 @@ def main():
         for key in features.keys():
             print(key, features[key].shape)
 
-        utils.clean_files(run_dir=a_air.run_dir)
+        utils.clean_files(dir=a_air.run_dir)
         
 if __name__ == "__main__":
     main()
