@@ -1,5 +1,7 @@
+import copy
 import errno
 import glob
+import json
 import os
 import logging
 import io
@@ -51,13 +53,9 @@ def clean_files(dir : str):
 def parse_aleph_annotate(file_path: str) -> Dict:
 
     secondary_structure_dict = {}
-    compare_string = 'Percentage of residues annotated as '
-    with open(file_path, 'r') as f_in:
-        for line in f_in.readlines():
-            if compare_string in line:
-                line_list = line[len(compare_string):].split(' ')
-                if len(line_list) == 3:
-                    secondary_structure_dict[line_list[0]] = line_list[2].replace('\n','')
+    with open(file_path) as f_in:
+        data = json.load(f_in)
+    secondary_structure_dict = copy.deepcopy(data['annotation']['secondary_structure_content'])
     return secondary_structure_dict
 
 def sort_by_digit(container, item: int=0):

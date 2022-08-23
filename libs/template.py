@@ -58,7 +58,8 @@ class Template:
             pdb = f'{output_dir}/{pdb}.pdb'
         else:
             pdb_aux = f'{output_dir}/{os.path.basename(pdb)}'
-            shutil.copy2(pdb, pdb_aux)
+            if pdb != pdb_aux:
+                shutil.copy2(pdb, pdb_aux)
             pdb = pdb_aux
 
         return pdb
@@ -73,7 +74,6 @@ class Template:
 
             if not self.aligned:
                 bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
-                #bioutils.pdb2cif(pdb_id=self.pdb_id, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
                 hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
                 hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path, output_path=output_hhr)
 
@@ -98,7 +98,6 @@ class Template:
         else:
             if not self.aligned:
                 bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
-                #bioutils.pdb2cif(pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.output_dir}/{self.pdb_id}.cif')
                 hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
 
                 hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path,
@@ -142,7 +141,7 @@ class Template:
                                                                         offset=None,
                                                                         chain='A')
                         else:
-                            offset = query_seq_length * (counter - 1) + 50 * (counter - 1)  # 50 glycines as offset !!!
+                            offset = query_seq_length * (counter - 1) + a_air.glycines * (counter - 1)  # 50 glycines as offset !!!
                             bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.run_dir}/{counter}.pdb',
                                                                         pdb_out_path=f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb',
                                                                         offset=offset,

@@ -18,6 +18,7 @@ class ArcimboldoAir:
         self.templates: List[template.Template] = []
         self.run_af2: bool = False
         self.verbose: bool = True
+        self.glycines: int = 50
         
         self.output_dir = utils.get_mandatory_value(input_load = parameters_dict, value = 'output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, "run"))
@@ -40,7 +41,7 @@ class ArcimboldoAir:
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
-        self.query_sequence_assembled = (self.query_sequence + 50 * 'G') * (int(self.num_of_copies)-1) + self.query_sequence
+        self.query_sequence_assembled = (self.query_sequence + self.glycines * 'G') * (int(self.num_of_copies)-1) + self.query_sequence
 
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')

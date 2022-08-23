@@ -7,79 +7,6 @@ from scipy.spatial import distance
 import matplotlib.pyplot as plt
 
 
-def extract_query_sequence(query_fasta_path):
-
-    logging.info(f'Extracting query sequence from {query_fasta_path}')
-
-    with open(query_fasta_path, 'r') as f:
-        fasta_lines = f.readlines()
-        fasta_name, query_sequence = fasta_lines[0][1:-1], fasta_lines[1].split('\n')[0]
-
-    return fasta_name, query_sequence
-
-
-def split_pdb_by_chains(pdb_in, output_dir):
-
-    parser = PDBParser(QUIET=1)
-    io = PDBIO()
-
-    name = pdb_in.split('/')[-1][:-4]
-
-    structure = parser.get_structure(name, pdb_in)
-    pdb_chains = structure.get_chains()
-
-    splitted_pdbs = []
-    for chain in pdb_chains:
-        io.set_structure(chain)
-        io.save(f'{output_dir}/{name}_{chain.get_id()}.pdb')
-        splitted_pdbs.append(f'{name}_{chain.get_id()}')
-
-    return splitted_pdbs
-
-
-def generate_hhsearch_db(pdb_path, output_dir):
-
-    with open(f"{output_dir}/pdb70_a3m.ffdata", "w") as a3m, \
-         open(f"{output_dir}/pdb70_cs219.ffindex", "w") as cs219_index, \
-         open(f"{output_dir}/pdb70_a3m.ffindex", "w") as a3m_index, \
-         open(f"{output_dir}/pdb70_cs219.ffdata", "w") as cs219:
-        id = 1000000
-        index_offset = 0
-
-        parser = PDBParser(QUIET=True)
-        structure = parser.get_structure("test", pdb_path)
-        models = list(structure.get_models())
-        if len(models) != 1:
-            raise ValueError(f"Only single model PDBs are supported. Found {len(models)} models.")
-        model = models[0]
-        for chain in model:
-            amino_acid_res = []
-            for res in chain:
-                amino_acid_res.append(residue_constants.restype_3to1.get(res.resname, "X"))
-            protein_str = "".join(amino_acid_res)
-            a3m_str = f">{pdb_path.split('/')[-1][:-4]}_{chain.id}\n{protein_str}\n\0"
-            a3m_str_len = len(a3m_str)
-            a3m_index.write(f"{id}\t{index_offset}\t{a3m_str_len}\n")
-            cs219_index.write(f"{id}\t{index_offset}\t{len(protein_str)}\n")
-            index_offset += a3m_str_len
-            a3m.write(a3m_str)
-            cs219.write("\n\0")
-            id += 1
-
-
-def run_hhsearch(query_fasta_path, pdb70_db, output_path):
-
-    print(f'Running hhsearch using {pdb70_db} as database.')
-
-    out = subprocess.Popen(['hhsearch', '-i', query_fasta_path, '-o', output_path, '-maxseq',
-                            '1000000', '-d', pdb70_db, '-glob'],
-                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, stderr = out.communicate()
-    hhr = stdout.decode('utf-8')
-
-    return hhr
-
-
 def mapping_between_template_and_query_sequence(hhr_path, pdb_id, chain):
 
     hhr_text = open(hhr_path, 'r').read()
@@ -186,40 +113,6 @@ def rot_and_trans(pdb_path, out_pdb_path, rot_tra_matrix):
     subprocess.Popen(['bash', '/tmp/pdbset.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
     os.system(f'rm /tmp/pdbset.sh')
 
-
-def superpose_pdbs(query_pdb, target_pdb, output_superposition=True):
-
-    if output_superposition:
-        superpose_output = subprocess.Popen(['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all',
-                                             '-o', f'{query_pdb[:-4]}_superposed.pdb'],
-                                            stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
-    else:
-        superpose_output = subprocess.Popen(['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all'],
-                                            stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
-    for line in superpose_output.split('\n'):
-        if 'r.m.s.d:' in line:
-            rmsd = float(line.split()[1])
-        if 'quality Q:' in line:
-            quality_q = line.split()[2]
-        if 'Nalign:' in line:
-            nalign = line.split()[1]
-
-    try:
-        match1 = [m.start() for m in re.finditer("TEXT:Residue alignment:", superpose_output)][0]
-        match2 = [m.start() for m in re.finditer("`-------------'----------'-------------'", superpose_output)][0]
-        alignment_output = superpose_output[match1:match2].split('\n')[5:]
-        aligned_res_list = []
-        for line in alignment_output:
-            if line[23:25] == '**':
-                aligned_res_list.append(int(line[36:39].replace(' ', '')))
-    except:
-
-        rmsd, nalign, quality_q, aligned_res_list = None, None, None, None
-
-
-    return rmsd, nalign, quality_q, aligned_res_list
-
-
 def pdist(structure1, structure2):
 
     res1_list = [res.id[1] for res in Selection.unfold_entities(structure1, 'R')]
@@ -250,8 +143,6 @@ def pdist(structure1, structure2):
     # plt.show()
 
     return diff_pdist_matrix.mean()
-
-
 
 
 OUTPUT_DIR = '/cri4/albert/Desktop/OUTPUT'

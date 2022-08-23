@@ -1,13 +1,17 @@
 import logging
 import os
+import pickle
 import re
 import shutil
 import subprocess
 from typing import Dict, List, Tuple
 from Bio import SeqIO
-from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Select
+from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Select, Chain
 from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths
+import numpy as np
+from ALPHAFOLD.alphafold.common import residue_constants
+
 
 def download_pdb(pdb_id: str, output_dir: str):
 
@@ -20,25 +24,25 @@ def download_pdb(pdb_id: str, output_dir: str):
     shutil.rmtree('obsolete')
 
 def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
+    
     maxit_dir = f'{output_dir}/maxit'
     if not os.path.exists(maxit_dir):
         os.mkdir(maxit_dir)
-        
     subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], cwd=maxit_dir,stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     shutil.rmtree(maxit_dir)
 
 def pdb2cif(pdb_id: str, pdb_in_path: str, cif_out_path: str):
 
-    p = PDBParser()
-    structure = p.get_structure(pdb_id, pdb_in_path)
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure(pdb_id, pdb_in_path)
     io = MMCIFIO()
     io.set_structure(structure)
     io.save(cif_out_path)
 
 def cif2pdb(cif_in_path: str, pdb_out_path: str):
     
-    p = MMCIFParser(QUIET=True)
-    struc = p.get_structure('', f'{cif_in_path}')
+    parser = MMCIFParser(QUIET=True)
+    struc = parser.get_structure('', f'{cif_in_path}')
     io = PDBIO()
     io.set_structure(struc)
     io.save(f'{pdb_out_path}')
@@ -46,12 +50,10 @@ def cif2pdb(cif_in_path: str, pdb_out_path: str):
 def extract_sequence(fasta_path: str) -> str:
 
     logging.info(f'Extracting sequence from {fasta_path}')
-
     try:
         record = SeqIO.read(fasta_path, "fasta")
     except:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
-
     return str(record.seq)
 
 def merge_pdbs(list_of_paths_of_pdbs_to_merge: str, merged_pdb_path: str):
@@ -187,7 +189,7 @@ def remove_hydrogens(pdb_in_path: str, pdb_out_path:str):
                     counter = counter + 1
                     f_out.write(line[:6] + str(counter).rjust(5) + line[11:])
 
-def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str , polyala_res):
+def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str, polyala_res):
 
     pdb_id = utils.get_file_name(pdb_in_path)
     parser = PDBParser(QUIET=True)
@@ -231,7 +233,7 @@ def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str , polyala_res
     for chain in polyala_chains:
         for res in structure[0][chain]:
             if utils.get_resseq(res) in polyala_res_dict[chain]:
-                #res.resname = 'ALA'
+                res.resname = 'ALA'
                 for atom in res:
                     if not atom.name in ala_atoms_list:
                         atoms_del_list.append(atom.get_serial_number())
@@ -283,8 +285,41 @@ def parse_pdb_line(line: str) -> List:
         splitted_line = [line[:6], line[6:11], line[12:16], line[17:20], line[21], line[22:26], line[30:38], line[38:46], line[46:54]]
     return splitted_line
 
-#def unparse_pdb_line(line: List) -> str:
+def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> bool:
 
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure(utils.get_file_name(pdb_in_path), pdb_in_path)
+    delete_residues = []
+    total_length = len(a_air.query_sequence) + a_air.glycines
+    chains = [chain.get_id() for chain in structure.get_chains()]
+    chain = None
+    chain_name = chains[0]
+
+    if len(chains) > 1:
+        logging.info(f'PDB: {pdb_in_path} is already splitted in several chains: {chains}')
+        return
+
+    for res in structure[0][chains[0]]:
+        resseq = get_resseq(res)
+        res_norm = resseq % total_length
+        if res_norm == 0 or res_norm > len(a_air.query_sequence):
+            if res_norm == len(a_air.query_sequence)+1:
+                chain_name = chr(ord(chain_name)+1)
+                chain = Chain.Chain(chain_name)
+                structure[0].add(chain)
+            delete_residues.append(res.id)
+        elif resseq > total_length and chain is not None:
+            delete_residues.append(res.id)
+            res.parent = chain
+            chain.add(res)
+            chain[res.id].id = (' ', res_norm, ' ')
+
+    for id in delete_residues:
+        structure[0][chains[0]].detach_child(id)
+
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(pdb_out_path, preserve_atom_numbering = True)
 
 def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool=True):
 

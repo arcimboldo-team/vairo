@@ -200,6 +200,28 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
 
     return template_features
 
+def print_features(pkl_in_path: str):
+    with open(f"{pkl_in_path}", "rb") as input_file:
+        features = pickle.load(input_file)
+
+    for key in features.keys():
+        logging.info(f'{key} {features[key].shape}')
+
+    logging.info('\n')
+    logging.info('MSA:')
+    for num, name in enumerate(features['msa_uniprot_accession_identifiers']):
+        logging.info(name.decode('utf-8'))
+        logging.info('\n')
+        logging.info(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features['msa'][num].tolist()]))
+        logging.info('\n')
+
+    logging.info('TEMPLATES:')
+    for num, seq in enumerate(features['template_sequence']):
+        logging.info(f'{features["template_domain_names"][num].decode("utf-8")}:\n')
+        for i in range(4):
+            logging.info('\t'+''.join(np.array_split(list(seq.decode('utf-8')),4)[i].tolist()))
+        logging.info('\n')
+
 class Features:
 
     def __init__(self, query_sequence: str):
@@ -213,7 +235,7 @@ class Features:
                                                                  description='Query',
                                                                  num_res=len(self.query_sequence))
         self.msa_features = empty_msa_features(query_sequence=self.query_sequence)
-        self.template_features = empty_template_features(query_sequence=self.query_sequence)
+        self.template_features = empty_template_features(query_sequence=self.query_sequence)        
 
     def append_new_template_features(self, new_template_features: Dict, custom_sum_prob: int = None) -> Dict:
 

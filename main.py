@@ -1,8 +1,7 @@
 #! /usr/bin/env python3
 
-import pickle
 import shutil
-from libs import alphafold_paths, analyse, arcimboldo_air, bioutils, plots, utils
+from libs import analyse, arcimboldo_air, bioutils, features, utils
 import os
 import sys
 import toml
@@ -27,6 +26,7 @@ def main():
         raise Exception('It has not been possible to read the input file')
 
     a_air = arcimboldo_air.ArcimboldoAir(parameters_dict=input_load)
+    os.chdir(a_air.run_dir)
     shutil.copy2(input_path, a_air.input_dir)
 
     for template in a_air.templates:
@@ -43,16 +43,13 @@ def main():
 
     if a_air.run_af2:
         #bioutils.run_af2(output_dir=a_air.run_dir, alphafold_paths=a_air.alphafold_paths)
-        analyse.analyse_output(output_dir=a_air.output_dir, run_dir=a_air.run_dir, features=a_air.features)
+        analyse.analyse_output(output_dir=a_air.output_dir, run_dir=a_air.run_dir, a_air=a_air)
     
     if not a_air.verbose:
-        with open(f'{a_air.run_dir}/features.pkl','rb') as features_file:
-            features = pickle.load(features_file)
-
-        for key in features.keys():
-            print(key, features[key].shape)
-
         utils.clean_files(dir=a_air.run_dir)
+    else:
+        features.print_features(f'{a_air.run_dir}/features.pkl')
+
         
 if __name__ == "__main__":
     main()
