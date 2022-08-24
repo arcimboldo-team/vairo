@@ -11,6 +11,7 @@ from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths
 import numpy as np
 from ALPHAFOLD.alphafold.common import residue_constants
+from libs.arcimboldo_air import ArcimboldoAir
 
 
 def download_pdb(pdb_id: str, output_dir: str):
@@ -149,7 +150,7 @@ def read_remark_350(pdb_path: str) -> Tuple[ List[str], List[float] ]:
 
     return chain_list, transformations_list
 
-def rot_and_trans(pdb_path: str, out_pdb_path: str, rot_tra_matrix: str):
+def rot_and_trans(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: str):
 
     r11, r12, r13 = rot_tra_matrix[0]
     r21, r22, r23 = rot_tra_matrix[1]
@@ -157,7 +158,7 @@ def rot_and_trans(pdb_path: str, out_pdb_path: str, rot_tra_matrix: str):
     t1, t2, t3 = rot_tra_matrix[3]
 
     with open('/tmp/pdbset.sh', 'w') as f:
-        f.write(f'pdbset xyzin {pdb_path} xyzout {out_pdb_path} << eof\n')
+        f.write(f'pdbset xyzin {pdb_in_path} xyzout {pdb_out_path} << eof\n')
         f.write(
             f'rotate {float(r11)} {float(r12)} {float(r13)} {float(r21)} {float(r22)} {float(r23)} {float(r31)} {float(r32)} {float(r33)}\n')
         f.write(f'shift {float(t1)} {float(t2)} {float(t3)}\n')
@@ -226,7 +227,6 @@ def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str, polyala_res)
     ala_atoms_list = ['N', 'CA', 'C', 'CB', 'O']
     polyala_chains = polyala_res_dict.keys()
     atoms_del_list = []
-    atoms_change_list = []
 
     logging.info(f'The following residues are going to be converted to polyala: {polyala_res_dict}')
 
@@ -237,8 +237,6 @@ def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str, polyala_res)
                 for atom in res:
                     if not atom.name in ala_atoms_list:
                         atoms_del_list.append(atom.get_serial_number())
-                    else:
-                        atoms_change_list.append(atom.get_serial_number())
 
     class Atom_select(Select):
             def accept_atom(self, atom):
@@ -250,29 +248,7 @@ def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str, polyala_res)
     io.set_structure(structure)
     io.save(pdb_out_path, select=Atom_select(), preserve_atom_numbering = True)
 
-    return polyala_res_dict
-
-
-"""    
-    with open(f'{pdb_in_path}') as f_in:
-        pdb_in_lines = f_in.readlines()
-
-    with open(f'{pdb_out_path}', 'w') as f_out:
-        counter = 0
-        for line in pdb_in_lines:
-            parsed_line = parse_pdb_line(line)
-            if parsed_line is not None:
-                parsed_line_trimmed = [s.replace(' ', '') for s in parsed_line]
-                if parsed_line_trimmed[0] == 'ATOM':
-                    if int(parsed_line_trimmed[1]) in atoms_change_list:
-                        parsed_line_trimmed[3] = 'ALA'
-                    elif int(parsed_line_trimmed[1]) in atoms_del_list:
-                        continue
-                    counter += 1
-                    parsed_line_trimmed[1] = counter
-                    unparse_pdb_line = unparse_pdb_line(parsed_line_trimmed)
-                    f_out.write(unparse_pdb_line) """
-    
+    return polyala_res_dict    
 
 def get_resseq(residue: Residue) -> int:
 
@@ -353,3 +329,41 @@ def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool=T
         rmsd, nalign, quality_q, aligned_res_list = None, None, None, None
 
     return rmsd, nalign, quality_q, aligned_res_list
+
+def find_interface_from_pisa(pdb_in_path: str) -> Dict:
+
+    interfaces_dict = {}
+
+    subprocess.Popen(['pisa', 'temp', '-analyse', pdb_in_path],
+                     stdout=subprocess.PIPE,
+                     stderr=subprocess.PIPE).communicate()
+
+    pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+
+    print(pisa_output)
+
+    if 'NO INTERFACES FOUND' in pisa_output:
+        return interfaces_dict
+
+    match1 = [m.start() for m in re.finditer(' LIST OF INTERFACES', pisa_output)][0]
+    match2 = [m.start() for m in re.finditer(' ##:  serial number', pisa_output)][0]
+
+    for line in pisa_output[match1:match2].split('\n')[4:-2]:
+        area = line.split('|')[3][:8].replace(' ', '')
+        deltaG = line.split('|')[3][8:15].replace(' ', '')
+        chain1 = line.split('|')[1].replace(' ', '')
+        chain2 = line.split('|')[2].split()[0].replace(' ', '')
+        interfaces_dict[f'{chain1}{chain2}'] =  (area, deltaG)
+
+    return interfaces_dict
+
+def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain1: List, chain2: List):
+
+    with open(pdb_in_path, 'r') as f_in:
+        input_lines = f_in.readlines()
+
+    with open(pdb_out_path, 'w') as f_out:
+        for line in input_lines:
+            if line[21:22] in [chain1, chain2]:
+                f_out.write(line)

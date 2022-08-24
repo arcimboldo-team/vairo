@@ -69,97 +69,82 @@ class Template:
         output_hhr = f'{a_air.run_dir}/output.hhr'
         pdb70_path = f'{a_air.run_dir}/pdb70'
 
-        if a_air.num_of_copies == 1:
-            print(f'Looking for alignment between {self.pdb_id} and query sequence using hhsearch:')
+        if not self.aligned:
+            bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
+            hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
+            hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path,output_path=output_hhr)
 
-            if not self.aligned:
-                bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
-                hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
-                hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path, output_path=output_hhr)
+            list_of_paths_of_pdbs_to_merge = []
 
-                template_features = features.extract_template_features_from_pdb(
-                                            query_sequence=a_air.query_sequence,
-                                            hhr_path = output_hhr,
-                                            pdb_id=self.pdb_id,
-                                            chain_id=self.chain,
-                                            mmcif_db=a_air.run_dir)
-
+            if a_air.num_of_copies > 1:
+                chain_list, transformations_list = bioutils.read_remark_350(pdb_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
             else:
-                shutil.copyfile(self.pdb_path, self.template_path)
+                chain_list = [self.chain]
+                transformations_list = [[
+                    ['1.000000', '0.000000', '0.000000'], 
+                    ['0.000000', '1.000000', '0.000000'], 
+                    ['0.000000', '0.000000', '1.000000'], 
+                    ['0.00000', '0.00000', '0.00000']
+                ]]
 
-                template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
+            new_chain_list = list(string.ascii_uppercase)[:len(transformations_list) * len(chain_list)]
+            
+            logging.info('Assembly can be build using chain(s) '+ str(chain_list) + ' by applying the following transformations:')
+            for matrix in transformations_list:
+                logging.info(str(matrix))
+            
+            if len(new_chain_list) != a_air.num_of_copies:
+                raise Exception(f'Assembly description from REMARK 350 contains {len(new_chain_list)} subunits. Please, try to '
+                    f'generate a new REMARK 350 (manually or using e.g. PISA) for considering a new assembly with '
+                    f'{a_air.num_of_copies} subunits')
+
+            query_seq_length = len(a_air.query_sequence)
+            counter = 0
+            g = features.Features(query_sequence=a_air.query_sequence)
+
+            for chain in chain_list:
+                template_features = features.extract_template_features_from_pdb(
                     query_sequence=a_air.query_sequence,
-                    pdb_path=self.template_path,
+                    hhr_path=output_hhr,
                     pdb_id=self.pdb_id,
-                    chain_id='A')
+                    chain_id=chain,
+                    mmcif_db=a_air.run_dir)
+                      
+                g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
+                g.write_all_templates_in_features(output_dir=a_air.run_dir)
 
-            self.template_features = copy.deepcopy(template_features)
+                for transformation in transformations_list:
+                    counter += 1
+                    bioutils.rot_and_trans(pdb_in_path=f'{a_air.run_dir}/{self.pdb_id}_{chain}_template.pdb', 
+                                pdb_out_path=f'{a_air.run_dir}/{counter}.pdb',
+                                rot_tra_matrix=transformation)
+
+                    if counter == 1:
+                        bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.run_dir}/{counter}.pdb',
+                                                                    pdb_out_path=f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb',
+                                                                    offset=None,
+                                                                    chain='A')
+                    else:
+                        offset = query_seq_length * (counter - 1) + a_air.glycines * (counter - 1)  # 50 glycines as offset !!!
+                        bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.run_dir}/{counter}.pdb',
+                                                                    pdb_out_path=f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb',
+                                                                    offset=offset,
+                                                                    chain='A')
+                    list_of_paths_of_pdbs_to_merge.append(f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb')
+            
+            bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=list_of_paths_of_pdbs_to_merge,
+                    merged_pdb_path=self.template_path)
 
         else:
-            if not self.aligned:
-                bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
-                hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
+            shutil.copy2(self.pdb_path, self.template_path)
 
-                hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path,
-                            output_path=output_hhr)
-
-                chain_list, transformations_list = bioutils.read_remark_350(pdb_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
-                new_chain_list = list(string.ascii_uppercase)[:len(transformations_list) * len(chain_list)]
-        
-                logging.info('Assembly can be build using chain(s) '+ str(chain_list) + ' by applying the following transformations:')
-                for matrix in transformations_list:
-                    logging.info(str(matrix))
-                
-                if len(new_chain_list) != a_air.num_of_copies:
-                    raise Exception(f'Assembly description from REMARK 350 contains {len(new_chain_list)} subunits. Please, try to '
-                        f'generate a new REMARK 350 (manually or using e.g. PISA) for considering a new assembly with '
-                        f'{a_air.num_of_copies} subunits')
-
-                query_seq_length = len(a_air.query_sequence)
-                counter = 0
-                g = features.Features(query_sequence=a_air.query_sequence)
-
-                for chain in chain_list:
-                    template_features = features.extract_template_features_from_pdb(
-                        query_sequence=a_air.query_sequence,
-                        hhr_path=output_hhr,
-                        pdb_id=self.pdb_id,
-                        chain_id=chain,
-                        mmcif_db=a_air.run_dir)
-                                            
-                    g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
-                    g.write_all_templates_in_features(output_path=a_air.run_dir)
-                    for transformation in transformations_list:
-                        counter += 1
-                        bioutils.rot_and_trans(pdb_path=f'{a_air.run_dir}/{self.pdb_id}_{chain}_template.pdb', 
-                                    out_pdb_path=f'{a_air.run_dir}/{counter}.pdb',
-                                    rot_tra_matrix=transformation)
-
-                        if counter == 1:
-                            bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.run_dir}/{counter}.pdb',
-                                                                        pdb_out_path=f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb',
-                                                                        offset=None,
-                                                                        chain='A')
-                        else:
-                            offset = query_seq_length * (counter - 1) + a_air.glycines * (counter - 1)  # 50 glycines as offset !!!
-                            bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.run_dir}/{counter}.pdb',
-                                                                        pdb_out_path=f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb',
-                                                                        offset=offset,
-                                                                        chain='A')
-                list_of_paths_of_pdbs_to_merge = [f'{a_air.run_dir}/{ch}.pdb' for ch in new_chain_list]
-                bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=list_of_paths_of_pdbs_to_merge,
-                        merged_pdb_path=self.template_path)
-
-            else:
-                shutil.copyfile(self.pdb_path, self.template_path)
-
-            template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
-                query_sequence=a_air.query_sequence_assembled,
-                pdb_path=self.template_path,
-                pdb_id=self.pdb_id,
-                chain_id='A')
+        template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
+            query_sequence=a_air.query_sequence_assembled,
+            pdb_path=self.template_path,
+            pdb_id=self.pdb_id,
+            chain_id='A')
             
-            self.template_features = copy.deepcopy(template_features)
+        self.template_features = copy.deepcopy(template_features)
         
     def __repr__(self):
         

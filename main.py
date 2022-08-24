@@ -43,6 +43,7 @@ def main():
 
     if a_air.run_af2:
         #bioutils.run_af2(output_dir=a_air.run_dir, alphafold_paths=a_air.alphafold_paths)
+        a_air.check_if_assembly()
         analyse.analyse_output(output_dir=a_air.output_dir, run_dir=a_air.run_dir, a_air=a_air)
     
     if not a_air.verbose:

@@ -1,7 +1,6 @@
 import os
 import re
 import shutil
-import subprocess
 import sys
 from typing import Dict
 import pandas as pd
@@ -27,38 +26,6 @@ def plot_plddt(plot_path: str, ranked_models_dict: Dict):
     plt.ylabel('pLLDT')
     plt.savefig(plot_path)
 
-def find_interface_from_pisa(pdb_in_path: str) -> Dict:
-
-    subprocess.Popen(['pisa', 'temp', '-analyse', pdb_in_path],
-                     stdout=subprocess.PIPE,
-                     stderr=subprocess.PIPE).communicate()
-
-    pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-
-    match1 = [m.start() for m in re.finditer(" LIST OF INTERFACES", pisa_output)][0]
-    match2 = [m.start() for m in re.finditer(" ##:  serial number", pisa_output)][0]
-
-    interfaces_dict = {}
-    for line in pisa_output[match1:match2].split('\n')[4:-2]:
-        area = line.split('|')[3][:8].replace(' ', '')
-        deltaG = line.split('|')[3][8:15].replace(' ', '')
-        chain1 = line.split('|')[1].replace(' ', '')
-        chain2 = line.split('|')[2].split()[0].replace(' ', '')
-        interfaces_dict[f'{chain1}{chain2}'] =  (area, deltaG)
-
-    return interfaces_dict
-
-def split_dimers_in_pdb(pdb_in_path, pdb_out_path, chain1, chain2):
-
-    with open(pdb_in_path, 'r') as f_in:
-        input_lines = f_in.readlines()
-
-    with open(pdb_out_path, 'w') as f_out:
-        for line in input_lines:
-            if line[21:22] in [chain1, chain2]:
-                f_out.write(line)
-
 def analyse_output(output_dir: str, run_dir: str, a_air):
     
     plots_path = f'{output_dir}/plots'
@@ -83,7 +50,7 @@ def analyse_output(output_dir: str, run_dir: str, a_air):
     if not bool(ranked_models_dict):
         raise Exception('No ranked PDBs found')
     
-    template_dict = a_air.features.write_all_templates_in_features(templates_path)
+    template_dict = a_air.features.write_all_templates_in_features(output_dir=templates_path)
 
     for ranked, ranked_path in ranked_models_dict.items():
         shutil.copy(ranked_path, output_dir)
@@ -137,11 +104,11 @@ def analyse_output(output_dir: str, run_dir: str, a_air):
 
     for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
         bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=ranked_path, a_air=a_air)
-        interfaces_dict = find_interface_from_pisa(ranked_path)
+        interfaces_dict = bioutils.find_interface_from_pisa(ranked_path)
         for interfaces in interfaces_dict:
             chain1, chain2 = list(interfaces)
             dimers_path = os.path.join(interfaces_path, f'{ranked}_{chain1}{chain2}.pdb')
-            split_dimers_in_pdb(pdb_in_path=ranked_path,
+            bioutils.split_dimers_in_pdb(pdb_in_path=ranked_path,
                                 pdb_out_path=dimers_path,
                                 chain1=chain1,
                                 chain2=chain2)

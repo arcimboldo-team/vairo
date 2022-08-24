@@ -41,7 +41,7 @@ class ArcimboldoAir:
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
-        self.query_sequence_assembled = (self.query_sequence + self.glycines * 'G') * (int(self.num_of_copies)-1) + self.query_sequence
+        self.query_sequence_assembled = self.generate_query_assembled()
 
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
@@ -53,6 +53,20 @@ class ArcimboldoAir:
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
         self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path)
+
+
+    def check_if_assembly(self):
+
+        if self.num_of_copies == 1:
+            split_result = self.query_sequence.split('G'*self.glycines)
+            if len(split_result)>1 and len(set(split_result)) == 1:
+                self.query_sequence = split_result[0]
+                self.num_of_copies = len(split_result)
+                self.query_sequence_assembled = self.generate_query_assembled()
+
+    def generate_query_assembled(self) -> str:
+
+        return (self.query_sequence + self.glycines * 'G') * (int(self.num_of_copies)-1) + self.query_sequence
 
     def __repr__(self):
         return f' \
