@@ -54,7 +54,6 @@ class ArcimboldoAir:
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
         self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path)
 
-
     def check_if_assembly(self):
 
         if self.num_of_copies == 1:

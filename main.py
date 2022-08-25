@@ -51,7 +51,6 @@ def main():
     else:
         features.print_features(f'{a_air.run_dir}/features.pkl')
 
-        
 if __name__ == "__main__":
     main()
 

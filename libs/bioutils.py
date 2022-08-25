@@ -1,18 +1,13 @@
 import logging
 import os
-import pickle
 import re
 import shutil
 import subprocess
 from typing import Dict, List, Tuple
 from Bio import SeqIO
-from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Select, Chain
+from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain
 from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths
-import numpy as np
-from ALPHAFOLD.alphafold.common import residue_constants
-from libs.arcimboldo_air import ArcimboldoAir
-
 
 def download_pdb(pdb_id: str, output_dir: str):
 
@@ -227,26 +222,39 @@ def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str, polyala_res)
     ala_atoms_list = ['N', 'CA', 'C', 'CB', 'O']
     polyala_chains = polyala_res_dict.keys()
     atoms_del_list = []
+    atoms_change_list = []
 
     logging.info(f'The following residues are going to be converted to polyala: {polyala_res_dict}')
 
     for chain in polyala_chains:
         for res in structure[0][chain]:
-            if utils.get_resseq(res) in polyala_res_dict[chain]:
-                res.resname = 'ALA'
+            if get_resseq(res) in polyala_res_dict[chain]:
                 for atom in res:
                     if not atom.name in ala_atoms_list:
                         atoms_del_list.append(atom.get_serial_number())
+                    else:
+                        atoms_change_list.append(atom.get_serial_number())
 
-    class Atom_select(Select):
-            def accept_atom(self, atom):
-                if atom.get_serial_number() in atoms_del_list:
-                    return 0
-                else:
-                    return 1
-    io = PDBIO()
-    io.set_structure(structure)
-    io.save(pdb_out_path, select=Atom_select(), preserve_atom_numbering = True)
+    with open(f'{pdb_in_path}', 'r') as f_in:
+        pdb_in_lines = f_in.readlines()
+
+    with open(f'{pdb_out_path}', 'w') as f_out:
+        counter = 0
+        for line in pdb_in_lines:
+            if line.startswith("ATOM"):
+                parsed_dict = parse_pdb_line(line)
+                if int(parsed_dict['num']) in atoms_change_list:
+                    parsed_dict['resname'] = 'ALA'
+                elif int(parsed_dict['num']) in atoms_del_list:
+                    continue
+                counter += 1
+                parsed_dict['num'] = counter
+                atom_line = get_atom_line(remark=parsed_dict['remark'], num=parsed_dict['num'], name=parsed_dict['name'], 
+                res=parsed_dict['resname'], chain=parsed_dict['chain'], resseq=parsed_dict['resseq'], x=parsed_dict['x'], 
+                y=parsed_dict['y'], z=parsed_dict['z'], occ=parsed_dict['occ'], bfact=parsed_dict['bfact'], atype=parsed_dict['atype'])
+                f_out.write(atom_line)
+            elif line.startswith("CRYST"):
+                f_out.write(line)
 
     return polyala_res_dict    
 
@@ -254,12 +262,32 @@ def get_resseq(residue: Residue) -> int:
 
     return residue.get_full_id()[3][1]
 
-def parse_pdb_line(line: str) -> List:
+def get_atom_line(remark:str, num:int, name:str, res:int, chain:str, resseq, x:float, y:float, z:float,
+                    occ:str, bfact:str, atype:str) -> str:
 
-    splitted_line = None
-    if line[:4] == 'ATOM' or line[:6] == "HETATM":
-        splitted_line = [line[:6], line[6:11], line[12:16], line[17:20], line[21], line[22:26], line[30:38], line[38:46], line[46:54]]
-    return splitted_line
+    result = f'{remark:<6}{num:>5}  {name:<3}{res:>4} {chain}{resseq:>4}    {float(x):8.3f}{float(y):8.3f}{float(z):8.3f}{float(occ):6.2f}{float(bfact):6.2f}{atype:>12}\n'
+
+    return result
+
+def parse_pdb_line(line: str) -> Dict:
+    parsed_dict = {
+            'remark':line[:6],
+            'num': line[6:11],
+            'name': line[12:16],
+            'resname': line[16:20],
+            'chain': line[21],
+            'resseq': line[22:26],
+            'x': line[30:38],
+            'y': line[38:46],
+            'z': line[46:54],
+            'occ': line[54:60],
+            'bfact': line[60:66],
+            'atype': line[76:78]
+    }
+    for key, value in parsed_dict.items():
+        parsed_dict[key] = value.replace(' ', '')
+
+    return parsed_dict
 
 def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> bool:
 
@@ -340,8 +368,6 @@ def find_interface_from_pisa(pdb_in_path: str) -> Dict:
 
     pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-
-    print(pisa_output)
 
     if 'NO INTERFACES FOUND' in pisa_output:
         return interfaces_dict

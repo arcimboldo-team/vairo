@@ -60,7 +60,7 @@ class Template:
             pdb_aux = f'{output_dir}/{os.path.basename(pdb)}'
             if pdb != pdb_aux:
                 shutil.copy2(pdb, pdb_aux)
-            pdb = pdb_aux
+                pdb = pdb_aux                
 
         return pdb
     

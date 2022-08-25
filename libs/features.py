@@ -8,6 +8,8 @@ import numpy as np
 import pickle
 import logging
 
+from libs import bioutils
+
 
 three_to_one = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ILE': 'I', 'PRO': 'P',
                 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R',
@@ -278,28 +280,30 @@ class Features:
                     list_of_atoms_in_residue = [order_atom[i] for i, atom in enumerate(atoms_mask) if atom == 1]
                     for atom in list_of_atoms_in_residue:
                         atom_num_int = atom_num_int + 1
-                        atom_remark = 'ATOM'.ljust(6)
-                        atom_num = str(atom_num_int).rjust(5)
-                        atom_name = atom.ljust(4)
-                        res_name = res_type.ljust(3)
-                        res_num = str(index + 1).rjust(4)
+                        atom_remark = 'ATOM'
+                        atom_num = str(atom_num_int)
+                        atom_name = atom
+                        res_name = res_type
+                        res_num = str(index + 1)
                         x_coord = str('%8.3f' % (float(str(
                             self.template_features['template_all_atom_positions'][template_domain_index][index][
                                 atom_types.index(atom)][
-                                0])))).rjust(8)
+                                0]))))
                         y_coord = str('%8.3f' % (float(str(
                             self.template_features['template_all_atom_positions'][template_domain_index][index][
                                 atom_types.index(atom)][
-                                1])))).rjust(8)
+                                1]))))
                         z_coord = str('%8.3f' % (float(str(
                             self.template_features['template_all_atom_positions'][template_domain_index][index][
                                 atom_types.index(atom)][
-                                2])))).rjust(8)
-                        occ = str('%6.2f' % (float('1.0'))).rjust(6)
-                        bfact = str('%6.2f' % (float('25.0'))).ljust(6)
-                        atom_type = atom[0].rjust(12)
-                        output_pdb.write(
-                            f'{atom_remark}{atom_num}  {atom_name}{res_name} A{res_num}    {x_coord}{y_coord}{z_coord}{occ}{bfact}{atom_type}\n')
+                                2]))))
+                        occ = '1.0'
+                        bfact = '25.0'
+                        atom_type = atom[0]
+                        atom_line = bioutils.get_atom_line(remark=atom_remark, num=atom_num, name=atom_name, 
+                                                res=res_name, chain='A', resseq=res_num, x=x_coord, y=y_coord, z=z_coord,
+                                                occ=occ, bfact=bfact, atype=atom_type)
+                        output_pdb.write(atom_line)
 
         return templates_dict
 
