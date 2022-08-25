@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from typing import Dict, List, Tuple
 from Bio import SeqIO
-from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain
+from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select
 from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths
 
@@ -210,7 +210,7 @@ def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str, polyala_res)
     for key, value in polyala_res.items():
         polyala_res_list = []
         for res in value:
-            res_list = str(res).split('-')
+            res_list = str(res).replace(' ', '').split('-')
             if len(res_list) == 2:
                 res_list = list(range(int(res_list[0]), int(res_list[1])+1))
             elif len(res_list) > 2:
@@ -230,37 +230,40 @@ def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str, polyala_res)
         for res in structure[0][chain]:
             if get_resseq(res) in polyala_res_dict[chain]:
                 for atom in res:
+                    res.resname = 'ALA'
                     if not atom.name in ala_atoms_list:
                         atoms_del_list.append(atom.get_serial_number())
-                    else:
-                        atoms_change_list.append(atom.get_serial_number())
 
-    with open(f'{pdb_in_path}', 'r') as f_in:
-        pdb_in_lines = f_in.readlines()
+    class Atom_select(Select):
+            def accept_atom(self, atom):
+                if atom.get_serial_number() in atoms_del_list:
+                    return 0
+                else:
+                    return 1
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(pdb_out_path, select=Atom_select(), preserve_atom_numbering = True)
 
-    with open(f'{pdb_out_path}', 'w') as f_out:
-        counter = 0
-        for line in pdb_in_lines:
-            if line.startswith("ATOM"):
-                parsed_dict = parse_pdb_line(line)
-                if int(parsed_dict['num']) in atoms_change_list:
-                    parsed_dict['resname'] = 'ALA'
-                elif int(parsed_dict['num']) in atoms_del_list:
-                    continue
-                counter += 1
-                parsed_dict['num'] = counter
-                atom_line = get_atom_line(remark=parsed_dict['remark'], num=parsed_dict['num'], name=parsed_dict['name'], 
-                res=parsed_dict['resname'], chain=parsed_dict['chain'], resseq=parsed_dict['resseq'], x=parsed_dict['x'], 
-                y=parsed_dict['y'], z=parsed_dict['z'], occ=parsed_dict['occ'], bfact=parsed_dict['bfact'], atype=parsed_dict['atype'])
-                f_out.write(atom_line)
-            elif line.startswith("CRYST"):
-                f_out.write(line)
+    cryst_card = extract_cryst_card_pdb(pdb_in_path=pdb_in_path)
+    if cryst_card is not None:
+        with open(pdb_out_path, "r+") as f_in: lines = f_in.read(); f_in.seek(0); f_in.write(f'{cryst_card}\n' + lines)
 
     return polyala_res_dict    
 
 def get_resseq(residue: Residue) -> int:
 
     return residue.get_full_id()[3][1]
+
+def extract_cryst_card_pdb(pdb_in_path: str) -> str:
+
+    if os.path.isfile(pdb_in_path):
+        with open(pdb_in_path, 'r') as f_in:
+            pdb_lines = f_in.readlines()
+        for line in pdb_lines:
+            if line.startswith("CRYST1"):
+                cryst_card = line
+                return cryst_card
+    return None
 
 def get_atom_line(remark:str, num:int, name:str, res:int, chain:str, resseq, x:float, y:float, z:float,
                     occ:str, bfact:str, atype:str) -> str:
