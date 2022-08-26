@@ -22,6 +22,7 @@ class Template:
         self.sum_prob: bool = False
         self.aligned: bool = False
         self.template_features: Dict = None
+        self.merged_templates_list: List = None
         
         self.pdb_path = self.check_pdb(parameters_list['pdb'], input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
@@ -63,6 +64,23 @@ class Template:
                 pdb = pdb_aux                
 
         return pdb
+
+    def calculate_best_offset(self, target, merged_list: List):
+        self.merged_list = merged_list
+        if self is target:
+            return
+
+        results_superpose = []
+        for x, query_pdb in enumerate(merged_list):
+            reference_list = []
+            for y, target_pdb in enumerate(target.merged_list):
+                rmsd, nalign, quality_q, aligned_res_list = bioutils.superpose_pdbs(query_pdb=query_pdb,
+                                                                       target_pdb=target_pdb, output_superposition = False)
+                pdist = bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb)
+                reference_list.append(pdist) 
+            results_superpose.append(reference_list)
+
+        print(results_superpose)
     
     def generate_features(self, a_air):
 
@@ -73,8 +91,6 @@ class Template:
             bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
             hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
             hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path,output_path=output_hhr)
-
-            list_of_paths_of_pdbs_to_merge = []
 
             if a_air.num_of_copies > 1:
                 chain_list, transformations_list = bioutils.read_remark_350(pdb_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
@@ -88,11 +104,11 @@ class Template:
                 ]]
 
             new_chain_list = list(string.ascii_uppercase)[:len(transformations_list) * len(chain_list)]
-            
+
             logging.info('Assembly can be build using chain(s) '+ str(chain_list) + ' by applying the following transformations:')
             for matrix in transformations_list:
                 logging.info(str(matrix))
-            
+
             if len(new_chain_list) != a_air.num_of_copies:
                 raise Exception(f'Assembly description from REMARK 350 contains {len(new_chain_list)} subunits. Please, try to '
                     f'generate a new REMARK 350 (manually or using e.g. PISA) for considering a new assembly with '
@@ -100,7 +116,8 @@ class Template:
 
             query_seq_length = len(a_air.query_sequence)
             counter = 0
-            g = features.Features(query_sequence=a_air.query_sequence)
+            list_of_paths_of_pdbs_to_merge = []
+            list_of_paths_of_pdbs_to_merge2 = []
 
             for chain in chain_list:
                 template_features = features.extract_template_features_from_pdb(
@@ -109,29 +126,29 @@ class Template:
                     pdb_id=self.pdb_id,
                     chain_id=chain,
                     mmcif_db=a_air.run_dir)
-                      
+
+                g = features.Features(query_sequence=a_air.query_sequence)
                 g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
-                g.write_all_templates_in_features(output_dir=a_air.run_dir)
+                templates_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir)
+                template_path = list(templates_dict.values())[0]
+                path_pdb = f'{a_air.run_dir}/{self.pdb_id}_{chain}'
 
                 for transformation in transformations_list:
                     counter += 1
-                    bioutils.rot_and_trans(pdb_in_path=f'{a_air.run_dir}/{self.pdb_id}_{chain}_template.pdb', 
-                                pdb_out_path=f'{a_air.run_dir}/{counter}.pdb',
+                    bioutils.change_chain(pdb_in_path=template_path, 
+                                pdb_out_path=f'{path_pdb}_{counter}.pdb',
                                 rot_tra_matrix=transformation)
 
-                    if counter == 1:
-                        bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.run_dir}/{counter}.pdb',
-                                                                    pdb_out_path=f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb',
-                                                                    offset=None,
-                                                                    chain='A')
-                    else:
-                        offset = query_seq_length * (counter - 1) + a_air.glycines * (counter - 1)  # 50 glycines as offset !!!
-                        bioutils.change_chain_and_apply_offset_in_single_chain(pdb_in_path=f'{a_air.run_dir}/{counter}.pdb',
-                                                                    pdb_out_path=f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb',
-                                                                    offset=offset,
-                                                                    chain='A')
-                    list_of_paths_of_pdbs_to_merge.append(f'{a_air.run_dir}/{new_chain_list[counter - 1]}.pdb')
+                    offset = query_seq_length * (counter - 1) + a_air.glycines * (counter - 1)
+                    bioutils.change_chain(pdb_in_path=f'{path_pdb}_{counter}.pdb',
+                                        pdb_out_path=f'{path_pdb}_{new_chain_list[counter - 1]}.pdb',
+                                        offset=offset, chain='A')
+
+                    list_of_paths_of_pdbs_to_merge.append(f'{path_pdb}_{new_chain_list[counter - 1]}.pdb')
+                    list_of_paths_of_pdbs_to_merge2.append(f'{path_pdb}_{counter}.pdb')
             
+                
+            self.calculate_best_offset(a_air.templates[0], list_of_paths_of_pdbs_to_merge2)
             bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=list_of_paths_of_pdbs_to_merge,
                     merged_pdb_path=self.template_path)
 

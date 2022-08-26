@@ -271,7 +271,7 @@ def _find_template_in_pdb(
     return chain_sequence, template_chain_id, mapping_offset
 
   # Try if there is an exact match in the (sub)sequence only.
-  for chain_id, chain_sequence in mmcif_object.chain_to_seqres.items():
+  """for chain_id, chain_sequence in mmcif_object.chain_to_seqres.items():
     if chain_sequence and (template_sequence in chain_sequence):
       logging.info('Found a sequence-only match %s_%s.', pdb_id, chain_id)
       mapping_offset = chain_sequence.find(template_sequence)
@@ -286,7 +286,7 @@ def _find_template_in_pdb(
     if match:
       logging.info('Found a fuzzy sequence-only match %s_%s.', pdb_id, chain_id)
       mapping_offset = match.start()
-      return chain_sequence, chain_id, mapping_offset
+      return chain_sequence, chain_id, mapping_offset"""
 
   # No hits, raise an error.
   raise SequenceNotInTemplateError(

@@ -97,7 +97,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
     for i in range(len(matches_positions) - 1):
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
-    hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id in detailed_lines[1]]
+    hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id+'_'+chain_id in detailed_lines[1]]
 
     detailed_lines = hits_list[0]
 
@@ -111,7 +111,9 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
 
     mmcif_string = open(f'{mmcif_db}/{pdb_id}.cif').read()
     parsing_result = mmcif_parsing.parse(file_id=file_id, mmcif_string=mmcif_string)
-    
+
+
+
     template_features, _ = templates._extract_template_features(
             mmcif_object=parsing_result.mmcif_object,
             pdb_id=file_id,

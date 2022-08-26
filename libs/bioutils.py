@@ -5,9 +5,11 @@ import shutil
 import subprocess
 from typing import Dict, List, Tuple
 from Bio import SeqIO
-from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select
+from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection
 from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths
+from scipy.spatial import distance
+import numpy as np
 
 def download_pdb(pdb_id: str, output_dir: str):
 
@@ -145,29 +147,19 @@ def read_remark_350(pdb_path: str) -> Tuple[ List[str], List[float] ]:
 
     return chain_list, transformations_list
 
-def rot_and_trans(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: str):
-
-    r11, r12, r13 = rot_tra_matrix[0]
-    r21, r22, r23 = rot_tra_matrix[1]
-    r31, r32, r33 = rot_tra_matrix[2]
-    t1, t2, t3 = rot_tra_matrix[3]
+def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: str=None, offset: int=0, chain: str=None):
 
     with open('/tmp/pdbset.sh', 'w') as f:
         f.write(f'pdbset xyzin {pdb_in_path} xyzout {pdb_out_path} << eof\n')
-        f.write(
-            f'rotate {float(r11)} {float(r12)} {float(r13)} {float(r21)} {float(r22)} {float(r23)} {float(r31)} {float(r32)} {float(r33)}\n')
-        f.write(f'shift {float(t1)} {float(t2)} {float(t3)}\n')
-        f.write('end\n')
-        f.write('eof')
-    subprocess.Popen(['bash', '/tmp/pdbset.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
-    utils.rmsilent(f'/tmp/pdbset.sh')
-
-def change_chain_and_apply_offset_in_single_chain(pdb_in_path: str , pdb_out_path: str , offset: str=None, chain: str=None):
-
-    with open('/tmp/pdbset.sh', 'w') as f:
-        f.write(f'pdbset xyzin {pdb_in_path} xyzout {pdb_out_path} << eof\n')
-        if offset:
-            f.write(f'renumber increment {offset}\n')
+        if rot_tra_matrix is not None:
+            r11, r12, r13 = rot_tra_matrix[0]
+            r21, r22, r23 = rot_tra_matrix[1]
+            r31, r32, r33 = rot_tra_matrix[2]
+            t1, t2, t3 = rot_tra_matrix[3]
+            f.write(
+                f'rotate {float(r11)} {float(r12)} {float(r13)} {float(r21)} {float(r22)} {float(r23)} {float(r31)} {float(r32)} {float(r33)}\n')
+            f.write(f'shift {float(t1)} {float(t2)} {float(t3)}\n')
+        f.write(f'renumber increment {offset}\n')
         if chain:
             f.write(f'chain {chain}\n')
         f.write('end\n')
@@ -222,7 +214,6 @@ def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str, polyala_res)
     ala_atoms_list = ['N', 'CA', 'C', 'CB', 'O']
     polyala_chains = polyala_res_dict.keys()
     atoms_del_list = []
-    atoms_change_list = []
 
     logging.info(f'The following residues are going to be converted to polyala: {polyala_res_dict}')
 
@@ -277,7 +268,7 @@ def parse_pdb_line(line: str) -> Dict:
             'remark':line[:6],
             'num': line[6:11],
             'name': line[12:16],
-            'resname': line[16:20],
+            'resname': line[17:20],
             'chain': line[21],
             'resseq': line[22:26],
             'x': line[30:38],
@@ -360,6 +351,31 @@ def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool=T
         rmsd, nalign, quality_q, aligned_res_list = None, None, None, None
 
     return rmsd, nalign, quality_q, aligned_res_list
+
+def pdist(query_pdb: str, target_pdb: str) -> List[List]:
+
+    structure_query = PDBParser(QUIET=1).get_structure('query', query_pdb)
+    res_query_list = [res.id[1] for res in Selection.unfold_entities(structure_query, 'R')]
+
+    structure_target = PDBParser(QUIET=1).get_structure('target', target_pdb)
+    res_target_list = [res.id[1] for res in Selection.unfold_entities(structure_target, 'R')]
+
+    common_res_list = list(set(res_query_list) & set(res_target_list))
+
+    query_common_list = [res for res in Selection.unfold_entities(structure_query, 'R') if res.id[1] in common_res_list]
+    query_matrix = calculate_distance_pdist(res_list=query_common_list)
+
+    target_common_list = [res for res in Selection.unfold_entities(structure_target, 'R') if res.id[1] in common_res_list]
+    target_matrix = calculate_distance_pdist(res_list=target_common_list)
+
+    diff_pdist_matrix = np.abs(query_matrix - target_matrix)
+
+    return diff_pdist_matrix.mean()
+
+def calculate_distance_pdist(res_list: List):
+    coords = [res['CA'].coord for res in res_list]
+    pdist = distance.pdist(coords, "euclidean")
+    return distance.squareform(pdist)    
 
 def find_interface_from_pisa(pdb_in_path: str) -> Dict:
 
