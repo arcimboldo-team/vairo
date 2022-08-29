@@ -3,10 +3,12 @@ import os
 import logging
 import shutil
 import string
-from Bio.PDB import PDBParser
+from Bio.PDB import PDBParser, Selection
 
 from libs import arcimboldo_air, bioutils, features, hhsearch, utils
 from typing import Dict, List
+import pandas as pd
+
 
 class Template:
 
@@ -65,22 +67,69 @@ class Template:
 
         return pdb
 
-    def calculate_best_offset(self, target, merged_list: List):
+    def choose_best_offset(self, target, merged_list: List, output_dir: str) -> Dict:
+        
         self.merged_list = merged_list
         if self is target:
             return
 
+        results_pdist = []
+        results_pdist.append(['reference'] + [utils.get_file_name(file) for file in target.merged_list])
+
         results_superpose = []
+        results_superpose.append(['reference'] + [utils.get_file_name(file) for file in target.merged_list])
+
+        results_algorithm = []
+
         for x, query_pdb in enumerate(merged_list):
-            reference_list = []
+            reference_pdist_list = []
+            reference_superpose_list = []
+            reference_algorithm = []
+            res_list_length = len([res for res in Selection.unfold_entities(PDBParser().get_structure('test', query_pdb), 'R')])
+
             for y, target_pdb in enumerate(target.merged_list):
                 rmsd, nalign, quality_q, aligned_res_list = bioutils.superpose_pdbs(query_pdb=query_pdb,
                                                                        target_pdb=target_pdb, output_superposition = False)
-                pdist = bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb)
-                reference_list.append(pdist) 
-            results_superpose.append(reference_list)
+                reference_superpose_list.append(f'{rmsd}, {nalign} ({res_list_length})')
+                reference_pdist_list.append(bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb))
+                reference_algorithm.append((x, y, bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb)))
+            
+            results_pdist.append([utils.get_file_name(query_pdb)] + reference_pdist_list)
+            results_superpose.append([utils.get_file_name(query_pdb)] + reference_superpose_list)
+            results_algorithm.append(reference_algorithm)
 
-        print(results_superpose)
+        best_offset_list = bioutils.calculate_best_offset(results_algorithm)
+        return_offset_dict = {}
+        for x,y,_ in best_offset_list:
+            return_offset_dict[merged_list[x]] = y
+
+        output_txt = f'{output_dir}/best_offset.txt'
+
+        with open(output_txt, 'w') as f_in:
+
+            f_in.write('Calculated with distances:\n')
+
+            rows = []
+            for x in results_pdist[1:]:
+                rows.append(x)
+            df = pd.DataFrame(rows, columns=results_pdist[0])
+            f_in.write(df.to_markdown())        
+        
+            f_in.write('\n\n')
+
+            f_in.write('Calculated with superpose:\n')
+
+            rows = []
+            for x in results_superpose[1:]:
+                rows.append(x)
+            df = pd.DataFrame(rows, columns=results_superpose[0])
+            f_in.write(df.to_markdown())
+
+            f_in.write('\n\n')
+            f_in.write('Best combination is (using pdist):')
+            f_in.write(f'{str(return_offset_dict)}')
+        
+        return return_offset_dict
     
     def generate_features(self, a_air):
 
@@ -115,9 +164,8 @@ class Template:
                     f'{a_air.num_of_copies} subunits')
 
             query_seq_length = len(a_air.query_sequence)
-            counter = 0
+            list_of_paths_of_pdbs_trans = []
             list_of_paths_of_pdbs_to_merge = []
-            list_of_paths_of_pdbs_to_merge2 = []
 
             for chain in chain_list:
                 template_features = features.extract_template_features_from_pdb(
@@ -131,25 +179,27 @@ class Template:
                 g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
                 templates_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir)
                 template_path = list(templates_dict.values())[0]
-                path_pdb = f'{a_air.run_dir}/{self.pdb_id}_{chain}'
+                pdb_path = f'{a_air.run_dir}/{self.pdb_id}_{chain}'
 
-                for transformation in transformations_list:
-                    counter += 1
+                for i, transformation in enumerate(transformations_list):
                     bioutils.change_chain(pdb_in_path=template_path, 
-                                pdb_out_path=f'{path_pdb}_{counter}.pdb',
+                                pdb_out_path=f'{pdb_path}_{i+1}.pdb',
                                 rot_tra_matrix=transformation)
+                    list_of_paths_of_pdbs_trans.append(f'{pdb_path}_{i+1}.pdb')
 
-                    offset = query_seq_length * (counter - 1) + a_air.glycines * (counter - 1)
-                    bioutils.change_chain(pdb_in_path=f'{path_pdb}_{counter}.pdb',
-                                        pdb_out_path=f'{path_pdb}_{new_chain_list[counter - 1]}.pdb',
-                                        offset=offset, chain='A')
-
-                    list_of_paths_of_pdbs_to_merge.append(f'{path_pdb}_{new_chain_list[counter - 1]}.pdb')
-                    list_of_paths_of_pdbs_to_merge2.append(f'{path_pdb}_{counter}.pdb')
-            
-                
-            self.calculate_best_offset(a_air.templates[0], list_of_paths_of_pdbs_to_merge2)
-            bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=list_of_paths_of_pdbs_to_merge,
+            offset_dict = self.choose_best_offset(a_air.templates[0], list_of_paths_of_pdbs_trans, a_air.output_dir)
+            for i, pdb_path in enumerate(list_of_paths_of_pdbs_trans):
+                if bool(offset_dict):
+                    offset_value = offset_dict[pdb_path]
+                else:
+                    offset_value = i
+                offset = query_seq_length * (offset_value) + a_air.glycines * (offset_value)
+                new_pdb_path = f'{a_air.run_dir}/{self.pdb_id}_{new_chain_list[offset_value]}.pdb'
+                bioutils.change_chain(pdb_in_path=pdb_path,
+                                pdb_out_path=new_pdb_path,
+                                offset=offset, chain='A')
+                list_of_paths_of_pdbs_to_merge.append(new_pdb_path)
+            bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=sorted(list_of_paths_of_pdbs_to_merge),
                     merged_pdb_path=self.template_path)
 
         else:

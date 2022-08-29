@@ -10,6 +10,7 @@ from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths
 from scipy.spatial import distance
 import numpy as np
+import itertools
 
 def download_pdb(pdb_id: str, output_dir: str):
 
@@ -402,6 +403,25 @@ def find_interface_from_pisa(pdb_in_path: str) -> Dict:
         interfaces_dict[f'{chain1}{chain2}'] =  (area, deltaG)
 
     return interfaces_dict
+
+def calculate_best_offset(input_list: List[List]) -> List:
+    combinated_list = list(itertools.product(*input_list))
+    trimmed_list = []
+    for element in combinated_list:
+        query_list = []
+        target_list = []
+        for query,target,value in element:
+            query_list.append(query)
+            target_list.append(target)
+        if len(target_list) == len(set(target_list)):
+            trimmed_list.append(element)
+    score_list = []
+    for element in trimmed_list:
+        score_list.append(sum(z for _,_,z in element))
+    max_value = max(score_list)
+    max_index = score_list.index(max_value)
+
+    return trimmed_list[max_index]
 
 def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain1: List, chain2: List):
 

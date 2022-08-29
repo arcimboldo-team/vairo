@@ -1,4 +1,4 @@
-output_directory = '/Users/pep/work/test/arcimboldo_air/output'
+output_dir = '/Users/pep/work/test/arcimboldo_air/output'
 fasta_path = '/Users/pep/work/test/arcimboldo_air/atzr.fasta'
 af2_dbs_path = '/Users/pep/work/test/arcimboldo_air/af2_dbs'
 num_of_copies = 1
@@ -12,11 +12,10 @@ add_to_msa = false
 pdb = '/Users/pep/work/test/arcimboldo_air/output/template.pdb'
 chain = 'A'
 
-
-#[[assembly]]
-#template = 
-#number_of_seqs = 
+#[[template]]
+#pdb = 
+#chain = 
 #add_to_msa =
 #add_to_templates =
-#polyala_res_list =
+#polyala_res = {A=[10], B=[10-15]}
 #sum_prob = None
