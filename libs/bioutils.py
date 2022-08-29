@@ -72,13 +72,14 @@ def run_pisa(pdb_path: str) -> str:
     pisa_output = subprocess.Popen(['pisa', 'temp', '-350'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
     return pisa_output.decode('utf-8')
 
-def create_af2_script(output_dir: str, script_path: str, alphafold_paths: AlphaFoldPaths):
+def create_af2_script(output_dir: str, script_path: str, alphafold_paths: AlphaFoldPaths, run_alphafold_path: str):
+
 
     with open(script_path, 'w') as bash_file:
         previous_path_to_output_dir = '/'.join(output_dir.split('/')[:-1])
         name = output_dir.split('/')[-1]
         bash_file.write('#!/bin/bash\n')
-        bash_file.write(f'python {os.path.dirname(os.path.abspath(__file__))}/ALPHAFOLD/run_alphafold.py \\\n')
+        bash_file.write(f'python {run_alphafold_path} \\\n')
         bash_file.write(f'--fasta_paths={name}.fasta \\\n')
         bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
         bash_file.write(f'--data_dir={alphafold_paths.af2_dbs_path} \\\n')
@@ -94,14 +95,14 @@ def create_af2_script(output_dir: str, script_path: str, alphafold_paths: AlphaF
         bash_file.write('--read_features_pkl=True\n')
         bash_file.close()
 
-def run_af2(output_dir:str, alphafold_paths:AlphaFoldPaths):
+def run_af2(output_dir:str, alphafold_paths:AlphaFoldPaths, run_alphafold_path: str):
     
     logging.info('Running AF2')
 
     script_path = f'{output_dir}/run_af2.sh'
     log_path = f'{output_dir}/af2_output.log'
 
-    create_af2_script(output_dir=output_dir, script_path=script_path, alphafold_paths=alphafold_paths)
+    create_af2_script(output_dir=output_dir, script_path=script_path, alphafold_paths=alphafold_paths, run_alphafold_path=run_alphafold_path)
     af2_output = subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = af2_output.communicate()
     with open(log_path, 'w') as f:
