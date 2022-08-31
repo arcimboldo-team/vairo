@@ -28,10 +28,10 @@ def main():
     a_air = arcimboldo_air.ArcimboldoAir(parameters_dict=input_load)
     os.chdir(a_air.run_dir)
     shutil.copy2(input_path, a_air.input_dir)
-    run_alphafold_path = f'{os.path.dirname(os.path.abspath(__file__))}/ALPHAFOLD/run_alphafold.py'
-
 
     for template in a_air.templates:
+        if template.generate_multimer:
+            template.create_multimer(a_air=a_air)
         template.generate_features(a_air=a_air)
         if template.add_to_msa:
             sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
@@ -44,9 +44,9 @@ def main():
     a_air.features.write_pkl(output_dir=f'{a_air.run_dir}/features.pkl')
 
     if a_air.run_af2:
-        bioutils.run_af2(output_dir=a_air.run_dir, alphafold_paths=a_air.alphafold_paths, run_alphafold_path=run_alphafold_path)
+        bioutils.run_af2(output_dir=a_air.run_dir, alphafold_paths=a_air.alphafold_paths)
         a_air.check_if_assembly()
-        analyse.analyse_output(output_dir=a_air.output_dir, run_dir=a_air.run_dir, a_air=a_air)
+        analyse.analyse_output(a_air=a_air)
     
     if not a_air.verbose:
         utils.clean_files(dir=a_air.run_dir)

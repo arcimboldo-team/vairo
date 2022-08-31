@@ -20,7 +20,7 @@ class ArcimboldoAir:
         self.verbose: bool = True
         self.glycines: int = 50
         
-        self.output_dir = utils.get_mandatory_value(input_load = parameters_dict, value = 'output_dir')
+        self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, "run"))
         self.input_dir = os.path.join(self.run_dir, "input")
 
@@ -48,11 +48,11 @@ class ArcimboldoAir:
         if not 'template' in parameters_dict:
             raise Exception('No templates detected. Check if the [[template]] tag exists.')
 
-        for parameters_template in parameters_dict['template']:
+        for parameters_template in parameters_dict.get('template'):
             self.templates.append(template.Template(parameters_template, self.run_dir, self.input_dir, self.num_of_copies))
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
-        self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path)
+        self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path, self.run_dir)
 
     def check_if_assembly(self):
 

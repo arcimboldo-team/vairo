@@ -7,6 +7,14 @@ num_of_copies = 1
 pdb = '8CY6'
 chain = 'A'
 add_to_msa = false
+generate_multimer = true
+
+
+[template.change_res]
+change = {A=[10], B=[10-15]}
+resname = 'ALA'
+
+change_res {chain=A}
 
 [[template]]
 pdb = '/Users/pep/work/test/arcimboldo_air/output/template.pdb'
@@ -17,5 +25,7 @@ chain = 'A'
 #chain = 
 #add_to_msa =
 #add_to_templates =
-#polyala_res = {A=[10], B=[10-15]}
+polyala_res = {A=[10], B=[10-15, ], type=10}
 #sum_prob = None
+
+

@@ -2,10 +2,11 @@ import logging
 import os
 import re
 import shutil
+import string
 import subprocess
 from typing import Dict, List, Tuple
 from Bio import SeqIO
-from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection
+from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure
 from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths
 from scipy.spatial import distance
@@ -72,40 +73,13 @@ def run_pisa(pdb_path: str) -> str:
     pisa_output = subprocess.Popen(['pisa', 'temp', '-350'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
     return pisa_output.decode('utf-8')
 
-def create_af2_script(output_dir: str, script_path: str, alphafold_paths: AlphaFoldPaths, run_alphafold_path: str):
-
-
-    with open(script_path, 'w') as bash_file:
-        previous_path_to_output_dir = '/'.join(output_dir.split('/')[:-1])
-        name = output_dir.split('/')[-1]
-        bash_file.write('#!/bin/bash\n')
-        bash_file.write(f'python {run_alphafold_path} \\\n')
-        bash_file.write(f'--fasta_paths={name}.fasta \\\n')
-        bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
-        bash_file.write(f'--data_dir={alphafold_paths.af2_dbs_path} \\\n')
-        bash_file.write(f'--uniref90_database_path={alphafold_paths.uniref90_db_path} \\\n')
-        bash_file.write(f'--mgnify_database_path={alphafold_paths.mgnify_db_path} \\\n')
-        bash_file.write(f'--template_mmcif_dir={alphafold_paths.mmcif_db_path} \\\n')
-        bash_file.write('--max_template_date=2022-03-09 \\\n')
-        bash_file.write(f'--obsolete_pdbs_path={alphafold_paths.obsolete_mmcif_db_path} \\\n')
-        bash_file.write('--model_preset=monomer \\\n')
-        bash_file.write(f'--bfd_database_path={alphafold_paths.bfd_db_path} \\\n')
-        bash_file.write(f'--uniclust30_database_path={alphafold_paths.uniclust30_db_path} \\\n')
-        bash_file.write(f'--pdb70_database_path={alphafold_paths.pdb70_db_path} \\\n')
-        bash_file.write('--read_features_pkl=True\n')
-        bash_file.close()
-
-def run_af2(output_dir:str, alphafold_paths:AlphaFoldPaths, run_alphafold_path: str):
+def run_af2(output_dir:str, alphafold_paths:AlphaFoldPaths):
     
     logging.info('Running AF2')
-
-    script_path = f'{output_dir}/run_af2.sh'
-    log_path = f'{output_dir}/af2_output.log'
-
-    create_af2_script(output_dir=output_dir, script_path=script_path, alphafold_paths=alphafold_paths, run_alphafold_path=run_alphafold_path)
-    af2_output = subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    alphafold_paths.create_af2_script(output_dir=output_dir)
+    af2_output = subprocess.Popen(['bash', alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = af2_output.communicate()
-    with open(log_path, 'w') as f:
+    with open(alphafold_paths.run_alphafold_log, 'w') as f:
         f.write(stdout.decode('utf-8'))
 
 def read_remark_350(pdb_path: str) -> Tuple[ List[str], List[float] ]:
@@ -179,75 +153,25 @@ def remove_hydrogens(pdb_in_path: str, pdb_out_path:str):
                     counter = counter + 1
                     f_out.write(line[:6] + str(counter).rjust(5) + line[11:])
 
-def convert_template_to_polyala(pdb_in_path: str, pdb_out_path:str, polyala_res):
-
-    pdb_id = utils.get_file_name(pdb_in_path)
-    parser = PDBParser(QUIET=True)
-    structure = parser.get_structure(pdb_id, pdb_in_path)
-    chains = [chain.get_id() for chain in structure.get_chains()]
-
-    if isinstance(polyala_res, dict):
-        for key in polyala_res.keys():
-            if key not in chains:
-                raise Exception('Has not been possible to convert template to polyala. '
-                                f'Chain: {key} does not exist. Available chains: {chains}.')
-    elif isinstance(polyala_res, list):
-        if len(chains) > 1:
-            raise Exception('Has not been possible to convert template to polyala. '
-                            'There is more than one chain available, select one chain in the configuration file. '
-                            f'Available chains: {chains}.')           
-        polyala_res = {chains[0]: polyala_res}
-    else:
-        raise Exception('Has not been possible to convert template to polyala.')
-    
-    polyala_res_dict = {}
-    for key, value in polyala_res.items():
-        polyala_res_list = []
-        for res in value:
-            res_list = str(res).replace(' ', '').split('-')
-            if len(res_list) == 2:
-                res_list = list(range(int(res_list[0]), int(res_list[1])+1))
-            elif len(res_list) > 2:
-                raise Exception('Has not been possible to convert template to polyala.')
-            polyala_res_list.extend(map(int,res_list))
-
-        polyala_res_dict[key] = list(set(polyala_res_list))
-
-    ala_atoms_list = ['N', 'CA', 'C', 'CB', 'O']
-    polyala_chains = polyala_res_dict.keys()
-    atoms_del_list = []
-
-    logging.info(f'The following residues are going to be converted to polyala: {polyala_res_dict}')
-
-    for chain in polyala_chains:
-        for res in structure[0][chain]:
-            if get_resseq(res) in polyala_res_dict[chain]:
-                for atom in res:
-                    res.resname = 'ALA'
-                    if not atom.name in ala_atoms_list:
-                        atoms_del_list.append(atom.get_serial_number())
-
-    class Atom_select(Select):
-            def accept_atom(self, atom):
-                if atom.get_serial_number() in atoms_del_list:
-                    return 0
-                else:
-                    return 1
-    io = PDBIO()
-    io.set_structure(structure)
-    io.save(pdb_out_path, select=Atom_select(), preserve_atom_numbering = True)
-
-    cryst_card = extract_cryst_card_pdb(pdb_in_path=pdb_in_path)
-    if cryst_card is not None:
-        with open(pdb_out_path, "r+") as f_in: lines = f_in.read(); f_in.seek(0); f_in.write(f'{cryst_card}\n' + lines)
-
-    return polyala_res_dict    
-
 def get_resseq(residue: Residue) -> int:
+    #Return resseq number
 
     return residue.get_full_id()[3][1]
 
+def get_chains(structure: Structure) -> List:
+    #Return all chains from a PDB structure
+
+    return [chain.get_id() for chain in structure.get_chains()]
+
+def get_structure(pdb_path: str) -> Structure:
+    #Get PDB structure
+
+    pdb_id = utils.get_file_name(pdb_path)
+    parser = PDBParser(QUIET=True)
+    return parser.get_structure(pdb_id, pdb_path)
+
 def extract_cryst_card_pdb(pdb_in_path: str) -> str:
+    #Extract the crystal card from a pdb
 
     if os.path.isfile(pdb_in_path):
         with open(pdb_in_path, 'r') as f_in:
@@ -258,14 +182,18 @@ def extract_cryst_card_pdb(pdb_in_path: str) -> str:
                 return cryst_card
     return None
 
+
 def get_atom_line(remark:str, num:int, name:str, res:int, chain:str, resseq, x:float, y:float, z:float,
                     occ:str, bfact:str, atype:str) -> str:
+    #Given all elements of an atom, parse them in PDB format
 
     result = f'{remark:<6}{num:>5}  {name:<3}{res:>4} {chain}{resseq:>4}    {float(x):8.3f}{float(y):8.3f}{float(z):8.3f}{float(occ):6.2f}{float(bfact):6.2f}{atype:>12}\n'
 
     return result
 
 def parse_pdb_line(line: str) -> Dict:
+    #Parse all elements of an atom of a PDB line
+    
     parsed_dict = {
             'remark':line[:6],
             'num': line[6:11],
@@ -320,6 +248,25 @@ def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> bool:
     io = PDBIO()
     io.set_structure(structure)
     io.save(pdb_out_path, preserve_atom_numbering = True)
+
+def chain_splitter(pdb_in_path: str, pdb_out_path: str, chain: str):
+    #Given a pdb_in and a chain, write a pdb_out containing only
+    #the specified chain
+
+    class ChainSelect(Select):
+        def __init__(self, chain):
+            self.chain = chain
+
+        def accept_chain(self, chain):
+            if chain.get_id() == self.chain:
+                return 1
+            else:          
+                return 0
+
+    structure = get_structure(pdb_path=pdb_in_path)
+    io = PDBIO()               
+    io.set_structure(structure)
+    io.save(pdb_out_path, ChainSelect(chain))
 
 def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool=True):
 
