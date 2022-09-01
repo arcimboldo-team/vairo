@@ -268,7 +268,7 @@ class Features:
 
         for pdb_name in self.template_features['template_domain_names']:
             pdb = pdb_name.decode('utf-8')
-            pdb_path = os.path.join(output_dir,f'{pdb}_template.pdb')
+            pdb_path = os.path.join(output_dir,f'{pdb}1.pdb')
             templates_dict[pdb] = pdb_path
             with open(pdb_path, 'w') as output_pdb:
                 template_domain_index = np.where(self.template_features['template_domain_names'] == pdb_name)[0][0]

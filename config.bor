@@ -9,10 +9,15 @@ chain = 'A'
 add_to_msa = false
 generate_multimer = true
 
-
 [template.change_res]
 change = {A=[10], B=[10-15]}
 resname = 'ALA'
+
+[template.match]
+reference =
+ 
+
+
 
 change_res {chain=A}
 

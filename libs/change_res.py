@@ -43,6 +43,9 @@ class ChangeResidues:
                     raise Exception('Has not been possible to change residues.')
                 change_list.extend(map(int,res_list))
             self.change_dict[key] = list(set(change_list))
+            
+        logging.info(f'The following residues are going to be converted to {self.resname}: {self.change_dict}')
+
     
     def update_new_chains(self, update_dict: Dict):
         # Update the chains after changing them generating the monomer
@@ -71,8 +74,6 @@ class ChangeResidues:
 
         res_atoms_list = ['N', 'CA', 'C', 'CB', 'O']
         atoms_del_list = []
-
-        logging.info(f'The following residues are going to be converted to {self.resname}: {self.change_dict}')
 
         for chain in chains_inter:
             chain2 = chain if real_chain is None else fake_chain

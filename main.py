@@ -30,8 +30,6 @@ def main():
     shutil.copy2(input_path, a_air.input_dir)
 
     for template in a_air.templates:
-        if template.generate_multimer:
-            template.create_multimer(a_air=a_air)
         template.generate_features(a_air=a_air)
         if template.add_to_msa:
             sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')

@@ -5,6 +5,7 @@ import json
 import os
 import logging
 import io
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -53,6 +54,18 @@ def get_key_for_value(value: str, search_dict: Dict) -> List:
     #Given a value, get the list of all keys that contains that value
 
     return list(search_dict.keys())[list(search_dict.values()).index(value)]
+
+def get_chain_and_number(path_pdb: str) -> List:
+    #Given a path: ../../template_A1.pdb return A and 1
+    name = get_file_name(path_pdb)
+    code = name.split("_", 1)[-1]
+    return code[0], int(code[1:])
+
+def replace_last_number(text: str, value: str) -> str:
+    #Replace the last number of text by the value
+
+    return re.sub(r'\d+.pdb', str(value), str(text))+'.pdb'
+
 
 def rmsilent(file_path: str):
     #Remove file without error if it doesn't exist
