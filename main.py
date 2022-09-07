@@ -4,8 +4,9 @@ import shutil
 from libs import analyse, arcimboldo_air, bioutils, features, utils
 import os
 import sys
-import toml
 import logging
+import yaml
+
 
 def main():
 
@@ -21,7 +22,9 @@ def main():
     if not os.path.exists(input_path):
         raise Exception('The given path for the configuration file either does not exist or you do not have the permissions to read it')
     try:
-        input_load = toml.load(input_path)
+        #input_load = toml.load(input_path)
+        with open(input_path) as f:
+            input_load = yaml.load(f, Loader=yaml.SafeLoader)
     except:
         raise Exception('It has not been possible to read the input file')
 
@@ -29,17 +32,20 @@ def main():
     os.chdir(a_air.run_dir)
     shutil.copy2(input_path, a_air.input_dir)
 
-    for template in a_air.templates:
+    for template in a_air.templates_list:
         template.generate_features(a_air=a_air)
         if template.add_to_msa:
-            sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
+            sequence_from_template = template.template_features_dict['template_sequence'][0].decode('utf-8')
             a_air.features.append_row_in_msa(sequence=sequence_from_template, msa_uniprot_accession_identifiers=template.pdb_id)
             logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa.')
         if template.add_to_templates:
-            a_air.features.append_new_template_features(new_template_features=template.template_features, custom_sum_prob=template.sum_prob)
+            a_air.features.append_new_template_features(new_template_features=template.template_features_dict, custom_sum_prob=template.sum_prob)
             logging.info(f'Template \"{template.pdb_id}\" was added to templates.')
 
     a_air.features.write_pkl(output_dir=f'{a_air.run_dir}/features.pkl')
+
+    for i in a_air.template_positions_list:
+        print(i)
 
     if a_air.run_af2:
         bioutils.run_af2(output_dir=a_air.run_dir, alphafold_paths=a_air.alphafold_paths)

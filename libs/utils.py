@@ -27,6 +27,10 @@ def print_msg_box(msg, indent=1, title=None):
     logging.info(box)
     logging.info('\n')
 
+def print_matrix(matrix: List):
+
+    print('\n'.join('\t'.join(map(str, row)) for row in matrix))
+
 def get_mandatory_value(input_load: str, value: str) -> str:
     #Read value, Raise exception if value could not be found
 
@@ -55,10 +59,27 @@ def get_key_for_value(value: str, search_dict: Dict) -> List:
 
     return list(search_dict.keys())[list(search_dict.values()).index(value)]
 
+def get_positions_by_chain(path_list: List, chain: str) -> str:
+    # Give a list of paths, return all the positions in the list
+    # that contain the chain
+    
+    return [path_list.index(path) for path in get_paths_by_chain(path_list, chain)]
+
+def get_paths_by_chain(path_list: List, search_chain: str) -> List:
+    # Return all the paths that contain the chain
+
+    return_list = []
+    for path in path_list:
+        if path is not None and get_chain_and_number(path)[0] == search_chain:
+            return_list.append(path)
+    return return_list
+
+
 def get_chain_and_number(path_pdb: str) -> List:
     #Given a path: ../../template_A1.pdb return A and 1
+    #Return CHAIN and NUMBER
     name = get_file_name(path_pdb)
-    code = name.split("_", 1)[-1]
+    code = name.split('_')[-1]
     return code[0], int(code[1:])
 
 def replace_last_number(text: str, value: str) -> str:
@@ -66,6 +87,19 @@ def replace_last_number(text: str, value: str) -> str:
 
     return re.sub(r'\d+.pdb', str(value), str(text))+'.pdb'
 
+def expand_residues(res: str) -> List:
+    #Expand a str formatted like this: 10-12, 32, 34
+    #To a list: [10,11,12,32,34]
+    modified_list = str(res).replace(' ', '').split(',')
+    return_list = []
+    for res in modified_list:
+        res_list = str(res).split('-')
+        if len(res_list) == 2:
+            res_list = list(range(int(res_list[0]), int(res_list[1])+1))
+        elif len(res_list) > 2:
+            raise Exception('Has not been possible to change residues.')
+        return_list.extend(map(int,res_list))
+    return return_list
 
 def rmsilent(file_path: str):
     #Remove file without error if it doesn't exist

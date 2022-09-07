@@ -118,7 +118,7 @@ def read_remark_350(pdb_path: str) -> Tuple[ List[str], List[float] ]:
         transformation = [[r11, r12, r13], [r21, r22, r23], [r31, r32, r33], [t1, t2, t3]]
         transformations_list.append(transformation)
 
-    chain_list = [line.split(':')[-1].replace(" ", "").split(',') for line in remark_350_text.split('\n')
+    chain_list = [line.split(':')[-1].replace(' ', '').split(',') for line in remark_350_text.split('\n')
                   if 'REMARK 350 APPLY THE FOLLOWING TO CHAINS:' in line][0]
 
     return chain_list, transformations_list
@@ -322,6 +322,7 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
     return diff_pdist_matrix.mean()
 
 def calculate_distance_pdist(res_list: List):
+
     coords = [res['CA'].coord for res in res_list]
     pdist = distance.pdist(coords, "euclidean")
     return distance.squareform(pdist)    
@@ -352,15 +353,12 @@ def find_interface_from_pisa(pdb_in_path: str) -> Dict:
 
     return interfaces_dict
 
-def calculate_best_offset(input_list: List[List]) -> List:
+def calculate_auto_offset(input_list: List[List]) -> List:
+    
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
     for element in combinated_list:
-        query_list = []
-        target_list = []
-        for query,target,value in element:
-            query_list.append(query)
-            target_list.append(target)
+        target_list = [target for _,target,_ in element]
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(element)
     score_list = []

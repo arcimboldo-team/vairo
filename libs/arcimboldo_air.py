@@ -1,11 +1,13 @@
 import os
 import shutil
 from typing import List, Dict
-from libs import bioutils, template, utils, features, alphafold_paths, template
+from urllib.parse import non_hierarchical
+from libs import bioutils, template, utils, features, alphafold_paths
 
 class ArcimboldoAir:
 
     def __init__ (self, parameters_dict: Dict):
+
         self.output_dir: str
         self.run_dir: str
         self.input_dir: str
@@ -15,10 +17,12 @@ class ArcimboldoAir:
         self.num_of_copies: int
         self.features: features.Features
         self.alphafold_paths: alphafold_paths.AlphaFoldPaths
-        self.templates: List[template.Template] = []
+        self.templates_list: List[template.Template] = []
         self.run_af2: bool = False
         self.verbose: bool = True
         self.glycines: int = 50
+        self.template_positions_list: List = [List]
+        self.reference: template.Template = None
         
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, "run"))
@@ -45,16 +49,68 @@ class ArcimboldoAir:
 
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
-        if not 'template' in parameters_dict:
+        if not 'templates' in parameters_dict:
             raise Exception('No templates detected. Check if the [[template]] tag exists.')
 
-        for parameters_template in parameters_dict.get('template'):
-            self.templates.append(template.Template(parameters_template, self.run_dir, self.input_dir, self.num_of_copies))
+        reference = parameters_dict.get('reference')
+        for parameters_template in parameters_dict.get('templates'):
+            new_template = template.Template(parameters_template, self.run_dir, self.input_dir, self.num_of_copies)
+            self.templates_list.append(new_template)
+            if new_template.pdb_id == reference:
+                self.reference = new_template
+
+        for element in self.templates_list:
+            element.set_reference_templates(self)
+
+        self.order_templates_with_restrictions()
+
+        if self.reference is None:
+            self.reference = self.templates_list[0]
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
         self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path, self.run_dir)
 
+    def get_template_by_id(self, pdb_id: str) -> template.Template:
+        #Return the template matching the pdb_id
+
+        for template in self.templates_list:
+            if template.pdb_id == pdb_id:
+                return template
+        return None
+
+
+    def order_templates_with_restrictions(self):
+        # Order the templates list in order to meet the requiered dependencies
+        # All the templates are goingt to be in order, so the references will be calculated
+        # before needed
+
+        new_templates_list = []
+        old_templates_list = self.templates_list
+
+        if self.reference is not None:
+            new_templates_list.append(self.reference)
+            old_templates_list.remove(self.reference)
+            
+        while old_templates_list:
+            deleted_items = []
+            for template in old_templates_list:
+                reference_list = template.get_reference_list()
+                if set(reference_list).issubset(new_templates_list):
+                    new_templates_list.append(template)
+                    deleted_items.append(template)
+            old_templates_list = [x for x in old_templates_list if (x not in deleted_items)]
+            if not deleted_items:
+                raise Exception('The match conditions could not be applied, there is an endless loop')
+        self.templates_list = new_templates_list
+        
+    def append_line_in_templates(self, new_list: List):
+
+        self.template_positions_list.append(new_list)
+
     def check_if_assembly(self):
+        #Check if it was assembled before the execution of the program
+        #We check if our 'G' pattern matches the input pdb
+        #If so, we can change the parameters to convert it to a multimer
 
         if self.num_of_copies == 1:
             split_result = self.query_sequence.split('G'*self.glycines)
@@ -64,6 +120,8 @@ class ArcimboldoAir:
                 self.query_sequence_assembled = self.generate_query_assembled()
 
     def generate_query_assembled(self) -> str:
+        #Transform the query_sequence to an assembled one
+        #Repeat the sequence num_of_copies times, and put 'G' between the copies
 
         return (self.query_sequence + self.glycines * 'G') * (int(self.num_of_copies)-1) + self.query_sequence
 
