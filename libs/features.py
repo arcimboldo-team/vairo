@@ -99,6 +99,10 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
 
     hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id+'_'+chain_id in detailed_lines[1]]
 
+    if not hits_list:
+        logging.info(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
+        return None
+
     detailed_lines = hits_list[0]
 
     file_id = f'{pdb_id.lower()}'

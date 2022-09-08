@@ -131,11 +131,12 @@ class Template:
                     chain_id=chain,
                     mmcif_db=a_air.run_dir)
 
-                g = features.Features(query_sequence=a_air.query_sequence)
-                g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
-                aux_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir, chain=chain)
-                extracted_chain_path = list(aux_dict.values())[0]
-                extracted_chain_dict[chain] = [extracted_chain_path]
+                if template_features is not None:
+                    g = features.Features(query_sequence=a_air.query_sequence)
+                    g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
+                    aux_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir, chain=chain)
+                    extracted_chain_path = list(aux_dict.values())[0]
+                    extracted_chain_dict[chain] = [extracted_chain_path]
                 
             if self.generate_multimer:
                 extracted_chain_dict = self.generate_multimer_chains(extracted_chain_dict)
