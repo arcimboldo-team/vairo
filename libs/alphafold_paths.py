@@ -50,12 +50,16 @@ class AlphaFoldPaths:
 
     def create_af2_script(self, output_dir: str):
 
+        previous_path_to_output_dir = '/'.join(output_dir.split('/')[:-1])
+        name = output_dir.split('/')[-1]
+
+
         with open(self.run_alphafold_bash, 'w') as bash_file:
             output_name = utils.get_file_name(output_dir)
             bash_file.write('#!/bin/bash\n')
             bash_file.write(f'python {self.run_alphafold_script} \\\n')
-            bash_file.write(f'--fasta_paths={output_name}.fasta \\\n')
-            bash_file.write(f'--output_dir={output_dir} \\\n')
+            bash_file.write(f'--fasta_paths={name}.fasta \\\n')
+            bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
             bash_file.write(f'--data_dir={self.af2_dbs_path} \\\n')
             bash_file.write(f'--uniref90_database_path={self.uniref90_db_path} \\\n')
             bash_file.write(f'--mgnify_database_path={self.mgnify_db_path} \\\n')
