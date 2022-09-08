@@ -24,9 +24,6 @@ def generate_hhsearch_db(template_cif_path: str, output_dir: str):
         for chain in model:
             amino_acid_res = []
             for res in chain:
-                # if res.id[2] != " ":
-                #     raise ValueError(f"PDB contains an insertion code at chain {chain.id} and residue index"
-                #                      f" {res.id[1]}. These are not supported.")
                 amino_acid_res.append(residue_constants.restype_3to1.get(res.resname, "X"))
 
             protein_str = "".join(amino_acid_res)

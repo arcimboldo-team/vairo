@@ -1,21 +1,65 @@
-output_dir = '/Users/pep/work/test/arcimboldo_air/output'
-fasta_path = '/Users/pep/work/test/arcimboldo_air/atzr.fasta'
-af2_dbs_path = '/Users/pep/work/test/arcimboldo_air/af2_dbs'
-num_of_copies = 1
+##COMPLETE INPUT
 
-[[template]]
-pdb = '8CY6'
-chain = 'A'
-add_to_msa = false
+output_dir: folder
+run_dir: folder
+verbose: true/false
+fasta_path: path to fasta file
+num_of_copies: int
+af2_dbs_path: path
+run_alphafold: true/false
+reference: pdbid or name of the file
 
-[[template]]
-pdb = '/Users/pep/work/test/arcimboldo_air/output/template.pdb'
-chain = 'A'
+templates:
+- pdb: pdbid or path
+  add_to_msa: true/false
+  add_to_templates: true/true
+  generate_multimer: true/false
+  sum_prob: int
+  aligned: true/false
+  reference: pdbid or name of the file
+  automatch: false
 
-#[[template]]
-#pdb = 
-#chain = 
-#add_to_msa =
-#add_to_templates =
-#polyala_res = {A=[10], B=[10-15]}
-#sum_prob = None
+  change_res: -> It can be a chain or 'ALL' so this can be applied to all chains
+    - All: int -> separated with ','. It can also contain ranges: 10-20
+      B:
+      resname: str -> string with residue name
+
+  match:
+    - chain A
+      position: None, Any, X
+      residues: 100-120
+      reference:
+      reference_chain:
+
+templates:
+- pdb: 3fxq
+  add_to_msa: false
+  add_to_templates: true
+  generate_multimer: false
+  change_res:
+    - resname: 'ALA'
+      B: 10-50
+  match:
+      - chain: B
+        position: 1
+        residues: 30
+      - chain: A
+        position: 2
+      - chain: A
+        position: 3
+
+- pdb: 3fzv
+  add_to_msa: false
+  add_to_templates: true
+  generate_multimer: true
+  match:
+    - chain: B
+      position: 1
+    - chain: B
+      position: 1
+
+- pdb: 4x6g
+  add_to_msa: false
+  add_to_templates: true
+  generate_multimer: true
+

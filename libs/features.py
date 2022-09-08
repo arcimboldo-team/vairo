@@ -262,13 +262,13 @@ class Features:
         self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
         self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape, len(self.msa_features['msa']))
 
-    def write_all_templates_in_features(self, output_dir: str) -> Dict:
+    def write_all_templates_in_features(self, output_dir: str, chain='A') -> Dict:
 
         templates_dict = {}
 
         for pdb_name in self.template_features['template_domain_names']:
             pdb = pdb_name.decode('utf-8')
-            pdb_path = os.path.join(output_dir,f'{pdb}_template.pdb')
+            pdb_path = os.path.join(output_dir,f'{pdb}1.pdb')
             templates_dict[pdb] = pdb_path
             with open(pdb_path, 'w') as output_pdb:
                 template_domain_index = np.where(self.template_features['template_domain_names'] == pdb_name)[0][0]
@@ -301,7 +301,7 @@ class Features:
                         bfact = '25.0'
                         atom_type = atom[0]
                         atom_line = bioutils.get_atom_line(remark=atom_remark, num=atom_num, name=atom_name, 
-                                                res=res_name, chain='A', resseq=res_num, x=x_coord, y=y_coord, z=z_coord,
+                                                res=res_name, chain=chain, resseq=res_num, x=x_coord, y=y_coord, z=z_coord,
                                                 occ=occ, bfact=bfact, atype=atom_type)
                         output_pdb.write(atom_line)
 

@@ -5,9 +5,11 @@ import json
 import os
 import logging
 import io
+import re
 import shutil
 import sys
-from typing import Dict
+from pathlib import Path
+from typing import Any, Dict, List
 
 def print_msg_box(msg, indent=1, title=None):
 
@@ -25,18 +27,82 @@ def print_msg_box(msg, indent=1, title=None):
     logging.info(box)
     logging.info('\n')
 
+def print_matrix(matrix: List):
+
+    print('\n'.join('\t'.join(map(str, row)) for row in matrix))
+
 def get_mandatory_value(input_load: str, value: str) -> str:
-    
+    #Read value, Raise exception if value could not be found
+
     read_value = input_load.get(value)
     if read_value is None:
         raise Exception(f'{value} is mandatory')
     return read_value
 
 def get_file_name(path: str) -> str:
+    #Get the name of the file, without path or extension
 
     return os.path.splitext(os.path.basename(path))[0]
 
+def get_main_path() -> str:
+    #Get the path of the main.py
+
+    return Path(__file__).parent.absolute()
+
+def get_working_dir() -> str:
+    # Get working directory
+
+    return os.getcwd()
+
+def get_key_for_value(value: str, search_dict: Dict) -> List:
+    #Given a value, get the list of all keys that contains that value
+
+    return list(search_dict.keys())[list(search_dict.values()).index(value)]
+
+def get_positions_by_chain(path_list: List, chain: str) -> str:
+    # Give a list of paths, return all the positions in the list
+    # that contain the chain
+    
+    return [path_list.index(path) for path in get_paths_by_chain(path_list, chain)]
+
+def get_paths_by_chain(path_list: List, search_chain: str) -> List:
+    # Return all the paths that contain the chain
+
+    return_list = []
+    for path in path_list:
+        if path is not None and get_chain_and_number(path)[0] == search_chain:
+            return_list.append(path)
+    return return_list
+
+
+def get_chain_and_number(path_pdb: str) -> List:
+    #Given a path: ../../template_A1.pdb return A and 1
+    #Return CHAIN and NUMBER
+    name = get_file_name(path_pdb)
+    code = name.split('_')[-1]
+    return code[0], int(code[1:])
+
+def replace_last_number(text: str, value: str) -> str:
+    #Replace the last number of text by the value
+
+    return re.sub(r'\d+.pdb', str(value), str(text))+'.pdb'
+
+def expand_residues(res: str) -> List:
+    #Expand a str formatted like this: 10-12, 32, 34
+    #To a list: [10,11,12,32,34]
+    modified_list = str(res).replace(' ', '').split(',')
+    return_list = []
+    for res in modified_list:
+        res_list = str(res).split('-')
+        if len(res_list) == 2:
+            res_list = list(range(int(res_list[0]), int(res_list[1])+1))
+        elif len(res_list) > 2:
+            raise Exception('Has not been possible to change residues.')
+        return_list.extend(map(int,res_list))
+    return return_list
+
 def rmsilent(file_path: str):
+    #Remove file without error if it doesn't exist
 
     for file in glob.glob(file_path):
         try:
@@ -46,10 +112,13 @@ def rmsilent(file_path: str):
                 raise
 
 def clean_files(dir : str):
-    
+    #Remove directory
+
     shutil.rmtree(dir)
 
 def parse_aleph_annotate(file_path: str) -> Dict:
+    #Read the output of aleph, return a dictionary containing:
+    #{"ah": 59, "bs": 8, "number_total_residues": 1350}
 
     secondary_structure_dict = {}
     with open(file_path) as f_in:
@@ -57,7 +126,9 @@ def parse_aleph_annotate(file_path: str) -> Dict:
     secondary_structure_dict = copy.deepcopy(data['annotation']['secondary_structure_content'])
     return secondary_structure_dict
 
-def sort_by_digit(container, item: int=0):
+def sort_by_digit(container: Any, item: int=0):
+    #Sort list or dictionary by a digit instead of str.
+    #Dict can be like this:
 
     if isinstance(container, dict):
         return sorted(container.items(), key=lambda x: int("".join([i for i in x[item] if i.isdigit()])))
@@ -65,7 +136,9 @@ def sort_by_digit(container, item: int=0):
         return sorted(container, key=lambda x: int("".join([i for i in x if i.isdigit()])))
 
 def create_dir(dir_path: str, delete_if_exists: bool = False):
-
+    #If directory not exists, create it
+    #If directory exists, delete it and create it
+    # 
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     elif delete_if_exists:
@@ -73,6 +146,7 @@ def create_dir(dir_path: str, delete_if_exists: bool = False):
         os.makedirs(dir_path)
 
 def create_logger():
+    #Create logger
 
     logstream = io.StringIO()
     formatter = logging.Formatter('%(message)s')
