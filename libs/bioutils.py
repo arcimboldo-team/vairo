@@ -5,7 +5,7 @@ import shutil
 import string
 import subprocess
 from typing import Dict, List, Tuple
-from Bio import SeqIO
+from Bio import SeqIO, Entrez
 from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure
 from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths

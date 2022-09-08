@@ -47,7 +47,7 @@ def get_file_name(path: str) -> str:
 def get_main_path() -> str:
     #Get the path of the main.py
 
-    return Path(__file__).parent.absolute()
+    return Path(__file__).parent.parent.absolute()
 
 def get_working_dir() -> str:
     # Get working directory
