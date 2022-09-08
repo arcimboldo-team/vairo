@@ -26,7 +26,7 @@ def plot_plddt(plot_path: str, ranked_models_dict: Dict):
     plt.ylabel('pLLDT')
     plt.savefig(plot_path)
 
-def analyse_output(str, a_air):
+def analyse_output(a_air):
     
     plots_path = f'{a_air.output_dir}/plots'
     templates_path = f'{a_air.output_dir}/templates'

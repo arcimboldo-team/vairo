@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import shutil
-from libs import analyse, arcimboldo_air, bioutils, features, utils
+from libs import analyse, bioutils, features, structure_air, utils
 import os
 import sys
 import logging
@@ -28,7 +28,7 @@ def main():
     except:
         raise Exception('It has not been possible to read the input file')
 
-    a_air = arcimboldo_air.ArcimboldoAir(parameters_dict=input_load)
+    a_air = structure_air.StructureAir(parameters_dict=input_load)
     os.chdir(a_air.run_dir)
     shutil.copy2(input_path, a_air.input_dir)
 

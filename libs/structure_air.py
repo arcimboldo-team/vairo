@@ -4,7 +4,7 @@ from typing import List, Dict
 from urllib.parse import non_hierarchical
 from libs import bioutils, template, utils, features, alphafold_paths
 
-class ArcimboldoAir:
+class StructureAir:
 
     def __init__ (self, parameters_dict: Dict):
 

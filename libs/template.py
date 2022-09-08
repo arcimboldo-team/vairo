@@ -1,14 +1,11 @@
 import copy
 import os
 import logging
-from pickle import NONE
-import re
 import shutil
-from Bio.PDB import PDBParser, Selection
 import pandas as pd
 
 from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 
 class Template:
@@ -18,7 +15,7 @@ class Template:
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
-        self.chain: str = ''
+        self.chains: List = []
         self.generate_multimer: bool = True if num_of_copies > 1 else False
         self.change_res_list: List[change_res.ChangeResidues] = []
         self.add_to_msa: bool = False
@@ -38,25 +35,26 @@ class Template:
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
         self.aligned = parameters_dict.get('aligned', self.aligned)
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
-        self.chain = parameters_dict.get('chain', self.chain)
         self.reference = parameters_dict.get('reference', self.reference)
         self.generate_multimer = parameters_dict.get('generate_multimer', self.generate_multimer)
         self.automatch = parameters_dict.get('automatch', self.automatch)
+        read_chain = parameters_dict.get('chain')
 
         structure = bioutils.get_structure(pdb_path=self.pdb_path)
         chains = [chain.get_id() for chain in structure.get_chains()]
 
         if num_of_copies == 1:
-            if self.chain == '':
+            if read_chain is None:
                 if len(chains) == 1:
-                    self.chain = chains.pop()
+                    self.chains = [chains.pop()]
                 else:
                     raise Exception('There is more than one chain in the structure. Select one in the configuration file.')
+            elif read_chain not in chains: 
+                raise Exception('The choosen chain does not exist in the structure.')
             else:
-                if not self.chain in chains:
-                    raise Exception('The choosen chain does not exist in the structure.')
+                self.chains = [read_chain]
         else:
-            self.chain = chains
+            self.chains = chains
 
         for paramaters_change_res in parameters_dict.get('change_res', self.change_res_list):
             change_res_dict = {}
@@ -124,10 +122,8 @@ class Template:
 
             query_seq_length = len(a_air.query_sequence)
             extracted_chain_dict = {}
-            structure = bioutils.get_structure(pdb_path=self.pdb_path)
-            chain_list = bioutils.get_chains(structure)
 
-            for chain in chain_list:
+            for chain in self.chains:
                 template_features = features.extract_template_features_from_pdb(
                     query_sequence=a_air.query_sequence,
                     hhr_path=output_hhr,
@@ -144,8 +140,6 @@ class Template:
             if self.generate_multimer:
                 extracted_chain_dict = self.generate_multimer_chains(extracted_chain_dict)
 
-            extracted_chain_list = [val for sublist in extracted_chain_dict.values() for val in sublist]
-
             for change_residues in self.change_res_list:
                 for chain, paths_list in extracted_chain_dict.items():
                     if chain in change_residues.change_dict.keys():
@@ -159,7 +153,7 @@ class Template:
             for i, pdb_path in enumerate(self.results_path_position):
                 if pdb_path is not None:
                     offset = query_seq_length * (i) + a_air.glycines * (i)
-                    new_pdb_path = f'{a_air.run_dir}/{offset}.pdb'
+                    new_pdb_path = f'{a_air.run_dir}/{self.pdb_id}_{offset}.pdb'
                     bioutils.change_chain(pdb_in_path=pdb_path,
                                     pdb_out_path=new_pdb_path,
                                     offset=offset, chain='A')
@@ -242,7 +236,7 @@ class Template:
     def choose_best_offset(self, reference, deleted_positions: List, pdb_list: List) -> Dict:
         
         results_pdist = []
-        results_pdist.append(['reference'] + [utils.get_file_name(file) for i, file in enumerate(reference.results_path_position) if not i in deleted_positions ])
+        results_pdist.append(['reference'] + [utils.get_file_name(file) for i, file in enumerate(reference.results_path_position) if i is not None and not i in deleted_positions ])
 
         results_algorithm = []
 
@@ -263,24 +257,23 @@ class Template:
         for x,y,_ in best_offset_list:
             return_offset_list[y] = pdb_list[x]
 
-        output_txt = f'/Users/pep/work/test/arcimboldo_air/2/output/best_offset.txt'
+        output_txt = f'{os.getcwd()}/best_offset.txt'
 
         with open(output_txt, 'w') as f_in:
 
-            f_in.write('Calculated with distances:\n')
+             f_in.write('Calculated with distances:\n')
 
-            print(results_pdist[1:])
-            print(results_pdist[0])
-            rows = []
-            for x in results_pdist[1:]:
-                rows.append(x)
-            df = pd.DataFrame(rows, columns=results_pdist[0])
-            f_in.write(df.to_markdown())        
+             print(results_pdist[1:])
+             print(results_pdist[0])
+             rows = []
+             for x in results_pdist[1:]:
+                 rows.append(x)
+             df = pd.DataFrame(rows, columns=results_pdist[0])
+             f_in.write(df.to_markdown())        
         
-            f_in.write('\n\n')
-            f_in.write('Best combination is (using pdist):')
-            f_in.write(f'{str(return_offset_list)}')
-
+             f_in.write('\n\n')
+             f_in.write('Best combination is (using pdist):')
+             f_in.write(f'{str(return_offset_list)}')
 
         return return_offset_list
 
