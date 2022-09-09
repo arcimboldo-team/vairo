@@ -50,7 +50,7 @@ class StructureAir:
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
         if not 'templates' in parameters_dict:
-            raise Exception('No templates detected. Check if the [[template]] tag exists.')
+            raise Exception('No templates detected. Launching job without any template')
 
         reference = parameters_dict.get('reference')
         for parameters_template in parameters_dict.get('templates'):
@@ -104,6 +104,8 @@ class StructureAir:
         self.templates_list = new_templates_list
         
     def append_line_in_templates(self, new_list: List):
+        #Add line to the templates matrix.
+        #The list contains the position of the chains
 
         self.template_positions_list.append(new_list)
 
