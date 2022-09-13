@@ -49,6 +49,10 @@ def get_main_path() -> str:
 
     return Path(__file__).parent.parent.absolute()
 
+def get_parent_folder(dir_path: str) -> str:
+
+    return Path(dir_path).parent.absolute()
+
 def get_working_dir() -> str:
     # Get working directory
 

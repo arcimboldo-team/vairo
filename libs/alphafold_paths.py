@@ -50,12 +50,10 @@ class AlphaFoldPaths:
 
     def create_af2_script(self, output_dir: str):
 
-        previous_path_to_output_dir = '/'.join(output_dir.split('/')[:-1])
-        name = output_dir.split('/')[-1]
-
+        previous_path_to_output_dir = utils.get_parent_folder(dir_path=output_dir)
+        name = utils.get_file_name(previous_path_to_output_dir)
 
         with open(self.run_alphafold_bash, 'w') as bash_file:
-            output_name = utils.get_file_name(output_dir)
             bash_file.write('#!/bin/bash\n')
             bash_file.write(f'python {self.run_alphafold_script} \\\n')
             bash_file.write(f'--fasta_paths={name}.fasta \\\n')

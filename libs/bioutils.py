@@ -2,10 +2,9 @@ import logging
 import os
 import re
 import shutil
-import string
 import subprocess
 from typing import Dict, List, Tuple
-from Bio import SeqIO, Entrez
+from Bio import SeqIO
 from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure
 from libs import utils
 from libs.alphafold_paths import AlphaFoldPaths
@@ -225,25 +224,28 @@ def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> bool:
 
     if len(chains) > 1:
         logging.info(f'PDB: {pdb_in_path} is already splitted in several chains: {chains}')
-        return
+    else:
+        old_mod = -1
+        for res in structure[0][chains[0]]:
+            resseq = get_resseq(res)
+            res_mod = resseq % total_length
 
-    for res in structure[0][chains[0]]:
-        resseq = get_resseq(res)
-        res_norm = resseq % total_length
-        if res_norm == 0 or res_norm > len(a_air.query_sequence):
-            if res_norm == len(a_air.query_sequence)+1:
+            if res_mod < old_mod:
                 chain_name = chr(ord(chain_name)+1)
                 chain = Chain.Chain(chain_name)
                 structure[0].add(chain)
-            delete_residues.append(res.id)
-        elif resseq > total_length and chain is not None:
-            delete_residues.append(res.id)
-            res.parent = chain
-            chain.add(res)
-            chain[res.id].id = (' ', res_norm, ' ')
+ 
+            if res_mod == 0 or res_mod > len(a_air.query_sequence):
+                delete_residues.append(res.id)
+            elif resseq > total_length and chain is not None:
+                delete_residues.append(res.id)
+                res.parent = chain
+                chain.add(res)
+                chain[res.id].id = (' ', res_mod, ' ')
+            old_mod = res_mod
 
-    for id in delete_residues:
-        structure[0][chains[0]].detach_child(id)
+        for id in delete_residues:
+            structure[0][chains[0]].detach_child(id)
 
     io = PDBIO()
     io.set_structure(structure)
@@ -268,14 +270,16 @@ def chain_splitter(pdb_in_path: str, pdb_out_path: str, chain: str):
     io.set_structure(structure)
     io.save(pdb_out_path, ChainSelect(chain))
 
-def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool=True):
+def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool = True, output_dir: str = ''):
 
     # WARNING: this function is only for PDBs containing only one chain and has to be executed in the same
     # query_pdb and target_pdb path
 
     if output_superposition:
+        name_query = utils.get_file_name(query_pdb)
+        name_target = utils.get_file_name(target_pdb)
         superpose_output = subprocess.Popen(['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all',
-                                             '-o', f'{query_pdb[:-4]}_superposed.pdb'],
+                                             '-o', f'{output_dir}/{name_query}_{name_target}_superposed.pdb'],
                                             stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
     else:
         superpose_output = subprocess.Popen(['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all'],
