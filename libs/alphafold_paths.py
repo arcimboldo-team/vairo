@@ -51,7 +51,7 @@ class AlphaFoldPaths:
     def create_af2_script(self, output_dir: str):
 
         previous_path_to_output_dir = utils.get_parent_folder(dir_path=output_dir)
-        name = utils.get_file_name(previous_path_to_output_dir)
+        name = utils.get_file_name(output_dir)
 
         with open(self.run_alphafold_bash, 'w') as bash_file:
             bash_file.write('#!/bin/bash\n')
