@@ -270,14 +270,16 @@ def chain_splitter(pdb_in_path: str, pdb_out_path: str, chain: str):
     io.set_structure(structure)
     io.save(pdb_out_path, ChainSelect(chain))
 
-def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool=True):
+def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool = True, output_dir: str = ''):
 
     # WARNING: this function is only for PDBs containing only one chain and has to be executed in the same
     # query_pdb and target_pdb path
 
     if output_superposition:
+        name_query = utils.get_file_name(query_pdb)
+        name_target = utils.get_file_name(target_pdb)
         superpose_output = subprocess.Popen(['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all',
-                                             '-o', f'{query_pdb[:-4]}_superposed.pdb'],
+                                             '-o', f'{output_dir}/{name_query}_{name_target}_superposed.pdb'],
                                             stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
     else:
         superpose_output = subprocess.Popen(['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all'],
