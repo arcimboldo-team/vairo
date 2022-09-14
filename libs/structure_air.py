@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 from typing import List, Dict
@@ -50,22 +51,22 @@ class StructureAir:
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
         if not 'templates' in parameters_dict:
-            raise Exception('No templates detected. Launching job without any template')
+            logging.info('No templates detected. Launching job without any template')
+        else:
+            reference = parameters_dict.get('reference')
+            for parameters_template in parameters_dict.get('templates'):
+                new_template = template.Template(parameters_template, self.run_dir, self.input_dir, self.num_of_copies)
+                self.templates_list.append(new_template)
+                if new_template.pdb_id == reference:
+                    self.reference = new_template
 
-        reference = parameters_dict.get('reference')
-        for parameters_template in parameters_dict.get('templates'):
-            new_template = template.Template(parameters_template, self.run_dir, self.input_dir, self.num_of_copies)
-            self.templates_list.append(new_template)
-            if new_template.pdb_id == reference:
-                self.reference = new_template
+            for element in self.templates_list:
+                element.set_reference_templates(self)
 
-        for element in self.templates_list:
-            element.set_reference_templates(self)
+            self.order_templates_with_restrictions()
 
-        self.order_templates_with_restrictions()
-
-        if self.reference is None:
-            self.reference = self.templates_list[0]
+            if self.reference is None:
+                self.reference = self.templates_list[0]
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
         self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path, self.run_dir)
