@@ -211,7 +211,10 @@ def print_features(pkl_in_path: str):
         features = pickle.load(input_file)
 
     for key in features.keys():
-        logging.info(f'{key} {features[key].shape}')
+        try:
+            logging.info(f'{key} {features[key].shape}')
+        except:
+            pass
 
     logging.info('\n')
     logging.info('MSA:')

@@ -43,9 +43,6 @@ def main():
 
     a_air.features.write_pkl(output_dir=f'{a_air.run_dir}/features.pkl')
 
-    for i in a_air.template_positions_list:
-        print(i)
-
     if a_air.run_af2:
         bioutils.run_af2(output_dir=a_air.run_dir, alphafold_paths=a_air.alphafold_paths)
         a_air.check_if_assembly()

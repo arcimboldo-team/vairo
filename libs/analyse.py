@@ -130,8 +130,8 @@ def analyse_output(a_air):
         if bool(pllddt_dict):
             rows = []
             for key in pllddt_dict.keys():
-                rows.append([key] + pllddt_dict[key])
-            df = pd.DataFrame(rows, columns=['ranked'] + list(pllddt_dict))
+                rows.append([key, pllddt_dict[key]])
+            df = pd.DataFrame(rows, columns=['ranked', 'pllddt'])
             f_in.write(df.to_markdown())
 
         f_in.write('\n\n')
