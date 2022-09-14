@@ -89,7 +89,7 @@ def analyse_output(a_air):
             rmsd, nalign, quality_q = bioutils.superpose_pdbs(query_pdb=ranked_path,
                                                             target_pdb=template_path,
                                                             output_pdb=output_pdb)
-                                                            
+
             results_list.append(f'{rmsd}, {nalign} ({res_list_length})')
         if template in rmsd_dict:
             num = num + 1
@@ -124,6 +124,17 @@ def analyse_output(a_air):
                 rows.append([key] + list(secondary_dict[key].values()))
             df = pd.DataFrame(rows, columns=['ranked'] + list(secondary_dict[key]))
             f_in.write(df.to_markdown())
+
+        f_in.write('\n\n')
+
+        if bool(pllddt_dict):
+            rows = []
+            for key in pllddt_dict.keys():
+                rows.append([key] + pllddt_dict[key])
+            df = pd.DataFrame(rows, columns=['ranked'] + list(pllddt_dict))
+            f_in.write(df.to_markdown())
+
+        f_in.write('\n\n')
 
 
 
