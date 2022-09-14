@@ -60,17 +60,8 @@ def analyse_output(a_air):
         new_ranked_path = os.path.join(a_air.run_dir, f'trimmed_{os.path.basename(ranked_path)}')
         ranked_models_dict[ranked] = new_ranked_path
         bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=new_ranked_path, a_air=a_air)
-
         if pllddt_dict[ranked] >= (PERCENTAGE_FILTER*max_plldt):
             ranked_filtered.append(ranked)
-            interfaces_dict = bioutils.find_interface_from_pisa(new_ranked_path)
-            for interfaces in interfaces_dict:
-                chain1, chain2 = list(interfaces)
-                dimers_path = os.path.join(interfaces_path, f'{ranked}_{chain1}{chain2}.pdb')
-                bioutils.split_dimers_in_pdb(pdb_in_path=new_ranked_path,
-                                    pdb_out_path=dimers_path,
-                                    chain1=chain1,
-                                    chain2=chain2)
 
     for template, template_path in template_dict.items():
         bioutils.split_chains_assembly(pdb_in_path=template_path, pdb_out_path=template_path, a_air=a_air)
@@ -96,6 +87,17 @@ def analyse_output(a_air):
             rmsd_dict[f'{template}_({num})'] = results_list
         else:
             rmsd_dict[f'{template}'] = results_list
+    
+    for ranked in ranked_filtered:
+        ranked_path = ranked_models_dict[ranked]
+        interfaces_dict = bioutils.find_interface_from_pisa(ranked_path)
+        for interfaces in interfaces_dict:
+            chain1, chain2 = list(interfaces)
+            dimers_path = os.path.join(interfaces_path, f'{ranked}_{chain1}{chain2}.pdb')
+            bioutils.split_dimers_in_pdb(pdb_in_path=ranked_path,
+                                pdb_out_path=dimers_path,
+                                chain1=chain1,
+                                chain2=chain2)
 
     secondary_dict = {}
     for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
