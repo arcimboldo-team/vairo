@@ -96,8 +96,8 @@ def read_remark_350(pdb_path: str) -> Tuple[ List[str], List[float] ]:
         match_end_in_last_350 = [m.end() for m in re.finditer(r'\n', pdb_text[match_last_350:])][-1]
         remark_350_text = pdb_text[match_biomolecules[0]:(match_last_350+match_end_in_last_350)]
     else:
-        print('(It seem there is more than one biological assembly from REMARK 350. Only'
-              ' "BIOMOLECULE 1" will be considered for the assembly generation)')
+        logging.info('It seem there is more than one biological assembly from REMARK 350. Only'
+              ' "BIOMOLECULE 1" will be considered for the assembly generation')
         remark_350_text = pdb_text[match_biomolecules[0]:match_biomolecules[1]-1]
 
     match_biomt1 = [m.start() for m in re.finditer(r'REMARK 350   BIOMT1', remark_350_text)]
@@ -270,20 +270,17 @@ def chain_splitter(pdb_in_path: str, pdb_out_path: str, chain: str):
     io.set_structure(structure)
     io.save(pdb_out_path, ChainSelect(chain))
 
-def superpose_pdbs(query_pdb: str, target_pdb: str, output_superposition: bool = True, output_dir: str = ''):
+def superpose_pdbs(query_pdb: str, target_pdb: str, output_pdb = None):
 
     # WARNING: this function is only for PDBs containing only one chain and has to be executed in the same
     # query_pdb and target_pdb path
 
-    if output_superposition:
-        name_query = utils.get_file_name(query_pdb)
-        name_target = utils.get_file_name(target_pdb)
-        superpose_output = subprocess.Popen(['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all',
-                                             '-o', f'{output_dir}/{name_query}_{name_target}_superposed.pdb'],
-                                            stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
-    else:
-        superpose_output = subprocess.Popen(['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all'],
-                                            stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
+    superpose_input_list = ['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all']
+    if output_pdb is not None:
+        superpose_input_list.extend(['-o', output_pdb])
+    
+    superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
+        
     for line in superpose_output.split('\n'):
         if 'r.m.s.d:' in line:
             rmsd = float(line.split()[1])

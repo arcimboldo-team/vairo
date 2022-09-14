@@ -22,7 +22,6 @@ def main():
     if not os.path.exists(input_path):
         raise Exception('The given path for the configuration file either does not exist or you do not have the permissions to read it')
     try:
-        #input_load = toml.load(input_path)
         with open(input_path) as f:
             input_load = yaml.load(f, Loader=yaml.SafeLoader)
     except:
