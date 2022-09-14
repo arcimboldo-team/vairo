@@ -10,6 +10,7 @@ from libs import bioutils, utils
 from Bio.PDB import PDBParser, Selection
 import matplotlib.pyplot as plt
 
+PERCENTAGE_FILTER = 0.8
 
 def plot_plddt(plot_path: str, ranked_models_dict: Dict) -> Dict:
     
@@ -60,7 +61,7 @@ def analyse_output(a_air):
         ranked_models_dict[ranked] = new_ranked_path
         bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=new_ranked_path, a_air=a_air)
 
-        if pllddt_dict[ranked] >= (0.6*max_plldt):
+        if pllddt_dict[ranked] >= (PERCENTAGE_FILTER*max_plldt):
             ranked_filtered.append(ranked)
             interfaces_dict = bioutils.find_interface_from_pisa(new_ranked_path)
             for interfaces in interfaces_dict:
@@ -85,9 +86,10 @@ def analyse_output(a_air):
                 output_pdb = os.path.join(a_air.output_dir, f'{ranked}_{template}.pdb')
             else:
                 output_pdb = None
-            rmsd, nalign, quality_q, aligned_res_list = bioutils.superpose_pdbs(query_pdb=ranked_path,
-                                                                       target_pdb=template_path,
-                                                                       output_pdb=output_pdb)
+            rmsd, nalign, quality_q = bioutils.superpose_pdbs(query_pdb=ranked_path,
+                                                            target_pdb=template_path,
+                                                            output_pdb=output_pdb)
+                                                            
             results_list.append(f'{rmsd}, {nalign} ({res_list_length})')
         if template in rmsd_dict:
             num = num + 1
