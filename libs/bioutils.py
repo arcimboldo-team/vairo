@@ -272,9 +272,6 @@ def chain_splitter(pdb_in_path: str, pdb_out_path: str, chain: str):
 
 def superpose_pdbs(query_pdb: str, target_pdb: str, output_pdb = None):
 
-    # WARNING: this function is only for PDBs containing only one chain and has to be executed in the same
-    # query_pdb and target_pdb path
-
     superpose_input_list = ['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all']
     if output_pdb is not None:
         superpose_input_list.extend(['-o', output_pdb])
@@ -289,18 +286,7 @@ def superpose_pdbs(query_pdb: str, target_pdb: str, output_pdb = None):
         if 'Nalign:' in line:
             nalign = line.split()[1]
 
-    try:
-        match1 = [m.start() for m in re.finditer("TEXT:Residue alignment:", superpose_output)][0]
-        match2 = [m.start() for m in re.finditer("`-------------'----------'-------------'", superpose_output)][0]
-        alignment_output = superpose_output[match1:match2].split('\n')[5:]
-        aligned_res_list = []
-        for line in alignment_output:
-            if line[23:25] == '**':
-                aligned_res_list.append(int(line[36:39].replace(' ', '')))
-    except:
-        rmsd, nalign, quality_q, aligned_res_list = None, None, None, None
-
-    return rmsd, nalign, quality_q, aligned_res_list
+    return rmsd, nalign, quality_q
 
 def pdist(query_pdb: str, target_pdb: str) -> List[List]:
 
