@@ -47,11 +47,13 @@ class StructureAir:
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
         self.query_sequence_assembled = self.generate_query_assembled()
+        include_pkl = True
 
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
         if not 'templates' in parameters_dict:
             logging.info('No templates detected. Launching job without any template')
+            include_pkl = False
         else:
             reference = parameters_dict.get('reference')
             for parameters_template in parameters_dict.get('templates'):
@@ -69,7 +71,9 @@ class StructureAir:
                 self.reference = self.templates_list[0]
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
-        self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path, self.run_dir)
+        self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path=af2_dbs_path, 
+                                                            output_dir=self.run_dir
+                                                            include_pkl=include_pkl)
 
     def get_template_by_id(self, pdb_id: str) -> template.Template:
         #Return the template matching the pdb_id

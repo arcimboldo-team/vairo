@@ -5,6 +5,7 @@ run_dir: folder
 verbose: true/false
 fasta_path: path to fasta file
 num_of_copies: int
+glycines: int
 af2_dbs_path: path
 run_alphafold: true/false
 reference: pdbid or name of the file
@@ -17,7 +18,6 @@ templates:
   sum_prob: int
   aligned: true/false
   reference: pdbid or name of the file
-  automatch: false
 
   change_res: -> It can be a chain or 'ALL' so this can be applied to all chains
     - All: int -> separated with ','. It can also contain ranges: 10-20

@@ -5,7 +5,7 @@ from libs import utils
 
 class AlphaFoldPaths:
 
-    def __init__ (self, af2_dbs_path: str, output_dir:str):
+    def __init__ (self, af2_dbs_path: str, output_dir:str, include_pkl:bool):
         self.run_alphafold_script: str
         self.run_alphafold_bash: str
         self.run_alphafold_log: str
@@ -17,12 +17,15 @@ class AlphaFoldPaths:
         self.bfd_db_path: str
         self.uniclust30_db_path: str
         self.pdb70_db_path: str
+        self.include_pkl: bool
 
         self.af2_dbs_path = af2_dbs_path
         self.run_alphafold_script = f'{utils.get_main_path()}/ALPHAFOLD/run_alphafold.py'
 
         self.run_alphafold_bash = f'{output_dir}/run_af2.sh'
         self.run_alphafold_log = f'{output_dir}/af2_output.log'
+
+        self.include_pkl = include_pkl
 
         for db in os.listdir(f'{self.af2_dbs_path}'):
             if 'mgnify' in db:
@@ -68,7 +71,7 @@ class AlphaFoldPaths:
             bash_file.write(f'--bfd_database_path={self.bfd_db_path} \\\n')
             bash_file.write(f'--uniclust30_database_path={self.uniclust30_db_path} \\\n')
             bash_file.write(f'--pdb70_database_path={self.pdb70_db_path} \\\n')
-            bash_file.write('--read_features_pkl=True\n')
+            bash_file.write(f'--read_features_pkl={self.include_pkl}\n')
             bash_file.close()
     
     def __repr__(self):
