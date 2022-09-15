@@ -72,7 +72,7 @@ class StructureAir:
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
         self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path=af2_dbs_path, 
-                                                            output_dir=self.run_dir
+                                                            output_dir=self.run_dir,
                                                             include_pkl=include_pkl)
 
     def get_template_by_id(self, pdb_id: str) -> template.Template:
