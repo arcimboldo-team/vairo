@@ -264,8 +264,6 @@ class Template:
 
              f_in.write('Calculated with distances:\n')
 
-             print(results_pdist[1:])
-             print(results_pdist[0])
              rows = []
              for x in results_pdist[1:]:
                  rows.append(x)
