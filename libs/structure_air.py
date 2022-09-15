@@ -155,7 +155,7 @@ class StructureAir:
         with open(self.alphafold_paths.run_alphafold_bash, 'w') as bash_file:
             bash_file.write('#!/bin/bash\n')
             bash_file.write(f'python {self.alphafold_paths.run_alphafold_script} \\\n')
-            bash_file.write(f'--fasta_paths={name}.fasta \\\n')
+            bash_file.write(f'--fasta_paths={name} \\\n')
             bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
             bash_file.write(f'--data_dir={self.alphafold_paths.af2_dbs_path} \\\n')
             bash_file.write(f'--uniref90_database_path={self.alphafold_paths.uniref90_db_path} \\\n')
