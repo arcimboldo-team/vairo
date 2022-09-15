@@ -25,7 +25,7 @@ class StructureAir:
         self.glycines: int = 50
         self.template_positions_list: List = [List]
         self.reference: template.Template = None
-        self.include_pkl: bool = True
+        self.use_features: bool = True
         
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, "run"))
@@ -47,7 +47,7 @@ class StructureAir:
         af2_dbs_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
-        self.include_pkl = parameters_dict.get('include_pkl', self.include_pkl)
+        self.use_features = parameters_dict.get('use_features', self.use_features)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
         self.query_sequence_assembled = self.generate_query_assembled()
 
@@ -147,7 +147,7 @@ class StructureAir:
         #paths to the outputdir and fasta.
 
         previous_path_to_output_dir = utils.get_parent_folder(dir_path=self.run_dir)
-        if self.include_pkl:
+        if self.use_features:
             name = f'{utils.get_file_name(self.run_dir)}.fasta'
         else:
             name = self.fasta_path
@@ -167,7 +167,7 @@ class StructureAir:
             bash_file.write(f'--bfd_database_path={self.alphafold_paths.bfd_db_path} \\\n')
             bash_file.write(f'--uniclust30_database_path={self.alphafold_paths.uniclust30_db_path} \\\n')
             bash_file.write(f'--pdb70_database_path={self.alphafold_paths.pdb70_db_path} \\\n')
-            bash_file.write(f'--read_features_pkl={self.include_pkl}\n')
+            bash_file.write(f'--read_features_pkl={self.use_features}\n')
             bash_file.close()
 
     def __repr__(self):
