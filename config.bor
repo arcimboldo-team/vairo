@@ -9,6 +9,7 @@ glycines: int
 af2_dbs_path: path
 run_alphafold: true/false
 reference: pdbid or name of the file
+experimental_pdb: pdbid or name of the file
 
 templates:
 - pdb: pdbid or path

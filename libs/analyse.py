@@ -107,9 +107,21 @@ def analyse_output(a_air):
         if os.path.exists(aleph_results_path):
             secondary_dict[ranked] = utils.parse_aleph_annotate(file_path=aleph_results_path)
 
+    experimental_dict = {}
+    if a_air.experimental_pdb is not None:
+        for ranked, ranked_path in ranked_models_dict.items():
+            rmsd, nalign, quality_q = bioutils.superpose_pdbs(query_pdb=ranked_path,
+                                                            target_pdb=a_air.experimental_pdb)
+            experimental_dict[ranked] = rmsd
+        for template, template_path in template_dict.items():
+            rmsd, nalign, quality_q = bioutils.superpose_pdbs(query_pdb=template_path,
+                                                            target_pdb=a_air.experimental_pdb)
+            experimental_dict[template] = rmsd            
+
     with open(analysis_path, 'w') as f_in:
 
-        ##rmsd
+        f_in.write('\n')
+        f_in.write('Superpositions of rankeds and templates\n')
         if bool(rmsd_dict):
             rows = []
             for key in rmsd_dict.keys():
@@ -118,7 +130,7 @@ def analyse_output(a_air):
             f_in.write(df.to_markdown())
 
         f_in.write('\n\n')
-
+        f_in.write('Secondary structure percentages calculated with ALEPH\n')
         if bool(secondary_dict):
             rows = []
             for key in secondary_dict.keys():
@@ -127,12 +139,21 @@ def analyse_output(a_air):
             f_in.write(df.to_markdown())
 
         f_in.write('\n\n')
-
+        f_in.write('rankeds PLLDDT\n')
         if bool(pllddt_dict):
             rows = []
             for key in pllddt_dict.keys():
                 rows.append([key, pllddt_dict[key]])
             df = pd.DataFrame(rows, columns=['ranked', 'pllddt'])
+            f_in.write(df.to_markdown())
+
+        f_in.write('\n\n')
+        f_in.write(f'Superposition with experimental structure {a_air.experimental_pdb}\n')
+        if bool(experimental_dict):
+            rows = []
+            for key in experimental_dict.keys():
+                rows.append([key, experimental_dict[key]])
+            df = pd.DataFrame(rows, columns=['pdb', 'rmsd'])
             f_in.write(df.to_markdown())
 
         f_in.write('\n\n')

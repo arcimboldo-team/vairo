@@ -26,6 +26,7 @@ class StructureAir:
         self.template_positions_list: List = [List]
         self.reference: template.Template = None
         self.use_features: bool = True
+        self.experimental_pdb: str = None
         
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, "run"))
@@ -50,6 +51,12 @@ class StructureAir:
         self.use_features = parameters_dict.get('use_features', self.use_features)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
         self.query_sequence_assembled = self.generate_query_assembled()
+        
+        experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
+        if experimental_pdb is not None:
+            experimental_pdb = bioutils.check_pdb(experimental_pdb, self.input_dir)
+            self.experimental_pdb = os.path.join(self.run_dir, os.path.basename(experimental_pdb))
+            bioutils.generate_multimer_from_pdb(experimental_pdb, self.experimental_pdb)
 
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
@@ -82,7 +89,6 @@ class StructureAir:
             if template.pdb_id == pdb_id:
                 return template
         return None
-
 
     def order_templates_with_restrictions(self):
         # Order the templates list in order to meet the requiered dependencies
