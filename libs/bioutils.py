@@ -72,15 +72,6 @@ def run_pisa(pdb_path: str) -> str:
     pisa_output = subprocess.Popen(['pisa', 'temp', '-350'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
     return pisa_output.decode('utf-8')
 
-def run_af2(output_dir:str, alphafold_paths:AlphaFoldPaths):
-    
-    logging.info('Running AF2')
-    alphafold_paths.create_af2_script(output_dir=output_dir)
-    af2_output = subprocess.Popen(['bash', alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, stderr = af2_output.communicate()
-    with open(alphafold_paths.run_alphafold_log, 'w') as f:
-        f.write(stdout.decode('utf-8'))
-
 def read_remark_350(pdb_path: str) -> Tuple[ List[str], List[float] ]:
 
     pdb_text = open(pdb_path, 'r').read()

@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import subprocess
 from typing import List, Dict
 from urllib.parse import non_hierarchical
 from libs import bioutils, template, utils, features, alphafold_paths
@@ -24,6 +25,7 @@ class StructureAir:
         self.glycines: int = 50
         self.template_positions_list: List = [List]
         self.reference: template.Template = None
+        self.use_features: bool = True
         
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, "run"))
@@ -45,6 +47,7 @@ class StructureAir:
         af2_dbs_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
+        self.use_features = parameters_dict.get('use_features', self.use_features)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
         self.query_sequence_assembled = self.generate_query_assembled()
 
@@ -69,7 +72,8 @@ class StructureAir:
                 self.reference = self.templates_list[0]
 
         self.features = features.Features(query_sequence=self.query_sequence_assembled)
-        self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path, self.run_dir)
+        self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path=af2_dbs_path, 
+                                                            output_dir=self.run_dir)
 
     def get_template_by_id(self, pdb_id: str) -> template.Template:
         #Return the template matching the pdb_id
@@ -127,6 +131,44 @@ class StructureAir:
         #Repeat the sequence num_of_copies times, and put 'G' between the copies
 
         return (self.query_sequence + self.glycines * 'G') * (int(self.num_of_copies)-1) + self.query_sequence
+
+    def run_alphafold(self):
+        #Create the script and run alphafold
+
+        logging.info('Running AF2')
+        self.create_af2_script()
+        af2_output = subprocess.Popen(['bash', self.alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout, stderr = af2_output.communicate()
+        with open(self.alphafold_paths.run_alphafold_log, 'w') as f:
+            f.write(stdout.decode('utf-8'))
+
+    def create_af2_script(self):
+        #Create the script to launch alphafold. It contins all the databases,
+        #paths to the outputdir and fasta.
+
+        previous_path_to_output_dir = utils.get_parent_folder(dir_path=self.run_dir)
+        if self.use_features:
+            name = f'{utils.get_file_name(self.run_dir)}.fasta'
+        else:
+            name = self.fasta_path
+
+        with open(self.alphafold_paths.run_alphafold_bash, 'w') as bash_file:
+            bash_file.write('#!/bin/bash\n')
+            bash_file.write(f'python {self.alphafold_paths.run_alphafold_script} \\\n')
+            bash_file.write(f'--fasta_paths={name} \\\n')
+            bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
+            bash_file.write(f'--data_dir={self.alphafold_paths.af2_dbs_path} \\\n')
+            bash_file.write(f'--uniref90_database_path={self.alphafold_paths.uniref90_db_path} \\\n')
+            bash_file.write(f'--mgnify_database_path={self.alphafold_paths.mgnify_db_path} \\\n')
+            bash_file.write(f'--template_mmcif_dir={self.alphafold_paths.mmcif_db_path} \\\n')
+            bash_file.write('--max_template_date=2022-03-09 \\\n')
+            bash_file.write(f'--obsolete_pdbs_path={self.alphafold_paths.obsolete_mmcif_db_path} \\\n')
+            bash_file.write('--model_preset=monomer \\\n')
+            bash_file.write(f'--bfd_database_path={self.alphafold_paths.bfd_db_path} \\\n')
+            bash_file.write(f'--uniclust30_database_path={self.alphafold_paths.uniclust30_db_path} \\\n')
+            bash_file.write(f'--pdb70_database_path={self.alphafold_paths.pdb70_db_path} \\\n')
+            bash_file.write(f'--read_features_pkl={self.use_features}\n')
+            bash_file.close()
 
     def __repr__(self):
         return f' \

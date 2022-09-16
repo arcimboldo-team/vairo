@@ -19,14 +19,13 @@ class Template:
         self.generate_multimer: bool = True if num_of_copies > 1 else False
         self.change_res_list: List[change_res.ChangeResidues] = []
         self.add_to_msa: bool = False
-        self.add_to_templates: bool = False
+        self.add_to_templates: bool = True
         self.sum_prob: bool = False
         self.aligned: bool = False
         self.template_features_dict: Dict = None
         self.match_restrict_list: List[match_restrictions.MatchRestrictions] = []
         self.results_path_position: List = []
         self.reference: str = None
-        self.automatch: bool = True
         
         self.pdb_path = self.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
@@ -37,7 +36,6 @@ class Template:
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
         self.reference = parameters_dict.get('reference', self.reference)
         self.generate_multimer = parameters_dict.get('generate_multimer', self.generate_multimer)
-        self.automatch = parameters_dict.get('automatch', self.automatch)
         read_chain = parameters_dict.get('chain')
 
         structure = bioutils.get_structure(pdb_path=self.pdb_path)

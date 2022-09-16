@@ -54,7 +54,6 @@ def analyse_output(a_air):
     pllddt_dict = plot_plddt(plot_path=plddt_plot_path, ranked_models_dict=ranked_models_dict)
     max_plldt = max(pllddt_dict.values())
 
-
     ranked_filtered = []
     for ranked, ranked_path in ranked_models_dict.items():
         new_ranked_path = os.path.join(a_air.run_dir, f'trimmed_{os.path.basename(ranked_path)}')
