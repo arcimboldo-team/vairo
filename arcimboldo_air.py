@@ -7,7 +7,6 @@ import sys
 import logging
 import yaml
 
-
 def main():
 
     utils.create_logger()

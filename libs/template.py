@@ -27,7 +27,7 @@ class Template:
         self.results_path_position: List = []
         self.reference: str = None
         
-        self.pdb_path = self.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
+        self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
@@ -71,21 +71,6 @@ class Template:
 
         for parameters_match_dict in parameters_dict.get('match', self.match_restrict_list):
             self.match_restrict_list.append(match_restrictions.MatchRestrictions(parameters_match_dict))
-
-    def check_pdb(self, pdb: str, output_dir: str) -> str:
-        #Check if pdb is a path, and if it doesn't exist, download it.
-        #If the pdb is a path, copy it to our input folder
-
-        if not os.path.exists(pdb):
-            bioutils.download_pdb(pdb_id=pdb, output_dir=output_dir)
-            pdb = f'{output_dir}/{pdb}.pdb'
-        else:
-            pdb_aux = f'{output_dir}/{os.path.basename(pdb)}'
-            if pdb != pdb_aux:
-                shutil.copy2(pdb, pdb_aux)
-                pdb = pdb_aux                
-
-        return pdb
 
     def get_reference_list(self) -> List:
         #Get all the references from another template
@@ -137,7 +122,7 @@ class Template:
                     extracted_chain_dict[chain] = [extracted_chain_path]
                 
             if self.generate_multimer:
-                extracted_chain_dict = self.generate_multimer_chains(extracted_chain_dict)
+                extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
 
             for change_residues in self.change_res_list:
                 for chain, paths_list in extracted_chain_dict.items():
@@ -175,7 +160,6 @@ class Template:
     def sort_chains_into_positions(self, chain_dict: Dict, a_air):
         
         composition_path_list = [None] * a_air.num_of_copies
-
         new_target_path_list = []
         deleted_positions = []
 
@@ -274,34 +258,6 @@ class Template:
 
         return return_offset_list
 
-    def generate_multimer_chains(self, template_dict: Dict) -> Dict:
-        #Read remark to get the transformations and the new chains
-        #Apply transformations to generate the new ones
-        #Rename chains with A1, A2...
-        #Store a dict with the relation between old chains and new chains
-        # Dict -> A: [path_to_A1, path_to_A2]
-
-        chain_list, transformations_list = bioutils.read_remark_350(self.pdb_path)
-        multimer_dict = {}
-        
-        logging.info('Assembly can be build using chain(s) '+ str(chain_list) + ' by applying the following transformations:')
-        for matrix in transformations_list:
-            logging.info(str(matrix))
-
-        for chain in chain_list:
-            pdb_path = template_dict[chain][0]
-            multimer_new_chains = []
-            for i, transformation in enumerate(transformations_list):
-                new_pdb_path = utils.replace_last_number(text=pdb_path, value=i+1)
-                bioutils.change_chain(pdb_in_path=pdb_path, 
-                            pdb_out_path=new_pdb_path,
-                            rot_tra_matrix=transformation)
-                multimer_new_chains.append(new_pdb_path)
-            multimer_dict[chain] = multimer_new_chains
-
-        self.chain = chain_list
-        return multimer_dict
-
     def __repr__(self):
         #Print class
 
@@ -309,7 +265,7 @@ class Template:
         pdb_path: {self.pdb_path} \n \
         pdb_id: {self.pdb_id} \n \
         template_path: {self.template_path} \n \
-        chain: {self.chain} \n \
+        chain: {self.chains} \n \
         add_to_msa: {self.add_to_msa} \n \
         add_to_templates: {self.add_to_templates} \n \
         sum_prob: {self.sum_prob} \n \
