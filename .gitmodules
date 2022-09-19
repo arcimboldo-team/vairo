@@ -1,0 +1,3 @@
+[submodule "ALEPH"]
+	path = ARCIMBOLDO_FULL/ALEPH
+	url = git@github.com:arcimboldo-team/aleph.git
