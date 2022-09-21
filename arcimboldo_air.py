@@ -31,6 +31,7 @@ def main():
     shutil.copy2(input_path, a_air.input_dir)
 
     if a_air.use_features:
+        logging.info('Generating features.pkl for alphafold2')
         for template in a_air.templates_list:
             template.generate_features(a_air=a_air)
             if template.add_to_msa:
@@ -41,7 +42,7 @@ def main():
                 a_air.features.append_new_template_features(new_template_features=template.template_features_dict, custom_sum_prob=template.sum_prob)
                 logging.info(f'Template \"{template.pdb_id}\" was added to templates.')
         a_air.features.write_pkl(output_dir=f'{a_air.run_dir}/features.pkl')
-
+    
     if a_air.run_af2:
         a_air.run_alphafold()
         a_air.check_if_assembly()
