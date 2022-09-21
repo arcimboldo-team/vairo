@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import sys
 import statistics
 import logging
@@ -56,35 +57,39 @@ def analyse_output(a_air):
 
     ranked_filtered = []
     for ranked, ranked_path in ranked_models_dict.items():
-        new_ranked_path = os.path.join(a_air.run_dir, f'trimmed_{os.path.basename(ranked_path)}')
-        ranked_models_dict[ranked] = new_ranked_path
-        bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=new_ranked_path, a_air=a_air)
+        new_pdb_path = os.path.join(a_air.run_dir, f'splitted_{os.path.basename(ranked_path)}')
+        bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=new_pdb_path, a_air=a_air)
         if pllddt_dict[ranked] >= (PERCENTAGE_FILTER*max_plldt):
             ranked_filtered.append(ranked)
+            shutil.copy2(new_pdb_path, os.path.join(a_air.output_dir, f'{ranked}.pdb'))
+            new_pdb_path = os.path.join(a_air.output_dir, f'{ranked}.pdb')
+                
+        ranked_models_dict[ranked] = new_pdb_path
 
     for template, template_path in template_dict.items():
         bioutils.split_chains_assembly(pdb_in_path=template_path, pdb_out_path=template_path, a_air=a_air)
 
     rmsd_dict = {}
     num = 0
-    for template, template_path in template_dict.items():
-        res_list_length = len([res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
-        results_list = []
-        for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
-            if ranked in ranked_filtered:
-                output_pdb = os.path.join(a_air.output_dir, f'{ranked}_{template}.pdb')
-            else:
-                output_pdb = None
-            rmsd, nalign, quality_q = bioutils.superpose_pdbs(query_pdb=ranked_path,
-                                                            target_pdb=template_path,
-                                                            output_pdb=output_pdb)
+    if template_dict:
+        for template, template_path in template_dict.items():
+            res_list_length = len([res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
+            results_list = []
+            for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
+                if ranked in ranked_filtered:
+                    output_pdb = os.path.join(a_air.output_dir, f'{ranked}_{template}.pdb')
+                else:
+                    output_pdb = None
+                rmsd, nalign, quality_q = bioutils.superpose_pdbs(query_pdb=ranked_path,
+                                                                target_pdb=template_path,
+                                                                output_pdb=output_pdb)
 
-            results_list.append(f'{rmsd}, {nalign} ({res_list_length})')
-        if template in rmsd_dict:
-            num = num + 1
-            rmsd_dict[f'{template}_({num})'] = results_list
-        else:
-            rmsd_dict[f'{template}'] = results_list
+                results_list.append(f'{rmsd}, {nalign} ({res_list_length})')
+            if template in rmsd_dict:
+                num = num + 1
+                rmsd_dict[f'{template}_({num})'] = results_list
+            else:
+                rmsd_dict[f'{template}'] = results_list
     
     for ranked in ranked_filtered:
         ranked_path = ranked_models_dict[ranked]
@@ -119,36 +124,36 @@ def analyse_output(a_air):
 
     with open(analysis_path, 'w') as f_in:
 
-        f_in.write('\n')
-        f_in.write('Superpositions of rankeds and templates\n')
         if bool(rmsd_dict):
+            f_in.write('\n')
+            f_in.write('Superpositions of rankeds and templates\n')
             rows = []
             for key in rmsd_dict.keys():
                 rows.append([key] + rmsd_dict[key])
             df = pd.DataFrame(rows, columns=['template'] + utils.sort_by_digit(list(ranked_models_dict)))
             f_in.write(df.to_markdown())
 
-        f_in.write('\n\n')
-        f_in.write('Secondary structure percentages calculated with ALEPH\n')
         if bool(secondary_dict):
+            f_in.write('\n\n')
+            f_in.write('Secondary structure percentages calculated with ALEPH\n')
             rows = []
             for key in secondary_dict.keys():
                 rows.append([key] + list(secondary_dict[key].values()))
             df = pd.DataFrame(rows, columns=['ranked'] + list(secondary_dict[key]))
             f_in.write(df.to_markdown())
 
-        f_in.write('\n\n')
-        f_in.write('rankeds PLLDDT\n')
         if bool(pllddt_dict):
+            f_in.write('\n\n')
+            f_in.write('rankeds PLLDDT\n')
             rows = []
             for key in pllddt_dict.keys():
                 rows.append([key, pllddt_dict[key]])
             df = pd.DataFrame(rows, columns=['ranked', 'pllddt'])
             f_in.write(df.to_markdown())
 
-        f_in.write('\n\n')
-        f_in.write(f'Superposition with experimental structure {a_air.experimental_pdb}\n')
         if bool(experimental_dict):
+            f_in.write('\n\n')
+            f_in.write(f'Superposition with experimental structure {a_air.experimental_pdb}\n')
             rows = []
             for key in experimental_dict.keys():
                 rows.append([key, experimental_dict[key]])
