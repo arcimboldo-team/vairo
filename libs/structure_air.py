@@ -176,7 +176,7 @@ class StructureAir:
             bash_file.write(f'--read_features_pkl={self.use_features}\n')
             bash_file.close()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f' \
         output_dir: {self.output_dir} \n \
         fasta_path: {self.fasta_path} \n \

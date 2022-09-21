@@ -1,8 +1,8 @@
 import os
 import re
-import shutil
 import sys
 import statistics
+import logging
 from typing import Dict, List
 import pandas as pd
 from ALEPH.aleph.core import ALEPH
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 PERCENTAGE_FILTER = 0.8
 
 def plot_plddt(plot_path: str, ranked_models_dict: Dict) -> Dict:
-    
+
     return_plddt_dict = {}
 
     plt.clf()
@@ -71,7 +71,6 @@ def analyse_output(a_air):
         res_list_length = len([res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
         results_list = []
         for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
-            output_superposition = True if ranked in ranked_filtered else False
             if ranked in ranked_filtered:
                 output_pdb = os.path.join(a_air.output_dir, f'{ranked}_{template}.pdb')
             else:

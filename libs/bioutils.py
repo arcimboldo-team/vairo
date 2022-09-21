@@ -187,13 +187,11 @@ def extract_cryst_card_pdb(pdb_in_path: str) -> str:
                 return cryst_card
     return None
 
-
 def get_atom_line(remark:str, num:int, name:str, res:int, chain:str, resseq, x:float, y:float, z:float,
                     occ:str, bfact:str, atype:str) -> str:
     #Given all elements of an atom, parse them in PDB format
 
     result = f'{remark:<6}{num:>5}  {name:<3}{res:>4} {chain}{resseq:>4}    {float(x):8.3f}{float(y):8.3f}{float(z):8.3f}{float(occ):6.2f}{float(bfact):6.2f}{atype:>12}\n'
-
     return result
 
 def parse_pdb_line(line: str) -> Dict:
@@ -299,7 +297,6 @@ def generate_multimer_from_pdb(pdb_in_path: str, pdb_out_path: str):
         for path in elements:
             result_chain_dict[chain_name] = path
             chain_name = chr(ord(chain_name)+1)
-    print(result_chain_dict)
     change_chains(result_chain_dict)
     merge_pdbs(utils.dict_values_to_list(result_chain_dict), pdb_out_path)
 

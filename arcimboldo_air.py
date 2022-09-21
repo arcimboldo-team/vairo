@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import shutil
-from libs import analyse, bioutils, features, structure_air, utils
+from libs import analyse, features, structure_air, utils
 import os
 import sys
 import logging
@@ -30,20 +30,20 @@ def main():
     os.chdir(a_air.run_dir)
     shutil.copy2(input_path, a_air.input_dir)
 
-    for template in a_air.templates_list:
-        template.generate_features(a_air=a_air)
-        if template.add_to_msa:
-            sequence_from_template = template.template_features_dict['template_sequence'][0].decode('utf-8')
-            a_air.features.append_row_in_msa(sequence=sequence_from_template, msa_uniprot_accession_identifiers=template.pdb_id)
-            logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa.')
-        if template.add_to_templates:
-            a_air.features.append_new_template_features(new_template_features=template.template_features_dict, custom_sum_prob=template.sum_prob)
-            logging.info(f'Template \"{template.pdb_id}\" was added to templates.')
-
-    a_air.features.write_pkl(output_dir=f'{a_air.run_dir}/features.pkl')
+    if a_air.use_features:
+        for template in a_air.templates_list:
+            template.generate_features(a_air=a_air)
+            if template.add_to_msa:
+                sequence_from_template = template.template_features_dict['template_sequence'][0].decode('utf-8')
+                a_air.features.append_row_in_msa(sequence=sequence_from_template, msa_uniprot_accession_identifiers=template.pdb_id)
+                logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa.')
+            if template.add_to_templates:
+                a_air.features.append_new_template_features(new_template_features=template.template_features_dict, custom_sum_prob=template.sum_prob)
+                logging.info(f'Template \"{template.pdb_id}\" was added to templates.')
+        a_air.features.write_pkl(output_dir=f'{a_air.run_dir}/features.pkl')
 
     if a_air.run_af2:
-        a_air.run_alphafold()
+        #a_air.run_alphafold()
         a_air.check_if_assembly()
         analyse.analyse_output(a_air=a_air)
     
