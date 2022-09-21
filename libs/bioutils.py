@@ -46,6 +46,21 @@ def cif2pdb(cif_in_path: str, pdb_out_path: str):
     io.set_structure(struc)
     io.save(f'{pdb_out_path}')
 
+def check_pdb(pdb: str, output_dir: str) -> str:
+    #Check if pdb is a path, and if it doesn't exist, download it.
+    #If the pdb is a path, copy it to our input folder
+
+    if not os.path.exists(pdb):
+        download_pdb(pdb_id=pdb, output_dir=output_dir)
+        pdb = f'{output_dir}/{pdb}.pdb'
+    else:
+        pdb_aux = f'{output_dir}/{os.path.basename(pdb)}'
+        if pdb != pdb_aux:
+            shutil.copy2(pdb, pdb_aux)
+            pdb = pdb_aux                
+
+    return pdb
+
 def extract_sequence(fasta_path: str) -> str:
 
     logging.info(f'Extracting sequence from {fasta_path}')
@@ -71,15 +86,6 @@ def run_pisa(pdb_path: str) -> str:
     subprocess.Popen(['pisa', 'temp', '-analyse', pdb_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     pisa_output = subprocess.Popen(['pisa', 'temp', '-350'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
     return pisa_output.decode('utf-8')
-
-def run_af2(output_dir:str, alphafold_paths:AlphaFoldPaths):
-    
-    logging.info('Running AF2')
-    alphafold_paths.create_af2_script(output_dir=output_dir)
-    af2_output = subprocess.Popen(['bash', alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    stdout, stderr = af2_output.communicate()
-    with open(alphafold_paths.run_alphafold_log, 'w') as f:
-        f.write(stdout.decode('utf-8'))
 
 def read_remark_350(pdb_path: str) -> Tuple[ List[str], List[float] ]:
 
@@ -181,13 +187,11 @@ def extract_cryst_card_pdb(pdb_in_path: str) -> str:
                 return cryst_card
     return None
 
-
 def get_atom_line(remark:str, num:int, name:str, res:int, chain:str, resseq, x:float, y:float, z:float,
                     occ:str, bfact:str, atype:str) -> str:
     #Given all elements of an atom, parse them in PDB format
 
     result = f'{remark:<6}{num:>5}  {name:<3}{res:>4} {chain}{resseq:>4}    {float(x):8.3f}{float(y):8.3f}{float(z):8.3f}{float(occ):6.2f}{float(bfact):6.2f}{atype:>12}\n'
-
     return result
 
 def parse_pdb_line(line: str) -> Dict:
@@ -251,24 +255,90 @@ def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> bool:
     io.set_structure(structure)
     io.save(pdb_out_path, preserve_atom_numbering = True)
 
-def chain_splitter(pdb_in_path: str, pdb_out_path: str, chain: str):
-    #Given a pdb_in and a chain, write a pdb_out containing only
-    #the specified chain
+def chain_splitter(pdb_path: str, chain: str = None) -> Dict:
+    #Given a pdb_in and a optional chain, write one or serveral
+    #pdbs containing each one a chain.
+    #If chain is specified, only one file with the specific chain will be created
+    #It will return a dictionary with the chain and the corresponding pdb
 
-    class ChainSelect(Select):
-        def __init__(self, chain):
-            self.chain = chain
+    return_chain_dict = {}
 
-        def accept_chain(self, chain):
-            if chain.get_id() == self.chain:
-                return 1
-            else:          
-                return 0
+    structure = get_structure(pdb_path=pdb_path)
+    chains = [chain.get_id() for chain in structure.get_chains()] if chain is None else [chain]
 
-    structure = get_structure(pdb_path=pdb_in_path)
-    io = PDBIO()               
-    io.set_structure(structure)
-    io.save(pdb_out_path, ChainSelect(chain))
+    for chain in chains:
+        new_pdb = os.path.join(os.path.dirname(pdb_path), f'{utils.get_file_name(pdb_path)}_{chain}1.pdb')
+        class ChainSelect(Select):
+            def __init__(self, chain):
+                self.chain = chain
+
+            def accept_chain(self, chain):
+                if chain.get_id() == self.chain:
+                    return 1
+                else:          
+                    return 0
+
+        io = PDBIO()               
+        io.set_structure(structure)
+        io.save(new_pdb, ChainSelect(chain))
+        return_chain_dict[chain] = new_pdb
+    
+    return return_chain_dict
+
+def generate_multimer_from_pdb(pdb_in_path: str, pdb_out_path: str):
+    #Given a pdb_in, create the multimer and save it in pdb_out
+    
+    shutil.copy2(pdb_in_path, pdb_out_path)
+    chain_dict = chain_splitter(pdb_out_path)
+    multimer_chain_dict = dict(sorted(generate_multimer_chains(pdb_out_path, chain_dict).items()))
+    chain_name = next(iter(multimer_chain_dict))
+    result_chain_dict = {}
+    for _, elements in multimer_chain_dict.items():
+        for path in elements:
+            result_chain_dict[chain_name] = path
+            chain_name = chr(ord(chain_name)+1)
+    change_chains(result_chain_dict)
+    merge_pdbs(utils.dict_values_to_list(result_chain_dict), pdb_out_path)
+
+def change_chains(chain_dict: Dict):
+    #The Dict has to be: {A: path}
+    #It will renaim the chains of the path to the
+    #chain indicated in the key
+
+    for key, value in chain_dict.items():
+        change_chain(pdb_in_path=value,
+                    pdb_out_path=value,
+                    chain=key)        
+
+def generate_multimer_chains(pdb_path:str, template_dict: Dict) -> Dict:
+    #Read remark to get the transformations and the new chains
+    #Apply transformations to generate the new ones
+    #Rename chains with A1, A2...
+    #Store a dict with the relation between old chains and new chains
+    # Dict -> A: [path_to_A1, path_to_A2]
+
+    chain_list, transformations_list = read_remark_350(pdb_path)
+    multimer_dict = {}
+    
+    logging.info('Assembly can be build using chain(s) '+ str(chain_list) + ' by applying the following transformations:')
+    for matrix in transformations_list:
+        logging.info(str(matrix))
+
+    for chain in chain_list:
+        if isinstance(template_dict[chain], list):
+            pdb_path = template_dict[chain][0]
+        else:
+            pdb_path = template_dict[chain]
+        multimer_new_chains = []
+        for i, transformation in enumerate(transformations_list):
+            new_pdb_path = utils.replace_last_number(text=pdb_path, value=i+1)
+            change_chain(pdb_in_path=pdb_path, 
+                    pdb_out_path=new_pdb_path,
+                    rot_tra_matrix=transformation)
+            multimer_new_chains.append(new_pdb_path)
+        multimer_dict[chain] = multimer_new_chains
+
+    return multimer_dict
 
 def superpose_pdbs(query_pdb: str, target_pdb: str, output_pdb = None):
 

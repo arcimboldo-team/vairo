@@ -49,6 +49,7 @@ def get_main_path() -> str:
 
     return Path(__file__).parent.parent.absolute()
 
+
 def get_parent_folder(dir_path: str) -> str:
 
     return Path(dir_path).parent.absolute()
@@ -57,6 +58,11 @@ def get_working_dir() -> str:
     # Get working directory
 
     return os.getcwd()
+
+def dict_values_to_list(input_dict: Dict):
+    # Given a Dict, return all the values from the dict in a list
+
+    return [value for value in input_dict.values()]
 
 def get_key_for_value(value: str, search_dict: Dict) -> List:
     #Given a value, get the list of all keys that contains that value
@@ -77,7 +83,6 @@ def get_paths_by_chain(path_list: List, search_chain: str) -> List:
         if path is not None and get_chain_and_number(path)[0] == search_chain:
             return_list.append(path)
     return return_list
-
 
 def get_chain_and_number(path_pdb: str) -> List:
     #Given a path: ../../template_A1.pdb return A and 1
@@ -167,4 +172,6 @@ def create_logger():
     logger.addHandler(stdoutHandler)
 
     logger.setLevel(logging.DEBUG)
+    logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
+
 
