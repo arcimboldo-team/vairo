@@ -41,7 +41,7 @@ class StructureAir:
         if not os.path.exists(fasta_path):
             raise Exception(f'{fasta_path} does not exist')
         else:
-            self.fasta_path = os.path.join(self.input_dir, os.path.basename(fasta_path))
+            self.fasta_path = os.path.join(self.input_dir, f'{os.path.basename(self.run_dir)}.fasta')
             shutil.copy2(fasta_path, self.fasta_path)
         
         self.num_of_copies = utils.get_mandatory_value(input_load = parameters_dict, value = 'num_of_copies')
@@ -61,7 +61,7 @@ class StructureAir:
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
         if not 'templates' in parameters_dict:
-            logging.info('No templates detected. Launching job without any template')
+            logging.info('No templates detected')
         else:
             reference = parameters_dict.get('reference')
             for parameters_template in parameters_dict.get('templates'):
@@ -152,16 +152,17 @@ class StructureAir:
         #Create the script to launch alphafold. It contins all the databases,
         #paths to the outputdir and fasta.
 
-        previous_path_to_output_dir = utils.get_parent_folder(dir_path=self.run_dir)
         if self.use_features:
-            name = f'{utils.get_file_name(self.run_dir)}.fasta'
+            previous_path_to_output_dir = utils.get_parent_folder(dir_path=self.run_dir)
         else:
-            name = self.fasta_path
+            logging.info('Generating alphafold2 script without custom features.pkl')
+            previous_path_to_output_dir = self.run_dir
+            
 
         with open(self.alphafold_paths.run_alphafold_bash, 'w') as bash_file:
             bash_file.write('#!/bin/bash\n')
             bash_file.write(f'python {self.alphafold_paths.run_alphafold_script} \\\n')
-            bash_file.write(f'--fasta_paths={name} \\\n')
+            bash_file.write(f'--fasta_paths={self.fasta_path} \\\n')
             bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
             bash_file.write(f'--data_dir={self.alphafold_paths.af2_dbs_path} \\\n')
             bash_file.write(f'--uniref90_database_path={self.alphafold_paths.uniref90_db_path} \\\n')
