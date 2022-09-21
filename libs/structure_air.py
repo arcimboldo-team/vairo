@@ -151,19 +151,14 @@ class StructureAir:
     def create_af2_script(self):
         #Create the script to launch alphafold. It contins all the databases,
         #paths to the outputdir and fasta.
-
-        if self.use_features:
-            previous_path_to_output_dir = utils.get_parent_folder(dir_path=self.run_dir)
-        else:
-            logging.info('Generating alphafold2 script without custom features.pkl')
-            previous_path_to_output_dir = self.run_dir
-            
+        
+        previous_path = utils.get_parent_folder(dir_path=self.run_dir)
 
         with open(self.alphafold_paths.run_alphafold_bash, 'w') as bash_file:
             bash_file.write('#!/bin/bash\n')
             bash_file.write(f'python {self.alphafold_paths.run_alphafold_script} \\\n')
             bash_file.write(f'--fasta_paths={self.fasta_path} \\\n')
-            bash_file.write(f'--output_dir={previous_path_to_output_dir} \\\n')
+            bash_file.write(f'--output_dir={previous_path} \\\n')
             bash_file.write(f'--data_dir={self.alphafold_paths.af2_dbs_path} \\\n')
             bash_file.write(f'--uniref90_database_path={self.alphafold_paths.uniref90_db_path} \\\n')
             bash_file.write(f'--mgnify_database_path={self.alphafold_paths.mgnify_db_path} \\\n')
