@@ -155,23 +155,51 @@ def create_dir(dir_path: str, delete_if_exists: bool = False):
         os.makedirs(dir_path)
 
 def create_logger():
-    #Create logger
 
-    logstream = io.StringIO()
-    formatter = logging.Formatter('%(message)s')
+    logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
+    logging.getLogger().setLevel(logging.NOTSET)
+
+    console = logging.StreamHandler(sys.stdout)
+    console.setLevel(logging.NOTSET)
+    formater = logging.Formatter('%(message)s')
+    console.setFormatter(formater)
+    logging.getLogger().addHandler(console)
+
+    file_handler = logging.FileHandler('output.log')
+    file_handler.setLevel(logging.NOTSET)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logging.getLogger().addHandler(file_handler)
+
+
+def create_logger():
+    #Create logger: The information will be stored in a buffer instead of a file. The buffer can be dumped to
+    #a file later.
 
     logger = logging.getLogger()
-    streamHandler = logging.StreamHandler(logstream)
-    streamHandler.setLevel(logging.DEBUG)
-    streamHandler.setFormatter(formatter)
-    logger.addHandler(streamHandler)
-
-    stdoutHandler = logging.StreamHandler(sys.stdout)
-    stdoutHandler.setLevel(logging.DEBUG)
-    stdoutHandler.setFormatter(formatter)
-    logger.addHandler(stdoutHandler)
-
-    logger.setLevel(logging.DEBUG)
     logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
+
+    test = io.StringIO()
+    stream_handler_ = logging.StreamHandler(test)
+    stream_handler_.setLevel(logging.NOTSET)
+    logger.addHandler(stream_handler_)
+
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setLevel(logging.NOTSET)
+    logger.addHandler(stdout_handler)
+
+    logger.setLevel(logging.NOTSET)
+
+def create_logger_dir(log_path: str):
+    #Create logger in a working directory with a specific name:
+    
+    logger = logging.getLogger()
+    logger_data = logger.handlers[0].stream.getvalue()
+    logger.removeHandler(logger.handlers[0])
+    with open(log_path, 'w+') as f_handle:
+        f_handle.write(logger_data)
+    file_handler = logging.FileHandler(log_path)
+    file_handler.setLevel(logging.NOTSET)
+    logger.addHandler(file_handler)
 
 

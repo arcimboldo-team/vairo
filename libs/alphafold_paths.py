@@ -8,7 +8,6 @@ class AlphaFoldPaths:
     def __init__ (self, af2_dbs_path: str, output_dir:str):
         self.run_alphafold_script: str
         self.run_alphafold_bash: str
-        self.run_alphafold_log: str
         self.af2_dbs_path: str
         self.mgnify_db_path: str
         self.uniref90_db_path: str
@@ -21,7 +20,6 @@ class AlphaFoldPaths:
         self.af2_dbs_path = af2_dbs_path
         self.run_alphafold_script = f'{utils.get_main_path()}/ALPHAFOLD/run_alphafold.py'
         self.run_alphafold_bash = f'{output_dir}/run_af2.sh'
-        self.run_alphafold_log = f'{output_dir}/af2_output.log'
 
         for db in os.listdir(f'{self.af2_dbs_path}'):
             if 'mgnify' in db:
@@ -51,7 +49,6 @@ class AlphaFoldPaths:
         return f' \
         run_alphafold_script: {self.run_alphafold_script} \n \
         run_alphafold_bash: {self.run_alphafold_bash} \n \
-        run_alphafold_log: {self.run_alphafold_log} \n \
         af2_dbs_path: {self.af2_dbs_path} \n \
         mgnify_db_path: {self.mgnify_db_path} \n \
         uniref90_db_path: {self.uniref90_db_path} \n \

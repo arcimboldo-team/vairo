@@ -3,7 +3,6 @@ import os
 import shutil
 import subprocess
 from typing import List, Dict
-from urllib.parse import non_hierarchical
 from libs import bioutils, template, utils, features, alphafold_paths
 
 class StructureAir:
@@ -14,6 +13,7 @@ class StructureAir:
         self.run_dir: str
         self.input_dir: str
         self.fasta_path: str
+        self.log_path: str
         self.query_sequence: str
         self.query_sequence_assembled: str
         self.num_of_copies: int
@@ -27,10 +27,12 @@ class StructureAir:
         self.reference: template.Template = None
         self.use_features: bool = True
         self.experimental_pdb: str = None
+
         
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
-        self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, "run"))
-        self.input_dir = os.path.join(self.run_dir, "input")
+        self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
+        self.input_dir = os.path.join(self.run_dir, 'input')
+        self.log_path = os.path.join(self.output_dir, 'output.log')
 
         utils.create_dir(self.output_dir)
         utils.create_dir(self.run_dir)
@@ -141,12 +143,14 @@ class StructureAir:
     def run_alphafold(self):
         #Create the script and run alphafold
 
-        logging.info('Running AF2')
+        logging.info('Running AlphaFold2')
         self.create_af2_script()
-        af2_output = subprocess.Popen(['bash', self.alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        stdout, stderr = af2_output.communicate()
-        with open(self.alphafold_paths.run_alphafold_log, 'w') as f:
-            f.write(stdout.decode('utf-8'))
+        with subprocess.Popen(['bash', self.alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, bufsize=1, universal_newlines=True) as pipe:
+            for line in pipe.stdout:
+                logging.debug(line, end='')
+
+        if pipe.returncode != 0:
+            raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
 
     def create_af2_script(self):
         #Create the script to launch alphafold. It contins all the databases,

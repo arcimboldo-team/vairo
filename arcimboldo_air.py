@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+from asyncio.log import logger
 import shutil
 from libs import analyse, features, structure_air, utils
 import os
@@ -10,6 +11,8 @@ import yaml
 def main():
 
     utils.create_logger()
+
+    logging.info('Starting ARCIMBOLDO_AIR')
 
     if len(sys.argv) != 2:
         raise Exception('Wrong command-line arguments.')
@@ -27,21 +30,24 @@ def main():
         raise Exception('It has not been possible to read the input file')
 
     a_air = structure_air.StructureAir(parameters_dict=input_load)
+    utils.create_logger_dir(a_air.log_path)
     os.chdir(a_air.run_dir)
     shutil.copy2(input_path, a_air.input_dir)
 
     if a_air.use_features:
-        logging.info('Generating features.pkl for alphafold2')
+        logging.info('Generating features.pkl for AlphaFold2')
         for template in a_air.templates_list:
             template.generate_features(a_air=a_air)
             if template.add_to_msa:
                 sequence_from_template = template.template_features_dict['template_sequence'][0].decode('utf-8')
                 a_air.features.append_row_in_msa(sequence=sequence_from_template, msa_uniprot_accession_identifiers=template.pdb_id)
-                logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa.')
+                logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
             if template.add_to_templates:
                 a_air.features.append_new_template_features(new_template_features=template.template_features_dict, custom_sum_prob=template.sum_prob)
-                logging.info(f'Template \"{template.pdb_id}\" was added to templates.')
+                logging.info(f'Template \"{template.pdb_id}\" was added to templates')
         a_air.features.write_pkl(output_dir=f'{a_air.run_dir}/features.pkl')
+    else:
+        logging.info('No features.pkl added, default AlphaFold2 run')
     
     if a_air.run_af2:
         a_air.run_alphafold()
@@ -54,7 +60,11 @@ def main():
         features.print_features(f'{a_air.run_dir}/features.pkl')
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except:
+        logging.error('ERROR:', exc_info=True)
+
 
 
 
