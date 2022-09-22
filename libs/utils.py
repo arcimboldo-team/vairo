@@ -154,23 +154,6 @@ def create_dir(dir_path: str, delete_if_exists: bool = False):
         shutil.rmtree(dir_path)
         os.makedirs(dir_path)
 
-def create_logger():
-
-    logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
-    logging.getLogger().setLevel(logging.NOTSET)
-
-    console = logging.StreamHandler(sys.stdout)
-    console.setLevel(logging.NOTSET)
-    formater = logging.Formatter('%(message)s')
-    console.setFormatter(formater)
-    logging.getLogger().addHandler(console)
-
-    file_handler = logging.FileHandler('output.log')
-    file_handler.setLevel(logging.NOTSET)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(formatter)
-    logging.getLogger().addHandler(file_handler)
-
 
 def create_logger():
     #Create logger: The information will be stored in a buffer instead of a file. The buffer can be dumped to
@@ -188,7 +171,7 @@ def create_logger():
     stdout_handler.setLevel(logging.INFO)
     logger.addHandler(stdout_handler)
 
-    logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.INFO)
 
 def create_logger_dir(log_path: str):
     #Create logger in a working directory with a specific name:
@@ -199,7 +182,7 @@ def create_logger_dir(log_path: str):
     with open(log_path, 'w+') as f_handle:
         f_handle.write(logger_data)
     file_handler = logging.FileHandler(log_path)
-    file_handler.setLevel(logging.ERROR)
+    file_handler.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
 
 
