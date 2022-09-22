@@ -12,22 +12,33 @@ def main():
 
     utils.create_logger()
 
-    logging.info('Starting ARCIMBOLDO_AIR')
+    logging.info('ARCIBOLDO_AIR')
+    logging.info('--------------')
 
-    if len(sys.argv) != 2:
-        raise Exception('Wrong command-line arguments.')
 
-    input_path = os.path.abspath(sys.argv[1])
+    try:
+        input_path = os.path.abspath(sys.argv[1])
+        if not os.path.isfile(input_path):
+            raise Exception
+    except:
+        logger.info('USAGE')
+        logger.info('------')
+        logger.info(open('config.bor').read())
 
-    logging.info(f'Reading the configuration file for ARCIMBOLDO_AIR at {input_path}')
-
+    logging.info('Starting ARCIMBOLDO_AIR...')
     if not os.path.exists(input_path):
         raise Exception('The given path for the configuration file either does not exist or you do not have the permissions to read it')
+    logging.info(f'Reading the configuration file for ARCIMBOLDO_AIR at {input_path}')
+
     try:
         with open(input_path) as f:
             input_load = yaml.load(f, Loader=yaml.SafeLoader)
     except:
         raise Exception('It has not been possible to read the input file')
+
+    
+
+
 
     a_air = structure_air.StructureAir(parameters_dict=input_load)
     utils.create_logger_dir(a_air.log_path)

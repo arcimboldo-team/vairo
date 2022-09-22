@@ -154,7 +154,6 @@ def create_dir(dir_path: str, delete_if_exists: bool = False):
         shutil.rmtree(dir_path)
         os.makedirs(dir_path)
 
-
 def create_logger():
     #Create logger: The information will be stored in a buffer instead of a file. The buffer can be dumped to
     #a file later.

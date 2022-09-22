@@ -1,15 +1,13 @@
-##COMPLETE INPUT
-
-output_dir: folder
-run_dir: folder
-verbose: true/false
-fasta_path: path to fasta file
-num_of_copies: int
-glycines: int
-af2_dbs_path: path
-run_alphafold: true/false
-reference: pdbid or name of the file
-experimental_pdb: pdbid or name of the file
+output_dir (mandatory): folder
+fasta_path (mandatory): path to fasta file
+num_of_copies (mandatory): int
+af2_dbs_path (mandatory): path
+run_dir (optional): folder
+verbose (optional): true/false
+glycines (optional): int
+run_alphafold (optional): true/false
+reference (optional): pdbid or name of the file
+experimental_pdb (optional): pdbid or name of the file
 
 templates:
 - pdb: pdbid or path
