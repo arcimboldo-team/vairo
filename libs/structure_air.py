@@ -147,6 +147,7 @@ class StructureAir:
         self.create_af2_script()
         with subprocess.Popen(['bash', self.alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, bufsize=1, universal_newlines=True) as p:
             print('entra')
+            print(p.stdout)
             for line in p.stdout:
                 print(line)
                 logging.info(line)
