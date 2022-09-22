@@ -171,8 +171,6 @@ def create_logger():
     stdout_handler.setLevel(logging.INFO)
     logger.addHandler(stdout_handler)
 
-    logger.setLevel(logging.INFO)
-
 def create_logger_dir(log_path: str):
     #Create logger in a working directory with a specific name:
     
