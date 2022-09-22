@@ -44,11 +44,15 @@ def get_file_name(path: str) -> str:
 
     return os.path.splitext(os.path.basename(path))[0]
 
+def get_readme() -> str:
+    #Get README.md file
+
+    return os.path.join(os.path.dirname(get_parent_folder(Path(__file__))), 'README.md')
+
 def get_main_path() -> str:
     #Get the path of the main.py
 
     return Path(__file__).parent.parent.absolute()
-
 
 def get_parent_folder(dir_path: str) -> str:
 
@@ -155,40 +159,23 @@ def create_dir(dir_path: str, delete_if_exists: bool = False):
         os.makedirs(dir_path)
 
 def create_logger():
-
-    logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
-    logging.getLogger().setLevel(logging.NOTSET)
-
-    console = logging.StreamHandler(sys.stdout)
-    console.setLevel(logging.NOTSET)
-    formater = logging.Formatter('%(message)s')
-    console.setFormatter(formater)
-    logging.getLogger().addHandler(console)
-
-    file_handler = logging.FileHandler('output.log')
-    file_handler.setLevel(logging.NOTSET)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(formatter)
-    logging.getLogger().addHandler(file_handler)
-
-
-def create_logger():
     #Create logger: The information will be stored in a buffer instead of a file. The buffer can be dumped to
     #a file later.
 
     logger = logging.getLogger()
     logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
+        
+    logger.setLevel(logging.DEBUG)
+
     test = io.StringIO()
     stream_handler_ = logging.StreamHandler(test)
-    stream_handler_.setLevel(logging.NOTSET)
+    stream_handler_.setLevel(logging.INFO)
     logger.addHandler(stream_handler_)
 
     stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(logging.NOTSET)
+    stdout_handler.setLevel(logging.INFO)
     logger.addHandler(stdout_handler)
-
-    logger.setLevel(logging.NOTSET)
 
 def create_logger_dir(log_path: str):
     #Create logger in a working directory with a specific name:
@@ -199,7 +186,7 @@ def create_logger_dir(log_path: str):
     with open(log_path, 'w+') as f_handle:
         f_handle.write(logger_data)
     file_handler = logging.FileHandler(log_path)
-    file_handler.setLevel(logging.NOTSET)
+    file_handler.setLevel(logging.DEBUG)
     logger.addHandler(file_handler)
 
 

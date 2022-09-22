@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 from asyncio.log import logger
+from pathlib import Path
 import shutil
 from libs import analyse, features, structure_air, utils
 import os
@@ -11,18 +12,26 @@ import yaml
 def main():
 
     utils.create_logger()
+    logging.info('')
+    logging.info('ARCIBOLDO_AIR')
+    logging.info('--------------')
+    logging.info('')
 
-    logging.info('Starting ARCIMBOLDO_AIR')
+    try:
+        input_path = os.path.abspath(sys.argv[1])
+        if not os.path.isfile(input_path):
+            raise Exception
+    except:
+        logger.info('USAGE')
+        logger.info('------')
+        logger.info(open(utils.get_readme()).read())
+        raise SystemExit
 
-    if len(sys.argv) != 2:
-        raise Exception('Wrong command-line arguments.')
-
-    input_path = os.path.abspath(sys.argv[1])
-
-    logging.info(f'Reading the configuration file for ARCIMBOLDO_AIR at {input_path}')
-
+    logging.info('Starting ARCIMBOLDO_AIR...')
     if not os.path.exists(input_path):
         raise Exception('The given path for the configuration file either does not exist or you do not have the permissions to read it')
+    logging.info(f'Reading the configuration file for ARCIMBOLDO_AIR at {input_path}')
+
     try:
         with open(input_path) as f:
             input_load = yaml.load(f, Loader=yaml.SafeLoader)
@@ -62,9 +71,9 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except SystemExit as e:
+        sys.exit(e)
     except:
-        logger.handlers[1].flush()
-        logger.handlers[0].flush()
         logging.error('ERROR:', exc_info=True)
 
 
