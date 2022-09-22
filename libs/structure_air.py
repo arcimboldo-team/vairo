@@ -145,17 +145,15 @@ class StructureAir:
 
         logging.info('Running AlphaFold2')
         self.create_af2_script()
-        
         af2_output = subprocess.Popen(['bash', self.alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         while True:
             line = af2_output.stdout.readline()
             if not line:
                 break
-            print(line.rstrip())
-        
-
-        print('acaba')
-        if p.returncode != 0:
+            logging.debug(line)
+        stdout, stderr = af2_output.communicate()
+        print(stdout, stderr)
+        if stderr.returncode != 0:
             raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
 
     def create_af2_script(self):
