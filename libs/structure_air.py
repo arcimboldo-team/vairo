@@ -150,9 +150,10 @@ class StructureAir:
             line = af2_output.stdout.readline()
             if not line:
                 break
-            logging.debug(line)
+            logging.debug(line.decode('utf-8'))
         stdout, stderr = af2_output.communicate()
-        print(stdout, stderr)
+        logging.info(af2_output.returncode)
+        logging.info(stderr)
         if stderr.returncode != 0:
             raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
 

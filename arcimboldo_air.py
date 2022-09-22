@@ -63,8 +63,6 @@ if __name__ == "__main__":
     try:
         main()
     except:
-        logger.handlers[1].flush()
-        logger.handlers[0].flush()
         logging.error('ERROR:', exc_info=True)
 
 
