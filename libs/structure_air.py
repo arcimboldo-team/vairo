@@ -145,8 +145,14 @@ class StructureAir:
 
         logging.info('Running AlphaFold2')
         self.create_af2_script()
-        with subprocess.Popen(['bash', self.alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, bufsize=1, universal_newlines=True) as p:
-            print('entra')
+        
+        af2_output = subprocess.Popen(['bash', self.alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        while True:
+            line = af2_output.stdout.readline()
+            if not line:
+                break
+            print(line.rstrip())
+        
 
         print('acaba')
         if p.returncode != 0:
