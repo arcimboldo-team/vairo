@@ -181,14 +181,14 @@ def create_logger():
 
     test = io.StringIO()
     stream_handler_ = logging.StreamHandler(test)
-    stream_handler_.setLevel(logging.NOTSET)
+    stream_handler_.setLevel(logging.INFO)
     logger.addHandler(stream_handler_)
 
     stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(logging.NOTSET)
+    stdout_handler.setLevel(logging.INFO)
     logger.addHandler(stdout_handler)
 
-    logger.setLevel(logging.NOTSET)
+    logger.setLevel(logging.ERROR)
 
 def create_logger_dir(log_path: str):
     #Create logger in a working directory with a specific name:
@@ -199,7 +199,7 @@ def create_logger_dir(log_path: str):
     with open(log_path, 'w+') as f_handle:
         f_handle.write(logger_data)
     file_handler = logging.FileHandler(log_path)
-    file_handler.setLevel(logging.NOTSET)
+    file_handler.setLevel(logging.ERROR)
     logger.addHandler(file_handler)
 
 
