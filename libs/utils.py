@@ -44,11 +44,15 @@ def get_file_name(path: str) -> str:
 
     return os.path.splitext(os.path.basename(path))[0]
 
+def get_readme() -> str:
+    #Get README.md file
+
+    return os.path.join(os.path.dirname(get_parent_folder(Path(__file__))), 'README.md')
+
 def get_main_path() -> str:
     #Get the path of the main.py
 
     return Path(__file__).parent.parent.absolute()
-
 
 def get_parent_folder(dir_path: str) -> str:
 

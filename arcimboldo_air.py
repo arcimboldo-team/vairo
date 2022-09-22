@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 from asyncio.log import logger
+from pathlib import Path
 import shutil
 from libs import analyse, features, structure_air, utils
 import os
@@ -11,10 +12,10 @@ import yaml
 def main():
 
     utils.create_logger()
-
+    logging.info('')
     logging.info('ARCIBOLDO_AIR')
     logging.info('--------------')
-
+    logging.info('')
 
     try:
         input_path = os.path.abspath(sys.argv[1])
@@ -23,7 +24,8 @@ def main():
     except:
         logger.info('USAGE')
         logger.info('------')
-        logger.info(open('config.bor').read())
+        logger.info(open(utils.get_readme()).read())
+        raise SystemExit
 
     logging.info('Starting ARCIMBOLDO_AIR...')
     if not os.path.exists(input_path):
@@ -35,10 +37,6 @@ def main():
             input_load = yaml.load(f, Loader=yaml.SafeLoader)
     except:
         raise Exception('It has not been possible to read the input file')
-
-    
-
-
 
     a_air = structure_air.StructureAir(parameters_dict=input_load)
     utils.create_logger_dir(a_air.log_path)
@@ -73,6 +71,8 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except SystemExit as e:
+        sys.exit(e)
     except:
         logging.error('ERROR:', exc_info=True)
 
