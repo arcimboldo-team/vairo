@@ -66,7 +66,6 @@ def empty_msa_features(query_sequence):
     features['msa_species_identifiers'] = np.array(species_ids, dtype=np.object_)
     return features
 
-
 def empty_template_features(query_sequence):
 
     ln = (len(query_sequence) if isinstance(query_sequence, str) else sum(len(s) for s in query_sequence))
