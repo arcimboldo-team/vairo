@@ -139,6 +139,23 @@ def parse_aleph_annotate(file_path: str) -> Dict:
     secondary_structure_dict = copy.deepcopy(data['annotation']['secondary_structure_content'])
     return secondary_structure_dict
 
+def parse_aleph_ss(file_path: str) -> Dict:
+    #Parse the aleph.txt file and get all the domains by chain
+
+    chain_res_dict = {}
+    with open(file_path) as f_in:
+        lines = f_in.readlines()
+        for line in lines:
+            splitted_text = line.split()
+            if len(splitted_text) == 12:
+                chain = splitted_text[3]
+                residues = expand_residues(f'{splitted_text[4]}-{splitted_text[6]}')
+                try:
+                    chain_res_dict[chain].append(residues)
+                except KeyError:
+                    chain_res_dict[chain] = [residues]
+    return chain_res_dict
+
 def sort_by_digit(container: Any, item: int=0):
     #Sort list or dictionary by a digit instead of str.
     #Dict can be like this:

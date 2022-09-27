@@ -67,7 +67,7 @@ class Template:
                 change_list = utils.expand_residues(change) 
                 change_chain_list = chains if chain.lower() == 'all' else [chain]
                 change_res_dict.update({key: list(set(change_list)) for key in change_chain_list})                       
-            self.change_res_list.append(change_res.ChangeResidues(change_dict=change_res_dict, resname=resname))
+            self.change_res_list.append(change_res.ChangeResidues(chain_res_dict=change_res_dict, resname=resname))
 
         for parameters_match_dict in parameters_dict.get('match', self.match_restrict_list):
             self.match_restrict_list.append(match_restrictions.MatchRestrictions(parameters_match_dict))
@@ -126,12 +126,12 @@ class Template:
 
             for change_residues in self.change_res_list:
                 for chain, paths_list in extracted_chain_dict.items():
-                    if chain in change_residues.change_dict.keys():
+                    if chain in change_residues.chain_res_dict.keys():
                         for path in paths_list:
                             change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
                                 
             merge_list = []
-            self.sort_chains_into_positions(extracted_chain_dict, a_air)
+            self.results_path_position = self.sort_chains_into_positions(extracted_chain_dict, a_air)
             a_air.append_line_in_templates(self.results_path_position)
 
             for i, pdb_path in enumerate(self.results_path_position):
@@ -157,7 +157,7 @@ class Template:
             
         self.template_features_dict = copy.deepcopy(template_features)
 
-    def sort_chains_into_positions(self, chain_dict: Dict, a_air):
+    def sort_chains_into_positions(self, chain_dict: Dict, a_air) -> List:
         
         composition_path_list = [None] * a_air.num_of_copies
         new_target_path_list = []
@@ -172,7 +172,7 @@ class Template:
             if match.residues is not None:
                 name = utils.get_file_name(path_pdb)
                 new_pdb = os.path.join(os.path.dirname(path_pdb), f'{i}_{name}.pdb')
-                match.residues.change_residues(path_pdb, new_pdb)
+                match.residues.delete_residues_inverse(path_pdb, new_pdb)
             if match.position is not None and match.position < len(composition_path_list):
                 composition_path_list[match.position] = new_pdb
                 deleted_positions.append(match.position)
@@ -204,7 +204,7 @@ class Template:
             if composition_path_list[i] is None:
                 composition_path_list[i] = path
 
-        self.results_path_position = composition_path_list
+        return composition_path_list
 
     def set_reference_templates(self, a_air):
         #Change pdb_id str to the Template reference

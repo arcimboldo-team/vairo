@@ -1,13 +1,11 @@
 #! /usr/bin/env python3
 
-from asyncio.log import logger
-from pathlib import Path
-import shutil
 from libs import analyse, features, structure_air, utils
 import os
 import sys
 import logging
 import yaml
+import shutil
 
 def main():
 
@@ -22,9 +20,9 @@ def main():
         if not os.path.isfile(input_path):
             raise Exception
     except:
-        logger.info('USAGE')
-        logger.info('------')
-        logger.info(open(utils.get_readme()).read())
+        logging.info('USAGE')
+        logging.info('------')
+        logging.info(open(utils.get_readme()).read())
         raise SystemExit
 
     logging.info('Starting ARCIMBOLDO_AIR...')
@@ -59,7 +57,9 @@ def main():
         logging.info('No features.pkl added, default AlphaFold2 run')
     
     if a_air.run_af2:
+        logging.info('Running AlphaFold2')
         a_air.run_alphafold()
+        logging.info('AlphaFold2 has finshed succesfully. Proceeding to analyse the results')
         a_air.check_if_assembly()
         analyse.analyse_output(a_air=a_air)
     
@@ -67,6 +67,8 @@ def main():
         utils.clean_files(dir=a_air.run_dir)
     else:
         features.print_features(f'{a_air.run_dir}/features.pkl')
+
+    logging.info('ARCIMBOLDO_AIR has finished succesfully')
 
 if __name__ == "__main__":
     try:

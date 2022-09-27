@@ -143,7 +143,6 @@ class StructureAir:
     def run_alphafold(self):
         #Create the script and run alphafold
 
-        logging.info('Running AlphaFold2')
         self.create_af2_script()
         af2_output = subprocess.Popen(['bash', self.alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         while True:

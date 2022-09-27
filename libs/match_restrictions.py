@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict
 from libs import change_res, utils
 
 
@@ -17,7 +17,7 @@ class MatchRestrictions:
         if self.residues is not None:
             change_list = utils.expand_residues(self.residues)
             new_dict = {self.chain: change_list}
-            self.residues = change_res.ChangeResidues(change_dict=new_dict, resname='', inverted=True)
+            self.residues = change_res.ChangeResidues(change_res_dict=new_dict)
         self.position =  parameters_dict.get('position', self.position)
         self.reference =  parameters_dict.get('reference', self.reference)
         self.reference_chain =  parameters_dict.get('reference_chain', self.reference_chain)
