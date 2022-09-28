@@ -30,23 +30,19 @@ templates:
   aligned (optional, bool, false): If the template has already been aligned with the sequence.
   reference (optional, string, ''): Existing pdbid or path to a pdb
   
-  change_res: -> It can be a chain or 'ALL' so this can be applied to all chains
-    - All: int -> separated with ','. It can also contain ranges: 10-20
-      B:
+  change_res: -> Change residues of the template. It can be a chain or 'ALL' so this can be applied to all chains
+    - {chain_name or ALL, to apply for a change or all changes}: (mandatory, range): Selection of residues to apply the modification
       resname: str -> string with residue name
 
-  match:
-    - chain A
-      position: None, Any, X
-      residues: 100-120
-      reference:
-      reference_chain:
-
-
+  match: -> Set restrictions in order to insert the template into the sequence copies
+    - chain (mandatory, string): Set the position of the chain
+      position: (optional, string, None, Any, X): Set an specific position
+      residues: (optional, int range, ''): Selection of residues to set in a position. Can be a range or an integer (Ex: 100-120, 100)
+      reference:  (optional, string, ''): Existing pdbid or path to a pdb
+      reference_chain: (optional, string, ''): Existing reference chain. The match chain will be fixed in the same position as the reference chain.
 
 
 Example of a configuration.bor:
-
 
 templates:
 - pdb: 3fxq
@@ -56,6 +52,7 @@ templates:
   change_res:
     - resname: 'ALA'
       B: 10-50
+      A: 1-10
   match:
       - chain: B
         position: 1
@@ -70,8 +67,6 @@ templates:
   add_to_templates: true
   generate_multimer: true
   match:
-    - chain: B
-      position: 1
     - chain: B
       position: 1
 

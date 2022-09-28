@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import shutil
@@ -40,21 +41,28 @@ def analyse_output(a_air):
     interfaces_path = f'{a_air.output_dir}/interfaces'
     analysis_path = f'{plots_path}/analysis.txt'
     aleph_results_path = f'{a_air.run_dir}/output.json'
-    aleph_txt_path = f'{a_air.run_dir}/aleph_ranked.txt'
     plddt_plot_path = f'{plots_path}/plddt.png'
 
     utils.create_dir(dir_path=plots_path,delete_if_exists=True)
     utils.create_dir(dir_path=templates_path,delete_if_exists=True)
     utils.create_dir(dir_path=interfaces_path,delete_if_exists=True)
 
+    ##Read all templates and rankeds, if there are no ranked, raise an error
     template_dict = a_air.features.write_all_templates_in_features(output_dir=templates_path)
     ranked_models_dict = {utils.get_file_name(ranked): os.path.join(a_air.run_dir, ranked) for ranked in os.listdir(a_air.run_dir) if re.match('ranked_[0-9]+.pdb', ranked)}
     if not bool(ranked_models_dict):
-        raise Exception('No ranked PDBs found')
+        logging.info('No ranked PDBs found')
+        return
 
+    ##Create a plot with the ranked plddts, also, calculate the maximum plddt
     plddt_dict = plot_plddt(plot_path=plddt_plot_path, ranked_models_dict=ranked_models_dict)
     max_plddt = max(plddt_dict.values())
 
+    ##Split the templates with chains
+    for template, template_path in template_dict.items():
+        bioutils.split_chains_assembly(pdb_in_path=template_path, pdb_out_path=template_path, a_air=a_air)
+
+    ##Filter rankeds, split them in chains.
     ranked_filtered = []
     for ranked, ranked_path in ranked_models_dict.items():
         new_pdb_path = os.path.join(a_air.run_dir, f'splitted_{os.path.basename(ranked_path)}')
@@ -63,56 +71,48 @@ def analyse_output(a_air):
             ranked_filtered.append(ranked)
             shutil.copy2(new_pdb_path, os.path.join(a_air.output_dir, f'{ranked}.pdb'))
             new_pdb_path = os.path.join(a_air.output_dir, f'{ranked}.pdb')
-                
         ranked_models_dict[ranked] = new_pdb_path
 
-    for template, template_path in template_dict.items():
-        bioutils.split_chains_assembly(pdb_in_path=template_path, pdb_out_path=template_path, a_air=a_air)
-
+    ##Superpose each template with all the rankeds.
     rmsd_dict = {}
-    num = 0
     if template_dict:
-        for template, template_path in template_dict.items():
+        for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
             res_list_length = len([res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
-            results_list = []
-            for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
-                if ranked in ranked_filtered:
-                    output_pdb = os.path.join(a_air.output_dir, f'{ranked}_{template}.pdb')
-                else:
-                    output_pdb = None
-                rmsd, nalign, quality_q = bioutils.superpose_pdbs(query_pdb=ranked_path,
-                                                                target_pdb=template_path,
-                                                                output_pdb=output_pdb)
+            for template, template_path in template_dict.items():
+                rmsd, nalign, quality_q = bioutils.superpose_pdbs([ranked_path, template_path])
+                try:
+                    rmsd_dict[f'{template}'].append(f'{rmsd}, {nalign} ({res_list_length})')
+                except KeyError:
+                    rmsd_dict[f'{template}'] = [f'{rmsd}, {nalign} ({res_list_length})']
 
-                results_list.append(f'{rmsd}, {nalign} ({res_list_length})')
-            if template in rmsd_dict:
-                num = num + 1
-                rmsd_dict[f'{template}_({num})'] = results_list
-            else:
-                rmsd_dict[f'{template}'] = results_list
+            if ranked in ranked_filtered:
+                output_pdb = os.path.join(a_air.output_dir, f'{ranked}_superposed.pdb')
+                bioutils.superpose_pdbs([ranked_path] + list(template_dict.values()), output_pdb=output_pdb)
 
+    ##Use aleph to generate domains and calculate secondary structure percentage
     secondary_dict = {}
     for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
         aleph_file = os.path.join(a_air.run_dir, f'aleph_{ranked}.txt')
         with open(aleph_file, 'w') as sys.stdout:
-            ALEPH.annotate_pdb_model_with_aleph(ranked_path)
+            ALEPH.annotate_pdb_model(reference=ranked_path, strictness_ah=0.45, strictness_bs=0.2, peptide_length=3, 
+                                    width_pic=1, height_pic=1, write_graphml=False, write_pdb=True)
         sys.stdout = sys.__stdout__
         if os.path.exists(aleph_results_path):
             secondary_dict[ranked] = utils.parse_aleph_annotate(file_path=aleph_results_path)
+        
+        aleph_txt_path = f'{a_air.run_dir}/aleph_{ranked}.txt'
         if ranked in ranked_filtered and os.path.exists(aleph_txt_path):
             bioutils.find_interface_from_pisa(ranked_path, interfaces_path, aleph_txt_path)
 
-
+    ##Superpose the experimental pdb with all the rankeds and templates
     experimental_dict = {}
     if a_air.experimental_pdb is not None:
         for ranked, ranked_path in ranked_models_dict.items():
-            rmsd, nalign, quality_q = bioutils.superpose_pdbs(query_pdb=ranked_path,
-                                                            target_pdb=a_air.experimental_pdb)
+            rmsd, nalign, quality_q = bioutils.superpose_pdbs([ranked_path, a_air.experimental_pdb])
             experimental_dict[ranked] = rmsd
         for template, template_path in template_dict.items():
-            rmsd, nalign, quality_q = bioutils.superpose_pdbs(query_pdb=template_path,
-                                                            target_pdb=a_air.experimental_pdb)
-            experimental_dict[template] = rmsd            
+            rmsd, nalign, quality_q = bioutils.superpose_pdbs([template_path, a_air.experimental_pdb])
+            experimental_dict[template] = rmsd       
 
     with open(analysis_path, 'w') as f_in:
 

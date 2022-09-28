@@ -342,15 +342,16 @@ def generate_multimer_chains(pdb_path:str, template_dict: Dict) -> Dict:
 
     return multimer_dict
 
-def superpose_pdbs(query_pdb: str, target_pdb: str, output_pdb = None):
-
-    superpose_input_list = ['superpose', f'{query_pdb}', '-s', '-all', f'{target_pdb}', '-s', '-all']
+def superpose_pdbs(pdb_list: List, output_pdb = None) -> List:
+    
+    superpose_input_list = ['superpose']
+    for pdb in pdb_list:
+        superpose_input_list.extend([pdb, '-s', 'all'])
     if output_pdb is not None:
         superpose_input_list.extend(['-o', output_pdb])
     
     superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
-        
-    rmsd, quality_q, nalign = None
+    rmsd, quality_q, nalign = None,  None, None
     for line in superpose_output.split('\n'):
         if 'r.m.s.d:' in line:
             rmsd = float(line.split()[1])
@@ -358,7 +359,6 @@ def superpose_pdbs(query_pdb: str, target_pdb: str, output_pdb = None):
             quality_q = line.split()[2]
         if 'Nalign:' in line:
             nalign = line.split()[1]
-
     return rmsd, nalign, quality_q
 
 def pdist(query_pdb: str, target_pdb: str) -> List[List]:
@@ -382,10 +382,12 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
     return diff_pdist_matrix.mean()
 
 def calculate_distance_pdist(res_list: List):
-
-    coords = [res['CA'].coord for res in res_list]
-    pdist = distance.pdist(coords, "euclidean")
-    return distance.squareform(pdist)    
+    try:
+        coords = [res['CA'].coord for res in res_list]
+        pdist = distance.pdist(coords, "euclidean")
+        return distance.squareform(pdist)
+    except:
+        return 0
 
 def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path: str):
 
@@ -402,13 +404,6 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path:
 
     match1 = [m.start() for m in re.finditer(' LIST OF INTERFACES', pisa_output)][0]
     match2 = [m.start() for m in re.finditer(' ##:  serial number', pisa_output)][0]
-
-    aleph_file = f'aleph_ranked.txt'
-    with open(aleph_file, 'w') as sys.stdout:
-        ALEPH.annotate_pdb_model(reference=pdb_in_path, strictness_ah=0.45, strictness_bs=0.2, peptide_length=3, 
-                                width_pic=1, height_pic=1, write_graphml=False, write_pdb=True)
-    sys.stdout = sys.__stdout__
-
     for line in pisa_output[match1:match2].split('\n')[4:-2]:
         line = line.split('|')
         area = line[3][:8].replace(' ', '')
@@ -471,7 +466,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path:
         change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
         change.delete_residues_inverse(dimers_path, dimers_path)
         change.change_bfactors(dimers_path, dimers_path)
-    
+
 def calculate_auto_offset(input_list: List[List]) -> List:
     
     combinated_list = list(itertools.product(*input_list))

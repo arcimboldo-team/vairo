@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-from libs import analyse, features, structure_air, utils
+from libs import analyse, bioutils, features, structure_air, utils
 import os
 import sys
 import logging
@@ -62,6 +62,8 @@ def main():
         logging.info('AlphaFold2 has finshed succesfully. Proceeding to analyse the results')
         a_air.check_if_assembly()
         analyse.analyse_output(a_air=a_air)
+
+    print(a_air.template_positions_list)
     
     if not a_air.verbose:
         utils.clean_files(dir=a_air.run_dir)
