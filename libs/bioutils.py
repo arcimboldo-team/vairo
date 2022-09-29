@@ -346,7 +346,7 @@ def superpose_pdbs(pdb_list: List, output_pdb = None) -> List:
     
     superpose_input_list = ['superpose']
     for pdb in pdb_list:
-        superpose_input_list.extend([pdb, '-s', 'all'])
+        superpose_input_list.extend([pdb, '-s', '-all'])
     if output_pdb is not None:
         superpose_input_list.extend(['-o', output_pdb])
     
