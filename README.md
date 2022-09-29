@@ -37,7 +37,7 @@ templates:
   match: -> Set restrictions in order to insert the template into the sequence copies
     - chain (mandatory, string): Set the position of the chain
       position: (optional, string, None, Any, X): Set an specific position
-      residues: (optional, int range, ''): Selection of residues to set in a position. Can be a range or an integer (Ex: 100-120, 100)
+      residues: (optional, int range, ''): Selection of residues to set in a position. Can be a range or an integer (Ex: 100-120, 100), otherwise, the whole chain is going to be selected.
       reference:  (optional, string, ''): Existing pdbid or path to a pdb
       reference_chain: (optional, string, ''): Existing reference chain. The match chain will be fixed in the same position as the reference chain.
 

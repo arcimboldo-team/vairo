@@ -363,6 +363,9 @@ def superpose_pdbs(pdb_list: List, output_pdb = None) -> List:
 
 def pdist(query_pdb: str, target_pdb: str) -> List[List]:
 
+    if query_pdb is None or target_pdb is None:
+        return 0
+
     structure_query = PDBParser(QUIET=1).get_structure('query', query_pdb)
     res_query_list = [res.id[1] for res in Selection.unfold_entities(structure_query, 'R')]
 
@@ -478,10 +481,10 @@ def calculate_auto_offset(input_list: List[List]) -> List:
     score_list = []
     for element in trimmed_list:
         score_list.append(sum(z for _,_,z in element))
-    max_value = max(score_list)
-    max_index = score_list.index(max_value)
+    min_value = min(score_list)
+    min_index = score_list.index(min_value)
 
-    return trimmed_list[max_index]
+    return trimmed_list[min_index]
 
 def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain1: List, chain2: List):
 

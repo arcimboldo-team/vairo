@@ -98,6 +98,7 @@ class Template:
         output_hhr = f'{a_air.run_dir}/output.hhr'
         pdb70_path = f'{a_air.run_dir}/pdb70'
 
+        logging.info(f'Generating features of template {self.pdb_id}')
         if not self.aligned:
             bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
             hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
@@ -120,7 +121,7 @@ class Template:
                     aux_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir, chain=chain)
                     extracted_chain_path = list(aux_dict.values())[0]
                     extracted_chain_dict[chain] = [extracted_chain_path]
-                
+
             if self.generate_multimer:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
 
@@ -173,9 +174,14 @@ class Template:
                 name = utils.get_file_name(path_pdb)
                 new_pdb = os.path.join(os.path.dirname(path_pdb), f'{i}_{name}.pdb')
                 match.residues.delete_residues_inverse(path_pdb, new_pdb)
-            if match.position is not None and match.position < len(composition_path_list):
-                composition_path_list[match.position] = new_pdb
-                deleted_positions.append(match.position)
+            if match.position != '' and match.position != 'None':
+                if (int(match.position) < len(composition_path_list)):
+                    composition_path_list[match.position] = new_pdb
+                    deleted_positions.append(match.position)
+                    continue
+                logging.info(f'Position exceed the length of the sequence, selecting a random position for chain {match.chain}')
+            elif match.position == 'None':
+                chain_dict.pop(match.chain)
                 continue
             if match.reference is not None and match.reference_chain is not None:
                 positions = utils.get_positions_by_chain(match.reference.results_path_position, match.reference_chain)
@@ -193,16 +199,20 @@ class Template:
             number_of_chains = len(utils.get_paths_by_chain(new_target_path_list+composition_path_list, chain))
             for i in range(number_of_chains, number_of_paths):
                 new_target_path_list.append(paths[i])
-        
+
         reference = self.reference if self.reference is not None else None
         reference = a_air.reference if reference is None else reference
 
         if reference != self:
             new_target_path_list = self.choose_best_offset(reference, deleted_positions, new_target_path_list)
-
-        for i, path in enumerate(new_target_path_list):
-            if composition_path_list[i] is None:
-                composition_path_list[i] = path
+            for i, path in enumerate(new_target_path_list):
+                if composition_path_list[i] is None:
+                    composition_path_list[i] = path
+        else:
+            for path in new_target_path_list:
+                for i in range(0, len(composition_path_list)):
+                    if composition_path_list[i] is None:
+                        composition_path_list[i] = path
 
         return composition_path_list
 
@@ -219,8 +229,8 @@ class Template:
     def choose_best_offset(self, reference, deleted_positions: List, pdb_list: List) -> Dict:
         
         results_pdist = []
-        results_pdist.append(['reference'] + [utils.get_file_name(file) for i, file in enumerate(reference.results_path_position) if i is not None and not i in deleted_positions ])
-
+        
+        results_pdist.append(['reference'] + [file for i, file in enumerate(reference.results_path_position) if not i in deleted_positions ])
         results_algorithm = []
 
         for x, query_pdb in enumerate(pdb_list):

@@ -144,9 +144,11 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     template_sequence = '-' * (seq_length)
     template_res_list = [res for res in Selection.unfold_entities(structure, "R")
                             if res.get_parent().id == chain_id and res.id[0] != 'W']
+    
     for res in template_res_list:
-        template_sequence = template_sequence[:res.id[1]] + three_to_one[res.resname] + template_sequence[
-                                                                                        res.id[1]:]
+        if res.resname != 'X' and res.resname != '-':
+            template_sequence = template_sequence[:res.id[1]] + three_to_one[res.resname] + template_sequence[
+                                                                                            res.id[1]:]
     template_sequence = np.array([template_sequence[:seq_length + 1]])[0]
 
     atom_masks = []

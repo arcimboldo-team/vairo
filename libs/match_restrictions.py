@@ -1,3 +1,5 @@
+from curses.ascii import isdigit
+import logging
 from typing import Dict
 from libs import change_res, utils
 
@@ -7,7 +9,7 @@ class MatchRestrictions:
     def __init__ (self, parameters_dict: Dict):
         
         self.chain: str
-        self.position: str = None
+        self.position: str = ''
         self.residues: change_res.ChangeRes = None
         self.reference = None
         self.reference_chain: str = None
@@ -19,6 +21,10 @@ class MatchRestrictions:
             new_dict = {self.chain: change_list}
             self.residues = change_res.ChangeResidues(change_res_dict=new_dict)
         self.position =  parameters_dict.get('position', self.position)
+        if self.position != '' and self.position != 'None' and not str(self.position).isdigit():
+            raise Exception(f'Error setting position in match {self.chain}: {self.position}')
+        if str(self.position).isdigit():
+            self.position = self.position - 1
         self.reference =  parameters_dict.get('reference', self.reference)
         self.reference_chain =  parameters_dict.get('reference_chain', self.reference_chain)
 

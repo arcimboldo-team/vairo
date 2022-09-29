@@ -63,7 +63,6 @@ def main():
         a_air.check_if_assembly()
         analyse.analyse_output(a_air=a_air)
 
-    print(a_air.template_positions_list)
     
     if not a_air.verbose:
         utils.clean_files(dir=a_air.run_dir)
