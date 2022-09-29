@@ -165,11 +165,11 @@ class Template:
         deleted_positions = []
 
         for i, match in enumerate(self.match_restrict_list):
+            if match.chain is None or match.chain not in chain_dict:
+                logging.info('Restriction could not be applied')
+                continue
             new_pdb = chain_dict[match.chain][0]
             path_pdb = chain_dict[match.chain][0]
-            if match.chain is None or match.chain not in chain_dict:
-                logging.Logger.info('Restriction could not be applied')
-                continue
             if match.residues is not None:
                 name = utils.get_file_name(path_pdb)
                 new_pdb = os.path.join(os.path.dirname(path_pdb), f'{i}_{name}.pdb')
@@ -213,6 +213,7 @@ class Template:
                 for i in range(0, len(composition_path_list)):
                     if composition_path_list[i] is None:
                         composition_path_list[i] = path
+                        break
 
         return composition_path_list
 
@@ -244,7 +245,7 @@ class Template:
             results_pdist.append([utils.get_file_name(query_pdb)] + reference_pdist_list)
 
         best_offset_list = bioutils.calculate_auto_offset(results_algorithm)
-        return_offset_list = [None] * (len(best_offset_list)+len(deleted_positions))
+        return_offset_list = [None] * (len(reference.results_path_position))
         for x,y,_ in best_offset_list:
             return_offset_list[y] = pdb_list[x]
 
