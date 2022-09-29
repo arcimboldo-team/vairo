@@ -150,8 +150,9 @@ class StructureAir:
             if not line:
                 break
             logging.debug(line.decode('utf-8'))
-        if af2_output.returncode != 0:
-            raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
+        logging.debug(f'AlphaFold2 return code is {af2_output.returncode}')
+        #if af2_output.returncode != 0:
+        #    raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
 
     def create_af2_script(self):
         #Create the script to launch alphafold. It contins all the databases,
