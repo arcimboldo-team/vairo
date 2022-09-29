@@ -244,9 +244,7 @@ class Template:
             results_pdist.append([utils.get_file_name(query_pdb)] + reference_pdist_list)
 
         best_offset_list = bioutils.calculate_auto_offset(results_algorithm)
-
         return_offset_list = [None] * (len(best_offset_list)+len(deleted_positions))
-
         for x,y,_ in best_offset_list:
             return_offset_list[y] = pdb_list[x]
 

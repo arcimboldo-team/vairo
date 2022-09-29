@@ -3,13 +3,10 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 from typing import Dict, List, Tuple
 from Bio import SeqIO
 from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure
-from ALEPH.aleph.core import ALEPH
 from libs import change_res, utils
-from libs.alphafold_paths import AlphaFoldPaths
 from scipy.spatial import distance
 import numpy as np
 import itertools
@@ -364,7 +361,7 @@ def superpose_pdbs(pdb_list: List, output_pdb = None) -> List:
 def pdist(query_pdb: str, target_pdb: str) -> List[List]:
 
     if query_pdb is None or target_pdb is None:
-        return 0
+        return 1
 
     structure_query = PDBParser(QUIET=1).get_structure('query', query_pdb)
     res_query_list = [res.id[1] for res in Selection.unfold_entities(structure_query, 'R')]
@@ -373,6 +370,9 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
     res_target_list = [res.id[1] for res in Selection.unfold_entities(structure_target, 'R')]
 
     common_res_list = list(set(res_query_list) & set(res_target_list))
+
+    if not common_res_list:
+        return 1
 
     query_common_list = [res for res in Selection.unfold_entities(structure_query, 'R') if res.id[1] in common_res_list]
     query_matrix = calculate_distance_pdist(res_list=query_common_list)
@@ -385,12 +385,9 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
     return diff_pdist_matrix.mean()
 
 def calculate_distance_pdist(res_list: List):
-    try:
-        coords = [res['CA'].coord for res in res_list]
-        pdist = distance.pdist(coords, "euclidean")
-        return distance.squareform(pdist)
-    except:
-        return 0
+    coords = [res['CA'].coord for res in res_list]
+    pdist = distance.pdist(coords, "euclidean")
+    return distance.squareform(pdist)
 
 def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path: str):
 
@@ -478,6 +475,7 @@ def calculate_auto_offset(input_list: List[List]) -> List:
         target_list = [target for _,target,_ in element]
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(element)
+    
     score_list = []
     for element in trimmed_list:
         score_list.append(sum(z for _,_,z in element))
