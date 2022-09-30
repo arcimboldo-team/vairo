@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import re
@@ -5,7 +6,7 @@ import shutil
 import subprocess
 from typing import Dict, List, Tuple
 from Bio import SeqIO
-from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure
+from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
 from libs import change_res, utils
 from scipy.spatial import distance
 import numpy as np
@@ -215,44 +216,52 @@ def parse_pdb_line(line: str) -> Dict:
 
     return parsed_dict
 
-def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air):
+def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> List:
+    #Split the assembly with serveral chains. The assembly is spitted 
+    #by the query sequence length. Also, we have to take into account 
+    #the glycines, So every query_sequence+glycines we can find a chain.
+    #We return the list of chains.
 
     parser = PDBParser(QUIET=True)
     structure = parser.get_structure(utils.get_file_name(pdb_in_path), pdb_in_path)
-    delete_residues = []
-    total_length = len(a_air.query_sequence) + a_air.glycines
+    chains_return = []
     chains = [chain.get_id() for chain in structure.get_chains()]
-    chain = None
-    chain_name = chains[0]
 
     if len(chains) > 1:
         logging.info(f'PDB: {pdb_in_path} is already splitted in several chains: {chains}')
+        chains_return = chains
     else:
-        old_mod = -1
-        for res in structure[0][chains[0]]:
-            resseq = get_resseq(res)
-            res_mod = resseq % total_length
+        new_structure = Structure.Structure(structure.get_id)
+        new_model = Model.Model(structure[0].id)
+        new_structure.add(new_model)
+        residues_list = list(structure[0][chains[0]].get_residues())
+        idres_list = list([get_resseq(res) for res in residues_list])
+        original_chain_name = chains[0]
+        sequence_length = len(a_air.query_sequence)
+        seq_with_glycines_length = len(a_air.query_sequence) + a_air.glycines
 
-            if res_mod < old_mod:
-                chain_name = chr(ord(chain_name)+1)
-                chain = Chain.Chain(chain_name)
-                structure[0].add(chain)
- 
-            if res_mod == 0 or res_mod > len(a_air.query_sequence):
-                delete_residues.append(res.id)
-            elif resseq > total_length and chain is not None:
-                delete_residues.append(res.id)
-                res.parent = chain
-                chain.add(res)
-                chain[res.id].id = (' ', res_mod, ' ')
-            old_mod = res_mod
-
-        for id in delete_residues:
-            structure[0][chains[0]].detach_child(id)
+        for i in range(0, a_air.num_of_copies):
+            min = seq_with_glycines_length*(i)
+            max = seq_with_glycines_length*(i)+sequence_length
+            chain_name = chr(ord(original_chain_name)+i)
+            chain = Chain.Chain(chain_name)
+            new_structure[0].add(chain)
+            for j in range((min+1), (max+1)):
+                if j <= (seq_with_glycines_length*(i)+sequence_length) and j in idres_list:
+                    res = residues_list[idres_list.index(j)]
+                    new_res = copy.copy(res)
+                    chain.add(new_res)
+                    new_res.parent = chain
+                    chain[new_res.id].id = (' ', j % seq_with_glycines_length, ' ')
+            if list(new_structure[0][chain.id].get_residues()):
+                chains_return.append(chain_name)
+            else:
+                chains_return.append(None)
 
     io = PDBIO()
-    io.set_structure(structure)
+    io.set_structure(new_structure)
     io.save(pdb_out_path, preserve_atom_numbering = True)
+    return chains_return
 
 def chain_splitter(pdb_path: str, chain: str = None) -> Dict:
     #Given a pdb_in and a optional chain, write one or serveral
@@ -398,6 +407,11 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path:
     pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
 
+
+    pisa_general_txt = os.path.join(interfaces_path, 'general_output.txt')
+    with open (pisa_general_txt, 'w') as f_out:
+        f_out.write(pisa_output)
+
     if 'NO INTERFACES FOUND' in pisa_output:
         logging.info('No interfaces found in pisa')
         return
@@ -415,7 +429,13 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path:
         serial_output = subprocess.Popen(['pisa', 'temp', '-detail', 'interfaces', serial], stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
 
+
         dimers_path = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_{chain1}{chain2}.pdb')
+        
+        pisa_output_txt = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_{chain1}{chain2}_interface.txt')
+        with open (pisa_output_txt, 'w') as f_out:
+            f_out.write(serial_output)
+
         split_dimers_in_pdb(pdb_in_path=pdb_in_path,
                             pdb_out_path=dimers_path,
                             chain1=chain1,

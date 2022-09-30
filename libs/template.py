@@ -24,7 +24,7 @@ class Template:
         self.aligned: bool = False
         self.template_features_dict: Dict = None
         self.match_restrict_list: List[match_restrictions.MatchRestrictions] = []
-        self.results_path_position: List = []
+        self.results_path_position: List = [None] * num_of_copies
         self.reference: str = None
         
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
@@ -149,6 +149,11 @@ class Template:
 
         else:
             shutil.copy2(self.pdb_path, self.template_path)
+            aux_path = os.path.join(a_air.run_dir, f'{utils.get_file_name(self.pdb_path)}_splitted.pdb')
+            positions = bioutils.split_chains_assembly(self.template_path, aux_path, a_air=a_air)
+            chain_dict = bioutils.chain_splitter(aux_path)
+            for i, pos in enumerate(positions):
+                self.results_path_position[i] = chain_dict[pos] if pos in chain_dict else None
 
         template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
             query_sequence=a_air.query_sequence_assembled,

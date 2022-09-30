@@ -37,6 +37,7 @@ def main():
         raise Exception('It has not been possible to read the input file')
 
     a_air = structure_air.StructureAir(parameters_dict=input_load)
+    
     utils.create_logger_dir(a_air.log_path)
     os.chdir(a_air.run_dir)
     shutil.copy2(input_path, a_air.input_dir)
