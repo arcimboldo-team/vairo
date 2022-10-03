@@ -407,6 +407,9 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path:
     pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
 
+    pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+
 
     pisa_general_txt = os.path.join(interfaces_path, 'general_output.txt')
     with open (pisa_general_txt, 'w') as f_out:

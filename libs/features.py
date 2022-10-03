@@ -207,6 +207,51 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
 
     return template_features
 
+def write_templates_in_features(template_features: Dict, output_dir: str, chain='A') -> Dict:
+
+    templates_dict = {}
+
+    for pdb_name in template_features['template_domain_names']:
+        pdb = pdb_name.decode('utf-8')
+        pdb_path = os.path.join(output_dir,f'{pdb}1.pdb')
+        templates_dict[pdb] = pdb_path
+        with open(pdb_path, 'w') as output_pdb:
+            template_domain_index = np.where(template_features['template_domain_names'] == pdb_name)[0][0]
+            atom_num_int = 0
+            for index, atoms_mask in enumerate(template_features['template_all_atom_masks'][template_domain_index][:]):
+                template_residue_masks = template_features['template_aatype'][template_domain_index][index]
+                template_residue_masks_index = np.where(template_residue_masks == 1)[0][0]
+                res_type = ID_TO_HHBLITS_AA_3LETTER_CODE[template_residue_masks_index]
+                list_of_atoms_in_residue = [order_atom[i] for i, atom in enumerate(atoms_mask) if atom == 1]
+                for atom in list_of_atoms_in_residue:
+                    atom_num_int = atom_num_int + 1
+                    atom_remark = 'ATOM'
+                    atom_num = str(atom_num_int)
+                    atom_name = atom
+                    res_name = res_type
+                    res_num = str(index + 1)
+                    x_coord = str('%8.3f' % (float(str(
+                        template_features['template_all_atom_positions'][template_domain_index][index][
+                            atom_types.index(atom)][
+                            0]))))
+                    y_coord = str('%8.3f' % (float(str(
+                        template_features['template_all_atom_positions'][template_domain_index][index][
+                            atom_types.index(atom)][
+                            1]))))
+                    z_coord = str('%8.3f' % (float(str(
+                        template_features['template_all_atom_positions'][template_domain_index][index][
+                            atom_types.index(atom)][
+                            2]))))
+                    occ = '1.0'
+                    bfact = '25.0'
+                    atom_type = atom[0]
+                    atom_line = bioutils.get_atom_line(remark=atom_remark, num=atom_num, name=atom_name, 
+                                            res=res_name, chain=chain, resseq=res_num, x=x_coord, y=y_coord, z=z_coord,
+                                            occ=occ, bfact=bfact, atype=atom_type)
+                    output_pdb.write(atom_line)
+
+    return templates_dict
+
 def print_features(pkl_in_path: str):
     with open(f"{pkl_in_path}", "rb") as input_file:
         features = pickle.load(input_file)
@@ -270,51 +315,6 @@ class Features:
         self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
         self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape, len(self.msa_features['msa']))
 
-    def write_all_templates_in_features(self, output_dir: str, chain='A') -> Dict:
-
-        templates_dict = {}
-
-        for pdb_name in self.template_features['template_domain_names']:
-            pdb = pdb_name.decode('utf-8')
-            pdb_path = os.path.join(output_dir,f'{pdb}1.pdb')
-            templates_dict[pdb] = pdb_path
-            with open(pdb_path, 'w') as output_pdb:
-                template_domain_index = np.where(self.template_features['template_domain_names'] == pdb_name)[0][0]
-                atom_num_int = 0
-                for index, atoms_mask in enumerate(self.template_features['template_all_atom_masks'][template_domain_index][:]):
-                    template_residue_masks = self.template_features['template_aatype'][template_domain_index][index]
-                    template_residue_masks_index = np.where(template_residue_masks == 1)[0][0]
-                    res_type = ID_TO_HHBLITS_AA_3LETTER_CODE[template_residue_masks_index]
-                    list_of_atoms_in_residue = [order_atom[i] for i, atom in enumerate(atoms_mask) if atom == 1]
-                    for atom in list_of_atoms_in_residue:
-                        atom_num_int = atom_num_int + 1
-                        atom_remark = 'ATOM'
-                        atom_num = str(atom_num_int)
-                        atom_name = atom
-                        res_name = res_type
-                        res_num = str(index + 1)
-                        x_coord = str('%8.3f' % (float(str(
-                            self.template_features['template_all_atom_positions'][template_domain_index][index][
-                                atom_types.index(atom)][
-                                0]))))
-                        y_coord = str('%8.3f' % (float(str(
-                            self.template_features['template_all_atom_positions'][template_domain_index][index][
-                                atom_types.index(atom)][
-                                1]))))
-                        z_coord = str('%8.3f' % (float(str(
-                            self.template_features['template_all_atom_positions'][template_domain_index][index][
-                                atom_types.index(atom)][
-                                2]))))
-                        occ = '1.0'
-                        bfact = '25.0'
-                        atom_type = atom[0]
-                        atom_line = bioutils.get_atom_line(remark=atom_remark, num=atom_num, name=atom_name, 
-                                                res=res_name, chain=chain, resseq=res_num, x=x_coord, y=y_coord, z=z_coord,
-                                                occ=occ, bfact=bfact, atype=atom_type)
-                        output_pdb.write(atom_line)
-
-        return templates_dict
-
     def complete_msa_from_template_features(self, template_features):
 
         msa_from_templates_list = [(''.join(residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0]), 'Query')]
@@ -325,6 +325,12 @@ class Features:
 
         for seq in msa_from_templates_list[1:]:
             self.append_row_in_msa(sequence=seq[0], msa_uniprot_accession_identifiers=seq[1])
+
+
+    def write_all_templates_in_features(self, output_dir: str, chain='A') -> Dict:
+       
+        return write_templates_in_features(self.template_features, output_dir, chain)
+
 
     def write_pkl(self, output_dir: str):
 

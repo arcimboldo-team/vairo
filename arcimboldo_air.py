@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 
-from libs import analyse, bioutils, features, structure_air, utils
+from libs import analyse, features, structure_air, utils
 import os
 import sys
 import logging
