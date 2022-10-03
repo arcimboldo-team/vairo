@@ -99,10 +99,21 @@ def analyse_output(a_air):
         sys.stdout = sys.__stdout__
         if os.path.exists(aleph_results_path):
             secondary_dict[ranked] = utils.parse_aleph_annotate(file_path=aleph_results_path)
-        
-        aleph_txt_path = f'{a_air.run_dir}/aleph_{ranked}.txt'
+            aleph_txt_path = f'{a_air.run_dir}/aleph_{ranked}.txt'
+            domains_dict = utils.parse_aleph_ss(aleph_txt_path)
+        else:
+            break
+
         if ranked in ranked_filtered and os.path.exists(aleph_txt_path):
-            bioutils.find_interface_from_pisa(ranked_path, interfaces_path, aleph_txt_path)
+            interfaces_data_list = bioutils.find_interface_from_pisa(ranked_path, interfaces_path)
+            deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
+            deltas_list = utils.normalize_list([deltas_list])
+            for i, interface in enumerate(interfaces_data_list):
+                interface['bfactor'] = deltas_list[0][i]
+                if not ((float(interface['se_gain1']) >= 0) == (float(interface['se_gain2']) >= 0)):
+                    interface['bfactor'] = abs(max(deltas_list))*2
+            for interface in interfaces_data_list:
+                bioutils.create_interface_domain(ranked_path, interface, interfaces_path, domains_dict)
 
     ##Superpose the experimental pdb with all the rankeds and templates
     experimental_dict = {}

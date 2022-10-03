@@ -27,6 +27,7 @@ class StructureAir:
         self.reference: template.Template = None
         self.use_features: bool = True
         self.experimental_pdb: str = None
+        self.mosaic: int = None
 
         
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
@@ -51,6 +52,7 @@ class StructureAir:
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.use_features = parameters_dict.get('use_features', self.use_features)
+        self.mosaic = parameters_dict.get('mosaic', self.mosaic)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
         self.query_sequence_assembled = self.generate_query_assembled()
         

@@ -229,6 +229,7 @@ def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> List:
 
     if len(chains) > 1:
         logging.info(f'PDB: {pdb_in_path} is already splitted in several chains: {chains}')
+        shutil.copy2(pdb_in_path, pdb_out_path)
         chains_return = chains
     else:
         new_structure = Structure.Structure(structure.get_id)
@@ -258,9 +259,9 @@ def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> List:
             else:
                 chains_return.append(None)
 
-    io = PDBIO()
-    io.set_structure(new_structure)
-    io.save(pdb_out_path, preserve_atom_numbering = True)
+        io = PDBIO()
+        io.set_structure(new_structure)
+        io.save(pdb_out_path, preserve_atom_numbering = True)
     return chains_return
 
 def chain_splitter(pdb_path: str, chain: str = None) -> Dict:
@@ -393,12 +394,13 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
 
     return diff_pdist_matrix.mean()
 
-def calculate_distance_pdist(res_list: List):
+def calculate_distance_pdist(res_list: List) -> float:
+
     coords = [res['CA'].coord for res in res_list]
     pdist = distance.pdist(coords, "euclidean")
     return distance.squareform(pdist)
 
-def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path: str):
+def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List:
 
     subprocess.Popen(['pisa', 'temp', '-analyse', pdb_in_path],
                      stdout=subprocess.PIPE,
@@ -406,11 +408,6 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path:
 
     pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-
-    pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-
-
     pisa_general_txt = os.path.join(interfaces_path, 'general_output.txt')
     with open (pisa_general_txt, 'w') as f_out:
         f_out.write(pisa_output)
@@ -419,76 +416,42 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str, aleph_path:
         logging.info('No interfaces found in pisa')
         return
 
-    match1 = [m.start() for m in re.finditer(' LIST OF INTERFACES', pisa_output)][0]
-    match2 = [m.start() for m in re.finditer(' ##:  serial number', pisa_output)][0]
-    for line in pisa_output[match1:match2].split('\n')[4:-2]:
-        line = line.split('|')
-        area = line[3][:8].replace(' ', '')
-        deltaG = line[3][8:15].replace(' ', '')
-        chain1 = line[1].replace(' ', '')
-        chain2 = line[2].split()[0].replace(' ', '')
-        serial = line[0][:4].replace(' ', '')
-
-        serial_output = subprocess.Popen(['pisa', 'temp', '-detail', 'interfaces', serial], stdout=subprocess.PIPE,
-                                        stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-
-
-        dimers_path = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_{chain1}{chain2}.pdb')
+    interfaces_list = utils.parse_pisa_general_multimer(pisa_output)
+    interface_data_list = []
+    for interface in interfaces_list:
+        serial_output = subprocess.Popen(['pisa', 'temp', '-detail', 'interfaces', interface['serial']], stdout=subprocess.PIPE,
+                                        stderr=subprocess.PIPE).communicate()[0].decode('utf-8')      
         
-        pisa_output_txt = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_{chain1}{chain2}_interface.txt')
+        interface_data = utils.parse_pisa_interfaces(serial_output)
+        interface_data.update(interface)
+        interface_data_list.append(interface_data)
+        pisa_output_txt = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_{interface_data["chain1"]}{interface_data["chain2"]}_interface.txt')
         with open (pisa_output_txt, 'w') as f_out:
             f_out.write(serial_output)
 
-        split_dimers_in_pdb(pdb_in_path=pdb_in_path,
-                            pdb_out_path=dimers_path,
-                            chain1=chain1,
-                            chain2=chain2)
+    return interface_data_list 
 
-        num1_list, num2_list = [], []
-        for num, line in enumerate(serial_output.split('\n')):
-            if 'Interfacing Residues: Structure' in line:
-                num1 = num + 4
-                num1_list.append(num1)
-            if line == " -----'-'------------'--'----------------------":
-                num2 = num
-                num2_list.append(num2)
-            if 'Solvation energy kcal/mol' in line:
-                solvation1 = float(line.split('|')[1].replace(' ', ''))
-                solvation2 = float(line.split('|')[2].replace(' ', ''))
-            if 'SE gain, kcal/mol' in line:
-                se_gain1 = line.split('|')[1].replace(' ', '')
-                se_gain2 = line.split('|')[2].replace(' ', '')
+def create_interface_domain(pdb_in_path: str, interface: Dict, interfaces_path: str, domains_dict: Dict):
+    add_domains_dict = {}
+    bfactors_dict = {}   
+    for chain, residue in zip([interface['chain1'], interface['chain2']], [interface['res_chain1'], interface['res_chain2']]):
+        added_res_list = []
+        for domains in domains_dict[chain]:
+            if bool(set(residue).intersection(domains)):
+                added_res_list.extend(domains)
+        added_res_list.extend(residue)
+        add_domains_dict[chain] = list(set(added_res_list))
+        bfactors_dict[chain] = [float(interface['bfactor'])] * len(add_domains_dict[chain])
 
-        lines_to_show = zip(num1_list, num2_list)
+    dimers_path = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_{interface["chain1"]}{interface["chain2"]}.pdb')
+    split_dimers_in_pdb(pdb_in_path=pdb_in_path,
+                        pdb_out_path=dimers_path,
+                        chain1=interface['chain1'],
+                        chain2=interface['chain2'])
 
-        chain_dict = {}
-        bfactors_dict = {}
-        for item in lines_to_show:
-            for line in serial_output.split('\n')[item[0]:item[1]]:
-                chain = line[10:11]
-                res_num = line[15:20].replace(' ', '')
-                energy = line[39:].replace(' ', '')
-                if float(energy) != 0:
-                    try:
-                        chain_dict[chain].append(int(res_num))
-                    except KeyError:
-                        chain_dict[chain] = [int(res_num)]
-
-        add_domains_dict = {}
-        domains_dict = utils.parse_aleph_ss(aleph_path)
-        for chain, residue in chain_dict.items():
-            added_res_list = []
-            for domains in domains_dict[chain]:
-                if bool(set(residue).intersection(domains)):
-                    added_res_list.extend(domains)
-            
-            added_res_list.extend(residue)
-            add_domains_dict[chain] = list(set(added_res_list))
-            bfactors_dict[chain] = [float(deltaG)] * len(add_domains_dict[chain])
-
-        change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
-        change.delete_residues_inverse(dimers_path, dimers_path)
-        change.change_bfactors(dimers_path, dimers_path)
+    change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
+    change.delete_residues_inverse(dimers_path, dimers_path)
+    change.change_bfactors(dimers_path, dimers_path)
 
 def calculate_auto_offset(input_list: List[List]) -> List:
     

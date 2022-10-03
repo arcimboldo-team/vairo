@@ -8,9 +8,9 @@ import io
 import re
 import shutil
 import sys
-import pandas as pd
 from pathlib import Path
 from typing import Any, Dict, List
+from sklearn import preprocessing
 
 def print_msg_box(msg, indent=1, title=None):
 
@@ -31,6 +31,11 @@ def print_msg_box(msg, indent=1, title=None):
 def print_matrix(matrix: List):
 
     print('\n'.join('\t'.join(map(str, row)) for row in matrix))
+
+def normalize_list(input_list: List):
+    #Normalize list of values
+    
+    return preprocessing.normalize(input_list)
 
 def get_mandatory_value(input_load: str, value: str) -> str:
     #Read value, Raise exception if value could not be found
@@ -156,6 +161,86 @@ def parse_aleph_ss(file_path: str) -> Dict:
                 except KeyError:
                     chain_res_dict[chain] = [residues]
     return chain_res_dict
+
+
+def parse_pisa_general_multimer(pisa_output: str) -> List:
+    #It parses the pisa output, in the following format:
+    # List[Dict[
+    #   area
+    #   deltaG
+    #   chain1
+    #   chain2
+    #   serial
+    # ]]
+    #It returns a list with all the interfaces found, each
+    #interface contains the requiered information.
+
+
+    return_list = []
+    match1 = [m.start() for m in re.finditer(' LIST OF INTERFACES', pisa_output)][0]
+    match2 = [m.start() for m in re.finditer(' ##:  serial number', pisa_output)][0]
+    for line in pisa_output[match1:match2].split('\n')[4:-2]:
+        line = line.split('|')
+        area = line[3][:8].replace(' ', '')
+        deltaG = line[3][8:15].replace(' ', '')
+        chain1 = line[1].replace(' ', '')
+        chain2 = line[2].split()[0].replace(' ', '')
+        serial = line[0][:4].replace(' ', '')
+        return_list.append({'serial': serial, 'area':area, 'deltaG':deltaG, 'chain1':chain1, 'chain2':chain2})
+    
+    return return_list
+    
+def parse_pisa_interfaces(pisa_output: str) -> Dict:
+    #It parses the pisa output, in the following format:
+    # List[Dict{
+    #   solvation1
+    #   solvation2
+    #   se_gain1
+    #   se_gain2
+    #   chain1
+    #   res_chain1
+    #   chain2
+    #   res_chain2
+    # }]
+    #It returns a list with the interface information, each
+    #interface contains the requiered information.
+
+    iter_list = iter(pisa_output.split('\n'))
+    res_chain1 = []
+    res_chain2 = []
+    chain1 = ''
+    chain2 = ''
+    for line in iter_list:
+        if 'Interfacing Residues: Structure' in line:
+            next(iter_list)
+            next(iter_list)
+            next(iter_list)
+            line = next(iter_list)
+            res_list = []
+            chain = ''
+            while line != " -----'-'------------'--'----------------------":
+                chain = line[10:11]
+                energy = line[39:].replace(' ', '')
+                if float(energy) != 0:
+                    res_num = line[15:20].replace(' ', '')
+                    res_list.append(int(res_num))
+                line = next(iter_list)
+            if not res_chain1:
+                chain1 = chain
+                res_chain1 = res_list
+            else:
+                chain2 = chain
+                res_chain2 = res_list
+        elif 'Solvation energy kcal/mol' in line:
+            solvation1 = float(line.split('|')[1].replace(' ', ''))
+            solvation2 = float(line.split('|')[2].replace(' ', ''))
+        elif 'SE gain, kcal/mol' in line:
+            se_gain1 = line.split('|')[1].replace(' ', '')
+            se_gain2 = line.split('|')[2].replace(' ', '')
+
+    return {'solvation1': solvation1, 'solvation2': solvation2, 'se_gain1': se_gain1, 
+            'se_gain2':se_gain2, 'chain1': chain1, 'res_chain1': res_chain1,
+            'chain2': chain2, 'res_chain2': res_chain2}
 
 def sort_by_digit(container: Any, item: int=0):
     #Sort list or dictionary by a digit instead of str.
