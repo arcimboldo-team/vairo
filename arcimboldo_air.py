@@ -38,8 +38,7 @@ def main():
 
     a_air = structure_air.StructureAir(parameters_dict=input_load)
     
-    features.create_features_from_file('/Users/pep/work/test/arcimboldo_air/1/output/run/features.pkl')
-
+    #features.create_features_from_file('/Users/pep/work/test/arcimboldo_air/1/output/run/features.pkl')
     #if a_air.mosaic is not None:
     #    a_air.slicing_features()
 
