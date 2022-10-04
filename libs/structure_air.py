@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 from typing import List, Dict
+import numpy as np
 from libs import bioutils, template, utils, features, alphafold_paths
 
 class StructureAir:
@@ -152,9 +153,50 @@ class StructureAir:
             if not line:
                 break
             logging.debug(line.decode('utf-8'))
-        logging.debug(f'AlphaFold2 return code is {af2_output.returncode}')
+        af2_output.wait()
+        return_code = af2_output.poll()
+        logging.debug(f'AlphaFold2 return code is {return_code}')
         #if af2_output.returncode != 0:
         #    raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
+
+    def slicing_features(self) -> List:
+        #This function will generate as many features
+        #as required per size. It will return a list with 
+        #the path of all the generated features
+        
+        chunk_list = utils.chunk_string(self.query_sequence_assembled, self.mosaic)
+        features_list = []
+        for min,max in chunk_list:
+            sequence = self.query_sequence_assembled[min:max]
+            name = f'seq_{min}-{max}'
+            new_features = features.Features(query_sequence=sequence)
+            features_list.append(new_features)
+            new_features.append_row_in_msa(sequence=sequence,  msa_uniprot_accession_identifiers=name)
+
+            for i in range(1, len(features_dict['msa_uniprot_accession_identifiers'])):
+                sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][i].tolist()]))
+                new_features.append_row_in_msa(sequence=sequence, 
+                                            msa_uniprot_accession_identifiers=features_dict['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
+            for i in range(0, len(features_dict['template_sequence'])):
+                template_dict = {
+                    'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),
+                    'template_all_atom_masks': np.array([features_dict['template_all_atom_masks'][i]]),
+                    'template_aatype': np.array([features_dict['template_aatype'][i]]),
+                    'template_sequence': np.array([features_dict['template_sequence'][i]]),
+                    'template_domain_names': np.array([features_dict['template_domain_names'][i]]),
+                    'template_sum_probs': np.array([features_dict['template_sum_probs'][i]])
+                }
+                new_features.append_new_template_features(template_dict)
+
+                template_dict = {
+                    'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),
+                    'template_all_atom_masks': np.array([features_dict['template_all_atom_masks'][i]]),
+                    'template_aatype': np.array([features_dict['template_aatype'][i]]),
+                    'template_sequence': np.array([features_dict['template_sequence'][i]]),
+                    'template_domain_names': np.array([features_dict['template_domain_names'][i]]),
+                    'template_sum_probs': np.array([features_dict['template_sum_probs'][i]])
+                }
+                new_features.append_new_template_features(template_dict)
 
     def create_af2_script(self):
         #Create the script to launch alphafold. It contins all the databases,

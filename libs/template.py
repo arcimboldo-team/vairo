@@ -36,36 +36,19 @@ class Template:
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
         self.reference = parameters_dict.get('reference', self.reference)
         self.generate_multimer = parameters_dict.get('generate_multimer', self.generate_multimer)
-        read_chain = parameters_dict.get('chain')
-
         structure = bioutils.get_structure(pdb_path=self.pdb_path)
-        chains = [chain.get_id() for chain in structure.get_chains()]
-
-        if num_of_copies == 1:
-            if read_chain is None:
-                if len(chains) == 1:
-                    self.chains = [chains.pop()]
-                else:
-                    raise Exception('There is more than one chain in the structure. Select one in the configuration file.')
-            elif read_chain not in chains: 
-                raise Exception('The choosen chain does not exist in the structure.')
-            else:
-                self.chains = [read_chain]
-        else:
-            self.chains = chains
+        self.chains = [chain.get_id() for chain in structure.get_chains()]
 
         for paramaters_change_res in parameters_dict.get('change_res', self.change_res_list):
             change_res_dict = {}
-            
             resname = utils.get_mandatory_value(paramaters_change_res, 'resname')
             del paramaters_change_res['resname']
-
             for values in paramaters_change_res.items():
                 if len(values) != 2:
                     raise Exception('Wrong change residues format')
                 chain, change = values 
                 change_list = utils.expand_residues(change) 
-                change_chain_list = chains if chain.lower() == 'all' else [chain]
+                change_chain_list = self.chains if chain.lower() == 'all' else [chain]
                 change_res_dict.update({key: list(set(change_list)) for key in change_chain_list})                       
             self.change_res_list.append(change_res.ChangeResidues(chain_res_dict=change_res_dict, resname=resname))
 
@@ -76,7 +59,7 @@ class Template:
         #Get all the references from another template
         #Those references can be in the match class or in the
         #template itself
-
+        
         return_references_list = [match.reference for match in self.match_restrict_list]
         return_references_list.append(self.reference)
         return list(filter(None, return_references_list))
@@ -130,7 +113,7 @@ class Template:
                     if chain in change_residues.chain_res_dict.keys():
                         for path in paths_list:
                             change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
-                                
+                
             merge_list = []
             self.results_path_position = self.sort_chains_into_positions(extracted_chain_dict, a_air)
             a_air.append_line_in_templates(self.results_path_position)
@@ -146,7 +129,6 @@ class Template:
 
             bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=utils.sort_by_digit(merge_list),
                     merged_pdb_path=self.template_path)
-
         else:
             shutil.copy2(self.pdb_path, self.template_path)
             aux_path = os.path.join(a_air.run_dir, f'{utils.get_file_name(self.pdb_path)}_splitted.pdb')
@@ -208,17 +190,18 @@ class Template:
         reference = self.reference if self.reference is not None else None
         reference = a_air.reference if reference is None else reference
 
-        if reference != self:
-            new_target_path_list = self.choose_best_offset(reference, deleted_positions, new_target_path_list)
-            for i, path in enumerate(new_target_path_list):
-                if composition_path_list[i] is None:
-                    composition_path_list[i] = path
-        else:
-            for path in new_target_path_list:
-                for i in range(0, len(composition_path_list)):
+        if new_target_path_list:
+            if reference != self:
+                new_target_path_list = self.choose_best_offset(reference, deleted_positions, new_target_path_list)
+                for i, path in enumerate(new_target_path_list):
                     if composition_path_list[i] is None:
                         composition_path_list[i] = path
-                        break
+            else:
+                for path in new_target_path_list:
+                    for i in range(0, len(composition_path_list)):
+                        if composition_path_list[i] is None:
+                            composition_path_list[i] = path
+                            break
 
         return composition_path_list
 

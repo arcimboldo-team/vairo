@@ -15,7 +15,7 @@ def write_features(features_path: str, output_dir: str = None):
 
 def print_features(features_path: str):
     logging.info = print
-    features.print_features(features_path)
+    features.print_features_from_file(features_path)
 
 if __name__ == "__main__":
     args = sys.argv

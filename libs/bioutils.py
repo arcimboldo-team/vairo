@@ -32,8 +32,7 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
 
 def pdb2cif(pdb_id: str, pdb_in_path: str, cif_out_path: str):
 
-    parser = PDBParser(QUIET=True)
-    structure = parser.get_structure(pdb_id, pdb_in_path)
+    get_structure(pdb_path=pdb_in_path)
     io = MMCIFIO()
     io.set_structure(structure)
     io.save(cif_out_path)
@@ -57,7 +56,15 @@ def check_pdb(pdb: str, output_dir: str) -> str:
         pdb_aux = f'{output_dir}/{os.path.basename(pdb)}'
         if pdb != pdb_aux:
             shutil.copy2(pdb, pdb_aux)
-            pdb = pdb_aux                
+            pdb = pdb_aux
+
+    class NonHetSelect(Select):
+        def accept_residue(self, residue):
+            return 1 if residue.id[0] == " " else 0
+    structure = get_structure(pdb_path=pdb)
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(pdb, NonHetSelect())             
 
     return pdb
 
@@ -222,8 +229,7 @@ def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> List:
     #the glycines, So every query_sequence+glycines we can find a chain.
     #We return the list of chains.
 
-    parser = PDBParser(QUIET=True)
-    structure = parser.get_structure(utils.get_file_name(pdb_in_path), pdb_in_path)
+    structure = get_structure(path_path=pdb_in_path)
     chains_return = []
     chains = [chain.get_id() for chain in structure.get_chains()]
 
@@ -373,10 +379,10 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
     if query_pdb is None or target_pdb is None:
         return 1
 
-    structure_query = PDBParser(QUIET=1).get_structure('query', query_pdb)
+    structure_query = get_structure(pdb_path = query_pdb)
     res_query_list = [res.id[1] for res in Selection.unfold_entities(structure_query, 'R')]
 
-    structure_target = PDBParser(QUIET=1).get_structure('target', target_pdb)
+    structure_target = get_structure(pdb_path = target_pdb)
     res_target_list = [res.id[1] for res in Selection.unfold_entities(structure_target, 'R')]
 
     common_res_list = list(set(res_query_list) & set(res_target_list))

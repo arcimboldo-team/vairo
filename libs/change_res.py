@@ -60,8 +60,8 @@ class ChangeResidues:
                 if type == 'change':               
                     if bioutils.get_resseq(res) in self.chain_res_dict[chain]:
                         for atom in res:
-                            self.resname = self.resname
-                            if not atom.name in residue_constants.res_atoms_list[self.resname]:
+                            res.resname = self.resname
+                            if not atom.name in residue_constants.residue_atoms[self.resname]:
                                 atoms_del_list.append(atom.get_serial_number())
                 if type == 'change_bfactors':
                     res_bfactor_index = self.chain_res_dict[chain].index(bioutils.get_resseq(res))                        

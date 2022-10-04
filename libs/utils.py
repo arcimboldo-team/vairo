@@ -69,6 +69,11 @@ def get_working_dir() -> str:
 
     return os.getcwd()
 
+def chunk_string(string: str, size: int, overlap: int = 30) -> List:
+    # Slice string in chunks of size
+    size = size - overlap
+    return [(0+i,size+i+overlap) for i in range(0, len(string), size)]
+
 def dict_values_to_list(input_dict: Dict):
     # Given a Dict, return all the values from the dict in a list
 

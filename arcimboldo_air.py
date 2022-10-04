@@ -38,6 +38,11 @@ def main():
 
     a_air = structure_air.StructureAir(parameters_dict=input_load)
     
+    features.create_features_from_file('/Users/pep/work/test/arcimboldo_air/1/output/run/features.pkl')
+
+    #if a_air.mosaic is not None:
+    #    a_air.slicing_features()
+
     utils.create_logger_dir(a_air.log_path)
     os.chdir(a_air.run_dir)
     shutil.copy2(input_path, a_air.input_dir)
@@ -54,6 +59,8 @@ def main():
                 a_air.features.append_new_template_features(new_template_features=template.template_features_dict, custom_sum_prob=template.sum_prob)
                 logging.info(f'Template \"{template.pdb_id}\" was added to templates')
         a_air.features.write_pkl(output_dir=f'{a_air.run_dir}/features.pkl')
+        if a_air.mosaic is not None:
+            a_air.slicing_features()
     else:
         logging.info('No features.pkl added, default AlphaFold2 run')
     
@@ -67,7 +74,7 @@ def main():
     if not a_air.verbose:
         utils.clean_files(dir=a_air.run_dir)
     else:
-        features.print_features(f'{a_air.run_dir}/features.pkl')
+        features.print_features_from_file(f'{a_air.run_dir}/features.pkl')
 
     logging.info('ARCIMBOLDO_AIR has finished succesfully')
 

@@ -26,6 +26,73 @@ atom_order = {atom_type: i for i, atom_type in enumerate(atom_types)}
 order_atom = {v: k for k, v in atom_order.items()}
 
 
+class Features:
+
+    def __init__(self, query_sequence: str):
+        self.query_sequence: str
+        self.sequence_features: pipeline.FeatureDict
+        self.msa_features: Dict
+        self.template_features: Dict
+
+        self.query_sequence = query_sequence
+        self.sequence_features = pipeline.make_sequence_features(sequence=self.query_sequence,
+                                                                 description='Query',
+                                                                 num_res=len(self.query_sequence))
+        self.msa_features = empty_msa_features(query_sequence=self.query_sequence)
+        self.template_features = empty_template_features(query_sequence=self.query_sequence)        
+
+    def append_new_template_features(self, new_template_features: Dict, custom_sum_prob: int = None) -> Dict:
+
+        self.template_features['template_all_atom_positions'] = np.vstack([self.template_features['template_all_atom_positions'], new_template_features['template_all_atom_positions']])
+        self.template_features['template_all_atom_masks'] = np.vstack([self.template_features['template_all_atom_masks'], new_template_features['template_all_atom_masks']])
+        self.template_features['template_aatype'] = np.vstack([self.template_features['template_aatype'], new_template_features['template_aatype']])
+        self.template_features['template_sequence'] = np.hstack([self.template_features['template_sequence'], new_template_features['template_sequence']])
+        self.template_features['template_domain_names'] = np.hstack([self.template_features['template_domain_names'], new_template_features['template_domain_names']])
+        if not custom_sum_prob:
+            self.template_features['template_sum_probs'] = np.vstack([self.template_features['template_sum_probs'], new_template_features['template_sum_probs']])
+        else:
+            self.template_features['template_sum_probs'] = np.vstack([self.template_features['template_sum_probs'], custom_sum_prob])
+
+        return self.template_features
+
+    def append_row_in_msa(self, sequence: str, msa_uniprot_accession_identifiers):
+
+        sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
+        self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
+        self.msa_features['msa_uniprot_accession_identifiers'] = np.hstack([self.msa_features['msa_uniprot_accession_identifiers'], msa_uniprot_accession_identifiers.encode()])
+        self.msa_features['deletion_matrix_int'] = np.vstack([self.msa_features['deletion_matrix_int'], np.zeros(self.msa_features['msa'].shape[1])])
+        self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
+        self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape, len(self.msa_features['msa']))
+
+    def complete_msa_from_template_features(self, template_features):
+
+        msa_from_templates_list = [(''.join(residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0]), 'Query')]
+        for num, seq in enumerate(template_features['template_sequence']):
+            msa = ''.join([f'>{seq[1]}\n{seq[0]}\n' for seq in msa_from_templates_list])
+            if seq.decode('utf-8') not in msa:
+                msa_from_templates_list.append((seq.decode('utf-8'), template_features['template_domain_names'][num].decode('utf-8')))
+
+        for seq in msa_from_templates_list[1:]:
+            self.append_row_in_msa(sequence=seq[0], msa_uniprot_accession_identifiers=seq[1])
+
+    def write_all_templates_in_features(self, output_dir: str, chain='A') -> Dict:
+       
+        return write_templates_in_features(self.template_features, output_dir, chain)
+
+    def write_pkl(self, output_dir: str):
+
+        logging.info(f'Writting all input features in {output_dir}')
+
+        merged_features = self.merge_features()
+        with open(output_dir, 'wb') as handle:
+            pickle.dump(merged_features, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def merge_features(self) -> Set:
+
+        logging.info(f'Merging sequence, msa and template features!')
+
+        return {**self.sequence_features, **self.msa_features, **self.template_features}
+
 def empty_msa_features(query_sequence):
 
     msa = {'a3m': f'>query\n{query_sequence}'}
@@ -208,12 +275,12 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     return template_features
 
 def write_templates_in_features(template_features: Dict, output_dir: str, chain='A') -> Dict:
-
+    
     templates_dict = {}
 
     for pdb_name in template_features['template_domain_names']:
         pdb = pdb_name.decode('utf-8')
-        pdb_path = os.path.join(output_dir,f'{pdb}1.pdb')
+        pdb_path = os.path.join(output_dir,f'{pdb}_{chain}1.pdb')
         templates_dict[pdb] = pdb_path
         with open(pdb_path, 'w') as output_pdb:
             template_domain_index = np.where(template_features['template_domain_names'] == pdb_name)[0][0]
@@ -252,96 +319,51 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
 
     return templates_dict
 
-def print_features(pkl_in_path: str):
-    with open(f"{pkl_in_path}", "rb") as input_file:
-        features = pickle.load(input_file)
+def print_features_from_file(pkl_in_path: str):
 
-    for key in features.keys():
+    with open(f"{pkl_in_path}", "rb") as input_file:
+        features_dict = pickle.load(input_file)
+
+    for key in features_dict.keys():
         try:
-            logging.info(f'{key} {features[key].shape}')
+            logging.info(f'{key} {features_dict[key].shape}')
         except:
             pass
 
     logging.info('\n')
     logging.info('MSA:')
-    for num, name in enumerate(features['msa_uniprot_accession_identifiers']):
+    for num, name in enumerate(features_dict['msa_uniprot_accession_identifiers']):
         logging.info(name.decode('utf-8'))
         logging.info('\n')
-        logging.info(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features['msa'][num].tolist()]))
+        logging.info(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][num].tolist()]))
         logging.info('\n')
 
     logging.info('TEMPLATES:')
-    for num, seq in enumerate(features['template_sequence']):
-        logging.info(f'{features["template_domain_names"][num].decode("utf-8")}:\n')
+    for num, seq in enumerate(features_dict['template_sequence']):
+        logging.info(f'{features_dict["template_domain_names"][num].decode("utf-8")}:\n')
         for i in range(4):
             logging.info('\t'+''.join(np.array_split(list(seq.decode('utf-8')),4)[i].tolist()))
         logging.info('\n')
 
-class Features:
+def create_features_from_file(pkl_in_path: str) -> Features:
+    #Read features.pkl and generate a features class
 
-    def __init__(self, query_sequence: str):
-        self.query_sequence: str
-        self.sequence_features: pipeline.FeatureDict
-        self.msa_features: Dict
-        self.template_features: Dict
-
-        self.query_sequence = query_sequence
-        self.sequence_features = pipeline.make_sequence_features(sequence=self.query_sequence,
-                                                                 description='Query',
-                                                                 num_res=len(self.query_sequence))
-        self.msa_features = empty_msa_features(query_sequence=self.query_sequence)
-        self.template_features = empty_template_features(query_sequence=self.query_sequence)        
-
-    def append_new_template_features(self, new_template_features: Dict, custom_sum_prob: int = None) -> Dict:
-
-        self.template_features['template_all_atom_positions'] = np.vstack([self.template_features['template_all_atom_positions'], new_template_features['template_all_atom_positions']])
-        self.template_features['template_all_atom_masks'] = np.vstack([self.template_features['template_all_atom_masks'], new_template_features['template_all_atom_masks']])
-        self.template_features['template_aatype'] = np.vstack([self.template_features['template_aatype'], new_template_features['template_aatype']])
-        self.template_features['template_sequence'] = np.hstack([self.template_features['template_sequence'], new_template_features['template_sequence']])
-        self.template_features['template_domain_names'] = np.hstack([self.template_features['template_domain_names'], new_template_features['template_domain_names']])
-        if not custom_sum_prob:
-            self.template_features['template_sum_probs'] = np.vstack([self.template_features['template_sum_probs'], new_template_features['template_sum_probs']])
-        else:
-            self.template_features['template_sum_probs'] = np.vstack([self.template_features['template_sum_probs'], custom_sum_prob])
-
-        return self.template_features
-
-    def append_row_in_msa(self, sequence: str, msa_uniprot_accession_identifiers):
-
-        sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
-        self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
-        self.msa_features['msa_uniprot_accession_identifiers'] = np.hstack([self.msa_features['msa_uniprot_accession_identifiers'], msa_uniprot_accession_identifiers.encode()])
-        self.msa_features['deletion_matrix_int'] = np.vstack([self.msa_features['deletion_matrix_int'], np.zeros(self.msa_features['msa'].shape[1])])
-        self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
-        self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape, len(self.msa_features['msa']))
-
-    def complete_msa_from_template_features(self, template_features):
-
-        msa_from_templates_list = [(''.join(residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0]), 'Query')]
-        for num, seq in enumerate(template_features['template_sequence']):
-            msa = ''.join([f'>{seq[1]}\n{seq[0]}\n' for seq in msa_from_templates_list])
-            if seq.decode('utf-8') not in msa:
-                msa_from_templates_list.append((seq.decode('utf-8'), template_features['template_domain_names'][num].decode('utf-8')))
-
-        for seq in msa_from_templates_list[1:]:
-            self.append_row_in_msa(sequence=seq[0], msa_uniprot_accession_identifiers=seq[1])
-
-
-    def write_all_templates_in_features(self, output_dir: str, chain='A') -> Dict:
-       
-        return write_templates_in_features(self.template_features, output_dir, chain)
-
-
-    def write_pkl(self, output_dir: str):
-
-        logging.info(f'Writting all input features in {output_dir}')
-
-        merged_features = self.merge_features()
-        with open(output_dir, 'wb') as handle:
-            pickle.dump(merged_features, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    def merge_features(self) -> Set:
-
-        logging.info(f'Merging sequence, msa and template features!')
-
-        return {**self.sequence_features, **self.msa_features, **self.template_features}
+    with open(f"{pkl_in_path}", "rb") as input_file:
+        features_dict = pickle.load(input_file)
+    new_features = Features(query_sequence = features_dict['sequence'][0].decode('utf-8'))
+    for i in range(1, len(features_dict['msa_uniprot_accession_identifiers'])):
+        sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][i].tolist()]))
+        new_features.append_row_in_msa(sequence=sequence, 
+                                    msa_uniprot_accession_identifiers=features_dict['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
+    for i in range(0, len(features_dict['template_sequence'])):
+        template_dict = {
+            'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),
+            'template_all_atom_masks': np.array([features_dict['template_all_atom_masks'][i]]),
+            'template_aatype': np.array([features_dict['template_aatype'][i]]),
+            'template_sequence': np.array([features_dict['template_sequence'][i]]),
+            'template_domain_names': np.array([features_dict['template_domain_names'][i]]),
+            'template_sum_probs': np.array([features_dict['template_sum_probs'][i]])
+        }
+        new_features.append_new_template_features(template_dict)
+    
+    return new_features
