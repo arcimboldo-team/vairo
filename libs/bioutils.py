@@ -4,7 +4,7 @@ import os
 import re
 import shutil
 import subprocess
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 from Bio import SeqIO
 from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
 from libs import change_res, utils
@@ -57,16 +57,26 @@ def check_pdb(pdb: str, output_dir: str) -> str:
         if pdb != pdb_aux:
             shutil.copy2(pdb, pdb_aux)
             pdb = pdb_aux
-
-    class NonHetSelect(Select):
-        def accept_residue(self, residue):
-            return 1 if residue.id[0] == " " else 0
-    structure = get_structure(pdb_path=pdb)
-    io = PDBIO()
-    io.set_structure(structure)
-    io.save(pdb, NonHetSelect())             
+    
+    cryst_card = extract_cryst_card_pdb(pdb_in_path=pdb)
+    remove_hetatm(pdb, pdb)
+    if cryst_card is not None:
+        add_cryst_card_pdb(pdb_in_path=pdb, cryst_card=cryst_card)
 
     return pdb
+
+def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
+    # Add a cryst1 record to a pdb file
+    try:
+        with open(pdb_in_path, 'r') as handle:
+            pdb_dump = handle.read()
+        with open(pdb_in_path, 'w') as handle:
+            handle.write(cryst_card + "\n")
+            handle.write(pdb_dump)
+        return True
+    except:
+        logging.info(f'Something went wrong adding the CRYST1 record to the pdb at {pdb_in_path}')
+        return False
 
 def extract_sequence(fasta_path: str) -> str:
 
@@ -354,6 +364,17 @@ def generate_multimer_chains(pdb_path:str, template_dict: Dict) -> Dict:
         multimer_dict[chain] = multimer_new_chains
 
     return multimer_dict
+
+def remove_hetatm(pdb_in_path:str, pdb_out_path: str):
+    #Remove HETATM from pdb
+
+    class NonHetSelect(Select):
+        def accept_residue(self, residue):
+            return 1 if residue.id[0] == " " else 0
+    structure = get_structure(pdb_path=pdb_in_path)
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(pdb_out_path, NonHetSelect())
 
 def superpose_pdbs(pdb_list: List, output_pdb = None) -> List:
     
