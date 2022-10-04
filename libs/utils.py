@@ -35,7 +35,7 @@ def print_matrix(matrix: List):
 def normalize_list(input_list: List):
     #Normalize list of values
     
-    return preprocessing.normalize(input_list)
+    return preprocessing.normalize(input_list)[0]
 
 def get_mandatory_value(input_load: str, value: str) -> str:
     #Read value, Raise exception if value could not be found
@@ -69,10 +69,10 @@ def get_working_dir() -> str:
 
     return os.getcwd()
 
-def chunk_string(string: str, size: int, overlap: int = 30) -> List:
+def chunk_string(length: int, size: int, overlap: int = 30) -> List:
     # Slice string in chunks of size
     size = size - overlap
-    return [(0+i,size+i+overlap) for i in range(0, len(string), size)]
+    return [(0+i,size+i+overlap) for i in range(0, length, size)]
 
 def dict_values_to_list(input_dict: Dict):
     # Given a Dict, return all the values from the dict in a list
@@ -259,7 +259,7 @@ def sort_by_digit(container: Any, item: int=0):
 def create_dir(dir_path: str, delete_if_exists: bool = False):
     #If directory not exists, create it
     #If directory exists, delete it and create it
-    # 
+    
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     elif delete_if_exists:

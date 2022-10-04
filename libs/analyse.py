@@ -107,9 +107,9 @@ def analyse_output(a_air):
             deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
             deltas_list = utils.normalize_list([deltas_list])
             for i, interface in enumerate(interfaces_data_list):
-                interface['bfactor'] = deltas_list[0][i]
+                interface['bfactor'] = deltas_list[i]
                 if not ((float(interface['se_gain1']) >= 0) == (float(interface['se_gain2']) >= 0)):
-                    interface['bfactor'] = abs(max(deltas_list))*2
+                    interface['bfactor'] = abs(max(deltas_list)) * 2
             for interface in interfaces_data_list:
                 bioutils.create_interface_domain(ranked_path, interface, interfaces_path, domains_dict)
 
