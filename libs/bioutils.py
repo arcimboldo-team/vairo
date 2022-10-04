@@ -32,7 +32,7 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
 
 def pdb2cif(pdb_id: str, pdb_in_path: str, cif_out_path: str):
 
-    get_structure(pdb_path=pdb_in_path)
+    get_structure(pdb_path = pdb_in_path)
     io = MMCIFIO()
     io.set_structure(structure)
     io.save(cif_out_path)
@@ -229,7 +229,7 @@ def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> List:
     #the glycines, So every query_sequence+glycines we can find a chain.
     #We return the list of chains.
 
-    structure = get_structure(path_path=pdb_in_path)
+    structure = get_structure(pdb_path=pdb_in_path)
     chains_return = []
     chains = [chain.get_id() for chain in structure.get_chains()]
 
@@ -364,6 +364,7 @@ def superpose_pdbs(pdb_list: List, output_pdb = None) -> List:
         superpose_input_list.extend(['-o', output_pdb])
     
     superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
+    
     rmsd, quality_q, nalign = None,  None, None
     for line in superpose_output.split('\n'):
         if 'r.m.s.d:' in line:

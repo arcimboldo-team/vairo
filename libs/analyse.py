@@ -69,8 +69,6 @@ def analyse_output(a_air):
         bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=new_pdb_path, a_air=a_air)
         if plddt_dict[ranked] >= (PERCENTAGE_FILTER*max_plddt):
             ranked_filtered.append(ranked)
-            shutil.copy2(new_pdb_path, os.path.join(a_air.output_dir, f'{ranked}.pdb'))
-            new_pdb_path = os.path.join(a_air.output_dir, f'{ranked}.pdb')
         ranked_models_dict[ranked] = new_pdb_path
 
     ##Superpose each template with all the rankeds.
@@ -88,7 +86,7 @@ def analyse_output(a_air):
             if ranked in ranked_filtered:
                 output_pdb = os.path.join(a_air.output_dir, f'{ranked}_superposed.pdb')
                 bioutils.superpose_pdbs([ranked_path] + list(template_dict.values()), output_pdb=output_pdb)
-
+    
     ##Use aleph to generate domains and calculate secondary structure percentage
     secondary_dict = {}
     for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
