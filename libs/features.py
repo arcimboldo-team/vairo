@@ -1,14 +1,13 @@
-from typing import Dict, List, Set
-from Bio.PDB import PDBParser, Selection
 import os
 import re
-from ALPHAFOLD.alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
-from ALPHAFOLD.alphafold.common import residue_constants
-import numpy as np
+import numpy
 import pickle
 import logging
-
-from libs import bioutils
+from typing import Dict, List, Set
+from Bio.PDB import PDBParser, Selection
+from ALPHAFOLD.alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
+from ALPHAFOLD.alphafold.common import residue_constants
+from libs import bioutils, utils
 
 
 three_to_one = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ILE': 'I', 'PRO': 'P',
@@ -43,26 +42,26 @@ class Features:
 
     def append_new_template_features(self, new_template_features: Dict, custom_sum_prob: int = None) -> Dict:
 
-        self.template_features['template_all_atom_positions'] = np.vstack([self.template_features['template_all_atom_positions'], new_template_features['template_all_atom_positions']])
-        self.template_features['template_all_atom_masks'] = np.vstack([self.template_features['template_all_atom_masks'], new_template_features['template_all_atom_masks']])
-        self.template_features['template_aatype'] = np.vstack([self.template_features['template_aatype'], new_template_features['template_aatype']])
-        self.template_features['template_sequence'] = np.hstack([self.template_features['template_sequence'], new_template_features['template_sequence']])
-        self.template_features['template_domain_names'] = np.hstack([self.template_features['template_domain_names'], new_template_features['template_domain_names']])
+        self.template_features['template_all_atom_positions'] = numpy.vstack([self.template_features['template_all_atom_positions'], new_template_features['template_all_atom_positions']])
+        self.template_features['template_all_atom_masks'] = numpy.vstack([self.template_features['template_all_atom_masks'], new_template_features['template_all_atom_masks']])
+        self.template_features['template_aatype'] = numpy.vstack([self.template_features['template_aatype'], new_template_features['template_aatype']])
+        self.template_features['template_sequence'] = numpy.hstack([self.template_features['template_sequence'], new_template_features['template_sequence']])
+        self.template_features['template_domain_names'] = numpy.hstack([self.template_features['template_domain_names'], new_template_features['template_domain_names']])
         if not custom_sum_prob:
-            self.template_features['template_sum_probs'] = np.vstack([self.template_features['template_sum_probs'], new_template_features['template_sum_probs']])
+            self.template_features['template_sum_probs'] = numpy.vstack([self.template_features['template_sum_probs'], new_template_features['template_sum_probs']])
         else:
-            self.template_features['template_sum_probs'] = np.vstack([self.template_features['template_sum_probs'], custom_sum_prob])
+            self.template_features['template_sum_probs'] = numpy.vstack([self.template_features['template_sum_probs'], custom_sum_prob])
 
         return self.template_features
 
     def append_row_in_msa(self, sequence: str, msa_uniprot_accession_identifiers):
 
-        sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
-        self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
-        self.msa_features['msa_uniprot_accession_identifiers'] = np.hstack([self.msa_features['msa_uniprot_accession_identifiers'], msa_uniprot_accession_identifiers.encode()])
-        self.msa_features['deletion_matrix_int'] = np.vstack([self.msa_features['deletion_matrix_int'], np.zeros(self.msa_features['msa'].shape[1])])
-        self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
-        self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape, len(self.msa_features['msa']))
+        sequence_array = numpy.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
+        self.msa_features['msa'] = numpy.vstack([self.msa_features['msa'], sequence_array])
+        self.msa_features['msa_uniprot_accession_identifiers'] = numpy.hstack([self.msa_features['msa_uniprot_accession_identifiers'], msa_uniprot_accession_identifiers.encode()])
+        self.msa_features['deletion_matrix_int'] = numpy.vstack([self.msa_features['deletion_matrix_int'], numpy.zeros(self.msa_features['msa'].shape[1])])
+        self.msa_features['msa_species_identifiers'] = numpy.hstack([self.msa_features['msa_species_identifiers'], ''])
+        self.msa_features['num_alignments'] = numpy.full(self.msa_features['num_alignments'].shape, len(self.msa_features['msa']))
 
     def complete_msa_from_template_features(self, template_features):
 
@@ -92,6 +91,35 @@ class Features:
         logging.info(f'Merging sequence, msa and template features!')
 
         return {**self.sequence_features, **self.msa_features, **self.template_features}
+
+    def slicing_features(self, mosaic: int) -> List:
+        #This function will generate as many features
+        #as required per size. It will return a list with 
+        #the path of all the generated features
+        
+        sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
+        chunk_list = utils.chunk_string(len(sequence), mosaic)
+
+        features_list = []
+        for min,max in chunk_list:
+            name = f'seq_{min}-{max}'
+            new_features = Features(query_sequence=sequence[min:max])
+            for i in range(1, len(self.msa_features['msa_uniprot_accession_identifiers'])):
+                sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][i].tolist()]))
+                new_features.append_row_in_msa(sequence=sequence[min:max], 
+                                                msa_uniprot_accession_identifiers=self.msa_features['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
+            for i in range(0, len(self.template_features['template_sequence'])):
+                template_dict = {
+                    'template_all_atom_positions': numpy.array([self.template_features['template_all_atom_positions'][i][min:max]]),
+                    'template_all_atom_masks': numpy.array([self.template_features['template_all_atom_masks'][i][min:max]]),
+                    'template_aatype': numpy.array([self.template_features['template_aatype'][i][min:max]]),
+                    'template_sequence': numpy.array([self.template_features['template_sequence'][i][min:max]]),
+                    'template_domain_names': numpy.array([self.template_features['template_domain_names'][i]]),
+                    'template_sum_probs': numpy.array([self.template_features['template_sum_probs'][i]])
+                }
+                new_features.append_new_template_features(template_dict)
+            features_list.append(new_features)
+        return features_list
 
 def empty_msa_features(query_sequence):
 
@@ -124,13 +152,13 @@ def empty_msa_features(query_sequence):
     num_res = len(msas[0].sequences[0])
     num_alignments = len(int_msa)
     features = {}
-    features['deletion_matrix_int'] = np.array(deletion_matrix, dtype=np.int32)
-    features['msa'] = np.array(int_msa, dtype=np.int32)
-    features['num_alignments'] = np.array(
-        [num_alignments] * num_res, dtype=np.int32)
-    features['msa_uniprot_accession_identifiers'] = np.array(
-        uniprot_accession_ids, dtype=np.object_)
-    features['msa_species_identifiers'] = np.array(species_ids, dtype=np.object_)
+    features['deletion_matrix_int'] = numpy.array(deletion_matrix, dtype=numpy.int32)
+    features['msa'] = numpy.array(int_msa, dtype=numpy.int32)
+    features['num_alignments'] = numpy.array(
+        [num_alignments] * num_res, dtype=numpy.int32)
+    features['msa_uniprot_accession_identifiers'] = numpy.array(
+        uniprot_accession_ids, dtype=numpy.object_)
+    features['msa_species_identifiers'] = numpy.array(species_ids, dtype=numpy.object_)
     return features
 
 def empty_template_features(query_sequence):
@@ -138,17 +166,17 @@ def empty_template_features(query_sequence):
     ln = (len(query_sequence) if isinstance(query_sequence, str) else sum(len(s) for s in query_sequence))
     output_templates_sequence = "A" * ln
 
-    templates_all_atom_positions = np.zeros((ln, residue_constants.atom_type_num, 3))
-    templates_all_atom_masks = np.zeros((ln, residue_constants.atom_type_num))
+    templates_all_atom_positions = numpy.zeros((ln, residue_constants.atom_type_num, 3))
+    templates_all_atom_masks = numpy.zeros((ln, residue_constants.atom_type_num))
     templates_aatype = residue_constants.sequence_to_onehot(output_templates_sequence, residue_constants.HHBLITS_AA_TO_ID)
     template_sum_probs = f'None'
     template_features = {
-        "template_all_atom_positions": np.tile(templates_all_atom_positions[None], [0, 1, 1, 1]),
-        "template_all_atom_masks": np.tile(templates_all_atom_masks[None], [0, 1, 1]),
+        "template_all_atom_positions": numpy.tile(templates_all_atom_positions[None], [0, 1, 1, 1]),
+        "template_all_atom_masks": numpy.tile(templates_all_atom_masks[None], [0, 1, 1]),
         "template_sequence": [f"None".encode()] * 0,
-        "template_aatype": np.tile(np.array(templates_aatype)[None], [0, 1, 1]),
+        "template_aatype": numpy.tile(numpy.array(templates_aatype)[None], [0, 1, 1]),
         "template_domain_names": [f"None".encode()] * 0,
-        "template_sum_probs": np.tile(template_sum_probs, [0, 1])
+        "template_sum_probs": numpy.tile(template_sum_probs, [0, 1])
     }
     return template_features
 
@@ -190,12 +218,12 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
             query_sequence=query_sequence,
             template_chain_id=chain_id,
             kalign_binary_path='kalign')
-    template_features['template_sum_probs'] = np.array([[hit.sum_probs]])
-    template_features['template_aatype'] = np.array([template_features['template_aatype']])
-    template_features['template_all_atom_masks'] = np.array([template_features['template_all_atom_masks']])
-    template_features['template_all_atom_positions'] = np.array([template_features['template_all_atom_positions']])
-    template_features['template_domain_names'] = np.array([template_features['template_domain_names']])
-    template_features['template_sequence'] = np.array([template_features['template_sequence']])
+    template_features['template_sum_probs'] = numpy.array([[hit.sum_probs]])
+    template_features['template_aatype'] = numpy.array([template_features['template_aatype']])
+    template_features['template_all_atom_masks'] = numpy.array([template_features['template_all_atom_masks']])
+    template_features['template_all_atom_positions'] = numpy.array([template_features['template_all_atom_positions']])
+    template_features['template_domain_names'] = numpy.array([template_features['template_domain_names']])
+    template_features['template_sequence'] = numpy.array([template_features['template_sequence']])
 
     return template_features
 
@@ -216,7 +244,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
         if res.resname != 'X' and res.resname != '-':
             template_sequence = template_sequence[:res.id[1]] + three_to_one[res.resname] + template_sequence[
                                                                                             res.id[1]:]
-    template_sequence = np.array([template_sequence[:seq_length + 1]])[0]
+    template_sequence = numpy.array([template_sequence[:seq_length + 1]])[0]
 
     atom_masks = []
     for i, res in enumerate(template_sequence):
@@ -230,7 +258,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
                 index = atom_types.index(atom)
                 a37_in_res[index] = 1.
             atom_masks.append(a37_in_res)
-    template_all_atom_masks = np.array([atom_masks[1:]])
+    template_all_atom_masks = numpy.array([atom_masks[1:]])
 
     template_container = []
     for i, res in enumerate(template_all_atom_masks[0]):
@@ -241,22 +269,22 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
                         if res.get_parent().id == chain_id and res.id[0] != 'W' and res.id[1] == (i + 1)][0]
                 res_container.append(resi[atom_types[j]].coord)
             else:
-                res_container.append(np.array([0.] * 3))
+                res_container.append(numpy.array([0.] * 3))
         template_container.append(res_container)
-    template_all_atom_positions = np.array([template_container])
+    template_all_atom_positions = numpy.array([template_container])
 
-    template_domain_names = np.array([(f'{pdb_id}_{chain_id}').encode('ascii')])
+    template_domain_names = numpy.array([(f'{pdb_id}_{chain_id}').encode('ascii')])
 
     template_aatype_container = []
     for res in template_sequence[1:]:
         aa_container = [0] * 22
         aa_container[AA_TO_ID_TO_HHBLITS[res]] = 1
         template_aatype_container.append(aa_container)
-    template_aatype = np.array([template_aatype_container])
+    template_aatype = numpy.array([template_aatype_container])
 
-    template_sum_probs = np.array([100.])
+    template_sum_probs = numpy.array([100.])
 
-    template_sequence_to_add = np.array([template_sequence[1:].encode('ascii')])
+    template_sequence_to_add = numpy.array([template_sequence[1:].encode('ascii')])
     template_all_atom_masks_to_add = template_all_atom_masks
     template_all_atom_positions_to_add = template_all_atom_positions
     template_domain_names_to_add = template_domain_names
@@ -270,7 +298,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     template_features['template_all_atom_positions'] = template_all_atom_positions_to_add
     template_features['template_domain_names'] = template_domain_names_to_add
     template_features['template_aatype'] = template_aatype_to_add
-    template_features['template_sum_probs'] = np.array([template_sum_probs_to_add])
+    template_features['template_sum_probs'] = numpy.array([template_sum_probs_to_add])
 
     return template_features
 
@@ -283,11 +311,11 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
         pdb_path = os.path.join(output_dir,f'{pdb}_{chain}1.pdb')
         templates_dict[pdb] = pdb_path
         with open(pdb_path, 'w') as output_pdb:
-            template_domain_index = np.where(template_features['template_domain_names'] == pdb_name)[0][0]
+            template_domain_index = numpy.where(template_features['template_domain_names'] == pdb_name)[0][0]
             atom_num_int = 0
             for index, atoms_mask in enumerate(template_features['template_all_atom_masks'][template_domain_index][:]):
                 template_residue_masks = template_features['template_aatype'][template_domain_index][index]
-                template_residue_masks_index = np.where(template_residue_masks == 1)[0][0]
+                template_residue_masks_index = numpy.where(template_residue_masks == 1)[0][0]
                 res_type = ID_TO_HHBLITS_AA_3LETTER_CODE[template_residue_masks_index]
                 list_of_atoms_in_residue = [order_atom[i] for i, atom in enumerate(atoms_mask) if atom == 1]
                 for atom in list_of_atoms_in_residue:
@@ -342,7 +370,7 @@ def print_features_from_file(pkl_in_path: str):
     for num, seq in enumerate(features_dict['template_sequence']):
         logging.info(f'{features_dict["template_domain_names"][num].decode("utf-8")}:\n')
         for i in range(4):
-            logging.info('\t'+''.join(np.array_split(list(seq.decode('utf-8')),4)[i].tolist()))
+            logging.info('\t'+''.join(numpy.array_split(list(seq.decode('utf-8')),4)[i].tolist()))
         logging.info('\n')
 
 def create_features_from_file(pkl_in_path: str) -> Features:
@@ -356,13 +384,14 @@ def create_features_from_file(pkl_in_path: str) -> Features:
         new_features.append_row_in_msa(sequence=sequence, 
                                     msa_uniprot_accession_identifiers=features_dict['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
     for i in range(0, len(features_dict['template_sequence'])):
+
         template_dict = {
-            'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),
-            'template_all_atom_masks': np.array([features_dict['template_all_atom_masks'][i]]),
-            'template_aatype': np.array([features_dict['template_aatype'][i]]),
-            'template_sequence': np.array([features_dict['template_sequence'][i]]),
-            'template_domain_names': np.array([features_dict['template_domain_names'][i]]),
-            'template_sum_probs': np.array([features_dict['template_sum_probs'][i]])
+            'template_all_atom_positions': numpy.array([features_dict['template_all_atom_positions'][i]]),
+            'template_all_atom_masks': numpy.array([features_dict['template_all_atom_masks'][i]]),
+            'template_aatype': numpy.array([features_dict['template_aatype'][i]]),
+            'template_sequence': numpy.array([features_dict['template_sequence'][i]]),
+            'template_domain_names': numpy.array([features_dict['template_domain_names'][i]]),
+            'template_sum_probs': numpy.array([features_dict['template_sum_probs'][i]])
         }
         new_features.append_new_template_features(template_dict)
     

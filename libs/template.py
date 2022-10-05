@@ -116,7 +116,6 @@ class Template:
                 
             merge_list = []
             self.results_path_position = self.sort_chains_into_positions(extracted_chain_dict, a_air)
-            a_air.append_line_in_templates(self.results_path_position)
 
             for i, pdb_path in enumerate(self.results_path_position):
                 if pdb_path is not None:
@@ -136,6 +135,9 @@ class Template:
             chain_dict = bioutils.chain_splitter(aux_path)
             for i, pos in enumerate(positions):
                 self.results_path_position[i] = chain_dict[pos] if pos in chain_dict else None
+
+        a_air.append_line_in_templates(self.results_path_position)
+        logging.info(f'Positions of chains in the template {self.pdb_id}: {self.results_path_position}')
 
         template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
             query_sequence=a_air.query_sequence_assembled,

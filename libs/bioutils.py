@@ -4,13 +4,14 @@ import os
 import re
 import shutil
 import subprocess
+import numpy
+import itertools
 from typing import Any, Dict, List, Tuple
 from Bio import SeqIO
 from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
 from libs import change_res, utils
 from scipy.spatial import distance
-import numpy as np
-import itertools
+
 
 def download_pdb(pdb_id: str, output_dir: str):
 
@@ -29,13 +30,6 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
         os.mkdir(maxit_dir)
     subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], cwd=maxit_dir,stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     shutil.rmtree(maxit_dir)
-
-def pdb2cif(pdb_id: str, pdb_in_path: str, cif_out_path: str):
-
-    get_structure(pdb_path = pdb_in_path)
-    io = MMCIFIO()
-    io.set_structure(structure)
-    io.save(cif_out_path)
 
 def cif2pdb(cif_in_path: str, pdb_out_path: str):
     
@@ -87,6 +81,12 @@ def extract_sequence(fasta_path: str) -> str:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
 
+def write_sequence(sequence: str, sequence_path: str) -> str:
+    
+    with open(sequence_path, 'w') as f_out:
+        f_out.write(f'> seq\n{sequence}\n')
+    return sequence_path
+    
 def merge_pdbs(list_of_paths_of_pdbs_to_merge: str, merged_pdb_path: str):
 
     with open(merged_pdb_path, 'w') as f:
@@ -233,7 +233,11 @@ def parse_pdb_line(line: str) -> Dict:
 
     return parsed_dict
 
-def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> List:
+def split_chains_assembly(pdb_in_path: str, 
+                        pdb_out_path:str, 
+                        query_sequence: str,
+                        glycines: int,
+                        num_of_copies: int) -> List:
     #Split the assembly with serveral chains. The assembly is spitted 
     #by the query sequence length. Also, we have to take into account 
     #the glycines, So every query_sequence+glycines we can find a chain.
@@ -254,10 +258,10 @@ def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> List:
         residues_list = list(structure[0][chains[0]].get_residues())
         idres_list = list([get_resseq(res) for res in residues_list])
         original_chain_name = chains[0]
-        sequence_length = len(a_air.query_sequence)
-        seq_with_glycines_length = len(a_air.query_sequence) + a_air.glycines
+        sequence_length = len(query_sequence)
+        seq_with_glycines_length = len(query_sequence) + glycines
 
-        for i in range(0, a_air.num_of_copies):
+        for i in range(0, num_of_copies):
             min = seq_with_glycines_length*(i)
             max = seq_with_glycines_length*(i)+sequence_length
             chain_name = chr(ord(original_chain_name)+i)
@@ -418,7 +422,7 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
     target_common_list = [res for res in Selection.unfold_entities(structure_target, 'R') if res.id[1] in common_res_list]
     target_matrix = calculate_distance_pdist(res_list=target_common_list)
 
-    diff_pdist_matrix = np.abs(query_matrix - target_matrix)
+    diff_pdist_matrix = numpy.abs(query_matrix - target_matrix)
 
     return diff_pdist_matrix.mean()
 

@@ -1,7 +1,7 @@
+from io import StringIO
 import logging
 import os
 import re
-import shutil
 import sys
 import statistics
 from typing import Dict, List
@@ -37,6 +37,8 @@ def plot_plddt(plot_path: str, ranked_models_dict: Dict) -> Dict:
 def analyse_output(a_air):
     
     plots_path = f'{a_air.output_dir}/plots'
+    frobenius_path = f'{a_air.output_dir}/frobenius'
+    sequence_path = os.path.join(frobenius_path, 'sequence.fasta')
     templates_path = f'{a_air.output_dir}/templates'
     interfaces_path = f'{a_air.output_dir}/interfaces'
     analysis_path = f'{plots_path}/analysis.txt'
@@ -48,7 +50,7 @@ def analyse_output(a_air):
     utils.create_dir(dir_path=interfaces_path,delete_if_exists=True)
 
     ##Read all templates and rankeds, if there are no ranked, raise an error
-    template_dict = a_air.features.write_all_templates_in_features(output_dir=templates_path)
+    template_dict = a_air.features_list[0].write_all_templates_in_features(output_dir=templates_path)
     ranked_models_dict = {utils.get_file_name(ranked): os.path.join(a_air.run_dir, ranked) for ranked in os.listdir(a_air.run_dir) if re.match('ranked_[0-9]+.pdb', ranked)}
     if not bool(ranked_models_dict):
         logging.info('No ranked PDBs found')
@@ -57,16 +59,25 @@ def analyse_output(a_air):
     ##Create a plot with the ranked plddts, also, calculate the maximum plddt
     plddt_dict = plot_plddt(plot_path=plddt_plot_path, ranked_models_dict=ranked_models_dict)
     max_plddt = max(plddt_dict.values())
+    
+    
+    best_ranked = list(plddt_dict.keys())[list(plddt_dict.values()).index(max_plddt)]
+    best_ranked_path = ranked_models_dict[best_ranked]
+    ranked_list = list(ranked_models_dict.values()).remove(best_ranked_path)
+    bioutils.write_sequence(a_air.query_sequence_assembled, sequence_path)
+    ALEPH.frobenius(reference=best_ranked_path, targets=ranked_list, sequence=sequence_path)
 
     ##Split the templates with chains
     for template, template_path in template_dict.items():
-        bioutils.split_chains_assembly(pdb_in_path=template_path, pdb_out_path=template_path, a_air=a_air)
+        bioutils.split_chains_assembly(pdb_in_path=template_path, pdb_out_path=template_path, query_sequence=a_air.query_sequence,
+                                        glycines=a_air.glycines, num_of_copies=a_air.num_of_copies)
 
     ##Filter rankeds, split them in chains.
     ranked_filtered = []
     for ranked, ranked_path in ranked_models_dict.items():
         new_pdb_path = os.path.join(a_air.run_dir, f'splitted_{os.path.basename(ranked_path)}')
-        bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=new_pdb_path, a_air=a_air)
+        bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=new_pdb_path, query_sequence=a_air.query_sequence,
+                                        glycines=a_air.glycines, num_of_copies=a_air.num_of_copies)
         if plddt_dict[ranked] >= (PERCENTAGE_FILTER*max_plddt):
             ranked_filtered.append(ranked)
         ranked_models_dict[ranked] = new_pdb_path
