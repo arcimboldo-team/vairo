@@ -24,6 +24,7 @@ class AlphaFoldRun:
 
     def run_af2(self):
 
+        logging.info(f'Running AlphaFold2 in directory {self.results_dir}')
         af2_output = subprocess.Popen(['bash', self.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         while True:
             line = af2_output.stdout.readline()
