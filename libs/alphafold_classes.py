@@ -20,7 +20,7 @@ class AlphaFoldRun:
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(output_dir)}.fasta')
         shutil.copy2(fasta_path, self.fasta_path)
         self.run_alphafold_bash = os.path.join(self.results_dir, 'run_af2.sh')
-        self.feature.write_pkl(self.results_dir)
+        self.feature.write_pkl(os.path.join(self.results_dir,'features.pkl'))
 
     def run_af2(self):
 

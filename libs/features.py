@@ -78,13 +78,13 @@ class Features:
        
         return write_templates_in_features(self.template_features, output_dir, chain)
 
-    def write_pkl(self, output_dir: str):
+    def write_pkl(self, pkl_path: str):
 
-        logging.info(f'Writting all input features in {output_dir}')
+        logging.info(f'Writting all input features in {pkl_path}')
 
         merged_features = self.merge_features()
-        with open(output_dir, 'wb') as handle:
-            pickle.dump(merged_features, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(pkl_path, 'wb') as f_out:
+            pickle.dump(merged_features, f_out, protocol=pickle.HIGHEST_PROTOCOL)
 
     def merge_features(self) -> Set:
 
