@@ -118,7 +118,7 @@ class Features:
                 }
                 new_features.append_new_template_features(template_dict)
             features_list.append(new_features)
-        logging.info(f'Features has been sliced in {len(features_list)} with the following sizes: {chunk_list}')
+        logging.info(f'Features has been sliced in {len(features_list)} partitions with the following sizes: {chunk_list}')
         return features_list
 
 def empty_msa_features(query_sequence):

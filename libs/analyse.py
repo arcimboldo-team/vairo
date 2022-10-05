@@ -60,7 +60,6 @@ def analyse_output(a_air):
     ##Create a plot with the ranked plddts, also, calculate the maximum plddt
     plddt_dict = plot_plddt(plot_path=plddt_plot_path, ranked_models_dict=ranked_models_dict)
     max_plddt = max(plddt_dict.values())
-
     best_ranked = list(plddt_dict.keys())[list(plddt_dict.values()).index(max_plddt)]
     best_ranked_path = ranked_models_dict[best_ranked]
     ranked_list = list(ranked_models_dict.values())
