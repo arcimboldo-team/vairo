@@ -24,7 +24,7 @@ class StructureAir:
         self.glycines: int = 50
         self.template_positions_list: List = [List]
         self.reference: template.Template = None
-        self.use_features: bool = True
+        self.custom_features: bool = True
         self.experimental_pdb: str = None
         self.mosaic: int = None
 
@@ -48,7 +48,7 @@ class StructureAir:
         af2_dbs_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
-        self.use_features = parameters_dict.get('use_features', self.use_features)
+        self.custom_features = parameters_dict.get('custom_features', self.custom_features)
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
         self.query_sequence_assembled = self.generate_query_assembled()
@@ -144,7 +144,7 @@ class StructureAir:
             name = f'results_{i}'
             path = os.path.join(self.run_dir, name)                
             afrun = alphafold_classes.AlphaFoldRun(output_dir=path, fasta_path=self.fasta_path,
-                                                    use_features=self.use_features, feature=feature) 
+                                                    custom_features=self.custom_features, feature=feature) 
             self.afrun_list.append(afrun)
             afrun.create_af2_script(self.alphafold_paths)
             afrun.run_af2()

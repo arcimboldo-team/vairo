@@ -6,15 +6,15 @@ import subprocess
 from libs import utils, features
 
 class AlphaFoldRun:
-    def __init__ (self, output_dir:str, fasta_path: str, use_features: bool, feature: features.Features = None):
+    def __init__ (self, output_dir:str, fasta_path: str, custom_features: bool, feature: features.Features = None):
         self.run_alphafold_bash: str
         self.results_dir: str
         self.fasta_path: str
-        self.use_Features: bool
+        self.custom_features: bool
         self.feature: features.Features = None
 
         self.feature = feature
-        self.use_features = use_features
+        self.custom_features = custom_features
         self.results_dir = output_dir
         utils.create_dir(self.results_dir,delete_if_exists=True)
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(output_dir)}.fasta')
@@ -38,7 +38,6 @@ class AlphaFoldRun:
             raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
         logging.info('AlphaFold2 has finshed succesfully. Proceeding to analyse the results')
 
-
     def create_af2_script(self, alphafold_paths):
         #Create the script to launch alphafold. It contins all the databases,
         #paths to the outputdir and fasta.
@@ -60,7 +59,7 @@ class AlphaFoldRun:
             bash_file.write(f'--bfd_database_path={alphafold_paths.bfd_db_path} \\\n')
             bash_file.write(f'--uniclust30_database_path={alphafold_paths.uniclust30_db_path} \\\n')
             bash_file.write(f'--pdb70_database_path={alphafold_paths.pdb70_db_path} \\\n')
-            bash_file.write(f'--read_features_pkl={self.use_features}\n')
+            bash_file.write(f'--read_features_pkl={self.custom_features}\n')
             bash_file.close()
 
 class AlphaFoldPaths:
