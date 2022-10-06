@@ -24,7 +24,6 @@ atom_types = ['N', 'CA', 'C', 'CB', 'O', 'CG', 'CG1', 'CG2', 'OG', 'OG1', 'SG', 
 atom_order = {atom_type: i for i, atom_type in enumerate(atom_types)}
 order_atom = {v: k for k, v in atom_order.items()}
 
-
 class Features:
 
     def __init__(self, query_sequence: str):
@@ -180,7 +179,7 @@ def empty_template_features(query_sequence):
     }
     return template_features
 
-def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_id, mmcif_db): # TODO: template names must be in lowercase
+def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_id, mmcif_db):
 
     hhr_text = open(hhr_path, 'r').read()
 
@@ -198,11 +197,14 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
         return None
 
     detailed_lines = hits_list[0]
-
+    
+    
     file_id = f'{pdb_id.lower()}'
-    hit = parsers._parse_hhr_hit(detailed_lines)
 
+
+    hit = parsers._parse_hhr_hit(detailed_lines)
     template_sequence = hit.hit_sequence.replace('-', '')
+
     mapping = templates._build_query_to_hit_index_mapping(
             hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
             query_sequence)

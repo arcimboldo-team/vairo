@@ -180,7 +180,6 @@ def parse_pisa_general_multimer(pisa_output: str) -> List:
     #It returns a list with all the interfaces found, each
     #interface contains the requiered information.
 
-
     return_list = []
     match1 = [m.start() for m in re.finditer(' LIST OF INTERFACES', pisa_output)][0]
     match2 = [m.start() for m in re.finditer(' ##:  serial number', pisa_output)][0]

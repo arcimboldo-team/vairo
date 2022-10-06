@@ -78,7 +78,7 @@ class Template:
         #   - Build the new template merging all the templates.
         #   - Create features for the new template.
 
-        output_hhr = f'{a_air.run_dir}/output.hhr'
+        output_hhr = f'{a_air.run_dir}/{self.pdb_id}_output.hhr'
         pdb70_path = f'{a_air.run_dir}/pdb70'
 
         logging.info(f'Generating features of template {self.pdb_id}')
@@ -104,7 +104,6 @@ class Template:
                     aux_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir, chain=chain)
                     extracted_chain_path = list(aux_dict.values())[0]
                     extracted_chain_dict[chain] = [extracted_chain_path]
-
             if self.generate_multimer:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
 

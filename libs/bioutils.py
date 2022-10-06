@@ -476,7 +476,6 @@ def create_interface_domain(pdb_in_path: str, interface: Dict, interfaces_path: 
         bfactors_dict[chain] = [float(interface['bfactor'])] * len(add_domains_dict[chain])
 
     dimers_path = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_{interface["chain1"]}{interface["chain2"]}.pdb')
-    
     split_dimers_in_pdb(pdb_in_path=pdb_in_path,
                         pdb_out_path=dimers_path,
                         chain1=interface['chain1'],
