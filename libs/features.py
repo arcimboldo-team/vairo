@@ -152,7 +152,7 @@ def empty_template_features(query_sequence):
     }
     return template_features
 
-def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_id, mmcif_db): # TODO: template names must be in lowercase
+def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_id, mmcif_db):
 
     hhr_text = open(hhr_path, 'r').read()
 
@@ -170,11 +170,14 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
         return None
 
     detailed_lines = hits_list[0]
-
+    
+    
     file_id = f'{pdb_id.lower()}'
-    hit = parsers._parse_hhr_hit(detailed_lines)
 
+
+    hit = parsers._parse_hhr_hit(detailed_lines)
     template_sequence = hit.hit_sequence.replace('-', '')
+
     mapping = templates._build_query_to_hit_index_mapping(
             hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
             query_sequence)
@@ -190,6 +193,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
             query_sequence=query_sequence,
             template_chain_id=chain_id,
             kalign_binary_path='kalign')
+
     template_features['template_sum_probs'] = np.array([[hit.sum_probs]])
     template_features['template_aatype'] = np.array([template_features['template_aatype']])
     template_features['template_all_atom_masks'] = np.array([template_features['template_all_atom_masks']])
