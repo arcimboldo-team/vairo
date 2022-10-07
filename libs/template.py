@@ -118,7 +118,7 @@ class Template:
 
             for i, pdb_path in enumerate(self.results_path_position):
                 if pdb_path is not None:
-                    offset = query_seq_length * (i) + a_air.glycines * (i)
+                    offset = (query_seq_length+a_air.glycines) * i
                     new_pdb_path = f'{a_air.run_dir}/{self.pdb_id}_{offset}.pdb'
                     bioutils.change_chain(pdb_in_path=pdb_path,
                                     pdb_out_path=new_pdb_path,
@@ -233,8 +233,8 @@ class Template:
             results_algorithm.append(reference_algorithm)
             results_pdist.append([utils.get_file_name(query_pdb)] + reference_pdist_list)
 
-        best_offset_list = bioutils.calculate_auto_offset(results_algorithm)
         return_offset_list = [None] * (len(reference.results_path_position))
+        best_offset_list = bioutils.calculate_auto_offset(results_algorithm, len(return_offset_list))
         for x,y,_ in best_offset_list:
             return_offset_list[y] = pdb_list[x]
 

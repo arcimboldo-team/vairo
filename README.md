@@ -1,4 +1,5 @@
-Requires maxit, pisa, superpose and AlphaFold2 installation
+Requires HHsearch, maxit, pisa and superpose installation.
+Using AlphaFold2 and ALEPH.
 
 Usage: arcimboldo_air.py configuration.bor
 
@@ -15,7 +16,7 @@ paramaters:
   run_alphafold (optional, bool, true): Run AlphaFold2, it can be used to generate a features.pkl without going further.
   reference (optional, string, ''): Existing pdbid or path to a pdb
   experimental_pdb (optional, string, ''): Existing pdbid or path to a pdb
-  custom_features (optional, bool, false): Run AlphaFold2 without any modification and with AlphaFold2 generated features.pkl
+  custom_features (optional, bool, true): Run AlphaFold2 without any modification and with AlphaFold2 generated features.pkl
   mosaic (optional, integer, None): Split the sequence in several pieces. Each piece will have mosaic size.
 
 Templates can be added to the templates section inside the features.pkl, as well as their sequence to the msa, 

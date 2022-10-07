@@ -485,15 +485,16 @@ def create_interface_domain(pdb_in_path: str, interface: Dict, interfaces_path: 
     change.delete_residues_inverse(dimers_path, dimers_path)
     change.change_bfactors(dimers_path, dimers_path)
 
-def calculate_auto_offset(input_list: List[List]) -> List:
+def calculate_auto_offset(input_list: List[List], length: int) -> List:
     
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
     for element in combinated_list:
-        target_list = [target for _,target,_ in element]
+        sorted_list = sorted(element, key=lambda x:element[2])[:length]
+        target_list = [target for _,target,_ in sorted_list]
         if len(target_list) == len(set(target_list)):
-            trimmed_list.append(element)
-    
+            trimmed_list.append(sorted_list)
+
     score_list = []
     for element in trimmed_list:
         score_list.append(sum(z for _,_,z in element))

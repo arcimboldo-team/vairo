@@ -146,13 +146,12 @@ class StructureAir:
             afrun = alphafold_classes.AlphaFoldRun(output_dir=path, fasta_path=self.fasta_path,
                                                     custom_features=self.custom_features, feature=feature) 
             self.afrun_list.append(afrun)
-            afrun.create_af2_script(self.alphafold_paths)
-            afrun.run_af2()
+            #afrun.create_af2_script(self.alphafold_paths)
+            #afrun.run_af2()
     
     def merge_results(self):
-        if len(afrun) == 1:
-            files = os.listdir(afrun.results_dir)
-            shutil.copytree(afrun.results_dir, self.output_dir)          
+        if len(self.afrun_list) == 1:
+            self.run_dir = self.afrun_list[0].results_dir
         else:
             for afrun in self.afrun_list:
                 print('change things')

@@ -65,7 +65,6 @@ def analyse_output(a_air):
     ranked_list = list(ranked_models_dict.values())
     ranked_list.remove(best_ranked_path)
     bioutils.write_sequence(a_air.query_sequence_assembled, sequence_path)
-    ALEPH.frobenius(reference=best_ranked_path, targets=ranked_list, sequence=sequence_path)
 
     ##Split the templates with chains
     for template, template_path in template_dict.items():
@@ -132,7 +131,13 @@ def analyse_output(a_air):
             experimental_dict[ranked] = rmsd
         for template, template_path in template_dict.items():
             rmsd, nalign, quality_q = bioutils.superpose_pdbs([template_path, a_air.experimental_pdb])
-            experimental_dict[template] = rmsd       
+            experimental_dict[template] = rmsd
+
+    for template, template_path in template_dict.items():
+        aleph_file = os.path.join(a_air.run_dir, f'frobenius_{template}.txt')
+        with open(aleph_file, 'w') as sys.stdout:
+            ALEPH.frobenius(reference=template_path, targets=template_path, sequence=sequence_path)
+        sys.stdout = sys.__stdout__   
 
     with open(analysis_path, 'w') as f_in:
 

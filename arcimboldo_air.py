@@ -43,7 +43,7 @@ def main():
     shutil.copy2(input_path, a_air.input_dir)
 
     features_list = []
-    if a_air.use_features:
+    if a_air.custom_features:
         logging.info('Generating features.pkl for AlphaFold2')
         feature = features.Features(query_sequence=a_air.query_sequence_assembled)
         for template in a_air.templates_list:
@@ -55,6 +55,7 @@ def main():
             if template.add_to_templates:
                 feature.append_new_template_features(new_template_features=template.template_features_dict, custom_sum_prob=template.sum_prob)
                 logging.info(f'Template \"{template.pdb_id}\" was added to templates')
+        feature.write_pkl(os.path.join(a_air.run_dir,'features.pkl'))
         if a_air.mosaic is not None:
             features_list = feature.slicing_features(mosaic=a_air.mosaic)
         else:
@@ -66,6 +67,7 @@ def main():
     if a_air.run_af2:
         logging.info('Start running AlphaFold2')
         a_air.run_alphafold(features_list=features_list)
+        a_air.merge_results()
         analyse.analyse_output(a_air=a_air)
 
     if not a_air.verbose:

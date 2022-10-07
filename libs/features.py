@@ -201,7 +201,6 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
     
     file_id = f'{pdb_id.lower()}'
 
-
     hit = parsers._parse_hhr_hit(detailed_lines)
     template_sequence = hit.hit_sequence.replace('-', '')
 
