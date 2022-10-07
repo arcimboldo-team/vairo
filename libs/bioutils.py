@@ -486,9 +486,10 @@ def calculate_auto_offset(input_list: List[List]) -> List:
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
     for element in combinated_list:
-        target_list = [target for _,target,_ in element]
+        sorted_list = sorted(element, key=lambda x:element[2])[:length]
+        target_list = [target for _,target,_ in sorted_list]
         if len(target_list) == len(set(target_list)):
-            trimmed_list.append(element)
+            trimmed_list.append(sorted_list)
     
     score_list = []
     for element in trimmed_list:

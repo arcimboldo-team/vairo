@@ -19,7 +19,7 @@ class MatchRestrictions:
         if self.residues is not None:
             change_list = utils.expand_residues(self.residues)
             new_dict = {self.chain: change_list}
-            self.residues = change_res.ChangeResidues(change_res_dict=new_dict)
+            self.residues = change_res.ChangeResidues(chain_res_dict=new_dict)
         self.position =  parameters_dict.get('position', self.position)
         if self.position != '' and self.position != 'None' and not str(self.position).isdigit():
             raise Exception(f'Error setting position in match {self.chain}: {self.position}')
