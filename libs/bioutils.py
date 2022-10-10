@@ -8,7 +8,7 @@ import numpy
 import itertools
 from typing import Any, Dict, List, Tuple
 from Bio import SeqIO
-from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
+from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
 from libs import change_res, utils
 from scipy.spatial import distance
 
@@ -494,7 +494,6 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List:
         target_list = [target for _,target,_ in sorted_list]
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(sorted_list)
-
     score_list = []
     for element in trimmed_list:
         score_list.append(sum(z for _,_,z in element))
