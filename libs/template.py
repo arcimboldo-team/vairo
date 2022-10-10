@@ -91,12 +91,14 @@ class Template:
             extracted_chain_dict = {}
 
             for chain in self.chains:
-                template_features = features.extract_template_features_from_pdb(
+                template_features, mapping = features.extract_template_features_from_pdb(
                     query_sequence=a_air.query_sequence,
                     hhr_path=output_hhr,
                     pdb_id=self.pdb_id,
                     chain_id=chain,
                     mmcif_db=a_air.run_dir)
+
+                self.mapping_has_changed(chain=chain, mapping=mapping)
 
                 if template_features is not None:
                     g = features.Features(query_sequence=a_air.query_sequence)
@@ -104,6 +106,7 @@ class Template:
                     aux_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir, chain=chain)
                     extracted_chain_path = list(aux_dict.values())[0]
                     extracted_chain_dict[chain] = [extracted_chain_path]
+                            
             if self.generate_multimer:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
 
@@ -145,6 +148,23 @@ class Template:
             chain_id='A')
             
         self.template_features_dict = copy.deepcopy(template_features)
+
+    def mapping_has_changed(self, chain: str, mapping: Dict):
+        #It is necessary to update the mapping that geneartes the alignment
+        #as the residues numbering has changed.
+
+        structure = bioutils.get_structure(self.pdb_path)        
+        residues_list = list(structure[0][chain].get_residues())
+        idres_list = list([bioutils.get_resseq(res) for res in residues_list])
+        mapping_keys = list(map(lambda x: x+1, list(mapping.keys())))
+        mapping_values = list(map(lambda x: x+1, list(mapping.values())))
+        mapping = dict(zip(mapping_keys, mapping_values))
+        if idres_list != mapping_keys:
+            for match in self.match_restrict_list:
+                if match.residues is not None:
+                    match.residues.apply_mapping(chain, mapping)
+            for res in self.change_res_list:
+                res.apply_mapping(chain, mapping)
 
     def sort_chains_into_positions(self, chain_dict: Dict, a_air) -> List:
         

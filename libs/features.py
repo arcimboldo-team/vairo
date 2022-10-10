@@ -191,26 +191,19 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
     hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id+'_'+chain_id in detailed_lines[1]]
-
     if not hits_list:
         logging.info(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
         return None
 
     detailed_lines = hits_list[0]
-    
-    
     file_id = f'{pdb_id.lower()}'
-
     hit = parsers._parse_hhr_hit(detailed_lines)
     template_sequence = hit.hit_sequence.replace('-', '')
-
     mapping = templates._build_query_to_hit_index_mapping(
             hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
             query_sequence)
-
     mmcif_string = open(f'{mmcif_db}/{pdb_id}.cif').read()
     parsing_result = mmcif_parsing.parse(file_id=file_id, mmcif_string=mmcif_string)
-
     template_features, _ = templates._extract_template_features(
             mmcif_object=parsing_result.mmcif_object,
             pdb_id=file_id,
@@ -219,6 +212,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
             query_sequence=query_sequence,
             template_chain_id=chain_id,
             kalign_binary_path='kalign')
+    
     template_features['template_sum_probs'] = numpy.array([[hit.sum_probs]])
     template_features['template_aatype'] = numpy.array([template_features['template_aatype']])
     template_features['template_all_atom_masks'] = numpy.array([template_features['template_all_atom_masks']])
@@ -226,7 +220,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
     template_features['template_domain_names'] = numpy.array([template_features['template_domain_names']])
     template_features['template_sequence'] = numpy.array([template_features['template_sequence']])
 
-    return template_features
+    return template_features, mapping
 
 def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str, pdb_path: str, pdb_id: str, chain_id: str):
 
