@@ -16,7 +16,7 @@ class AlphaFoldRun:
         self.feature = feature
         self.custom_features = custom_features
         self.results_dir = output_dir
-        utils.create_dir(self.results_dir,delete_if_exists=True)
+        utils.create_dir(self.results_dir,delete_if_exists=False)
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(output_dir)}.fasta')
         shutil.copy2(fasta_path, self.fasta_path)
         self.run_alphafold_bash = os.path.join(self.results_dir, 'run_af2.sh')

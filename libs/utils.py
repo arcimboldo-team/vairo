@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List
 from sklearn import preprocessing
+from itertools import groupby
+from operator import itemgetter
 
 def print_msg_box(msg, indent=1, title=None):
 
@@ -98,6 +100,16 @@ def get_paths_by_chain(path_list: List, search_chain: str) -> List:
         if path is not None and get_chain_and_number(path)[0] == search_chain:
             return_list.append(path)
     return return_list
+
+def get_consecutive_numbers(number_list: List[int]) -> List[List]:
+    #Given an integer list, return ranges of consecutive numbers
+
+    result_list = []
+    for k ,g in groupby(enumerate(number_list),lambda x:x[0]-x[1]):
+        group = (map(itemgetter(1),g))
+        group = list(map(int,group))
+        result_list.append((group[0],group[-1]))
+    return result_list
 
 def get_chain_and_number(path_pdb: str) -> List:
     #Given a path: ../../template_A1.pdb return A and 1

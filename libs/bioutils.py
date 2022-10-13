@@ -4,7 +4,7 @@ import os
 import re
 import shutil
 import subprocess
-import numpy
+import numpy as np
 import itertools
 from typing import Any, Dict, List, Tuple
 from Bio import SeqIO
@@ -80,6 +80,15 @@ def extract_sequence(fasta_path: str) -> str:
     except:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
+
+def exctract_sequence_from_pdb(pdb_path: str) -> str:
+    try:
+        record = SeqIO.read(pdb_path, "pdb-atom")
+        return str(record.seq)
+    except:
+        print('ERROR: Something went wrong extracting the fasta record from the pdb at', pdb_path)
+        pass
+    return None
 
 def write_sequence(sequence: str, sequence_path: str) -> str:
     
@@ -422,7 +431,7 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
     target_common_list = [res for res in Selection.unfold_entities(structure_target, 'R') if res.id[1] in common_res_list]
     target_matrix = calculate_distance_pdist(res_list=target_common_list)
 
-    diff_pdist_matrix = numpy.abs(query_matrix - target_matrix)
+    diff_pdist_matrix = np.abs(query_matrix - target_matrix)
 
     return diff_pdist_matrix.mean()
 
@@ -494,6 +503,7 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List:
         target_list = [target for _,target,_ in sorted_list]
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(sorted_list)
+    
     score_list = []
     for element in trimmed_list:
         score_list.append(sum(z for _,_,z in element))
