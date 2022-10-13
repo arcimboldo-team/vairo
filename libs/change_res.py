@@ -29,7 +29,8 @@ class ChangeResidues:
         # Change residues numbering by the ones in mapping
         if chain in self.chain_res_dict:
             residues = self.chain_res_dict[chain]
-            self.chain_res_dict[chain] = [utils.get_key_for_value(res, mapping) for res in residues]
+            results = [utils.get_key_for_value(res, mapping) for res in residues]
+            self.chain_res_dict[chain] = [x for x in results if x is not None]
 
     def delete_residues(self, pdb_in_path: str, pdb_out_path: str):
         self.__change_residues(pdb_in_path, pdb_out_path, 'delete')

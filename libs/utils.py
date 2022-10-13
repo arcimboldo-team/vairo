@@ -83,8 +83,10 @@ def dict_values_to_list(input_dict: Dict):
 
 def get_key_for_value(value: str, search_dict: Dict) -> List:
     #Given a value, get the list of all keys that contains that value
-
-    return list(search_dict.keys())[list(search_dict.values()).index(value)]
+    try:
+        return list(search_dict.keys())[list(search_dict.values()).index(value)]
+    except:
+        return None
 
 def get_positions_by_chain(path_list: List, chain: str) -> str:
     # Give a list of paths, return all the positions in the list
