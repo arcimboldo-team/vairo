@@ -153,7 +153,7 @@ class StructureAir:
         if len(self.afrun_list) == 1:
             self.run_dir = self.afrun_list[0].results_dir
         else:
-            for afrun in self.afrun_list:
+            for self.afrun in self.afrun_list:
                 print('change things')
 
     def __repr__(self) -> str:
