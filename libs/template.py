@@ -184,6 +184,8 @@ class Template:
                 continue
             new_pdb = chain_dict[match.chain][0]
             path_pdb = chain_dict[match.chain][0]
+
+            chain_dict[match.chain] = chain_dict[match.chain][1:] + [chain_dict[match.chain][0]]
             
             if match.residues is not None:
                 name = utils.get_file_name(path_pdb)
@@ -208,11 +210,11 @@ class Template:
                 continue
             if new_pdb not in composition_path_list:
                 new_target_path_list.append(new_pdb)
-        
+
         for chain, paths in chain_dict.items():
             number_of_paths = len(paths)
             number_of_chains = len(utils.get_paths_by_chain(new_target_path_list+composition_path_list, chain))
-            for i in range(number_of_chains, number_of_paths):
+            for i in range(0, number_of_paths-number_of_chains):
                 new_target_path_list.append(paths[i])
 
         reference = self.reference if self.reference is not None else None

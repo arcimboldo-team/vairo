@@ -189,6 +189,11 @@ def get_resseq(residue: Residue) -> int:
 
     return residue.get_full_id()[3][1]
 
+def get_hetatm(residue: Residue) -> int:
+    #Return hetatm 
+
+    return residue.get_full_id()[3][0]
+
 def get_chains(structure: Structure) -> List:
     #Return all chains from a PDB structure
 
@@ -379,12 +384,23 @@ def generate_multimer_chains(pdb_path:str, template_dict: Dict) -> Dict:
     return multimer_dict
 
 def remove_hetatm(pdb_in_path:str, pdb_out_path: str):
+    #Tranform MSE HETATM to MSA ATOM
     #Remove HETATM from pdb
 
     class NonHetSelect(Select):
         def accept_residue(self, residue):
             return 1 if residue.id[0] == " " else 0
     structure = get_structure(pdb_path=pdb_in_path)
+    for chain in structure[0]:
+        for res in list(chain.get_residues()):
+            if get_hetatm(res) == 'H_MSE':
+                res.id = (' ', get_resseq(res), ' ')
+                res.resname = 'MET'
+                for atom in res:
+                    if atom.element == 'SE':
+                        atom.element = 'S'
+
+
     io = PDBIO()
     io.set_structure(structure)
     io.save(pdb_out_path, NonHetSelect())
