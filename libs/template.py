@@ -142,6 +142,8 @@ class Template:
             pdb_id=self.pdb_id,
             chain_id='A')
             
+            
+        logging.info(f'Positions of chains in the template {self.pdb_id}: {self.results_path_position}')
         self.template_features_dict = copy.deepcopy(template_features)
 
     def sort_chains_into_positions(self, chain_dict: Dict, a_air) -> List:
@@ -156,6 +158,8 @@ class Template:
                 continue
             new_pdb = chain_dict[match.chain][0]
             path_pdb = chain_dict[match.chain][0]
+            chain_dict[match.chain] = chain_dict[match.chain][1:] + [chain_dict[match.chain][0]]
+
             if match.residues is not None:
                 name = utils.get_file_name(path_pdb)
                 new_pdb = os.path.join(os.path.dirname(path_pdb), f'{i}_{name}.pdb')
@@ -197,10 +201,11 @@ class Template:
                         composition_path_list[i] = path
             else:
                 for path in new_target_path_list:
-                    for i in range(0, len(composition_path_list)):
+                    for i in range(0, number_of_paths-number_of_chains):
                         if composition_path_list[i] is None:
                             composition_path_list[i] = path
                             break
+
 
         return composition_path_list
 
