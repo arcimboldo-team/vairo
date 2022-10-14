@@ -179,6 +179,7 @@ class Template:
             for res in self.change_res_list:
                 res.apply_mapping(chain, mapping)
 
+
     def sort_chains_into_positions(self, chain_dict: Dict, a_air) -> List:
         
         composition_path_list = [None] * a_air.num_of_copies
@@ -235,10 +236,11 @@ class Template:
                         composition_path_list[i] = path
             else:
                 for path in new_target_path_list:
-                    for i in range(0, len(composition_path_list)):
+                    for i in range(0, number_of_paths-number_of_chains):
                         if composition_path_list[i] is None:
                             composition_path_list[i] = path
                             break
+
 
         return composition_path_list
 
