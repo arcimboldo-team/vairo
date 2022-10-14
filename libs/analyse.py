@@ -217,7 +217,7 @@ def analyse_output(a_air):
             rmsd, nalign, quality_q = bioutils.superpose_pdbs([a_air.experimental_pdb, template_path])
             experimental_dict[template] = rmsd
         output_pdb = os.path.join(a_air.output_dir, os.path.basename(a_air.experimental_pdb))
-        bioutils.superpose_pdbs([a_air.experimental_pdb, ranked_path], output_pdb)
+        bioutils.superpose_pdbs([a_air.experimental_pdb, reference_superpose], output_pdb)
 
     #for template, template_path in template_dict.items():
     #    aleph_file = os.path.join(a_air.run_dir, f'frobenius_{template}.txt')
