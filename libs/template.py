@@ -236,7 +236,7 @@ class Template:
                         composition_path_list[i] = path
             else:
                 for path in new_target_path_list:
-                    for i in range(0, number_of_paths-number_of_chains):
+                    for i in range(0, len(composition_path_list)):
                         if composition_path_list[i] is None:
                             composition_path_list[i] = path
                             break
