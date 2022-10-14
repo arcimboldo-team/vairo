@@ -29,6 +29,7 @@ templates:
   generate_multimer (optional, bool, true if num_of_copies > 1 else false):
   sum_prob (optional, integer, None):
   aligned (optional, bool, false): If the template has already been aligned with the sequence.
+  legacy (optional, bool, false): If the template has been prepared (aligned, one chain)
   reference (optional, string, ''): Existing pdbid or path to a pdb
   
   change_res: -> Change residues of the template. It can be a chain or 'ALL' so this can be applied to all chains

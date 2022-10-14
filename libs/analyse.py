@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import shutil
 import sys
 import statistics
 from typing import Dict, List
@@ -68,9 +69,7 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[int]:
 def plot_gantt(plot_type:str, plot_path: str, sequence: str, assembled_sequence: str, num_of_copies: int, glycines: int, feature: features.Features):
 
     fig, ax = plt.subplots(1, figsize=(16,6))
-
     total_length = num_of_copies*(len(sequence)+glycines)
-    
     height = 0.3
     for i in range(0, num_of_copies):
         ax.barh('sequence', len(sequence), height=height, left=(i*(len(sequence)+glycines))+1, color='tab:cyan')
@@ -95,25 +94,18 @@ def plot_gantt(plot_type:str, plot_path: str, sequence: str, assembled_sequence:
                 if aligned_sequence[i-1] != '-':
                     ax.barh(name, 1, height=height, left=i, color=str(aligned_sequence[i-1]))
 
-    # grid lines
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
-
     plt.setp([ax.get_xticklines()], color='b')
-
-    # align x axis
     ax.set_xlim(0, total_length+2)
     ax.set_xticks(np.arange(1, total_length+2, len(sequence)+glycines))
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
-        
-    # remove spines
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.spines['left'].set_position(('outward', 10))
     ax.spines['top'].set_visible(False)
     ax.spines['bottom'].set_color('b')
     plt.title(title)
-
     plt.savefig(file, bbox_inches='tight',dpi=100)
 
 def analyse_output(a_air):
@@ -162,12 +154,20 @@ def analyse_output(a_air):
     ##Filter rankeds, split them in chains.
     ranked_filtered = []
     for ranked, ranked_path in ranked_models_dict.items():
-        new_pdb_path = os.path.join(a_air.run_dir, f'splitted_{os.path.basename(ranked_path)}')
-        bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=new_pdb_path, query_sequence=a_air.query_sequence,
-                                        glycines=a_air.glycines, num_of_copies=a_air.num_of_copies)
         if plddt_dict[ranked] >= (PERCENTAGE_FILTER*max_plddt):
             ranked_filtered.append(ranked)
+            new_pdb_path = os.path.join(a_air.output_dir, os.path.basename(ranked_path))
+        else:
+            new_pdb_path = os.path.join(a_air.run_dir, f'splitted_{os.path.basename(ranked_path)}')
+
+        bioutils.split_chains_assembly(pdb_in_path=ranked_path, pdb_out_path=new_pdb_path, query_sequence=a_air.query_sequence,
+                                        glycines=a_air.glycines, num_of_copies=a_air.num_of_copies)
         ranked_models_dict[ranked] = new_pdb_path
+
+    #Save superpositions of rankeds and templates
+    reference_superpose = utils.sort_by_digit(list(ranked_models_dict.values()))[0]
+    for path in utils.sort_by_digit(list(ranked_models_dict.values()))[1:] + list(template_dict.values()):
+        bioutils.superpose_pdbs([path, reference_superpose], path)
 
     ##Superpose each template with all the rankeds.
     rmsd_dict = {}
@@ -175,15 +175,11 @@ def analyse_output(a_air):
         for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
             res_list_length = len([res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
             for template, template_path in template_dict.items():
-                rmsd, nalign, quality_q = bioutils.superpose_pdbs([ranked_path, template_path])
+                rmsd, nalign, quality_q = bioutils.superpose_pdbs([template_path, ranked_path])
                 try:
                     rmsd_dict[f'{template}'].append(f'{rmsd}, {nalign} ({res_list_length})')
                 except KeyError:
                     rmsd_dict[f'{template}'] = [f'{rmsd}, {nalign} ({res_list_length})']
-
-            if ranked in ranked_filtered:
-                output_pdb = os.path.join(a_air.output_dir, f'{ranked}_superposed.pdb')
-                bioutils.superpose_pdbs([ranked_path] + list(template_dict.values()), output_pdb=output_pdb)
     
     ##Use aleph to generate domains and calculate secondary structure percentage
     secondary_dict = {}
@@ -215,18 +211,20 @@ def analyse_output(a_air):
     experimental_dict = {}
     if a_air.experimental_pdb is not None:
         for ranked, ranked_path in ranked_models_dict.items():
-            rmsd, nalign, quality_q = bioutils.superpose_pdbs([ranked_path, a_air.experimental_pdb])
+            rmsd, nalign, quality_q = bioutils.superpose_pdbs([a_air.experimental_pdb, ranked_path])
             experimental_dict[ranked] = rmsd
         for template, template_path in template_dict.items():
-            rmsd, nalign, quality_q = bioutils.superpose_pdbs([template_path, a_air.experimental_pdb])
+            rmsd, nalign, quality_q = bioutils.superpose_pdbs([a_air.experimental_pdb, template_path])
             experimental_dict[template] = rmsd
+        output_pdb = os.path.join(a_air.output_dir, os.path.basename(a_air.experimental_pdb))
+        bioutils.superpose_pdbs([a_air.experimental_pdb, ranked_path], output_pdb)
 
-    for template, template_path in template_dict.items():
-        aleph_file = os.path.join(a_air.run_dir, f'frobenius_{template}.txt')
-        with open(aleph_file, 'w') as sys.stdout:
-            ALEPH.frobenius(reference=template_path, targets=template_path, sequence=sequence_path)
-            graph_list = os.listdir(os.path.join(a_air.run_dir, 'plots'))
-        sys.stdout = sys.__stdout__ 
+    #for template, template_path in template_dict.items():
+    #    aleph_file = os.path.join(a_air.run_dir, f'frobenius_{template}.txt')
+    #    with open(aleph_file, 'w') as sys.stdout:
+    #        ALEPH.frobenius(reference=template_path, targets=template_path, sequence=sequence_path)
+    #        graph_list = os.listdir(os.path.join(a_air.run_dir, 'plots'))
+    #    sys.stdout = sys.__stdout__
 
     with open(analysis_path, 'w') as f_in:
 

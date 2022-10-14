@@ -21,6 +21,7 @@ class Template:
         self.add_to_templates: bool = True
         self.sum_prob: bool = False
         self.aligned: bool = False
+        self.legacy: bool = False
         self.template_features: features.Features = None
         self.match_restrict_list: List[match_restrictions.MatchRestrictions] = []
         self.results_path_position: List = [None] * num_of_copies
@@ -33,6 +34,7 @@ class Template:
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
         self.aligned = parameters_dict.get('aligned', self.aligned)
+        self.legacy = parameters_dict.get('legacy', self.legacy)
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
         self.reference = parameters_dict.get('reference', self.reference)
         self.generate_multimer = parameters_dict.get('generate_multimer', self.generate_multimer)
@@ -82,31 +84,36 @@ class Template:
         pdb70_path = f'{a_air.run_dir}/pdb70'
 
         logging.info(f'Generating features of template {self.pdb_id}')
-        if not self.aligned:
-            bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
-            hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
-            hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path,output_path=self.hhr_path)
-
+        if not self.legacy:
             query_seq_length = len(a_air.query_sequence)
             extracted_chain_dict = {}
+            if not self.aligned:
+                bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
+                hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
+                hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path,output_path=self.hhr_path)
 
-            for chain in self.chains:
-                template_features, mapping = features.extract_template_features_from_pdb(
-                    query_sequence=a_air.query_sequence,
-                    hhr_path=self.hhr_path,
-                    pdb_id=self.pdb_id,
-                    chain_id=chain,
-                    mmcif_db=a_air.run_dir)
+                for chain in self.chains:
+                    template_features, mapping = features.extract_template_features_from_pdb(
+                        query_sequence=a_air.query_sequence,
+                        hhr_path=self.hhr_path,
+                        pdb_id=self.pdb_id,
+                        chain_id=chain,
+                        mmcif_db=a_air.run_dir)
 
-                self.mapping_has_changed(chain=chain, mapping=mapping)
+                    self.mapping_has_changed(chain=chain, mapping=mapping)
 
-                if template_features is not None:
-                    g = features.Features(query_sequence=a_air.query_sequence)
-                    g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
-                    aux_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir, chain=chain)
-                    extracted_chain_path = list(aux_dict.values())[0]
-                    extracted_chain_dict[chain] = [extracted_chain_path]
-                            
+                    if template_features is not None:
+                        g = features.Features(query_sequence=a_air.query_sequence)
+                        g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
+                        aux_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir, chain=chain)
+                        extracted_chain_path = list(aux_dict.values())[0]
+                        extracted_chain_dict[chain] = [extracted_chain_path]
+            else:
+                aux_path = os.path.join(a_air.run_dir, os.path.basename(self.pdb_path))
+                shutil.copy2(self.pdb_path, aux_path)
+                chain_dict = bioutils.chain_splitter(aux_path)
+                extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
+            
             if self.generate_multimer:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
 
@@ -117,7 +124,7 @@ class Template:
             for i, pdb_path in enumerate(self.results_path_position):
                 if pdb_path is not None:
                     offset = (query_seq_length+a_air.glycines) * i
-                    new_pdb_path = f'{a_air.run_dir}/{self.pdb_id}_{offset}.pdb'
+                    new_pdb_path = os.path.join(a_air.run_dir, f'{self.pdb_id}_{offset}.pdb')
                     bioutils.change_chain(pdb_in_path=pdb_path,
                                     pdb_out_path=new_pdb_path,
                                     offset=offset, chain='A')
