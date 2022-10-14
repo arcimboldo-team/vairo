@@ -1,5 +1,3 @@
-from curses.ascii import isdigit
-import logging
 from typing import Dict
 from libs import change_res, utils
 

@@ -18,5 +18,7 @@ def print_features(features_path: str):
     features.print_features_from_file(features_path)
 
 if __name__ == "__main__":
+    print('Usage: utilities.py function input')
+    print('Functions: write_features, print_features')
     args = sys.argv
     globals()[args[1]](*args[2:])

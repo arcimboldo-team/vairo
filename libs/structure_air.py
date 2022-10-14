@@ -1,11 +1,8 @@
 import logging
 import os
 import shutil
-import subprocess
 from typing import List, Dict
-import numpy as np
-from ALPHAFOLD.alphafold.common import residue_constants
-from libs import bioutils, template, utils, features, alphafold_paths
+from libs import alphafold_classes, bioutils, template, utils, features
 
 class StructureAir:
 
@@ -19,19 +16,18 @@ class StructureAir:
         self.query_sequence: str
         self.query_sequence_assembled: str
         self.num_of_copies: int
-        self.features: features.Features
-        self.alphafold_paths: alphafold_paths.AlphaFoldPaths
+        self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
+        self.alphafold_paths: alphafold_classes.AlphaFoldPaths
         self.templates_list: List[template.Template] = []
         self.run_af2: bool = False
         self.verbose: bool = True
         self.glycines: int = 50
         self.template_positions_list: List = [List]
         self.reference: template.Template = None
-        self.use_features: bool = True
+        self.custom_features: bool = True
         self.experimental_pdb: str = None
         self.mosaic: int = None
 
-        
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
         self.input_dir = os.path.join(self.run_dir, 'input')
@@ -41,19 +37,18 @@ class StructureAir:
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
 
-        fasta_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'fasta_path')
-        
+        fasta_path = utils.get_mandatory_value(input_load=parameters_dict, value='fasta_path')
         if not os.path.exists(fasta_path):
             raise Exception(f'{fasta_path} does not exist')
         else:
-            self.fasta_path = os.path.join(self.input_dir, f'{os.path.basename(self.run_dir)}.fasta')
+            self.fasta_path = os.path.join(self.input_dir, os.path.basename(fasta_path))
             shutil.copy2(fasta_path, self.fasta_path)
         
         self.num_of_copies = utils.get_mandatory_value(input_load = parameters_dict, value = 'num_of_copies')
         af2_dbs_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
-        self.use_features = parameters_dict.get('use_features', self.use_features)
+        self.custom_features = parameters_dict.get('custom_features', self.custom_features)
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
         self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
         self.query_sequence_assembled = self.generate_query_assembled()
@@ -84,9 +79,7 @@ class StructureAir:
             if self.reference is None:
                 self.reference = self.templates_list[0]
 
-        self.features = features.Features(query_sequence=self.query_sequence_assembled)
-        self.alphafold_paths = alphafold_paths.AlphaFoldPaths(af2_dbs_path=af2_dbs_path, 
-                                                            output_dir=self.run_dir)
+        self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=af2_dbs_path)
 
     def get_template_by_id(self, pdb_id: str) -> template.Template:
         #Return the template matching the pdb_id
@@ -144,73 +137,24 @@ class StructureAir:
 
         return (self.query_sequence + self.glycines * 'G') * (int(self.num_of_copies)-1) + self.query_sequence
 
-    def run_alphafold(self):
+    def run_alphafold(self, features_list: List[features.Features]):
         #Create the script and run alphafold
 
-        self.create_af2_script()
-        af2_output = subprocess.Popen(['bash', self.alphafold_paths.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        while True:
-            line = af2_output.stdout.readline()
-            if not line:
-                break
-            logging.debug(line.decode('utf-8'))
-        af2_output.wait()
-        return_code = af2_output.poll()
-        logging.debug(f'AlphaFold2 return code is {return_code}')
-        #if af2_output.returncode != 0:
-        #    raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
-
-    def slicing_features(self) -> List:
-        #This function will generate as many features
-        #as required per size. It will return a list with 
-        #the path of all the generated features
-        
-        sequence = self.features.msa_features['msa'][0].tolist()
-        chunk_list = utils.chunk_string(len(sequence), self.mosaic)
-
-        features_list = []
-        for min,max in chunk_list:
-            name = f'seq_{min}-{max}'
-            new_features = features.Features(query_sequence=sequence[min:max])
-            for i in range(1, len(self.features.msa_features['msa_uniprot_accession_identifiers'])):
-                sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.features.msa_features['msa'][i].tolist()]))
-                new_features.append_row_in_msa(sequence=sequence[min:max], 
-                                                msa_uniprot_accession_identifiers=self.features.msa_features['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
-            for i in range(0, len(self.features.template_features['template_sequence'])):
-                template_dict = {
-                    'template_all_atom_positions': np.array([self.features.template_features['template_all_atom_positions'][i]]),
-                    'template_all_atom_masks': np.array([self.features.template_features['template_all_atom_masks'][i]]),
-                    'template_aatype': np.array([self.features.template_features['template_aatype'][i]]),
-                    'template_sequence': np.array([self.features.template_features['template_sequence'][i]]),
-                    'template_domain_names': np.array([self.features.template_features['template_domain_names'][i]]),
-                    'template_sum_probs': np.array([self.features.template_features['template_sum_probs'][i]])
-                }
-                new_features.append_new_template_features(template_dict)
-            new_features.write_all_templates_in_features(self.output)
-
-    def create_af2_script(self):
-        #Create the script to launch alphafold. It contins all the databases,
-        #paths to the outputdir and fasta.
-        
-        previous_path = utils.get_parent_folder(dir_path=self.run_dir)
-
-        with open(self.alphafold_paths.run_alphafold_bash, 'w') as bash_file:
-            bash_file.write('#!/bin/bash\n')
-            bash_file.write(f'python {self.alphafold_paths.run_alphafold_script} \\\n')
-            bash_file.write(f'--fasta_paths={self.fasta_path} \\\n')
-            bash_file.write(f'--output_dir={previous_path} \\\n')
-            bash_file.write(f'--data_dir={self.alphafold_paths.af2_dbs_path} \\\n')
-            bash_file.write(f'--uniref90_database_path={self.alphafold_paths.uniref90_db_path} \\\n')
-            bash_file.write(f'--mgnify_database_path={self.alphafold_paths.mgnify_db_path} \\\n')
-            bash_file.write(f'--template_mmcif_dir={self.alphafold_paths.mmcif_db_path} \\\n')
-            bash_file.write('--max_template_date=2022-03-09 \\\n')
-            bash_file.write(f'--obsolete_pdbs_path={self.alphafold_paths.obsolete_mmcif_db_path} \\\n')
-            bash_file.write('--model_preset=monomer \\\n')
-            bash_file.write(f'--bfd_database_path={self.alphafold_paths.bfd_db_path} \\\n')
-            bash_file.write(f'--uniclust30_database_path={self.alphafold_paths.uniclust30_db_path} \\\n')
-            bash_file.write(f'--pdb70_database_path={self.alphafold_paths.pdb70_db_path} \\\n')
-            bash_file.write(f'--read_features_pkl={self.use_features}\n')
-            bash_file.close()
+        for i, feature in enumerate(features_list):
+            name = f'results_{i}'
+            path = os.path.join(self.run_dir, name)                
+            afrun = alphafold_classes.AlphaFoldRun(output_dir=path, fasta_path=self.fasta_path,
+                                                    custom_features=self.custom_features, feature=feature) 
+            self.afrun_list.append(afrun)
+            afrun.create_af2_script(self.alphafold_paths)
+            afrun.run_af2()
+    
+    def merge_results(self):
+        if len(self.afrun_list) == 1:
+            self.run_dir = self.afrun_list[0].results_dir
+        else:
+            for self.afrun in self.afrun_list:
+                print('change things')
 
     def __repr__(self) -> str:
         return f' \

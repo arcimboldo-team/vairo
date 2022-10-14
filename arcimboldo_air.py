@@ -1,11 +1,11 @@
 #! /usr/bin/env python3
 
-from libs import analyse, features, structure_air, utils
 import os
 import sys
 import logging
 import yaml
 import shutil
+from libs import analyse, features, structure_air, utils
 
 def main():
 
@@ -42,32 +42,38 @@ def main():
     os.chdir(a_air.run_dir)
     shutil.copy2(input_path, a_air.input_dir)
 
-    if a_air.use_features:
+    features_list = []
+    if a_air.custom_features:
         logging.info('Generating features.pkl for AlphaFold2')
+        feature = features.Features(query_sequence=a_air.query_sequence_assembled)
         for template in a_air.templates_list:
-            template.generate_features(a_air=a_air)
+            results_path_position = template.generate_features(a_air=a_air)
+            a_air.append_line_in_templates(results_path_position)
             if template.add_to_msa:
-                sequence_from_template = template.template_features_dict['template_sequence'][0].decode('utf-8')
-                a_air.features.append_row_in_msa(sequence=sequence_from_template, msa_uniprot_accession_identifiers=template.pdb_id)
+                sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
+                feature.append_row_in_msa(sequence=sequence_from_template, msa_uniprot_accession_identifiers=template.pdb_id)
                 logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
             if template.add_to_templates:
-                a_air.features.append_new_template_features(new_template_features=template.template_features_dict, custom_sum_prob=template.sum_prob)
+                feature.append_new_template_features(new_template_features=template.template_features, custom_sum_prob=template.sum_prob)
                 logging.info(f'Template \"{template.pdb_id}\" was added to templates')
-        a_air.features.write_pkl(output_dir=f'{a_air.run_dir}/features.pkl')
+        feature.write_pkl(os.path.join(a_air.run_dir,'features.pkl'))
+        if a_air.mosaic is not None:
+            features_list = feature.slicing_features(mosaic=a_air.mosaic)
+        else:
+            features_list.append(feature)
     else:
+        features_list.append(None)
         logging.info('No features.pkl added, default AlphaFold2 run')
 
     if a_air.run_af2:
-        logging.info('Running AlphaFold2')
-        a_air.run_alphafold()
-        logging.info('AlphaFold2 has finshed succesfully. Proceeding to analyse the results')
-        a_air.check_if_assembly()
+        logging.info('Start running AlphaFold2')
+        a_air.run_alphafold(features_list=features_list)
+        a_air.merge_results()
+        os.chdir(a_air.run_dir)
         analyse.analyse_output(a_air=a_air)
 
     if not a_air.verbose:
         utils.clean_files(dir=a_air.run_dir)
-    else:
-        features.print_features_from_file(f'{a_air.run_dir}/features.pkl')
 
     logging.info('ARCIMBOLDO_AIR has finished succesfully')
 

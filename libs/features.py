@@ -1,14 +1,13 @@
-from typing import Dict, List, Set
-from Bio.PDB import PDBParser, Selection
 import os
 import re
-from ALPHAFOLD.alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
-from ALPHAFOLD.alphafold.common import residue_constants
 import numpy as np
 import pickle
 import logging
-
-from libs import bioutils
+from typing import Dict, List, Set
+from Bio.PDB import PDBParser, Selection
+from ALPHAFOLD.alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
+from ALPHAFOLD.alphafold.common import residue_constants
+from libs import bioutils, utils
 
 
 three_to_one = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ILE': 'I', 'PRO': 'P',
@@ -24,7 +23,6 @@ atom_types = ['N', 'CA', 'C', 'CB', 'O', 'CG', 'CG1', 'CG2', 'OG', 'OG1', 'SG', 
               'OE2', 'CH2', 'NH1', 'NH2', 'OH', 'CZ', 'CZ2', 'CZ3', 'NZ', 'OXT']
 atom_order = {atom_type: i for i, atom_type in enumerate(atom_types)}
 order_atom = {v: k for k, v in atom_order.items()}
-
 
 class Features:
 
@@ -79,19 +77,64 @@ class Features:
        
         return write_templates_in_features(self.template_features, output_dir, chain)
 
-    def write_pkl(self, output_dir: str):
+    def write_pkl(self, pkl_path: str):
 
-        logging.info(f'Writting all input features in {output_dir}')
+        logging.info(f'Writting all input features in {pkl_path}')
 
         merged_features = self.merge_features()
-        with open(output_dir, 'wb') as handle:
-            pickle.dump(merged_features, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(pkl_path, 'wb') as f_out:
+            pickle.dump(merged_features, f_out, protocol=pickle.HIGHEST_PROTOCOL)
 
+    def get_names(self) -> List[str]:
+
+        return [x.decode() for x in self.template_features['template_domain_names']]
+
+    def get_msa_by_name(self, name: str) -> str:
+
+        index = np.flatnonzero(np.core.defchararray.find(name.encode(),self.msa_features['msa_uniprot_accession_identifiers'])!=-1)
+        if len(index) > 1:
+            return (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][index[1]].tolist()]))
+        return None
+  
+    def get_sequence_by_name(self, name: str) -> str:
+
+        index = np.where(self.template_features['template_domain_names'] == name.encode())
+        return self.template_features['template_sequence'][index][0].decode()
+            
     def merge_features(self) -> Set:
 
         logging.info(f'Merging sequence, msa and template features!')
 
         return {**self.sequence_features, **self.msa_features, **self.template_features}
+
+    def slicing_features(self, mosaic: int) -> List:
+        #This function will generate as many features
+        #as required per size. It will return a list with 
+        #the path of all the generated features
+        
+        sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
+        chunk_list = utils.chunk_string(len(sequence), mosaic)
+
+        features_list = []
+        for min,max in chunk_list:
+            new_features = Features(query_sequence=sequence[min:max])
+            for i in range(1, len(self.msa_features['msa_uniprot_accession_identifiers'])):
+                sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][i].tolist()]))
+                new_features.append_row_in_msa(sequence=sequence[min:max], 
+                                                msa_uniprot_accession_identifiers=self.msa_features['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
+            for i in range(0, len(self.template_features['template_sequence'])):
+                template_dict = {
+                    'template_all_atom_positions': np.array([self.template_features['template_all_atom_positions'][i][min:max]]),
+                    'template_all_atom_masks': np.array([self.template_features['template_all_atom_masks'][i][min:max]]),
+                    'template_aatype': np.array([self.template_features['template_aatype'][i][min:max]]),
+                    'template_sequence': np.array([self.template_features['template_sequence'][i][min:max]]),
+                    'template_domain_names': np.array([self.template_features['template_domain_names'][i]]),
+                    'template_sum_probs': np.array([self.template_features['template_sum_probs'][i]])
+                }
+                new_features.append_new_template_features(template_dict)
+            features_list.append(new_features)
+        logging.info(f'Features has been sliced in {len(features_list)} partitions with the following sizes: {chunk_list}')
+        return features_list
 
 def empty_msa_features(query_sequence):
 
@@ -163,28 +206,21 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
     for i in range(len(matches_positions) - 1):
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
-    hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id+'_'+chain_id in detailed_lines[1]]
 
+    hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id+'_'+chain_id in detailed_lines[1]]
     if not hits_list:
         logging.info(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
         return None
-
     detailed_lines = hits_list[0]
-    
-    
+
     file_id = f'{pdb_id.lower()}'
-
-
     hit = parsers._parse_hhr_hit(detailed_lines)
     template_sequence = hit.hit_sequence.replace('-', '')
-
     mapping = templates._build_query_to_hit_index_mapping(
             hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
             query_sequence)
-
     mmcif_string = open(f'{mmcif_db}/{pdb_id}.cif').read()
     parsing_result = mmcif_parsing.parse(file_id=file_id, mmcif_string=mmcif_string)
-
     template_features, _ = templates._extract_template_features(
             mmcif_object=parsing_result.mmcif_object,
             pdb_id=file_id,
@@ -193,7 +229,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
             query_sequence=query_sequence,
             template_chain_id=chain_id,
             kalign_binary_path='kalign')
-
+    
     template_features['template_sum_probs'] = np.array([[hit.sum_probs]])
     template_features['template_aatype'] = np.array([template_features['template_aatype']])
     template_features['template_all_atom_masks'] = np.array([template_features['template_all_atom_masks']])
@@ -201,7 +237,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
     template_features['template_domain_names'] = np.array([template_features['template_domain_names']])
     template_features['template_sequence'] = np.array([template_features['template_sequence']])
 
-    return template_features
+    return template_features, mapping
 
 def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str, pdb_path: str, pdb_id: str, chain_id: str):
 
@@ -284,7 +320,7 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
 
     for pdb_name in template_features['template_domain_names']:
         pdb = pdb_name.decode('utf-8')
-        pdb_path = os.path.join(output_dir,f'{pdb}_{chain}1.pdb')
+        pdb_path = os.path.join(output_dir,f'{pdb}1.pdb')
         templates_dict[pdb] = pdb_path
         with open(pdb_path, 'w') as output_pdb:
             template_domain_index = np.where(template_features['template_domain_names'] == pdb_name)[0][0]
@@ -360,6 +396,7 @@ def create_features_from_file(pkl_in_path: str) -> Features:
         new_features.append_row_in_msa(sequence=sequence, 
                                     msa_uniprot_accession_identifiers=features_dict['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
     for i in range(0, len(features_dict['template_sequence'])):
+
         template_dict = {
             'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),
             'template_all_atom_masks': np.array([features_dict['template_all_atom_masks'][i]]),

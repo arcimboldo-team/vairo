@@ -4,13 +4,14 @@ import os
 import re
 import shutil
 import subprocess
-from typing import Any, Dict, List, Tuple
-from Bio import SeqIO
-from Bio.PDB import MMCIFIO, PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
-from libs import change_res, utils
-from scipy.spatial import distance
 import numpy as np
 import itertools
+from typing import Any, Dict, List, Tuple
+from Bio import SeqIO
+from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
+from libs import change_res, utils
+from scipy.spatial import distance
+
 
 def download_pdb(pdb_id: str, output_dir: str):
 
@@ -29,13 +30,6 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
         os.mkdir(maxit_dir)
     subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], cwd=maxit_dir,stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     shutil.rmtree(maxit_dir)
-
-def pdb2cif(pdb_id: str, pdb_in_path: str, cif_out_path: str):
-
-    get_structure(pdb_path = pdb_in_path)
-    io = MMCIFIO()
-    io.set_structure(structure)
-    io.save(cif_out_path)
 
 def cif2pdb(cif_in_path: str, pdb_out_path: str):
     
@@ -87,6 +81,21 @@ def extract_sequence(fasta_path: str) -> str:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
 
+def exctract_sequence_from_pdb(pdb_path: str) -> str:
+    try:
+        record = SeqIO.read(pdb_path, "pdb-atom")
+        return str(record.seq)
+    except:
+        print('ERROR: Something went wrong extracting the fasta record from the pdb at', pdb_path)
+        pass
+    return None
+
+def write_sequence(sequence: str, sequence_path: str) -> str:
+    
+    with open(sequence_path, 'w') as f_out:
+        f_out.write(f'> seq\n{sequence}\n')
+    return sequence_path
+    
 def merge_pdbs(list_of_paths_of_pdbs_to_merge: str, merged_pdb_path: str):
 
     with open(merged_pdb_path, 'w') as f:
@@ -180,6 +189,11 @@ def get_resseq(residue: Residue) -> int:
 
     return residue.get_full_id()[3][1]
 
+def get_hetatm(residue: Residue) -> int:
+    #Return hetatm 
+
+    return residue.get_full_id()[3][0]
+
 def get_chains(structure: Structure) -> List:
     #Return all chains from a PDB structure
 
@@ -233,7 +247,11 @@ def parse_pdb_line(line: str) -> Dict:
 
     return parsed_dict
 
-def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> List:
+def split_chains_assembly(pdb_in_path: str, 
+                        pdb_out_path:str, 
+                        query_sequence: str,
+                        glycines: int,
+                        num_of_copies: int) -> List:
     #Split the assembly with serveral chains. The assembly is spitted 
     #by the query sequence length. Also, we have to take into account 
     #the glycines, So every query_sequence+glycines we can find a chain.
@@ -254,10 +272,10 @@ def split_chains_assembly(pdb_in_path: str, pdb_out_path:str, a_air) -> List:
         residues_list = list(structure[0][chains[0]].get_residues())
         idres_list = list([get_resseq(res) for res in residues_list])
         original_chain_name = chains[0]
-        sequence_length = len(a_air.query_sequence)
-        seq_with_glycines_length = len(a_air.query_sequence) + a_air.glycines
+        sequence_length = len(query_sequence)
+        seq_with_glycines_length = len(query_sequence) + glycines
 
-        for i in range(0, a_air.num_of_copies):
+        for i in range(0, num_of_copies):
             min = seq_with_glycines_length*(i)
             max = seq_with_glycines_length*(i)+sequence_length
             chain_name = chr(ord(original_chain_name)+i)
@@ -366,12 +384,23 @@ def generate_multimer_chains(pdb_path:str, template_dict: Dict) -> Dict:
     return multimer_dict
 
 def remove_hetatm(pdb_in_path:str, pdb_out_path: str):
+    #Tranform MSE HETATM to MSA ATOM
     #Remove HETATM from pdb
 
     class NonHetSelect(Select):
         def accept_residue(self, residue):
             return 1 if residue.id[0] == " " else 0
     structure = get_structure(pdb_path=pdb_in_path)
+    for chain in structure[0]:
+        for res in list(chain.get_residues()):
+            if get_hetatm(res) == 'H_MSE':
+                res.id = (' ', get_resseq(res), ' ')
+                res.resname = 'MET'
+                for atom in res:
+                    if atom.element == 'SE':
+                        atom.element = 'S'
+
+
     io = PDBIO()
     io.set_structure(structure)
     io.save(pdb_out_path, NonHetSelect())
@@ -461,7 +490,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List:
 
 def create_interface_domain(pdb_in_path: str, interface: Dict, interfaces_path: str, domains_dict: Dict):
     add_domains_dict = {}
-    bfactors_dict = {}   
+    bfactors_dict = {}
     for chain, residue in zip([interface['chain1'], interface['chain2']], [interface['res_chain1'], interface['res_chain2']]):
         added_res_list = []
         for domains in domains_dict[chain]:

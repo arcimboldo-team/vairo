@@ -1,6 +1,6 @@
 import logging
 from typing import Dict
-from libs import bioutils
+from libs import bioutils, utils
 from Bio.PDB import Select, PDBIO
 from ALPHAFOLD.alphafold.common import residue_constants
 
@@ -24,6 +24,13 @@ class ChangeResidues:
         
         if resname != None:
             logging.info(f'The following residues are going to be converted to {self.resname}: {self.chain_res_dict}')
+
+    def apply_mapping(self, chain: str, mapping: Dict):
+        # Change residues numbering by the ones in mapping
+        if chain in self.chain_res_dict:
+            residues = self.chain_res_dict[chain]
+            results = [utils.get_key_for_value(res, mapping) for res in residues]
+            self.chain_res_dict[chain] = [x for x in results if x is not None]
 
     def delete_residues(self, pdb_in_path: str, pdb_out_path: str):
         self.__change_residues(pdb_in_path, pdb_out_path, 'delete')
