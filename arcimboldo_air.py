@@ -45,9 +45,16 @@ def main():
     features_list = []
     if a_air.custom_features:
         logging.info('Generating features.pkl for AlphaFold2')
-        feature = features.Features(query_sequence=a_air.query_sequence_assembled)
+        feature = features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled)
         for template in a_air.templates_list:
-            results_path_position = template.generate_features(a_air=a_air)
+            alignment_dict = {}
+            for sequence in a_air.sequence_assembled.sequence_list:
+                alignment_dict[sequence.name] = template.align(output_dir=a_air.run_dir, fasta_path=sequence.fasta_path)
+            results_path_position = template.generate_features(
+                    output_dir=a_air.run_dir, 
+                    alignment_dict=alignment_dict, 
+                    global_reference=a_air.reference, 
+                    sequence_assembled=a_air.sequence_assembled) 
             a_air.append_line_in_templates(results_path_position)
             if template.add_to_msa:
                 sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')

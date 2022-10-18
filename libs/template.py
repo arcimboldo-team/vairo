@@ -5,7 +5,9 @@ import shutil
 import pandas as pd
 from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res
 from typing import Dict, List
+from libs import sequence
 
+from libs.sequence import SequenceAssembled
 
 class Template:
 
@@ -33,8 +35,10 @@ class Template:
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
-        self.aligned = parameters_dict.get('aligned', self.aligned)
         self.legacy = parameters_dict.get('legacy', self.legacy)
+        if self.legacy:
+            self.aligned = True
+        self.aligned = parameters_dict.get('aligned', self.aligned)
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
         self.reference = parameters_dict.get('reference', self.reference)
         self.generate_multimer = parameters_dict.get('generate_multimer', self.generate_multimer)
@@ -67,64 +71,25 @@ class Template:
         return_references_list.append(self.reference)
         return list(filter(None, return_references_list))
     
-    def generate_features(self, a_air):
-        #If aligned, skip to the end, it is just necessary to create extract the features
-        #If not aligned:
-        #   - Convert pdb to cif, this is necessary to run hhsearch.
-        #   - Create a fake hhsearch database with just our .cif in it. 
-        #   - Run hhsearch, align the .cif with the given sequence.
-        #   - For each chain, extract the features from the alignment result, create the
-        #       the templates for each chain, each template has the chain 'A'.
-        #   - Change the specified residues in the input in all the templates.
+    def generate_features(self, output_dir:str, alignment_dict: Dict, global_reference, sequence_assembled: SequenceAssembled):
+
         #   - Generate offset.
         #   - Apply the generated offset to all the templates.
         #   - Build the new template merging all the templates.
         #   - Create features for the new template.
 
-        pdb70_path = f'{a_air.run_dir}/pdb70'
-
         logging.info(f'Generating features of template {self.pdb_id}')
         if not self.legacy:
-            query_seq_length = len(a_air.query_sequence)
-            extracted_chain_dict = {}
-            if not self.aligned:
-                bioutils.pdb2mmcif(output_dir=a_air.run_dir, pdb_in_path=self.pdb_path, cif_out_path=f'{a_air.run_dir}/{self.pdb_id}.cif')
-                hhsearch.generate_hhsearch_db(template_cif_path=f'{a_air.run_dir}/{self.pdb_id}.cif', output_dir=a_air.run_dir)
-                hhsearch.run_hhsearch(fasta_path=a_air.fasta_path, pdb70_db=pdb70_path,output_path=self.hhr_path)
-
-                for chain in self.chains:
-                    template_features, mapping = features.extract_template_features_from_pdb(
-                        query_sequence=a_air.query_sequence,
-                        hhr_path=self.hhr_path,
-                        pdb_id=self.pdb_id,
-                        chain_id=chain,
-                        mmcif_db=a_air.run_dir)
-
-                    self.mapping_has_changed(chain=chain, mapping=mapping)
-
-                    if template_features is not None:
-                        g = features.Features(query_sequence=a_air.query_sequence)
-                        g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
-                        aux_dict = g.write_all_templates_in_features(output_dir=a_air.run_dir, chain=chain)
-                        extracted_chain_path = list(aux_dict.values())[0]
-                        extracted_chain_dict[chain] = [extracted_chain_path]
-            else:
-                aux_path = os.path.join(a_air.run_dir, os.path.basename(self.pdb_path))
-                shutil.copy2(self.pdb_path, aux_path)
-                chain_dict = bioutils.chain_splitter(aux_path)
-                extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
-            
-            if self.generate_multimer:
-                extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
-
-            self.apply_changes(chain_dict=extracted_chain_dict)
-                
             merge_list = []
-            self.results_path_position = self.sort_chains_into_positions(extracted_chain_dict, a_air)
+            self.results_path_position = self.sort_chains_into_positions(
+                                                chain_dict=alignment_dict, 
+                                                num_of_copies=sequence_assembled.total_copies,
+                                                global_reference=global_reference)
+            
             for i, pdb_path in enumerate(self.results_path_position):
                 if pdb_path is not None:
-                    offset = (query_seq_length+a_air.glycines) * i
-                    new_pdb_path = os.path.join(a_air.run_dir, f'{self.pdb_id}_{offset}.pdb')
+                    offset = sequence_assembled.get_starting_length(i)
+                    new_pdb_path = os.path.join(output_dir, f'{self.pdb_id}_{offset}.pdb')
                     bioutils.change_chain(pdb_in_path=pdb_path,
                                     pdb_out_path=new_pdb_path,
                                     offset=offset, chain='A')
@@ -134,18 +99,17 @@ class Template:
                     merged_pdb_path=self.template_path)
         else:
             shutil.copy2(self.pdb_path, self.template_path)
-            aux_path = os.path.join(a_air.run_dir, f'{utils.get_file_name(self.pdb_path)}_splitted.pdb')
-            positions = bioutils.split_chains_assembly(pdb_in_path=self.template_path, 
+            aux_path = os.path.join(output_dir, f'{utils.get_file_name(self.pdb_path)}_splitted.pdb')
+            positions = bioutils.split_chains_assembly(
+                        pdb_in_path=self.template_path, 
                         pdb_out_path=aux_path, 
-                        query_sequence=a_air.query_sequence,
-                        glycines=a_air.glycines,
-                        num_of_copies=a_air.num_of_copies)
+                        sequence_assembled=sequence_assembled)
             chain_dict = bioutils.chain_splitter(aux_path)
             for i, pos in enumerate(positions):
                 self.results_path_position[i] = chain_dict[pos] if pos in chain_dict else None
 
         template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
-            query_sequence=a_air.query_sequence_assembled,
+            query_sequence=sequence_assembled.sequence_assembled,
             pdb_path=self.template_path,
             pdb_id=self.pdb_id,
             chain_id='A')
@@ -156,11 +120,60 @@ class Template:
         return self.results_path_position
 
     def apply_changes(self, chain_dict: Dict):
+        ##Apply changes in the pdb, change residues.
+
         for change_residues in self.change_res_list:
             for chain, paths_list in chain_dict.items():
                 if chain in change_residues.chain_res_dict.keys():
                     for path in paths_list:
                         change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
+
+    def align(self, output_dir, fasta_path) -> Dict:
+        #If aligned, skip to the end, it is just necessary to extract the features
+        #If not aligned:
+        #   - Convert pdb to cif, this is necessary to run hhsearch.
+        #   - Create a fake hhsearch database with just our .cif in it. 
+        #   - Run hhsearch, align the .cif with the given sequence.
+        #   - For each chain, extract the features from the alignment result, create the
+        #       the templates for each chain, each template has the chain 'A'.
+        #   - Change the specified residues in the input in all the templates.
+
+        pdb70_path = os.path.join(output_dir, 'pdb70')
+        query_sequence = bioutils.extract_sequence(fasta_path)
+        if not self.aligned:
+            extracted_chain_dict = {}
+            bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path, cif_out_path=os.path.join(output_dir,f'{self.pdb_id}.cif'))
+            hhsearch.generate_hhsearch_db(template_cif_path=os.path.join(output_dir,f'{self.pdb_id}.cif'), output_dir=output_dir)
+            hhsearch.run_hhsearch(fasta_path=fasta_path, pdb70_db=pdb70_path,output_path=self.hhr_path)
+
+            for chain in self.chains:
+                template_features, mapping = features.extract_template_features_from_pdb(
+                    query_sequence=query_sequence,
+                    hhr_path=self.hhr_path,
+                    pdb_id=self.pdb_id,
+                    chain_id=chain,
+                    mmcif_db=output_dir)
+
+                self.mapping_has_changed(chain=chain, mapping=mapping)
+
+                if template_features is not None:
+                    g = features.Features(query_sequence=query_sequence)
+                    g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
+                    aux_dict = g.write_all_templates_in_features(output_dir=output_dir, chain=chain)
+                    extracted_chain_path = list(aux_dict.values())[0]
+                    extracted_chain_dict[chain] = [extracted_chain_path]
+        else:
+            aux_path = os.path.join(output_dir, os.path.basename(self.pdb_path))
+            shutil.copy2(self.pdb_path, aux_path)
+            chain_dict = bioutils.chain_splitter(aux_path)
+            extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
+        
+        if self.generate_multimer:
+            extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
+
+        self.apply_changes(chain_dict=extracted_chain_dict)
+
+        return extracted_chain_dict
 
     def mapping_has_changed(self, chain: str, mapping: Dict):
         #It is necessary to update the mapping that geneartes the alignment
@@ -180,9 +193,9 @@ class Template:
                 res.apply_mapping(chain, mapping)
 
 
-    def sort_chains_into_positions(self, chain_dict: Dict, a_air) -> List:
+    def sort_chains_into_positions(self, chain_dict: Dict, num_of_copies: int, global_reference) -> List[str]:
         
-        composition_path_list = [None] * a_air.num_of_copies
+        composition_path_list = [None] * num_of_copies
         new_target_path_list = []
         deleted_positions = []
 
@@ -222,11 +235,11 @@ class Template:
         for chain, paths in chain_dict.items():
             number_of_paths = len(paths)
             number_of_chains = len(utils.get_paths_by_chain(new_target_path_list+composition_path_list, chain))
-            for i in range(0, number_of_paths-number_of_chains):
-                new_target_path_list.append(paths[i])
+            [new_target_path_list.append(paths[i]) for i in range(number_of_paths-number_of_chains)]
+                
 
         reference = self.reference if self.reference is not None else None
-        reference = a_air.reference if reference is None else reference
+        reference = global_reference if reference is None else reference
 
         if new_target_path_list:
             if reference != self:
@@ -240,7 +253,6 @@ class Template:
                         if composition_path_list[i] is None:
                             composition_path_list[i] = path
                             break
-
 
         return composition_path_list
 

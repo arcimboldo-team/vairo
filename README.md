@@ -7,8 +7,6 @@ The configuration.bor has to be a file with YAML format and can contain the foll
 paramaters:
 
   output_dir (mandatory, string): Path to the results directory.
-  fasta_path (mandatory, string): Path to the sequence file.
-  num_of_copies (mandatory, integer): Number of sequence repetitions.
   af2_dbs_path (mandatory, string): Path to the AlphaFold2 databases, they have to be downloaded.
   run_dir (optional, string, 'run'): Path to the directory where AlphaFold2 will be run.
   verbose (optional, bool, true): Enable debugging.
@@ -19,8 +17,14 @@ paramaters:
   custom_features (optional, bool, true): Run AlphaFold2 without any modification and with AlphaFold2 generated features.pkl
   mosaic (optional, integer, None): Split the sequence in several pieces. Each piece will have mosaic size.
 
-Templates can be added to the templates section inside the features.pkl, as well as their sequence to the msa, 
-it is possible to add as many templates as the user requiers:
+sequences:
+- fasta_path:
+  num_of_copies:
+
+- fasta_path:
+  num_of_copies:
+
+Templates can be added to the templates section inside the features.pkl, as well as their sequence to the msa, it is possible to add as many templates as the user requiers:
 
 templates:
 - pdb (mandatory, string): Existing pdbid or path to a pdb
