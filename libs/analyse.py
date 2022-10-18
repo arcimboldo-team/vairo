@@ -126,11 +126,12 @@ def analyse_output(a_air):
 
     ##Read all templates and rankeds, if there are no ranked, raise an error
     feature = a_air.afrun_list[0].feature
-    template_dict = feature.write_all_templates_in_features(output_dir=templates_path)
-
-    #Create gantt diagram
-    plot_gantt(plot_type='template', plot_path=plots_path, sequence=a_air.query_sequence, assembled_sequence=a_air.query_sequence_assembled, glycines=a_air.glycines, num_of_copies=a_air.num_of_copies, feature=feature)
-    plot_gantt(plot_type='msa', plot_path=plots_path, sequence=a_air.query_sequence, assembled_sequence=a_air.query_sequence_assembled, glycines=a_air.glycines, num_of_copies=a_air.num_of_copies, feature=feature)
+    template_dict = {}
+    if feature is not None:
+        template_dict = feature.write_all_templates_in_features(output_dir=templates_path)
+        #Create gantt diagram
+        plot_gantt(plot_type='template', plot_path=plots_path, sequence=a_air.query_sequence, assembled_sequence=a_air.query_sequence_assembled, glycines=a_air.glycines, num_of_copies=a_air.num_of_copies, feature=feature)
+        plot_gantt(plot_type='msa', plot_path=plots_path, sequence=a_air.query_sequence, assembled_sequence=a_air.query_sequence_assembled, glycines=a_air.glycines, num_of_copies=a_air.num_of_copies, feature=feature)
 
     ranked_models_dict = {utils.get_file_name(ranked): os.path.join(a_air.run_dir, ranked) for ranked in os.listdir(a_air.run_dir) if re.match('ranked_[0-9]+.pdb', ranked)}
     if not bool(ranked_models_dict):
