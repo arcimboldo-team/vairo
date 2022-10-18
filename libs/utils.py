@@ -9,7 +9,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple, Union
 from sklearn import preprocessing
 from itertools import groupby
 from operator import itemgetter
@@ -71,7 +71,7 @@ def get_working_dir() -> str:
 
     return os.getcwd()
 
-def chunk_string(length: int, size: int, overlap: int = 30) -> List:
+def chunk_string(length: int, size: int, overlap: int = 30) -> List[int]:
     # Slice string in chunks of size
     size = size - overlap
     return [(0+i,size+i+overlap) for i in range(0, length, size)]
@@ -81,20 +81,20 @@ def dict_values_to_list(input_dict: Dict):
 
     return [value for value in input_dict.values()]
 
-def get_key_for_value(value: str, search_dict: Dict) -> List:
+def get_key_for_value(value: str, search_dict: Dict) -> Union[List[str], None]:
     #Given a value, get the list of all keys that contains that value
     try:
         return list(search_dict.keys())[list(search_dict.values()).index(value)]
     except:
         return None
 
-def get_positions_by_chain(path_list: List, chain: str) -> str:
+def get_positions_by_chain(path_list: List[str], chain: str) -> str:
     # Give a list of paths, return all the positions in the list
     # that contain the chain
     
     return [path_list.index(path) for path in get_paths_by_chain(path_list, chain)]
 
-def get_paths_by_chain(path_list: List, search_chain: str) -> List:
+def get_paths_by_chain(path_list: List[str], search_chain: str) -> List[str]:
     # Return all the paths that contain the chain
 
     return_list = []
@@ -113,12 +113,35 @@ def get_consecutive_numbers(number_list: List[int]) -> List[List]:
         result_list.append((group[0],group[-1]))
     return result_list
 
-def get_chain_and_number(path_pdb: str) -> List:
+def get_chain_and_number(path_pdb: str) -> tuple:
     #Given a path: ../../template_A1.pdb return A and 1
     #Return CHAIN and NUMBER
     name = get_file_name(path_pdb)
     code = name.split('_')[-1]
     return code[0], int(code[1:])
+
+def select_paths_in_dict(chain_dict: Dict, code: str) -> str:
+    #Search for the files in all the dict that
+    #finish with code 
+
+    for _, paths in chain_dict.items():
+        for path in paths:
+            split_code = get_chain_and_number(path)
+            if f'{split_code[0]}{split_code[1]}' == code:
+                return path
+
+def get_paths_in_alignment(align_dict: Dict, code: str) -> List[str]:
+    #Search for the files in all the align dict that
+    #finish with code 
+    return_list = []
+    for _, chain_dict in align_dict.items():
+        return_list.append(select_paths_in_dict(chain_dict=chain_dict, code=code))
+    return return_list
+
+def select_path_from_code(align_dict: Dict, code: str, position: int, sequence_name_list: List[str]) -> str:
+
+    sequence_name = sequence_name_list[position]
+    return select_paths_in_dict(chain_dict=align_dict[sequence_name], code=code)
 
 def replace_last_number(text: str, value: str) -> str:
     #Replace the last number of text by the value

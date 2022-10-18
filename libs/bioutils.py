@@ -13,9 +13,6 @@ from libs import change_res, utils
 from scipy.spatial import distance
 from libs import sequence
 
-from libs.sequence import SequenceAssembled
-
-
 def download_pdb(pdb_id: str, output_dir: str):
 
     pdbl = PDBList()
@@ -89,7 +86,7 @@ def exctract_sequence_from_pdb(pdb_path: str) -> Union[str, None]:
         record = SeqIO.read(pdb_path, "pdb-atom")
         return str(record.seq)
     except:
-        print('ERROR: Something went wrong extracting the fasta record from the pdb at', pdb_path)
+        logging.info('Something went wrong extracting the fasta record from the pdb at', pdb_path)
         pass
     return None
 
@@ -284,7 +281,7 @@ def split_chains_assembly(pdb_in_path: str,
             chain_name = chr(ord(original_chain_name)+i)
             chain = Chain.Chain(chain_name)
             new_structure[0].add(chain)
-            for j in range((min+1), max):
+            for j in range(min+1, max+1):
                 if j in idres_list:
                     res = residues_list[idres_list.index(j)]
                     new_res = copy.copy(res)
@@ -432,16 +429,15 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
     if query_pdb is None or target_pdb is None:
         return 1
 
-    structure_query = get_structure(pdb_path = query_pdb)
+    structure_query = get_structure(pdb_path=query_pdb)
     res_query_list = [res.id[1] for res in Selection.unfold_entities(structure_query, 'R')]
 
-    structure_target = get_structure(pdb_path = target_pdb)
+    structure_target = get_structure(pdb_path=target_pdb)
     res_target_list = [res.id[1] for res in Selection.unfold_entities(structure_target, 'R')]
 
     common_res_list = list(set(res_query_list) & set(res_target_list))
-
     if not common_res_list:
-        return 1
+        return 0.9
 
     query_common_list = [res for res in Selection.unfold_entities(structure_query, 'R') if res.id[1] in common_res_list]
     query_matrix = calculate_distance_pdist(res_list=query_common_list)

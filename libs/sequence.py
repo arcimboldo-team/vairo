@@ -74,9 +74,13 @@ class SequenceAssembled:
 
         return self.sequence_list_expanded[i].name
     
+    def get_list_name(self) -> List[str]:
+        
+        return [sequence.name for sequence in self.sequence_list_expanded]
+    
     def get_starting_length(self, i: int) -> int:
 
         offset = 0
-        for j in range(0, i):
-            offset += len(self.sequence_list_expanded[i].sequence) + self.glycines
+        for j in range(i):
+            offset += len(self.sequence_list_expanded[j].sequence) + self.glycines
         return offset

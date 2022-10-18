@@ -2,11 +2,10 @@ import copy
 import os
 import logging
 import shutil
+import collections
 import pandas as pd
 from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res
 from typing import Dict, List
-from libs import sequence
-
 from libs.sequence import SequenceAssembled
 
 class Template:
@@ -71,21 +70,20 @@ class Template:
         return_references_list.append(self.reference)
         return list(filter(None, return_references_list))
     
-    def generate_features(self, output_dir:str, alignment_dict: Dict, global_reference, sequence_assembled: SequenceAssembled):
-
+    def generate_features(self, output_dir: str, alignment_dict: Dict, global_reference, sequence_assembled: SequenceAssembled):
         #   - Generate offset.
         #   - Apply the generated offset to all the templates.
         #   - Build the new template merging all the templates.
         #   - Create features for the new template.
 
         logging.info(f'Generating features of template {self.pdb_id}')
+
         if not self.legacy:
             merge_list = []
             self.results_path_position = self.sort_chains_into_positions(
-                                                chain_dict=alignment_dict, 
-                                                num_of_copies=sequence_assembled.total_copies,
+                                                alignment_dict=alignment_dict, 
+                                                sequence_name_list=sequence_assembled.get_list_name(),
                                                 global_reference=global_reference)
-            
             for i, pdb_path in enumerate(self.results_path_position):
                 if pdb_path is not None:
                     offset = sequence_assembled.get_starting_length(i)
@@ -185,73 +183,89 @@ class Template:
         mapping_keys = list(map(lambda x: x+1, list(mapping.keys())))
         mapping_values = list(map(lambda x: x+1, list(mapping.values())))
         mapping = dict(zip(mapping_keys, mapping_values))
-        if idres_list != mapping_keys:
+        if idres_list != mapping_keys and len(idres_list) == len(mapping_keys):
             for match in self.match_restrict_list:
                 if match.residues is not None:
                     match.residues.apply_mapping(chain, mapping)
             for res in self.change_res_list:
                 res.apply_mapping(chain, mapping)
 
-
-    def sort_chains_into_positions(self, chain_dict: Dict, num_of_copies: int, global_reference) -> List[str]:
+    def sort_chains_into_positions(self, alignment_dict: Dict, sequence_name_list: List[str], global_reference) -> List[str]:
         
-        composition_path_list = [None] * num_of_copies
-        new_target_path_list = []
+        composition_path_list = [None] * len(sequence_name_list)
+        new_target_code_list = []
         deleted_positions = []
 
+        new_dict = collections.defaultdict(list)
+        for _, chain_dict in alignment_dict.items():
+            for chain, paths in chain_dict.items():
+                codes = [utils.get_chain_and_number(path) for path in paths]
+                [new_dict[chain].append(f'{code[0]}{code[1]}') for code in codes]
+        chain_dict = {chain: sorted(list(set(values))) for chain, values in new_dict.items()}
+
         for i, match in enumerate(self.match_restrict_list):
-            if match.chain is None or match.chain not in chain_dict:
+            if match.chain is None or match.chain not in new_dict:
                 logging.info('Restriction could not be applied')
                 continue
-            new_pdb = chain_dict[match.chain][0]
-            path_pdb = chain_dict[match.chain][0]
+            try:
+                code_pdb = chain_dict[match.chain].pop(0)
+            except:
+                logging.info('Not enough chains in the pdb.')
 
-            chain_dict[match.chain] = chain_dict[match.chain][1:] + [chain_dict[match.chain][0]]
-            
             if match.residues is not None:
-                name = utils.get_file_name(path_pdb)
-                new_pdb = os.path.join(os.path.dirname(path_pdb), f'{i}_{name}.pdb')
-                match.residues.delete_residues_inverse(path_pdb, new_pdb)
+                paths = utils.get_paths_in_alignment(align_dict=alignment_dict, code=code_pdb)
+                for path in paths:
+                    match.residues.delete_residues_inverse(path, path)
+
             if match.position != '' and match.position != 'None':
                 if (int(match.position) < len(composition_path_list)):
-                    composition_path_list[match.position] = new_pdb
+                    composition_path_list[match.position] = utils.select_path_from_code(align_dict=alignment_dict,
+                                                                                        code=code_pdb,
+                                                                                        position=match.position,
+                                                                                        sequence_name_list=sequence_name_list)
                     deleted_positions.append(match.position)
                     continue
                 logging.info(f'Position exceed the length of the sequence, selecting a random position for chain {match.chain}')
             elif match.position == 'None':
-                chain_dict.pop(match.chain)
                 continue
-            if match.reference is not None and match.reference_chain is not None:
+            elif match.reference is not None and match.reference_chain is not None:
                 positions = utils.get_positions_by_chain(match.reference.results_path_position, match.reference_chain)
                 for position in positions:
                     if composition_path_list[position] is None: 
-                        composition_path_list[position] = new_pdb
+                        composition_path_list[position] = utils.select_path_from_code(align_dict=alignment_dict,
+                                                                                    code=code_pdb,
+                                                                                    position=match.position,
+                                                                                    sequence_name_list=sequence_name_list)
                         deleted_positions.append(position)
                         break
                 continue
-            if new_pdb not in composition_path_list:
-                new_target_path_list.append(new_pdb)
+
+            new_target_code_list.append(code_pdb)
 
         for chain, paths in chain_dict.items():
-            number_of_paths = len(paths)
-            number_of_chains = len(utils.get_paths_by_chain(new_target_path_list+composition_path_list, chain))
-            [new_target_path_list.append(paths[i]) for i in range(number_of_paths-number_of_chains)]
+            [new_target_code_list.append(paths[i]) for i in range(len(paths))]
                 
-
         reference = self.reference if self.reference is not None else None
         reference = global_reference if reference is None else reference
 
-        if new_target_path_list:
+        if new_target_code_list:
             if reference != self:
-                new_target_path_list = self.choose_best_offset(reference, deleted_positions, new_target_path_list)
+                new_target_path_list = self.choose_best_offset(reference=reference, 
+                                                            deleted_positions=deleted_positions,
+                                                            align_dict=alignment_dict, 
+                                                            code_list=new_target_code_list, 
+                                                            name_list=sequence_name_list)
                 for i, path in enumerate(new_target_path_list):
                     if composition_path_list[i] is None:
                         composition_path_list[i] = path
             else:
-                for path in new_target_path_list:
-                    for i in range(0, len(composition_path_list)):
+                for code in new_target_code_list:
+                    for i in range(len(composition_path_list)):
                         if composition_path_list[i] is None:
-                            composition_path_list[i] = path
+                            composition_path_list[i] = utils.select_path_from_code(align_dict=alignment_dict,
+                                                                                    code=code,
+                                                                                    position=i,
+                                                                                    sequence_name_list=sequence_name_list)
                             break
 
         return composition_path_list
@@ -266,18 +280,22 @@ class Template:
                 new_reference = a_air.get_template_by_id(match.reference)
                 match.set_reference(new_reference)
 
-    def choose_best_offset(self, reference, deleted_positions: List, pdb_list: List) -> Dict:
+    def choose_best_offset(self, reference, deleted_positions: List[int], align_dict: Dict, code_list: List[str], name_list: List[str]) -> Dict:
         
         results_pdist = []
         
         results_pdist.append(['reference'] + [file for i, file in enumerate(reference.results_path_position) if not i in deleted_positions ])
         results_algorithm = []
 
-        for x, query_pdb in enumerate(pdb_list):
+        for x, code_query_pdb in enumerate(code_list):
             reference_pdist_list = []
             reference_algorithm = []
             for y, target_pdb in enumerate(reference.results_path_position):
                 if not y in deleted_positions:
+                    query_pdb = utils.select_path_from_code(align_dict=align_dict,
+                                                            code=code_query_pdb,
+                                                            position=x,
+                                                            sequence_name_list=name_list)
                     reference_algorithm.append((x, y, bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb)))   
                     reference_pdist_list.append(bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb))
             results_algorithm.append(reference_algorithm)
@@ -286,7 +304,10 @@ class Template:
         return_offset_list = [None] * (len(reference.results_path_position))
         best_offset_list = bioutils.calculate_auto_offset(results_algorithm, len(return_offset_list)-len(deleted_positions))
         for x,y,_ in best_offset_list:
-            return_offset_list[y] = pdb_list[x]
+            return_offset_list[y] = utils.select_path_from_code(align_dict=align_dict,
+                                                                code=code_list[x],
+                                                                position=y,
+                                                                sequence_name_list=name_list)
 
         output_txt = f'{os.getcwd()}/best_offset.txt'
 

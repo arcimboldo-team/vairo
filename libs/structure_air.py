@@ -133,11 +133,13 @@ class StructureAir:
         for i, feature in enumerate(features_list):
             name = f'results_{i}'
             path = os.path.join(self.run_dir, name)                
-            afrun = alphafold_classes.AlphaFoldRun(output_dir=path, fasta_path=self.fasta_path,
-                                                    custom_features=self.custom_features, feature=feature) 
+            afrun = alphafold_classes.AlphaFoldRun(output_dir=path, 
+                                                    sequence=self.sequence_assembled.sequence_assembled,
+                                                    custom_features=self.custom_features, 
+                                                    feature=feature) 
             self.afrun_list.append(afrun)
-            afrun.create_af2_script(self.alphafold_paths)
-            afrun.run_af2()
+            #afrun.create_af2_script(self.alphafold_paths)
+            #afrun.run_af2()
     
     def merge_results(self):
         if len(self.afrun_list) == 1:

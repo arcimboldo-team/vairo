@@ -11,6 +11,9 @@ from Bio.PDB import PDBParser, Selection
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+from libs import sequence
+
+from libs.sequence import SequenceAssembled
 
 
 PERCENTAGE_FILTER = 0.8
@@ -66,14 +69,14 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[int]:
             
     return return_list
 
-def plot_gantt(plot_type:str, plot_path: str, sequence: str, assembled_sequence: str, num_of_copies: int, glycines: int, feature: features.Features):
+def plot_gantt(plot_type:str, plot_path: str, sequence_assembled: sequence.SequenceAssembled, feature: features.Features):
 
     fig, ax = plt.subplots(1, figsize=(16,6))
-    total_length = num_of_copies*(len(sequence)+glycines)
+    total_length = len(sequence_assembled.sequence_assembled) + sequence_assembled.glycines
     height = 0.3
-    for i in range(0, num_of_copies):
-        ax.barh('sequence', len(sequence), height=height, left=(i*(len(sequence)+glycines))+1, color='tab:cyan')
-        ax.barh('sequence', glycines, height=height, left=i*(len(sequence)+glycines)+len(sequence)+1, color='tab:blue')
+    for i in range(sequence_assembled.total_copies):
+        ax.barh('sequence', sequence_assembled.get_sequence_length(i), height=height, left=sequence_assembled.get_starting_length(i)+1, color='tab:cyan')
+        ax.barh('sequence', sequence_assembled.glycines, height=height, left=sequence_assembled.get_starting_length(i)+sequence_assembled.get_sequence_length(i)+1, color='tab:blue')
 
     if plot_type == 'msa':
         title = 'MSA'
@@ -89,15 +92,15 @@ def plot_gantt(plot_type:str, plot_path: str, sequence: str, assembled_sequence:
         elif plot_type == 'template':
             features_search = feature.get_sequence_by_name(name)
         if features_search is not None:
-            aligned_sequence = compare_sequences(assembled_sequence, features_search)
+            aligned_sequence = compare_sequences(sequence_assembled.sequence_assembled, features_search)
             for i in range(1, len(features_search)):
                 if aligned_sequence[i-1] != '-':
                     ax.barh(name, 1, height=height, left=i, color=str(aligned_sequence[i-1]))
 
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     plt.setp([ax.get_xticklines()], color='b')
-    ax.set_xlim(0, total_length+2)
-    ax.set_xticks(np.arange(1, total_length+2, len(sequence)+glycines))
+    ax.set_xlim(0, total_length)
+    ax.set_xticks([sequence_assembled.get_starting_length(i)+1 for i in range(sequence_assembled.total_copies)])
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
     ax.spines['right'].set_visible(False)
@@ -128,11 +131,16 @@ def analyse_output(a_air):
     template_dict = {}
     feature = a_air.afrun_list[0].feature
     if feature is not None:
-        template_dict = feature.write_all_templates_in_features(output_dir=templates_path)
-        
+        template_dict = feature.write_all_templates_in_features(output_dir=templates_path)        
         #Create gantt diagram
-        plot_gantt(plot_type='template', plot_path=plots_path, sequence=a_air.query_sequence, assembled_sequence=a_air.query_sequence_assembled, glycines=a_air.glycines, num_of_copies=a_air.num_of_copies, feature=feature)
-        plot_gantt(plot_type='msa', plot_path=plots_path, sequence=a_air.query_sequence, assembled_sequence=a_air.query_sequence_assembled, glycines=a_air.glycines, num_of_copies=a_air.num_of_copies, feature=feature)
+        plot_gantt(plot_type='template', plot_path=plots_path, sequence_assembled=a_air.sequence_assembled, feature=feature)
+        plot_gantt(plot_type='msa', plot_path=plots_path, sequence_assembled=a_air.sequence_assembled, feature=feature)
+
+    ##Split the templates with chains
+    for template, template_path in template_dict.items():
+        bioutils.split_chains_assembly(pdb_in_path=template_path, 
+                                    pdb_out_path=template_path,
+                                    sequence_assembled=a_air.sequence_assembled)
 
     ranked_models_dict = {utils.get_file_name(ranked): os.path.join(a_air.run_dir, ranked) for ranked in os.listdir(a_air.run_dir) if re.match('ranked_[0-9]+.pdb', ranked)}
     if not bool(ranked_models_dict):
@@ -147,12 +155,6 @@ def analyse_output(a_air):
     ranked_list = list(ranked_models_dict.values())
     ranked_list.remove(best_ranked_path)
     bioutils.write_sequence(a_air.sequence_assembled.sequence_assembled, sequence_path)
-
-    ##Split the templates with chains
-    for template, template_path in template_dict.items():
-        bioutils.split_chains_assembly(pdb_in_path=template_path, 
-                                    pdb_out_path=template_path,
-                                    sequence_assembled=a_air.sequence_assembled)
 
     ##Filter rankeds, split them in chains.
     ranked_filtered = []

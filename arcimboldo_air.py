@@ -49,7 +49,9 @@ def main():
         for template in a_air.templates_list:
             alignment_dict = {}
             for sequence in a_air.sequence_assembled.sequence_list:
-                alignment_dict[sequence.name] = template.align(output_dir=a_air.run_dir, fasta_path=sequence.fasta_path)
+                output_dir = os.path.join(a_air.run_dir, sequence.name)
+                utils.create_dir(output_dir)
+                alignment_dict[sequence.name] = template.align(output_dir=output_dir, fasta_path=sequence.fasta_path)
             results_path_position = template.generate_features(
                     output_dir=a_air.run_dir, 
                     alignment_dict=alignment_dict, 

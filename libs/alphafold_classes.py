@@ -3,10 +3,10 @@ import os
 import logging
 import shutil
 import subprocess
-from libs import utils, features
+from libs import bioutils, utils, features
 
 class AlphaFoldRun:
-    def __init__ (self, output_dir:str, fasta_path: str, custom_features: bool, feature: features.Features = None):
+    def __init__ (self, output_dir:str, sequence: str, custom_features: bool, feature: features.Features = None):
         self.run_alphafold_bash: str
         self.results_dir: str
         self.fasta_path: str
@@ -18,7 +18,7 @@ class AlphaFoldRun:
         self.results_dir = output_dir
         utils.create_dir(self.results_dir,delete_if_exists=False)
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(output_dir)}.fasta')
-        shutil.copy2(fasta_path, self.fasta_path)
+        bioutils.write_sequence(sequence, self.fasta_path)
         self.run_alphafold_bash = os.path.join(self.results_dir, 'run_af2.sh')
 
     def run_af2(self):
