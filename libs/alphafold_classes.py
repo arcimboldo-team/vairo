@@ -35,7 +35,7 @@ class AlphaFoldRun:
         logging.debug(f'AlphaFold2 return code is {return_code}')
         if af2_output.returncode != 0:
             raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
-        logging.info('AlphaFold2 has finshed succesfully. Proceeding to analyse the results')
+        logging.info('AlphaFold2 has finished succesfully. Proceeding to analyse the results')
 
     def create_af2_script(self, alphafold_paths):
         #Create the script to launch alphafold. It contins all the databases,

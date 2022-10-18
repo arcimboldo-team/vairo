@@ -11,7 +11,7 @@ def main():
 
     utils.create_logger()
     logging.info('')
-    logging.info('ARCIBOLDO_AIR')
+    logging.info('ARCIMBOLDO_AIR')
     logging.info('--------------')
     logging.info('')
 
