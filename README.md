@@ -20,6 +20,7 @@ paramaters:
 sequences:
 - fasta_path:
   num_of_copies:
+  positions:
 
 - fasta_path:
   num_of_copies:
