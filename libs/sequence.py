@@ -22,6 +22,9 @@ class Sequence:
             self.positions = [int(position)-1 for position in self.positions]
             self.num_of_copies = len(self.positions)
 
+        if self.num_of_copies == 0:
+            raise Exception(f'Set num_of_copies or positions for sequence {fasta_path}')
+
         if not os.path.exists(fasta_path):
             raise Exception(f'{fasta_path} does not exist')
         else:
@@ -41,8 +44,8 @@ class SequenceAssembled:
         self.glycines: int = glycines
         self.total_copies: int = 0
 
-        positions_to_fill = []
         self.total_copies = sum([sequence.num_of_copies for sequence in sequence_list])
+        positions_to_fill = []
         self.sequence_list_expanded = [None] * self.total_copies
         self.sequence_list = sequence_list
 

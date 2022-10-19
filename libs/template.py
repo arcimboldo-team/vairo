@@ -152,9 +152,8 @@ class Template:
                     chain_id=chain,
                     mmcif_db=output_dir)
 
-                self.mapping_has_changed(chain=chain, mapping=mapping)
-
                 if template_features is not None:
+                    self.mapping_has_changed(chain=chain, mapping=mapping)
                     g = features.Features(query_sequence=query_sequence)
                     g.append_new_template_features(new_template_features=template_features, custom_sum_prob=self.sum_prob)
                     aux_dict = g.write_all_templates_in_features(output_dir=output_dir, chain=chain)

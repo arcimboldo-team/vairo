@@ -47,7 +47,7 @@ class StructureAir:
 
         sequence_list = []
         if not 'sequences' in parameters_dict:
-            logging.info('No sequences detected. Mandatory value')
+            raise Exception('No sequences detected. Mandatory input')
         else:
             for parameters_sequence in parameters_dict.get('sequences'):
                 new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
