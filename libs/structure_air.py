@@ -1,8 +1,7 @@
 import logging
 import os
-import shutil
 from typing import List, Dict
-from libs import alphafold_classes, bioutils, template, utils, features
+from libs import alphafold_classes, bioutils, template, utils, features, sequence
 
 class StructureAir:
 
@@ -11,11 +10,8 @@ class StructureAir:
         self.output_dir: str
         self.run_dir: str
         self.input_dir: str
-        self.fasta_path: str
         self.log_path: str
-        self.query_sequence: str
-        self.query_sequence_assembled: str
-        self.num_of_copies: int
+        self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
         self.templates_list: List[template.Template] = []
@@ -36,28 +32,27 @@ class StructureAir:
         utils.create_dir(self.output_dir)
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
-
-        fasta_path = utils.get_mandatory_value(input_load=parameters_dict, value='fasta_path')
-        if not os.path.exists(fasta_path):
-            raise Exception(f'{fasta_path} does not exist')
-        else:
-            self.fasta_path = os.path.join(self.input_dir, os.path.basename(fasta_path))
-            shutil.copy2(fasta_path, self.fasta_path)
         
-        self.num_of_copies = utils.get_mandatory_value(input_load = parameters_dict, value = 'num_of_copies')
         af2_dbs_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.custom_features = parameters_dict.get('custom_features', self.custom_features)
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
-        self.query_sequence = bioutils.extract_sequence(fasta_path=self.fasta_path)
-        self.query_sequence_assembled = self.generate_query_assembled()
         
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
         if experimental_pdb is not None:
             experimental_pdb = bioutils.check_pdb(experimental_pdb, self.input_dir)
             self.experimental_pdb = os.path.join(self.run_dir, os.path.basename(experimental_pdb))
             bioutils.generate_multimer_from_pdb(experimental_pdb, self.experimental_pdb)
+
+        sequence_list = []
+        if not 'sequences' in parameters_dict:
+            raise Exception('No sequences detected. Mandatory input')
+        else:
+            for parameters_sequence in parameters_dict.get('sequences'):
+                new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
+                sequence_list.append(new_sequence)
+        self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
 
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
@@ -66,7 +61,8 @@ class StructureAir:
         else:
             reference = parameters_dict.get('reference')
             for parameters_template in parameters_dict.get('templates'):
-                new_template = template.Template(parameters_template, self.run_dir, self.input_dir, self.num_of_copies)
+                new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir, 
+                                                input_dir=self.input_dir, num_of_copies=self.sequence_assembled.total_copies)
                 self.templates_list.append(new_template)
                 if new_template.pdb_id == reference:
                     self.reference = new_template
@@ -131,20 +127,16 @@ class StructureAir:
                 self.num_of_copies = len(split_result)
                 self.query_sequence_assembled = self.generate_query_assembled()
 
-    def generate_query_assembled(self) -> str:
-        #Transform the query_sequence to an assembled one
-        #Repeat the sequence num_of_copies times, and put 'G' between the copies
-
-        return (self.query_sequence + self.glycines * 'G') * (int(self.num_of_copies)-1) + self.query_sequence
-
     def run_alphafold(self, features_list: List[features.Features]):
         #Create the script and run alphafold
 
         for i, feature in enumerate(features_list):
             name = f'results_{i}'
             path = os.path.join(self.run_dir, name)                
-            afrun = alphafold_classes.AlphaFoldRun(output_dir=path, fasta_path=self.fasta_path,
-                                                    custom_features=self.custom_features, feature=feature) 
+            afrun = alphafold_classes.AlphaFoldRun(output_dir=path, 
+                                                    sequence=self.sequence_assembled.sequence_assembled,
+                                                    custom_features=self.custom_features, 
+                                                    feature=feature) 
             self.afrun_list.append(afrun)
             afrun.create_af2_script(self.alphafold_paths)
             afrun.run_af2()

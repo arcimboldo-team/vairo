@@ -6,26 +6,26 @@ import shutil
 import subprocess
 import numpy as np
 import itertools
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
 from libs import change_res, utils
 from scipy.spatial import distance
-
+from libs import sequence
 
 def download_pdb(pdb_id: str, output_dir: str):
 
     pdbl = PDBList()
-    result_ent = pdbl.retrieve_pdb_file(pdb_id, pdir=f'{output_dir}', file_format='pdb', obsolete=False)
+    result_ent = pdbl.retrieve_pdb_file(pdb_id, pdir=output_dir, file_format='pdb', obsolete=False)
     if not os.path.exists(result_ent):
         raise Exception(f'{pdb_id} could not be downloaded.')
-    shutil.copy2(result_ent, f'{output_dir}/{pdb_id}.pdb')
+    shutil.copy2(result_ent, os.path.join(output_dir,f'{pdb_id}.pdb'))
     os.remove(result_ent)
     shutil.rmtree('obsolete')
 
 def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
     
-    maxit_dir = f'{output_dir}/maxit'
+    maxit_dir = os.path.join(output_dir, 'maxit')
     if not os.path.exists(maxit_dir):
         os.mkdir(maxit_dir)
     subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], cwd=maxit_dir,stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
@@ -34,10 +34,10 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
 def cif2pdb(cif_in_path: str, pdb_out_path: str):
     
     parser = MMCIFParser(QUIET=True)
-    struc = parser.get_structure('', f'{cif_in_path}')
+    struc = parser.get_structure('', cif_in_path)
     io = PDBIO()
     io.set_structure(struc)
-    io.save(f'{pdb_out_path}')
+    io.save(pdb_out_path)
 
 def check_pdb(pdb: str, output_dir: str) -> str:
     #Check if pdb is a path, and if it doesn't exist, download it.
@@ -45,9 +45,9 @@ def check_pdb(pdb: str, output_dir: str) -> str:
 
     if not os.path.exists(pdb):
         download_pdb(pdb_id=pdb, output_dir=output_dir)
-        pdb = f'{output_dir}/{pdb}.pdb'
+        pdb = os.path.join(output_dir, f'{pdb}.pdb')
     else:
-        pdb_aux = f'{output_dir}/{os.path.basename(pdb)}'
+        pdb_aux = os.path.join(output_dir, os.path.basename(pdb))
         if pdb != pdb_aux:
             shutil.copy2(pdb, pdb_aux)
             pdb = pdb_aux
@@ -81,12 +81,12 @@ def extract_sequence(fasta_path: str) -> str:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
 
-def exctract_sequence_from_pdb(pdb_path: str) -> str:
+def exctract_sequence_from_pdb(pdb_path: str) -> Union[str, None]:
     try:
         record = SeqIO.read(pdb_path, "pdb-atom")
         return str(record.seq)
     except:
-        print('ERROR: Something went wrong extracting the fasta record from the pdb at', pdb_path)
+        logging.info('Something went wrong extracting the fasta record from the pdb at', pdb_path)
         pass
     return None
 
@@ -249,9 +249,7 @@ def parse_pdb_line(line: str) -> Dict:
 
 def split_chains_assembly(pdb_in_path: str, 
                         pdb_out_path:str, 
-                        query_sequence: str,
-                        glycines: int,
-                        num_of_copies: int) -> List:
+                        sequence_assembled: sequence.SequenceAssembled) -> List:
     #Split the assembly with serveral chains. The assembly is spitted 
     #by the query sequence length. Also, we have to take into account 
     #the glycines, So every query_sequence+glycines we can find a chain.
@@ -272,17 +270,19 @@ def split_chains_assembly(pdb_in_path: str,
         residues_list = list(structure[0][chains[0]].get_residues())
         idres_list = list([get_resseq(res) for res in residues_list])
         original_chain_name = chains[0]
-        sequence_length = len(query_sequence)
-        seq_with_glycines_length = len(query_sequence) + glycines
 
-        for i in range(0, num_of_copies):
-            min = seq_with_glycines_length*(i)
-            max = seq_with_glycines_length*(i)+sequence_length
+        for i in range(sequence_assembled.total_copies):
+            sequence_length = sequence_assembled.get_sequence_length(i)
+            seq_with_glycines_length = sequence_length + sequence_assembled.glycines
+            
+            min = sequence_assembled.get_starting_length(i)
+            max = min+sequence_length
+
             chain_name = chr(ord(original_chain_name)+i)
             chain = Chain.Chain(chain_name)
             new_structure[0].add(chain)
-            for j in range((min+1), (max+1)):
-                if j <= (seq_with_glycines_length*(i)+sequence_length) and j in idres_list:
+            for j in range(min+1, max+1):
+                if j in idres_list:
                     res = residues_list[idres_list.index(j)]
                     new_res = copy.copy(res)
                     chain.add(new_res)
@@ -400,7 +400,6 @@ def remove_hetatm(pdb_in_path:str, pdb_out_path: str):
                     if atom.element == 'SE':
                         atom.element = 'S'
 
-
     io = PDBIO()
     io.set_structure(structure)
     io.save(pdb_out_path, NonHetSelect())
@@ -430,16 +429,15 @@ def pdist(query_pdb: str, target_pdb: str) -> List[List]:
     if query_pdb is None or target_pdb is None:
         return 1
 
-    structure_query = get_structure(pdb_path = query_pdb)
+    structure_query = get_structure(pdb_path=query_pdb)
     res_query_list = [res.id[1] for res in Selection.unfold_entities(structure_query, 'R')]
 
-    structure_target = get_structure(pdb_path = target_pdb)
+    structure_target = get_structure(pdb_path=target_pdb)
     res_target_list = [res.id[1] for res in Selection.unfold_entities(structure_target, 'R')]
 
     common_res_list = list(set(res_query_list) & set(res_target_list))
-
     if not common_res_list:
-        return 1
+        return 0.9
 
     query_common_list = [res for res in Selection.unfold_entities(structure_query, 'R') if res.id[1] in common_res_list]
     query_matrix = calculate_distance_pdist(res_list=query_common_list)
