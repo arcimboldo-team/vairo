@@ -249,20 +249,19 @@ def parse_pdb_line(line: str) -> Dict:
 
 def split_chains_assembly(pdb_in_path: str, 
                         pdb_out_path:str, 
-                        sequence_assembled: sequence.SequenceAssembled) -> List:
+                        sequence_assembled: sequence.SequenceAssembled) -> Dict:
     #Split the assembly with serveral chains. The assembly is spitted 
     #by the query sequence length. Also, we have to take into account 
     #the glycines, So every query_sequence+glycines we can find a chain.
     #We return the list of chains.
 
     structure = get_structure(pdb_path=pdb_in_path)
-    chains_return = []
+    chains_return = {}
     chains = [chain.get_id() for chain in structure.get_chains()]
 
     if len(chains) > 1:
         logging.info(f'PDB: {pdb_in_path} is already splitted in several chains: {chains}')
         shutil.copy2(pdb_in_path, pdb_out_path)
-        chains_return = chains
     else:
         new_structure = Structure.Structure(structure.get_id)
         new_model = Model.Model(structure[0].id)
@@ -281,17 +280,17 @@ def split_chains_assembly(pdb_in_path: str,
             chain_name = chr(ord(original_chain_name)+i)
             chain = Chain.Chain(chain_name)
             new_structure[0].add(chain)
+            mapping = {}
             for j in range(min+1, max+1):
                 if j in idres_list:
                     res = residues_list[idres_list.index(j)]
+                    new_id = j % seq_with_glycines_length
+                    mapping[new_id] = j
                     new_res = copy.copy(res)
                     chain.add(new_res)
                     new_res.parent = chain
-                    chain[new_res.id].id = (' ', j % seq_with_glycines_length, ' ')
-            if list(new_structure[0][chain.id].get_residues()):
-                chains_return.append(chain_name)
-            else:
-                chains_return.append(None)
+                    chain[new_res.id].id = (' ', new_id, ' ')
+            chains_return[chain_name] = mapping
 
         io = PDBIO()
         io.set_structure(new_structure)

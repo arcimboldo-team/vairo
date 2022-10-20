@@ -321,7 +321,7 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
     for pdb_name in template_features['template_domain_names']:
         pdb = pdb_name.decode('utf-8')
         pdb_path = os.path.join(output_dir,f'{pdb}1.pdb')
-        templates_dict[pdb] = pdb_path
+        templates_dict[utils.get_file_name(pdb_path)] = pdb_path
         with open(pdb_path, 'w') as output_pdb:
             template_domain_index = np.where(template_features['template_domain_names'] == pdb_name)[0][0]
             atom_num_int = 0

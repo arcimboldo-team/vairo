@@ -281,9 +281,6 @@ class Template:
 
     def choose_best_offset(self, reference, deleted_positions: List[int], align_dict: Dict, code_list: List[str], name_list: List[str]) -> Dict:
         
-        results_pdist = []
-        
-        results_pdist.append(['reference'] + [file for i, file in enumerate(reference.results_path_position) if not i in deleted_positions ])
         results_algorithm = []
 
         for x, code_query_pdb in enumerate(code_list):
@@ -293,12 +290,12 @@ class Template:
                 if not y in deleted_positions:
                     query_pdb = utils.select_path_from_code(align_dict=align_dict,
                                                             code=code_query_pdb,
-                                                            position=x,
+                                                            position=y,
                                                             sequence_name_list=name_list)
-                    reference_algorithm.append((x, y, bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb)))   
-                    reference_pdist_list.append(bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb))
+                    if query_pdb is not None:
+                        reference_algorithm.append((x, y, bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb)))   
+                        reference_pdist_list.append(bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb))
             results_algorithm.append(reference_algorithm)
-            results_pdist.append([utils.get_file_name(query_pdb)] + reference_pdist_list)
 
         return_offset_list = [None] * (len(reference.results_path_position))
         best_offset_list = bioutils.calculate_auto_offset(results_algorithm, len(return_offset_list)-len(deleted_positions))
@@ -307,22 +304,6 @@ class Template:
                                                                 code=code_list[x],
                                                                 position=y,
                                                                 sequence_name_list=name_list)
-
-        output_txt = f'{os.getcwd()}/best_offset.txt'
-
-        with open(output_txt, 'w') as f_in:
-
-             f_in.write('Calculated with distances:\n')
-
-             rows = []
-             for x in results_pdist[1:]:
-                 rows.append(x)
-             df = pd.DataFrame(rows, columns=results_pdist[0])
-             f_in.write(df.to_markdown())        
-        
-             f_in.write('\n\n')
-             f_in.write('Best combination is (using pdist):')
-             f_in.write(f'{str(return_offset_list)}')
 
         return return_offset_list
 

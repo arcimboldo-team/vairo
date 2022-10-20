@@ -162,6 +162,10 @@ def expand_residues(res: str) -> List:
         return_list.extend(map(int,res_list))
     return return_list
 
+def renum_residues(res_list: List[int], mapping: Dict) -> List[int]:
+    
+    return [mapping[res] for res in res_list]
+
 def rmsilent(file_path: str):
     #Remove file without error if it doesn't exist
 
