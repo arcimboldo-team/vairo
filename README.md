@@ -11,7 +11,8 @@ paramaters:
   run_dir (optional, string, 'run'): Path to the directory where AlphaFold2 will be run.
   verbose (optional, bool, true): Enable debugging.
   glycines (optional, integer, 50): Number of glycines between sequence copies.
-  run_alphafold (optional, bool, true): Run AlphaFold2, it can be used to generate a features.pkl without going further.
+  run_af2 (optional, bool, true): Run AlphaFold2, it can be used to generate a features.pkl without going further.
+  stop_after_msa (optional, bool, false): Run AlphaFold2 and stop it after generating the msa.
   reference (optional, string, ''): Existing pdbid or path to a pdb
   experimental_pdb (optional, string, ''): Existing pdbid or path to a pdb
   custom_features (optional, bool, true): Run AlphaFold2 without any modification and with AlphaFold2 generated features.pkl

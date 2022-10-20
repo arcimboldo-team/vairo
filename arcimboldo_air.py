@@ -74,12 +74,12 @@ def main():
         features_list.append(None)
         logging.info('No features.pkl added, default AlphaFold2 run')
 
-    if a_air.run_af2:
+    if a_air.run_alphafold:
         logging.info('Start running AlphaFold2')
-        a_air.run_alphafold(features_list=features_list)
+        a_air.run_af2(features_list=features_list)
         a_air.merge_results()
-        os.chdir(a_air.run_dir)
-        analyse.analyse_output(a_air=a_air)
+    os.chdir(a_air.run_dir)
+    analyse.analyse_output(a_air=a_air)
 
     if not a_air.verbose:
         utils.clean_files(dir=a_air.run_dir)

@@ -15,7 +15,8 @@ class StructureAir:
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
         self.templates_list: List[template.Template] = []
-        self.run_af2: bool = False
+        self.run_alphafold: bool = True
+        self.stop_after_msa: bool = False
         self.verbose: bool = True
         self.glycines: int = 50
         self.template_positions_list: List = [List]
@@ -34,7 +35,8 @@ class StructureAir:
         utils.create_dir(self.input_dir)
         
         af2_dbs_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'af2_dbs_path')
-        self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
+        self.run_alphafold = parameters_dict.get('run_alphafold', self.run_alphafold)
+        self.stop_after_msa = parameters_dict.get('run_alphafold', self.stop_after_msa)
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.custom_features = parameters_dict.get('custom_features', self.custom_features)
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
@@ -127,7 +129,7 @@ class StructureAir:
                 self.num_of_copies = len(split_result)
                 self.query_sequence_assembled = self.generate_query_assembled()
 
-    def run_alphafold(self, features_list: List[features.Features]):
+    def run_af2(self, features_list: List[features.Features]):
         #Create the script and run alphafold
 
         for i, feature in enumerate(features_list):
@@ -135,11 +137,11 @@ class StructureAir:
             path = os.path.join(self.run_dir, name)                
             afrun = alphafold_classes.AlphaFoldRun(output_dir=path, 
                                                     sequence=self.sequence_assembled.sequence_assembled,
-                                                    custom_features=self.custom_features, 
+                                                    custom_features=self.custom_features,
+                                                    stop_after_msa=self.stop_after_msa,
                                                     feature=feature) 
             self.afrun_list.append(afrun)
-            afrun.create_af2_script(self.alphafold_paths)
-            afrun.run_af2()
+            afrun.run_af2(self.alphafold_paths)
     
     def merge_results(self):
         if len(self.afrun_list) == 1:

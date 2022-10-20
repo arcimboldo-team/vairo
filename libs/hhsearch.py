@@ -1,15 +1,16 @@
 import logging
 import subprocess
+import os
 from Bio import PDB
 from ALPHAFOLD.alphafold.common import residue_constants
-from libs import utils
+from libs import bioutils, utils
 
 def generate_hhsearch_db(template_cif_path: str, output_dir: str):
 
-    with open(f"{output_dir}/pdb70_a3m.ffdata", "w") as a3m, \
-         open(f"{output_dir}/pdb70_cs219.ffindex", "w") as cs219_index, \
-         open(f"{output_dir}/pdb70_a3m.ffindex", "w") as a3m_index, \
-         open(f"{output_dir}/pdb70_cs219.ffdata", "w") as cs219:
+    with open(f"{output_dir}/pdb70_a3m.ffdata", "a") as a3m, \
+         open(f"{output_dir}/pdb70_cs219.ffindex", "a") as cs219_index, \
+         open(f"{output_dir}/pdb70_a3m.ffindex", "a") as a3m_index, \
+         open(f"{output_dir}/pdb70_cs219.ffdata", "a") as cs219:
         id = 1000000
         index_offset = 0
 
