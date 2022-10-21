@@ -210,13 +210,14 @@ def analyse_output(a_air):
         if ranked in ranked_filtered and os.path.exists(aleph_txt_path):
             interfaces_data_list = bioutils.find_interface_from_pisa(ranked_path, interfaces_path)
             if interfaces_data_list:
+                interfaces_dict[ranked] = []
                 deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
                 deltas_list = utils.normalize_list([deltas_list])
                 for i, interface in enumerate(interfaces_data_list):
                     renum_residues_list = []
-                    renum_residues_list.append(utils.renum_residues(interface['res_chain1'], mapping=mappings[ranked][interface['chain1']]))
-                    renum_residues_list.append(utils.renum_residues(interface['res_chain2'], mapping=mappings[ranked][interface['chain2']]))
-                    interfaces_dict[ranked] = renum_residues_list
+                    renum_residues_list.extend(utils.renum_residues(interface['res_chain1'], mapping=mappings[ranked][interface['chain1']]))
+                    renum_residues_list.extend(utils.renum_residues(interface['res_chain2'], mapping=mappings[ranked][interface['chain2']]))
+                    interfaces_dict[ranked].append(renum_residues_list)
                     interface['bfactor'] = deltas_list[i]
                     if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
                         interface['bfactor'] = abs(max(deltas_list)) * 2
@@ -243,7 +244,8 @@ def analyse_output(a_air):
         sys.stdout = sys.__stdout__
         for ranked, ranked_path in ranked_not_splitted_filtered.items():
             ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
-            ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interfaces_dict[ranked], write_plots=True)
+            for interface_list in interfaces_dict[ranked]:
+                ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list, write_plots=True)
 
     with open(analysis_path, 'w') as f_in:
 
