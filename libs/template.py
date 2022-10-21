@@ -103,7 +103,7 @@ class Template:
                         pdb_out_path=aux_path, 
                         sequence_assembled=sequence_assembled)
             chain_dict = bioutils.chain_splitter(aux_path)
-            for i, pos in enumerate(positions):
+            for i, pos in enumerate(list(positions.keys())):
                 self.results_path_position[i] = chain_dict[pos] if pos in chain_dict else None
 
         template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
