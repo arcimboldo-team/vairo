@@ -28,7 +28,6 @@ from alphafold.data import mmcif_parsing
 from alphafold.data import parsers
 from alphafold.data.tools import kalign
 import numpy as np
-import sys # ACT
 
 # Internal import (7716).
 

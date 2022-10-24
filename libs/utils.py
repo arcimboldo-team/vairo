@@ -307,11 +307,12 @@ def create_logger():
     #a file later.
 
     logger = logging.getLogger()
+    logger.handlers.clear()
+
     logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
         
     logger.setLevel(logging.DEBUG)
-
     test = io.StringIO()
     stream_handler_ = logging.StreamHandler(test)
     stream_handler_.setLevel(logging.INFO)

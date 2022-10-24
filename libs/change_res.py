@@ -2,7 +2,7 @@ import logging
 from typing import Dict
 from libs import bioutils, utils
 from Bio.PDB import Select, PDBIO
-from ALPHAFOLD.alphafold.common import residue_constants
+from alphafold.common import residue_constants
 
 
 class ChangeResidues:

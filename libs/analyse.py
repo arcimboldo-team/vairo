@@ -4,17 +4,14 @@ import re
 import shutil
 import sys
 import statistics
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 from typing import Dict, List
 from ALEPH.aleph.core import ALEPH
 from libs import bioutils, features, utils
 from Bio.PDB import PDBParser, Selection
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
 from libs import sequence
-
-from libs.sequence import SequenceAssembled
-
 
 PERCENTAGE_FILTER = 0.8
 GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']

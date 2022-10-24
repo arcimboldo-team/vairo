@@ -5,8 +5,8 @@ import pickle
 import logging
 from typing import Dict, List, Set
 from Bio.PDB import PDBParser, Selection
-from ALPHAFOLD.alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
-from ALPHAFOLD.alphafold.common import residue_constants
+from alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
+from alphafold.common import residue_constants
 from libs import bioutils, utils
 
 

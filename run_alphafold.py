@@ -26,22 +26,22 @@ from typing import Dict, Union, Optional
 from absl import app
 from absl import flags
 from absl import logging
-from ALPHAFOLD.alphafold.common import protein
-from ALPHAFOLD.alphafold.common import residue_constants
-from ALPHAFOLD.alphafold.data import pipeline
-from ALPHAFOLD.alphafold.data import pipeline_multimer
-from ALPHAFOLD.alphafold.data import templates
-from ALPHAFOLD.alphafold.data.tools import hhsearch
-from ALPHAFOLD.alphafold.data.tools import hmmsearch
-from ALPHAFOLD.alphafold.model import config
-from ALPHAFOLD.alphafold.model import model
-from ALPHAFOLD.alphafold.relax import relax
+from alphafold.common import protein
+from alphafold.common import residue_constants
+from alphafold.data import pipeline
+from alphafold.data import pipeline_multimer
+from alphafold.data import templates
+from alphafold.data.tools import hhsearch
+from alphafold.data.tools import hmmsearch
+from alphafold.model import config
+from alphafold.model import model
+from alphafold.relax import relax
 import numpy as np
 
-from ALPHAFOLD.alphafold.model import data
+from alphafold.model import data
 # Internal import (7716).
 
-logging.set_verbosity(logging.INFO)
+#logging.set_verbosity(logging.INFO)
 
 flags.DEFINE_list(
     'fasta_paths', None, 'Paths to FASTA files, each containing a prediction '

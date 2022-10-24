@@ -2,7 +2,7 @@ import logging
 import subprocess
 import os
 from Bio import PDB
-from ALPHAFOLD.alphafold.common import residue_constants
+from alphafold.common import residue_constants
 from libs import bioutils, utils
 
 def generate_hhsearch_db(template_cif_path: str, output_dir: str):
