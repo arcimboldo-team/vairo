@@ -33,7 +33,7 @@ class Template:
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
         template_sequence = bioutils.exctract_sequence_from_pdb(self.pdb_path)
-        self.template_fasta_path = bioutils.write_sequence(sequence=template_sequence, sequence_path=os.path.join(input_dir, f'{self.pdb_id}_sequence.fasta'))
+        self.template_fasta_path = bioutils.write_sequence(sequence=template_sequence, sequence_path=os.path.join(input_dir, f'{self.pdb_id}.fasta'))
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
