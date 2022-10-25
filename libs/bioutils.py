@@ -82,9 +82,13 @@ def extract_sequence(fasta_path: str) -> str:
     return str(record.seq)
 
 def exctract_sequence_from_pdb(pdb_path: str) -> Union[str, None]:
+    results = ''
     try:
-        record = SeqIO.read(pdb_path, "pdb-atom")
-        return str(record.seq)
+        with open(pdb_path, 'r') as f_in:
+            for record in SeqIO.parse(f_in, 'pdb-atom'):
+                results += f'>{record.id}'
+                results += f'{record.seq}\n'
+        return results
     except:
         logging.info('Something went wrong extracting the fasta record from the pdb at', pdb_path)
         pass
