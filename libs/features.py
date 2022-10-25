@@ -207,7 +207,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
 
-    hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id+'_'+chain_id in detailed_lines[1]]
+    hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id+':'+chain_id in detailed_lines[1]]
     if not hits_list:
         logging.info(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
         return None, None

@@ -86,7 +86,7 @@ def exctract_sequence_from_pdb(pdb_path: str) -> Union[str, None]:
     try:
         with open(pdb_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, 'pdb-atom'):
-                results += f'>{record.id}\n'
+                results += f'>{(record.id).replace("????", utils.get_file_name(pdb_path))}\n'
                 results += f'{record.seq}\n'
         return results
     except:
