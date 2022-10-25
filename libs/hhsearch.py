@@ -13,7 +13,7 @@ def create_database_from_pdb(fasta_path: str, database_path: str, output_dir: st
     subprocess.call(['hhblits_omp','-i', f'{database_dir}/template', '-d', database_path, '-oa3m', f'{database_dir}/template_a3m_wo_ss','-n','2','-v','0'])
     shutil.copy2(os.path.join(database_dir, 'template_a3m_wo_ss.ffdata'), os.path.join(database_dir, 'template_a3m.ffdata'))
     shutil.copy2(os.path.join(database_dir, 'template_a3m_wo_ss.ffindex'), os.path.join(database_dir, 'template_a3m.ffindex'))
-    subprocess.call(['ffindex_apply',f'{database_dir}/template_a3m.ff{{data,index}}','-i', f'{database_dir}/template_hhm.ffindex','-d', f'{database_dir}/template_hhm.ffdata','--','hhmake','-i','stdin','-o','stdout','-v','0'])
+    subprocess.call(['ffindex_apply',f'{database_dir}/template_a3m.ffdata',f'{database_dir}/template_a3m.ffindex','-i', f'{database_dir}/template_hhm.ffindex','-d', f'{database_dir}/template_hhm.ffdata','--','hhmake','-i','stdin','-o','stdout','-v','0'])
     subprocess.call(['cstranslate','-f','-x','0.3','-c','4','-I','a3m','-i',f'{database_dir}/template_a3m','-o',f'{database_dir}/template_cs219'])
     return database_dir
 
