@@ -86,7 +86,7 @@ def exctract_sequence_from_pdb(pdb_path: str) -> Union[str, None]:
     try:
         with open(pdb_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, 'pdb-atom'):
-                results += f'>{record.id}'
+                results += f'>{record.id}\n'
                 results += f'{record.seq}\n'
         return results
     except:
@@ -97,7 +97,7 @@ def exctract_sequence_from_pdb(pdb_path: str) -> Union[str, None]:
 def write_sequence(sequence: str, sequence_path: str) -> str:
     
     with open(sequence_path, 'w') as f_out:
-        f_out.write(f'> seq\n{sequence}\n')
+        f_out.write(f'{sequence}\n')
     return sequence_path
     
 def merge_pdbs(list_of_paths_of_pdbs_to_merge: str, merged_pdb_path: str):
