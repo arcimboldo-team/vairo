@@ -19,7 +19,7 @@ def create_database_from_pdb(fasta_path: str, database_path: str, output_dir: st
 
 def run_hhsearch(fasta_path: str, database_path, output_path: str) -> str:
 
-    name = utils.get_file_name(fasta_path)
+    name = utils.get_file_name(database_path)
     out = subprocess.Popen(['hhsearch','-i',fasta_path,'-o',output_path,'-maxseq',
                             '1000000','-d',os.path.join(database_path,name),'-p','20','-Z','250','-loc','-z','1',
                             '-b','1','-B','250','-ssm','2','-sc','1','-seq','1','-dbstrlen','10000',
