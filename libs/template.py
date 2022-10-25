@@ -15,6 +15,7 @@ class Template:
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
+        self.template_fasta_path: str
         self.chains: List = []
         self.generate_multimer: bool = True if num_of_copies > 1 else False
         self.change_res_list: List[change_res.ChangeResidues] = []
@@ -31,6 +32,8 @@ class Template:
         
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
+        template_sequence = bioutils.exctract_sequence_from_pdb(self.pdb_path)
+        self.template_fasta_path = bioutils.write_sequence(sequence=template_sequence, sequence_path=os.path.join(input_dir, f'{self.pdb_id}_sequence.fasta'))
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
@@ -139,10 +142,8 @@ class Template:
         query_sequence = bioutils.extract_sequence(fasta_path)
         if not self.aligned:
             extracted_chain_dict = {}
-            
-            new_database = hhsearch.create_database_from_pdb(fasta_path=fasta_path, database_path=database_path, output_dir=output_dir)
+            new_database = hhsearch.create_database_from_pdb(fasta_path=self.template_fasta_path, database_path=database_path, output_dir=output_dir)
             hhsearch.run_hhsearch(fasta_path=fasta_path, database_path=new_database, output_path=self.hhr_path)
-
             for chain in self.chains:
                 template_features, mapping = features.extract_template_features_from_pdb(
                     query_sequence=query_sequence,
