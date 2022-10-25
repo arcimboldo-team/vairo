@@ -1,48 +1,27 @@
 import logging
+import os
 import subprocess
-from Bio import PDB
-from ALPHAFOLD.alphafold.common import residue_constants
 from libs import utils
 
-def generate_hhsearch_db(template_cif_path: str, output_dir: str):
+def create_database_from_pdb(fasta_path: str, database_path: str, output_dir: str) -> str:
 
-    with open(f"{output_dir}/pdb70_a3m.ffdata", "w") as a3m, \
-         open(f"{output_dir}/pdb70_cs219.ffindex", "w") as cs219_index, \
-         open(f"{output_dir}/pdb70_a3m.ffindex", "w") as a3m_index, \
-         open(f"{output_dir}/pdb70_cs219.ffdata", "w") as cs219:
-        id = 1000000
-        index_offset = 0
+    name = utils.get_file_name(fasta_path)
+    database_dir = os.path.join(output_dir, f'{name}_database')
+    utils.create_dir(database_dir, delete_if_exists=True)
+    subprocess.Popen(['ffindex_from_fasta','-s', f'{database_dir}/template.ffdata', f'{database_dir}/template.ffindex', fasta_path])
+    subprocess.Popen(['hhblits_omp','-i', f'{database_dir}/template', '-d', database_path, '-oa3m', f'{database_dir}/template_a3m_wo_ss','-n','2','-v','0'])
+    os.rename(os.path.join(database_dir, 'template_a3m_wo_ss.ffdata'), os.path.join(database_dir, 'template_a3m.ffdata'))
+    os.rename(os.path.join(database_dir, 'template_a3m_wo_ss.ffindex'), os.path.join(database_dir, 'template_a3m.ffindex'))
+    subprocess.Popen(['ffindex_apply',f'{database_dir}/template_a3m.ff{{data,index}}','-i', f'{database_dir}/template_hhm.ffindex','-d', f'{database_dir}/template_hhm.ffdata','--','hhmake','-i','stdin','-o','stdout','-v','0'])
+    subprocess.Popen(['cstranslate','-f','-x','0.3','-c','4','-I','a3m','-i',f'{database_dir}/template_a3m','-o',f'{database_dir}/template_cs219'])
+    return database_dir
 
-        pdb_id = utils.get_file_name(template_cif_path)
-        parser = PDB.MMCIFParser(QUIET=True)
-        structure = parser.get_structure(pdb_id, template_cif_path)
+def run_hhsearch(fasta_path: str, database_path, output_path: str) -> str:
 
-        models = list(structure.get_models())
-        if len(models) != 1:
-            raise ValueError(f"Only single model PDBs are supported. Found {len(models)} models.")
-        model = models[0]
-        for chain in model:
-            amino_acid_res = []
-            for res in chain:
-                amino_acid_res.append(residue_constants.restype_3to1.get(res.resname, "X"))
-
-            protein_str = "".join(amino_acid_res)
-            a3m_str = f">{template_cif_path.split('/')[-1][:-4]}_{chain.id}\n{protein_str}\n\0"
-            a3m_str_len = len(a3m_str)
-            a3m_index.write(f"{id}\t{index_offset}\t{a3m_str_len}\n")
-            cs219_index.write(f"{id}\t{index_offset}\t{len(protein_str)}\n")
-            index_offset += a3m_str_len
-            a3m.write(a3m_str)
-            cs219.write("\n\0")
-            id += 1
-
-def run_hhsearch(fasta_path: str, pdb70_db: str, output_path: str) -> str:
-
-    logging.info(f'Running hhsearch using {pdb70_db} as database.')
-
-    out = subprocess.Popen(['hhsearch', '-i', fasta_path, '-o', output_path, '-maxseq',
-                            '1000000', '-d', pdb70_db, '-glob'],
-                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    out = subprocess.Popen(['hhsearch','-i','fasta_path','-o',output_path,'-maxseq',
+                            '1000000','-d',database_path,'-p','20','-Z','250','-loc','-z','1',
+                            '-b','1','-B','250','-ssm','2','-sc','1','-seq','1','-dbstrlen','10000',
+                            '-norealign','-maxres','32000'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = out.communicate()
     hhr = stdout.decode('utf-8')
 

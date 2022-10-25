@@ -126,7 +126,7 @@ class Template:
                     for path in paths_list:
                         change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
 
-    def align(self, output_dir, fasta_path) -> Dict:
+    def align(self, output_dir, fasta_path, database_path) -> Dict:
         #If aligned, skip to the end, it is just necessary to extract the features
         #If not aligned:
         #   - Convert pdb to cif, this is necessary to run hhsearch.
@@ -136,13 +136,12 @@ class Template:
         #       the templates for each chain, each template has the chain 'A'.
         #   - Change the specified residues in the input in all the templates.
 
-        pdb70_path = os.path.join(output_dir, 'pdb70')
         query_sequence = bioutils.extract_sequence(fasta_path)
         if not self.aligned:
             extracted_chain_dict = {}
-            bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path, cif_out_path=os.path.join(output_dir,f'{self.pdb_id}.cif'))
-            hhsearch.generate_hhsearch_db(template_cif_path=os.path.join(output_dir,f'{self.pdb_id}.cif'), output_dir=output_dir)
-            hhsearch.run_hhsearch(fasta_path=fasta_path, pdb70_db=pdb70_path,output_path=self.hhr_path)
+            
+            new_database = hhsearch.create_database_from_pdb(fasta_path=fasta_path, database_path=database_path, output_dir=output_dir)
+            hhsearch.run_hhsearch(fasta_path=fasta_path, database_path=new_database, output_path=self.hhr_path)
 
             for chain in self.chains:
                 template_features, mapping = features.extract_template_features_from_pdb(
