@@ -15,15 +15,12 @@ def create_database_from_pdb(fasta_path: str, database_path: str, output_dir: st
     shutil.copy2(os.path.join(database_dir, f'{name}_a3m_wo_ss.ffindex'), os.path.join(database_dir, f'{name}_a3m.ffindex'))
     subprocess.call(['ffindex_apply',f'{database_dir}/{name}_a3m.ffdata',f'{database_dir}/{name}_a3m.ffindex','-i', f'{database_dir}/{name}_hhm.ffindex','-d', f'{database_dir}/{name}_hhm.ffdata','--','hhmake','-i','stdin','-o','stdout','-v','0'])
     subprocess.call(['cstranslate','-f','-x','0.3','-c','4','-I','a3m','-i',f'{database_dir}/{name}_a3m','-o',f'{database_dir}/{name}_cs219'])
-    return database_dir
+    return os.path.join(database_dir,name)
 
 def run_hhsearch(fasta_path: str, database_path, output_path: str) -> str:
 
-    name = utils.get_file_name(database_path)
-    print(os.path.join(database_path, name))
-    print(name)
     out = subprocess.Popen(['hhsearch','-i',fasta_path,'-o',output_path,'-maxseq',
-                            '1000000','-d',os.path.join(database_path, name),'-p','20','-Z','250','-loc','-z','1',
+                            '1000000','-d',database_path,'-p','20','-Z','250','-loc','-z','1',
                             '-b','1','-B','250','-ssm','2','-sc','1','-seq','1','-dbstrlen','10000',
                             '-norealign','-maxres','32000'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = out.communicate()
