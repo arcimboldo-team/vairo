@@ -11,8 +11,7 @@ from Bio.PDB import PDBParser, Selection
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
-from libs import sequence
-
+from libs import sequence, structures
 from libs.sequence import SequenceAssembled
 
 
@@ -153,7 +152,6 @@ def analyse_output(a_air):
     ##Create a plot with the ranked plddts, also, calculate the maximum plddt
     plddt_dict = plot_plddt(plot_path=plddt_plot_path, ranked_models_dict=ranked_models_dict)
     max_plddt = max(plddt_dict.values())
-    best_ranked = list(plddt_dict.keys())[list(plddt_dict.values()).index(max_plddt)]
     bioutils.write_sequence(a_air.sequence_assembled.sequence_assembled, sequence_path)
 
     ##Filter rankeds, split them in chains.
@@ -195,6 +193,7 @@ def analyse_output(a_air):
     ##Use aleph to generate domains and calculate secondary structure percentage
     interfaces_dict = {}
     secondary_dict = {}
+    openmm_dict = {}
     for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
         aleph_file = os.path.join(a_air.run_dir, f'aleph_{ranked}.txt')
         with open(aleph_file, 'w') as sys.stdout:
@@ -208,20 +207,27 @@ def analyse_output(a_air):
         else:
             break
         if ranked in ranked_filtered and os.path.exists(aleph_txt_path):
+            #print(bioutils.run_openmm(ranked_path))
             interfaces_data_list = bioutils.find_interface_from_pisa(ranked_path, interfaces_path)
             if interfaces_data_list:
                 interfaces_dict[ranked] = []
                 deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
                 deltas_list = utils.normalize_list([deltas_list])
                 for i, interface in enumerate(interfaces_data_list):
+                    code = f'{utils.get_file_name(ranked_path)}_{interface["chain1"]}{interface["chain2"]}'
+                    dimers_path = os.path.join(interfaces_path, f'{code}.pdb')
                     renum_residues_list = []
                     renum_residues_list.extend(utils.renum_residues(interface['res_chain1'], mapping=mappings[ranked][interface['chain1']]))
                     renum_residues_list.extend(utils.renum_residues(interface['res_chain2'], mapping=mappings[ranked][interface['chain2']]))
-                    interfaces_dict[ranked].append(renum_residues_list)
+                    inter_name = structures.InterfaceName(name=code, res_list=renum_residues_list)
+                    interfaces_dict[ranked].append(inter_name)
                     interface['bfactor'] = deltas_list[i]
                     if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
                         interface['bfactor'] = abs(max(deltas_list)) * 2
-                    bioutils.create_interface_domain(ranked_path, interface, interfaces_path, domains_dict)
+                    bioutils.create_interface_domain(pdb_in_path=ranked_path,
+                                                    pdb_out_path=dimers_path,
+                                                    interface=interface,
+                                                    domains_dict=domains_dict)
 
     ##Superpose the experimental pdb with all the rankeds and templates
     experimental_dict = {}
@@ -236,16 +242,28 @@ def analyse_output(a_air):
         bioutils.superpose_pdbs([a_air.experimental_pdb, reference_superpose], output_pdb)
 
     for template, template_path in template_not_splitted.items():
-        aleph_file = os.path.join(a_air.run_dir, f'frobenius_{template}.txt')
+        frobenius_file = os.path.join(frobenius_path, f'frobenius_{template}.txt')
         matrices = os.path.join(a_air.run_dir, 'matrices')
         template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
-        with open(aleph_file, 'w') as sys.stdout:
-            ALEPH.frobenius(reference=template_path, targets=list(ranked_not_splitted_filtered.values()), sequence=sequence_path, write_plots=True, write_matrix=True)
+        with open(frobenius_file, 'w') as sys.stdout:
+            _, _, plots1_list, plots2_list = ALEPH.frobenius(reference=template_path, targets=list(ranked_not_splitted_filtered.values()), sequence=sequence_path, write_plots=True, write_matrix=True)
         sys.stdout = sys.__stdout__
+        print(plots1_list, plots2_list)
+        [shutil.copy2(plot, frobenius_path) for plot in (plots1_list+plots2_list)]
         for ranked, ranked_path in ranked_not_splitted_filtered.items():
             ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
             for interface_list in interfaces_dict[ranked]:
-                ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list, write_plots=True)
+                frobenius_file = os.path.join(frobenius_path, f'frobenius_{interface_list.name}.txt')
+                with open(frobenius_file, 'w') as sys.stdout:
+                    _,_, plots_list = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plots=True)
+                sys.stdout = sys.__stdout__
+                print(plots_list)
+                for plot in plots_list:
+                    print(interface_list.name)
+                    new_name = os.path.join(frobenius_path, f'{interface_list.name}.png')
+                    print(new_name)
+                    print(plot)
+                    shutil.copy2(plot, new_name)
 
     with open(analysis_path, 'w') as f_in:
 
@@ -265,6 +283,15 @@ def analyse_output(a_air):
             for key in secondary_dict.keys():
                 rows.append([key] + list(secondary_dict[key].values()))
             df = pd.DataFrame(rows, columns=['ranked'] + list(secondary_dict[key]))
+            f_in.write(df.to_markdown())
+
+        if bool(openmm_dict):
+            f_in.write('\n\n')
+            f_in.write('OPENMM\n')
+            rows = []
+            for key in openmm_dict.keys():
+                rows.append([key] + list(openmm_dict[key].values()))
+            df = pd.DataFrame(rows, columns=['ranked'] + list(openmm_dict[key]))
             f_in.write(df.to_markdown())
 
         if bool(plddt_dict):

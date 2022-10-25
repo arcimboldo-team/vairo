@@ -13,6 +13,11 @@ from libs import change_res, utils
 from scipy.spatial import distance
 from libs import sequence
 
+from openmmforcefields.generators import SystemGenerator
+from simtk import unit, openmm
+from simtk.openmm.app import PDBFile, Simulation
+from Bio.PDB import NeighborSearch
+
 def download_pdb(pdb_id: str, output_dir: str):
 
     pdbl = PDBList()
@@ -403,6 +408,26 @@ def remove_hetatm(pdb_in_path:str, pdb_out_path: str):
     io.set_structure(structure)
     io.save(pdb_out_path, NonHetSelect())
 
+def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
+    command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all --keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0'
+    subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+def run_openmm(pdb_in_path: str) -> List:
+
+    pdb_aux = os.path.join(os.path.dirname(pdb_in_path), f'{utils.get_file_name(pdb_in_path)}_energy.pdb')
+    run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_aux)
+    protein_pdb = PDBFile(pdb_aux)
+    system_generator = SystemGenerator(forcefields=['amber/ff14SB.xml'])
+    system = system_generator.create_system(protein_pdb.topology)
+    integrator = openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.02 * unit.picoseconds)
+    simulation = Simulation(protein_pdb.topology, system, integrator)
+    simulation.context.setPositions(protein_pdb.positions)
+    simulation.minimizeEnergy()    
+    state = simulation.context.getState(getPositions=True, enforcePeriodicBox=False, getEnergy=True)
+    with open(pdb_aux, 'w+') as f_handler:
+        PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_handler, keepIds=True)
+    return state.getKineticEnergy(), state.getPotentialEnergy() 
+
 def superpose_pdbs(pdb_list: List, output_pdb = None) -> List:
     
     superpose_input_list = ['superpose']
@@ -485,7 +510,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List:
 
     return interface_data_list 
 
-def create_interface_domain(pdb_in_path: str, interface: Dict, interfaces_path: str, domains_dict: Dict):
+def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict):
     add_domains_dict = {}
     bfactors_dict = {}
     for chain, residue in zip([interface['chain1'], interface['chain2']], [interface['res_chain1'], interface['res_chain2']]):
@@ -497,15 +522,14 @@ def create_interface_domain(pdb_in_path: str, interface: Dict, interfaces_path: 
         add_domains_dict[chain] = list(set(added_res_list))
         bfactors_dict[chain] = [float(interface['bfactor'])] * len(add_domains_dict[chain])
 
-    dimers_path = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_{interface["chain1"]}{interface["chain2"]}.pdb')
     split_dimers_in_pdb(pdb_in_path=pdb_in_path,
-                        pdb_out_path=dimers_path,
+                        pdb_out_path=pdb_out_path,
                         chain1=interface['chain1'],
                         chain2=interface['chain2'])
 
     change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
-    change.delete_residues_inverse(dimers_path, dimers_path)
-    change.change_bfactors(dimers_path, dimers_path)
+    change.delete_residues_inverse(pdb_out_path, pdb_out_path)
+    change.change_bfactors(pdb_out_path, pdb_out_path)
 
 def calculate_auto_offset(input_list: List[List], length: int) -> List:
     

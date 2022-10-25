@@ -312,7 +312,6 @@ def create_logger():
 
     logger = logging.getLogger()
     logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
-
         
     logger.setLevel(logging.DEBUG)
 
