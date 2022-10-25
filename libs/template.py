@@ -34,7 +34,7 @@ class Template:
         self.pdb_id = utils.get_file_name(self.pdb_path)        
         self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path, cif_out_path=os.path.join(output_dir,f'{self.pdb_id}.cif'))
         template_sequence = bioutils.extract_sequence_from_file(self.cif_path)
-        self.template_fasta_path = bioutils.write_sequence(sequence=template_sequence, sequence_path=os.path.join(input_dir, f'{self.pdb_id}.fasta'))
+        self.template_fasta_path = bioutils.write_sequence(sequence=template_sequence, sequence_path=os.path.join(output_dir, f'{self.pdb_id}.fasta'))
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
