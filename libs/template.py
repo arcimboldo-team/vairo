@@ -31,8 +31,9 @@ class Template:
         self.reference: str = None
         
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
-        self.pdb_id = utils.get_file_name(self.pdb_path)
-        template_sequence = bioutils.exctract_sequence_from_pdb(self.pdb_path)
+        self.pdb_id = utils.get_file_name(self.pdb_path)        
+        self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path, cif_out_path=os.path.join(output_dir,f'{self.pdb_id}.cif'))
+        template_sequence = bioutils.extract_sequence_from_file(self.cif_path)
         self.template_fasta_path = bioutils.write_sequence(sequence=template_sequence, sequence_path=os.path.join(input_dir, f'{self.pdb_id}.fasta'))
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
@@ -148,9 +149,8 @@ class Template:
                 template_features, mapping = features.extract_template_features_from_pdb(
                     query_sequence=query_sequence,
                     hhr_path=self.hhr_path,
-                    pdb_id=self.pdb_id,
-                    chain_id=chain,
-                    mmcif_db=output_dir)
+                    cif_path=self.cif_path,
+                    chain_id=chain)
 
                 if template_features is not None:
                     self.mapping_has_changed(chain=chain, mapping=mapping)

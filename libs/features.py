@@ -195,8 +195,9 @@ def empty_template_features(query_sequence):
     }
     return template_features
 
-def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_id, mmcif_db):
+def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain_id):
 
+    pdb_id = utils.get_file_name(cif_path)
     hhr_text = open(hhr_path, 'r').read()
 
     matches = re.finditer(r'No\s+\d+', hhr_text)
@@ -219,7 +220,8 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
     mapping = templates._build_query_to_hit_index_mapping(
             hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
             query_sequence)
-    mmcif_string = open(f'{mmcif_db}/{pdb_id}.cif').read()
+
+    mmcif_string = open(cif_path).read()
     parsing_result = mmcif_parsing.parse(file_id=file_id, mmcif_string=mmcif_string)
     template_features, _ = templates._extract_template_features(
             mmcif_object=parsing_result.mmcif_object,
@@ -230,6 +232,8 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, pdb_id, chain_i
             template_chain_id=chain_id,
             kalign_binary_path='kalign')
     
+
+
     template_features['template_sum_probs'] = np.array([[hit.sum_probs]])
     template_features['template_aatype'] = np.array([template_features['template_aatype']])
     template_features['template_all_atom_masks'] = np.array([template_features['template_all_atom_masks']])

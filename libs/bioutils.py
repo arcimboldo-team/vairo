@@ -30,6 +30,7 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
         os.mkdir(maxit_dir)
     subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], cwd=maxit_dir,stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     shutil.rmtree(maxit_dir)
+    return cif_out_path
 
 def cif2pdb(cif_in_path: str, pdb_out_path: str):
     
@@ -81,16 +82,22 @@ def extract_sequence(fasta_path: str) -> str:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
 
-def exctract_sequence_from_pdb(pdb_path: str) -> Union[str, None]:
+def extract_sequence_from_file(file_path: str) -> Union[str, None]:
     results = ''
+    extension = utils.get_file_extension(file_path)
+    if extension == '.pdb':
+        extraction = 'pdb-atom'
+    else:
+        extraction = 'cif-atom'
+
     try:
-        with open(pdb_path, 'r') as f_in:
-            for record in SeqIO.parse(f_in, 'pdb-atom'):
-                results += f'>{(record.id).replace("????", utils.get_file_name(pdb_path))}\n'
+        with open(file_path, 'r') as f_in:
+            for record in SeqIO.parse(f_in, extraction):
+                results += f'>{(record.id).replace("????", utils.get_file_name(file_path))}\n'
                 results += f'{record.seq}\n'
         return results
     except:
-        logging.info('Something went wrong extracting the fasta record from the pdb at', pdb_path)
+        logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
         pass
     return None
 

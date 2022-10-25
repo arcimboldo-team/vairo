@@ -47,6 +47,11 @@ def get_mandatory_value(input_load: str, value: str) -> str:
         raise Exception(f'{value} is mandatory')
     return read_value
 
+def get_file_extension(path: str) -> str:
+    #Get the extension of the file
+    _, extension = os.path.splitext(path)
+    return extension
+
 def get_file_name(path: str) -> str:
     #Get the name of the file, without path or extension
 
