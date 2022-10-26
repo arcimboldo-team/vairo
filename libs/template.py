@@ -39,8 +39,7 @@ class Template:
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
         self.legacy = parameters_dict.get('legacy', self.legacy)
-        if self.legacy:
-            self.aligned = True
+        self.aligned = self.legacy
         self.aligned = parameters_dict.get('aligned', self.aligned)
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
         self.reference = parameters_dict.get('reference', self.reference)
