@@ -15,6 +15,7 @@ class Template:
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
+        self.template_fasta_path: str
         self.chains: List = []
         self.generate_multimer: bool = True if num_of_copies > 1 else False
         self.change_res_list: List[change_res.ChangeResidues] = []
@@ -30,13 +31,15 @@ class Template:
         self.reference: str = None
         
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
-        self.pdb_id = utils.get_file_name(self.pdb_path)
+        self.pdb_id = utils.get_file_name(self.pdb_path)        
+        self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path, cif_out_path=os.path.join(output_dir,f'{self.pdb_id}.cif'))
+        template_sequence = bioutils.extract_sequence_from_file(self.cif_path)
+        self.template_fasta_path = bioutils.write_sequence(sequence=template_sequence, sequence_path=os.path.join(output_dir, f'{self.pdb_id}.fasta'))
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
         self.legacy = parameters_dict.get('legacy', self.legacy)
-        if self.legacy:
-            self.aligned = True
+        self.aligned = self.legacy
         self.aligned = parameters_dict.get('aligned', self.aligned)
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
         self.reference = parameters_dict.get('reference', self.reference)
@@ -126,7 +129,7 @@ class Template:
                     for path in paths_list:
                         change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
 
-    def align(self, output_dir, fasta_path) -> Dict:
+    def align(self, output_dir, fasta_path, database_path) -> Dict:
         #If aligned, skip to the end, it is just necessary to extract the features
         #If not aligned:
         #   - Convert pdb to cif, this is necessary to run hhsearch.
@@ -136,21 +139,17 @@ class Template:
         #       the templates for each chain, each template has the chain 'A'.
         #   - Change the specified residues in the input in all the templates.
 
-        pdb70_path = os.path.join(output_dir, 'pdb70')
         query_sequence = bioutils.extract_sequence(fasta_path)
         if not self.aligned:
             extracted_chain_dict = {}
-            bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path, cif_out_path=os.path.join(output_dir,f'{self.pdb_id}.cif'))
-            hhsearch.generate_hhsearch_db(template_cif_path=os.path.join(output_dir,f'{self.pdb_id}.cif'), output_dir=output_dir)
-            hhsearch.run_hhsearch(fasta_path=fasta_path, pdb70_db=pdb70_path,output_path=self.hhr_path)
-
+            new_database = hhsearch.create_database_from_pdb(fasta_path=self.template_fasta_path, database_path=database_path, output_dir=output_dir)
+            hhsearch.run_hhsearch(fasta_path=fasta_path, database_path=new_database, output_path=self.hhr_path)
             for chain in self.chains:
                 template_features, mapping = features.extract_template_features_from_pdb(
                     query_sequence=query_sequence,
                     hhr_path=self.hhr_path,
-                    pdb_id=self.pdb_id,
-                    chain_id=chain,
-                    mmcif_db=output_dir)
+                    cif_path=self.cif_path,
+                    chain_id=chain)
 
                 if template_features is not None:
                     self.mapping_has_changed(chain=chain, mapping=mapping)
