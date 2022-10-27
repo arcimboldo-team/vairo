@@ -207,7 +207,6 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     for i in range(len(matches_positions) - 1):
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
-
     hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id+':'+chain_id in detailed_lines[1]]
     if not hits_list:
         logging.info(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
@@ -231,8 +230,6 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
             query_sequence=query_sequence,
             template_chain_id=chain_id,
             kalign_binary_path='kalign')
-    
-
 
     template_features['template_sum_probs'] = np.array([[hit.sum_probs]])
     template_features['template_aatype'] = np.array([template_features['template_aatype']])
@@ -258,8 +255,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     
     for res in template_res_list:
         if res.resname != 'X' and res.resname != '-':
-            template_sequence = template_sequence[:res.id[1]] + three_to_one[res.resname] + template_sequence[
-                                                                                            res.id[1]:]
+            template_sequence = template_sequence[:res.id[1]] + three_to_one[res.resname] + template_sequence[res.id[1]:]
     template_sequence = np.array([template_sequence[:seq_length + 1]])[0]
 
     atom_masks = []

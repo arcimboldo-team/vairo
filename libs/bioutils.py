@@ -87,8 +87,8 @@ def extract_sequence(fasta_path: str) -> str:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
 
-def extract_sequence_from_file(file_path: str) -> Union[str, None]:
-    results = ''
+def extract_sequence_from_file(file_path: str) -> List[str]:
+    results_list = []
     extension = utils.get_file_extension(file_path)
     if extension == '.pdb':
         extraction = 'pdb-atom'
@@ -98,13 +98,15 @@ def extract_sequence_from_file(file_path: str) -> Union[str, None]:
     try:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
-                results += f'>{(record.id).replace("????", utils.get_file_name(file_path))}\n'
-                results += f'{(record.seq).replace("X","")}\n'
-        return results
+                results = f'>{(record.id).replace("????", utils.get_file_name(file_path))}\n'
+                #results += f'{(record.seq).replace("X","")}'
+                results += record.seq
+                results_list.append(results)
+        return results_list
     except:
         logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
         pass
-    return None
+    return results_list
 
 def write_sequence(sequence: str, sequence_path: str) -> str:
     

@@ -5,3 +5,8 @@ from typing import List
 class InterfaceName:
     name: str
     res_list: List[int]
+
+@dataclasses.dataclass(frozen=True)
+class AlignmentSequence:
+    fasta_path: str
+    hhr_path: str

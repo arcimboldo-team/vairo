@@ -139,7 +139,7 @@ class StructureAir:
                                                     feature=feature) 
             self.afrun_list.append(afrun)
             afrun.create_af2_script(self.alphafold_paths)
-            #afrun.run_af2()
+            afrun.run_af2()
     
     def merge_results(self):
         if len(self.afrun_list) == 1:

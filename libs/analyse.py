@@ -12,8 +12,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from libs import sequence, structures
-from libs.sequence import SequenceAssembled
-
 
 PERCENTAGE_FILTER = 0.8
 GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
@@ -245,25 +243,21 @@ def analyse_output(a_air):
         frobenius_file = os.path.join(frobenius_path, f'frobenius_{template}.txt')
         matrices = os.path.join(a_air.run_dir, 'matrices')
         template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
-        with open(frobenius_file, 'w') as sys.stdout:
-            _, _, plots1_list, plots2_list = ALEPH.frobenius(reference=template_path, targets=list(ranked_not_splitted_filtered.values()), sequence=sequence_path, write_plots=True, write_matrix=True)
-        sys.stdout = sys.__stdout__
-        print(plots1_list, plots2_list)
-        [shutil.copy2(plot, frobenius_path) for plot in (plots1_list+plots2_list)]
-        for ranked, ranked_path in ranked_not_splitted_filtered.items():
-            ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
-            for interface_list in interfaces_dict[ranked]:
-                frobenius_file = os.path.join(frobenius_path, f'frobenius_{interface_list.name}.txt')
-                with open(frobenius_file, 'w') as sys.stdout:
-                    _,_, plots_list = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plots=True)
-                sys.stdout = sys.__stdout__
-                print(plots_list)
-                for plot in plots_list:
-                    print(interface_list.name)
-                    new_name = os.path.join(frobenius_path, f'{interface_list.name}.png')
-                    print(new_name)
-                    print(plot)
-                    shutil.copy2(plot, new_name)
+        #with open(frobenius_file, 'w') as sys.stdout:
+        #    _, _, plots1_list, plots2_list = ALEPH.frobenius(reference=template_path, targets=list(ranked_not_splitted_filtered.values()), sequence=sequence_path, write_plots=True, write_matrix=True)
+        #sys.stdout = sys.__stdout__
+        #[shutil.copy2(plot, frobenius_path) for plot in (plots1_list+plots2_list)]
+        #for ranked, ranked_path in ranked_not_splitted_filtered.items():
+        #    ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
+        #    for interface_list in interfaces_dict[ranked]:
+        #        frobenius_file = os.path.join(frobenius_path, f'frobenius_{interface_list.name}.txt')
+        #        with open(frobenius_file, 'w') as sys.stdout:
+        #            _,_, plots_list = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plots=True)
+        #        print(plots_list)
+        #        sys.stdout = sys.__stdout__
+        #        for plot in plots_list:
+        #            new_name = os.path.join(frobenius_path, f'{interface_list.name}.png')
+        #            shutil.copy2(plot, new_name)
 
     with open(analysis_path, 'w') as f_in:
 
