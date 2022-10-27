@@ -200,6 +200,11 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     pdb_id = utils.get_file_name(cif_path)
     hhr_text = open(hhr_path, 'r').read()
 
+    match = re.findall(r'\bNo Hit .*[\r\n]+(.*\n)', hhr_text)
+    splitted = match[0].split()
+    logging.info(f'Alignment results:')
+    logging.info(f'Aligned columns: {splitted[7]}, Query: {splitted[8]}, Template: {splitted[9]}, Residues template: {splitted[10]}')
+
     matches = re.finditer(r'No\s+\d+', hhr_text)
     matches_positions = [match.start() for match in matches] + [len(hhr_text)]
 
@@ -208,6 +213,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
     hits_list = [detailed_lines for detailed_lines in detailed_lines_list if pdb_id[:10]+':'+chain_id in detailed_lines[1]]
+    
     if not hits_list:
         logging.info(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
         return None, None
@@ -216,6 +222,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     file_id = f'{pdb_id.lower()}'
     hit = parsers._parse_hhr_hit(detailed_lines)
     template_sequence = hit.hit_sequence.replace('-', '')
+
     mapping = templates._build_query_to_hit_index_mapping(
             hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
             query_sequence)
@@ -247,7 +254,10 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     seq_length = len(query_sequence)
 
     parser = PDBParser(QUIET=True)
-    structure = parser.get_structure(pdb_id, pdb_path)
+    try:
+        structure = parser.get_structure(pdb_id, pdb_path)
+    except:
+        raise Exception(f'The template {pdb_id} could not be aligned and inserted to the features file')
 
     template_sequence = '-' * (seq_length)
     template_res_list = [res for res in Selection.unfold_entities(structure, "R")
