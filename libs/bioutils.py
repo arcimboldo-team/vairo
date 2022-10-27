@@ -98,7 +98,7 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
     try:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
-                results = f'>{(record.id).replace("????", utils.get_file_name(file_path))}\n'
+                results = f'>{(record.id).replace("????", utils.get_file_name(file_path)[:10])}\n'
                 results += (record.seq).replace("X","")
                 #results += record.seq
                 results_list.append(results)
