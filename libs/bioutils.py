@@ -13,6 +13,11 @@ from libs import change_res, utils
 from scipy.spatial import distance
 from libs import sequence
 
+from openmmforcefields.generators import SystemGenerator
+from simtk import unit, openmm
+from simtk.openmm.app import PDBFile, Simulation
+from Bio.PDB import NeighborSearch
+
 def download_pdb(pdb_id: str, output_dir: str):
 
     pdbl = PDBList()
@@ -82,8 +87,8 @@ def extract_sequence(fasta_path: str) -> str:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
 
-def extract_sequence_from_file(file_path: str) -> Union[str, None]:
-    results = ''
+def extract_sequence_from_file(file_path: str) -> List[str]:
+    results_list = []
     extension = utils.get_file_extension(file_path)
     if extension == '.pdb':
         extraction = 'pdb-atom'
@@ -93,13 +98,15 @@ def extract_sequence_from_file(file_path: str) -> Union[str, None]:
     try:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
-                results += f'>{(record.id).replace("????", utils.get_file_name(file_path))}\n'
-                results += f'{(record.seq).replace("X","")}\n'
-        return results
+                results = f'>{(record.id).replace("????", utils.get_file_name(file_path))}\n'
+                #results += f'{(record.seq).replace("X","")}'
+                results += record.seq
+                results_list.append(results)
+        return results_list
     except:
         logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
         pass
-    return None
+    return results_list
 
 def write_sequence(sequence: str, sequence_path: str) -> str:
     
@@ -260,20 +267,19 @@ def parse_pdb_line(line: str) -> Dict:
 
 def split_chains_assembly(pdb_in_path: str, 
                         pdb_out_path:str, 
-                        sequence_assembled: sequence.SequenceAssembled) -> List:
+                        sequence_assembled: sequence.SequenceAssembled) -> Dict:
     #Split the assembly with serveral chains. The assembly is spitted 
     #by the query sequence length. Also, we have to take into account 
     #the glycines, So every query_sequence+glycines we can find a chain.
     #We return the list of chains.
 
     structure = get_structure(pdb_path=pdb_in_path)
-    chains_return = []
+    chains_return = {}
     chains = [chain.get_id() for chain in structure.get_chains()]
 
     if len(chains) > 1:
         logging.info(f'PDB: {pdb_in_path} is already splitted in several chains: {chains}')
         shutil.copy2(pdb_in_path, pdb_out_path)
-        chains_return = chains
     else:
         new_structure = Structure.Structure(structure.get_id)
         new_model = Model.Model(structure[0].id)
@@ -292,17 +298,17 @@ def split_chains_assembly(pdb_in_path: str,
             chain_name = chr(ord(original_chain_name)+i)
             chain = Chain.Chain(chain_name)
             new_structure[0].add(chain)
+            mapping = {}
             for j in range(min+1, max+1):
                 if j in idres_list:
                     res = residues_list[idres_list.index(j)]
+                    new_id = j % seq_with_glycines_length
+                    mapping[new_id] = j
                     new_res = copy.copy(res)
                     chain.add(new_res)
                     new_res.parent = chain
-                    chain[new_res.id].id = (' ', j % seq_with_glycines_length, ' ')
-            if list(new_structure[0][chain.id].get_residues()):
-                chains_return.append(chain_name)
-            else:
-                chains_return.append(None)
+                    chain[new_res.id].id = (' ', new_id, ' ')
+            chains_return[chain_name] = mapping
 
         io = PDBIO()
         io.set_structure(new_structure)
@@ -415,6 +421,26 @@ def remove_hetatm(pdb_in_path:str, pdb_out_path: str):
     io.set_structure(structure)
     io.save(pdb_out_path, NonHetSelect())
 
+def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
+    command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all --keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0'
+    subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+def run_openmm(pdb_in_path: str) -> List:
+
+    pdb_aux = os.path.join(os.path.dirname(pdb_in_path), f'{utils.get_file_name(pdb_in_path)}_energy.pdb')
+    run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_aux)
+    protein_pdb = PDBFile(pdb_aux)
+    system_generator = SystemGenerator(forcefields=['amber/ff14SB.xml'])
+    system = system_generator.create_system(protein_pdb.topology)
+    integrator = openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.02 * unit.picoseconds)
+    simulation = Simulation(protein_pdb.topology, system, integrator)
+    simulation.context.setPositions(protein_pdb.positions)
+    simulation.minimizeEnergy()    
+    state = simulation.context.getState(getPositions=True, enforcePeriodicBox=False, getEnergy=True)
+    with open(pdb_aux, 'w+') as f_handler:
+        PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_handler, keepIds=True)
+    return state.getKineticEnergy(), state.getPotentialEnergy() 
+
 def superpose_pdbs(pdb_list: List, output_pdb = None) -> List:
     
     superpose_input_list = ['superpose']
@@ -497,7 +523,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List:
 
     return interface_data_list 
 
-def create_interface_domain(pdb_in_path: str, interface: Dict, interfaces_path: str, domains_dict: Dict):
+def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict):
     add_domains_dict = {}
     bfactors_dict = {}
     for chain, residue in zip([interface['chain1'], interface['chain2']], [interface['res_chain1'], interface['res_chain2']]):
@@ -509,15 +535,14 @@ def create_interface_domain(pdb_in_path: str, interface: Dict, interfaces_path: 
         add_domains_dict[chain] = list(set(added_res_list))
         bfactors_dict[chain] = [float(interface['bfactor'])] * len(add_domains_dict[chain])
 
-    dimers_path = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_{interface["chain1"]}{interface["chain2"]}.pdb')
     split_dimers_in_pdb(pdb_in_path=pdb_in_path,
-                        pdb_out_path=dimers_path,
+                        pdb_out_path=pdb_out_path,
                         chain1=interface['chain1'],
                         chain2=interface['chain2'])
 
     change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
-    change.delete_residues_inverse(dimers_path, dimers_path)
-    change.change_bfactors(dimers_path, dimers_path)
+    change.delete_residues_inverse(pdb_out_path, pdb_out_path)
+    change.change_bfactors(pdb_out_path, pdb_out_path)
 
 def calculate_auto_offset(input_list: List[List], length: int) -> List:
     

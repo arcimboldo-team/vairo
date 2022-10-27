@@ -7,6 +7,7 @@ import pandas as pd
 from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res
 from typing import Dict, List
 from libs.sequence import SequenceAssembled
+from libs.structures import AlignmentSequence
 
 class Template:
 
@@ -15,7 +16,7 @@ class Template:
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
-        self.template_fasta_path: str
+        self.template_fasta_dict: Dict = {}
         self.chains: List = []
         self.generate_multimer: bool = True if num_of_copies > 1 else False
         self.change_res_list: List[change_res.ChangeResidues] = []
@@ -27,14 +28,16 @@ class Template:
         self.template_features: features.Features = None
         self.match_restrict_list: List[match_restrictions.MatchRestrictions] = []
         self.results_path_position: List = [None] * num_of_copies
-        self.hhr_path: str = None
+        self.hhr: List[AlignmentSequence] = []
         self.reference: str = None
         
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)        
         self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path, cif_out_path=os.path.join(output_dir,f'{self.pdb_id}.cif'))
         template_sequence = bioutils.extract_sequence_from_file(self.cif_path)
-        self.template_fasta_path = bioutils.write_sequence(sequence=template_sequence, sequence_path=os.path.join(output_dir, f'{self.pdb_id}.fasta'))
+        for sequence in template_sequence:
+            sequence_chain = sequence[sequence.find(':')+1:sequence.find('\n')]
+            self.template_fasta_dict[sequence_chain] = bioutils.write_sequence(sequence=sequence, sequence_path=os.path.join(output_dir, f'{self.pdb_id}_{sequence_chain}.fasta'))
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
@@ -46,7 +49,6 @@ class Template:
         self.generate_multimer = parameters_dict.get('generate_multimer', self.generate_multimer)
         structure = bioutils.get_structure(pdb_path=self.pdb_path)
         self.chains = [chain.get_id() for chain in structure.get_chains()]
-        self.hhr_path = f'{output_dir}/{self.pdb_id}_output.hhr'
 
         for paramaters_change_res in parameters_dict.get('change_res', self.change_res_list):
             change_res_dict = {}
@@ -106,7 +108,7 @@ class Template:
                         pdb_out_path=aux_path, 
                         sequence_assembled=sequence_assembled)
             chain_dict = bioutils.chain_splitter(aux_path)
-            for i, pos in enumerate(positions):
+            for i, pos in enumerate(list(positions.keys())):
                 self.results_path_position[i] = chain_dict[pos] if pos in chain_dict else None
 
         template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
@@ -140,14 +142,22 @@ class Template:
         #   - Change the specified residues in the input in all the templates.
 
         query_sequence = bioutils.extract_sequence(fasta_path)
+        extracted_chain_dict = {}
         if not self.aligned:
-            extracted_chain_dict = {}
-            new_database = hhsearch.create_database_from_pdb(fasta_path=self.template_fasta_path, database_path=database_path, output_dir=output_dir)
-            hhsearch.run_hhsearch(fasta_path=fasta_path, database_path=new_database, output_path=self.hhr_path)
             for chain in self.chains:
+                template_sequence = self.template_fasta_dict[chain]
+                align_seq = AlignmentSequence(fasta_path=fasta_path, 
+                                            hhr_path=os.path.join(output_dir, f'{utils.get_file_name(template_sequence)}.hhr'))
+                self.hhr.append(align_seq)
+                new_database = hhsearch.create_database_from_pdb(fasta_path=template_sequence, 
+                                                                database_path=database_path, 
+                                                                output_dir=output_dir)
+                hhsearch.run_hhsearch(fasta_path=fasta_path, 
+                                    database_path=new_database, 
+                                    output_path=align_seq.hhr_path)
                 template_features, mapping = features.extract_template_features_from_pdb(
                     query_sequence=query_sequence,
-                    hhr_path=self.hhr_path,
+                    hhr_path=align_seq.hhr_path,
                     cif_path=self.cif_path,
                     chain_id=chain)
 
@@ -158,6 +168,7 @@ class Template:
                     aux_dict = g.write_all_templates_in_features(output_dir=output_dir, chain=chain)
                     extracted_chain_path = list(aux_dict.values())[0]
                     extracted_chain_dict[chain] = [extracted_chain_path]
+
         else:
             aux_path = os.path.join(output_dir, os.path.basename(self.pdb_path))
             shutil.copy2(self.pdb_path, aux_path)
@@ -280,9 +291,6 @@ class Template:
 
     def choose_best_offset(self, reference, deleted_positions: List[int], align_dict: Dict, code_list: List[str], name_list: List[str]) -> Dict:
         
-        results_pdist = []
-        
-        results_pdist.append(['reference'] + [file for i, file in enumerate(reference.results_path_position) if not i in deleted_positions ])
         results_algorithm = []
 
         for x, code_query_pdb in enumerate(code_list):
@@ -292,12 +300,12 @@ class Template:
                 if not y in deleted_positions:
                     query_pdb = utils.select_path_from_code(align_dict=align_dict,
                                                             code=code_query_pdb,
-                                                            position=x,
+                                                            position=y,
                                                             sequence_name_list=name_list)
-                    reference_algorithm.append((x, y, bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb)))   
-                    reference_pdist_list.append(bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb))
+                    if query_pdb is not None:
+                        reference_algorithm.append((x, y, bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb)))   
+                        reference_pdist_list.append(bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb))
             results_algorithm.append(reference_algorithm)
-            results_pdist.append([utils.get_file_name(query_pdb)] + reference_pdist_list)
 
         return_offset_list = [None] * (len(reference.results_path_position))
         best_offset_list = bioutils.calculate_auto_offset(results_algorithm, len(return_offset_list)-len(deleted_positions))
@@ -306,22 +314,6 @@ class Template:
                                                                 code=code_list[x],
                                                                 position=y,
                                                                 sequence_name_list=name_list)
-
-        output_txt = f'{os.getcwd()}/best_offset.txt'
-
-        with open(output_txt, 'w') as f_in:
-
-             f_in.write('Calculated with distances:\n')
-
-             rows = []
-             for x in results_pdist[1:]:
-                 rows.append(x)
-             df = pd.DataFrame(rows, columns=results_pdist[0])
-             f_in.write(df.to_markdown())        
-        
-             f_in.write('\n\n')
-             f_in.write('Best combination is (using pdist):')
-             f_in.write(f'{str(return_offset_list)}')
 
         return return_offset_list
 
