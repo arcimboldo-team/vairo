@@ -175,6 +175,9 @@ class Template:
             chain_dict = bioutils.chain_splitter(aux_path)
             extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
         
+        if not extracted_chain_dict:
+            return extracted_chain_dict
+
         if self.generate_multimer:
             extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
 
