@@ -242,22 +242,22 @@ def analyse_output(a_air):
     for template, template_path in template_not_splitted.items():
         frobenius_file = os.path.join(frobenius_path, f'frobenius_{template}.txt')
         matrices = os.path.join(a_air.run_dir, 'matrices')
+        plots = os.path.join(a_air.run_dir, 'plots')
         template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
-        #with open(frobenius_file, 'w') as sys.stdout:
-        #    _, _, plots1_list, plots2_list = ALEPH.frobenius(reference=template_path, targets=list(ranked_not_splitted_filtered.values()), sequence=sequence_path, write_plots=True, write_matrix=True)
-        #sys.stdout = sys.__stdout__
-        #[shutil.copy2(plot, frobenius_path) for plot in (plots1_list+plots2_list)]
-        #for ranked, ranked_path in ranked_not_splitted_filtered.items():
-        #    ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
-        #    for interface_list in interfaces_dict[ranked]:
-        #        frobenius_file = os.path.join(frobenius_path, f'frobenius_{interface_list.name}.txt')
-        #        with open(frobenius_file, 'w') as sys.stdout:
-        #            _,_, plots_list = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plots=True)
-        #        print(plots_list)
-        #        sys.stdout = sys.__stdout__
-        #        for plot in plots_list:
-        #            new_name = os.path.join(frobenius_path, f'{interface_list.name}.png')
-        #            shutil.copy2(plot, new_name)
+        with open(frobenius_file, 'w') as sys.stdout:
+            _, _, plots1_list, plots2_list = ALEPH.frobenius(reference=template_path, targets=list(ranked_not_splitted_filtered.values()), sequence=sequence_path, write_plots=True, write_matrix=True)
+        sys.stdout = sys.__stdout__
+        [shutil.copy2(plot, frobenius_path) for plot in (plots1_list+plots2_list)]
+        for ranked, ranked_path in ranked_not_splitted_filtered.items():
+            ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
+            for interface_list in interfaces_dict[ranked]:
+                frobenius_file = os.path.join(frobenius_path, f'frobenius_{interface_list.name}.txt')
+                with open(frobenius_file, 'w') as sys.stdout:
+                    _,_, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plots=True)
+                sys.stdout = sys.__stdout__
+                new_name = os.path.join(frobenius_path, f'{interface_list.name}.png')
+                plot_path = os.path.join(plots, os.path.basename(plot))
+                shutil.copy2(plot_path, new_name)
 
     with open(analysis_path, 'w') as f_in:
 
