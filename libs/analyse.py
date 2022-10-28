@@ -214,19 +214,18 @@ def analyse_output(a_air):
                 for i, interface in enumerate(interfaces_data_list):
                     code = f'{utils.get_file_name(ranked_path)}_{interface["chain1"]}{interface["chain2"]}'
                     dimers_path = os.path.join(interfaces_path, f'{code}.pdb')
-                    renum_residues_list = []
-                    renum_residues_list.extend(utils.renum_residues(interface['res_chain1'], mapping=mappings[ranked][interface['chain1']]))
-                    renum_residues_list.extend(utils.renum_residues(interface['res_chain2'], mapping=mappings[ranked][interface['chain2']]))
-                    inter_name = structures.InterfaceName(name=code, res_list=renum_residues_list)
-                    interfaces_dict[ranked].append(inter_name)
                     interface['bfactor'] = deltas_list[i]
                     if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
                         interface['bfactor'] = abs(max(deltas_list)) * 2
-                    bioutils.create_interface_domain(pdb_in_path=ranked_path,
-                                                    pdb_out_path=dimers_path,
-                                                    interface=interface,
-                                                    domains_dict=domains_dict)
-
+                    extended_res_dict = bioutils.create_interface_domain(pdb_in_path=ranked_path,
+                                                            pdb_out_path=dimers_path,
+                                                            interface=interface,
+                                                            domains_dict=domains_dict)
+                    renum_residues_list = []
+                    renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain1']], mapping=mappings[ranked][interface['chain1']]))
+                    renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain2']], mapping=mappings[ranked][interface['chain2']]))
+                    inter_name = structures.InterfaceName(name=code, res_list=renum_residues_list)
+                    interfaces_dict[ranked].append(inter_name)
     ##Superpose the experimental pdb with all the rankeds and templates
     experimental_dict = {}
     if a_air.experimental_pdb is not None:
@@ -242,22 +241,22 @@ def analyse_output(a_air):
     for template, template_path in template_not_splitted.items():
         frobenius_file = os.path.join(frobenius_path, f'frobenius_{template}.txt')
         matrices = os.path.join(a_air.run_dir, 'matrices')
+        plots = os.path.join(a_air.run_dir, 'plots')
         template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
-        #with open(frobenius_file, 'w') as sys.stdout:
-        #    _, _, plots1_list, plots2_list = ALEPH.frobenius(reference=template_path, targets=list(ranked_not_splitted_filtered.values()), sequence=sequence_path, write_plots=True, write_matrix=True)
-        #sys.stdout = sys.__stdout__
-        #[shutil.copy2(plot, frobenius_path) for plot in (plots1_list+plots2_list)]
-        #for ranked, ranked_path in ranked_not_splitted_filtered.items():
-        #    ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
-        #    for interface_list in interfaces_dict[ranked]:
-        #        frobenius_file = os.path.join(frobenius_path, f'frobenius_{interface_list.name}.txt')
-        #        with open(frobenius_file, 'w') as sys.stdout:
-        #            _,_, plots_list = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plots=True)
-        #        print(plots_list)
-        #        sys.stdout = sys.__stdout__
-        #        for plot in plots_list:
-        #            new_name = os.path.join(frobenius_path, f'{interface_list.name}.png')
-        #            shutil.copy2(plot, new_name)
+#        with open(frobenius_file, 'w') as sys.stdout:
+#            _, _, plots1_list, plots2_list = ALEPH.frobenius(reference=template_path, targets=list(ranked_not_splitted_filtered.values()), write_plots=True, write_matrix=True)
+#        sys.stdout = sys.__stdout__
+#        [shutil.copy2(plot, frobenius_path) for plot in (plots1_list+plots2_list)]
+#        for ranked, ranked_path in ranked_not_splitted_filtered.items():
+#            ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
+#            for interface_list in interfaces_dict[ranked]:
+#                frobenius_file = os.path.join(frobenius_path, f'frobenius_{interface_list.name}.txt')
+#                with open(frobenius_file, 'w') as sys.stdout:
+#                    _,_, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plots=True)
+#                sys.stdout = sys.__stdout__
+#                new_name = os.path.join(frobenius_path, f'{interface_list.name}.png')
+#                plot_path = os.path.join(plots, os.path.basename(plot))
+#                shutil.copy2(plot_path, new_name)
 
     with open(analysis_path, 'w') as f_in:
 
