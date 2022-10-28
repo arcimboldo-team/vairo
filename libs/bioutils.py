@@ -13,10 +13,10 @@ from libs import change_res, utils
 from scipy.spatial import distance
 from libs import sequence
 
-from openmmforcefields.generators import SystemGenerator
-from simtk import unit, openmm
-from simtk.openmm.app import PDBFile, Simulation
-from Bio.PDB import NeighborSearch
+#from openmmforcefields.generators import SystemGenerator
+#from simtk import unit, openmm
+#from simtk.openmm.app import PDBFile, Simulation
+#from Bio.PDB import NeighborSearch
 
 def download_pdb(pdb_id: str, output_dir: str):
 
@@ -425,7 +425,7 @@ def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
     command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all --keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0'
     subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-def run_openmm(pdb_in_path: str) -> List:
+""" def run_openmm(pdb_in_path: str) -> List:
 
     pdb_aux = os.path.join(os.path.dirname(pdb_in_path), f'{utils.get_file_name(pdb_in_path)}_energy.pdb')
     run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_aux)
@@ -439,7 +439,7 @@ def run_openmm(pdb_in_path: str) -> List:
     state = simulation.context.getState(getPositions=True, enforcePeriodicBox=False, getEnergy=True)
     with open(pdb_aux, 'w+') as f_handler:
         PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_handler, keepIds=True)
-    return state.getKineticEnergy(), state.getPotentialEnergy() 
+    return state.getKineticEnergy(), state.getPotentialEnergy()  """
 
 def superpose_pdbs(pdb_list: List, output_pdb = None) -> List:
     
@@ -523,14 +523,12 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List:
 
     return interface_data_list 
 
-def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict):
+def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict) -> List[int]:
     add_domains_dict = {}
     bfactors_dict = {}
     for chain, residue in zip([interface['chain1'], interface['chain2']], [interface['res_chain1'], interface['res_chain2']]):
         added_res_list = []
-        for domains in domains_dict[chain]:
-            if bool(set(residue).intersection(domains)):
-                added_res_list.extend(domains)
+        [added_res_list.extend(domains) for domains in domains_dict[chain] if bool(set(residue).intersection(domains))]
         added_res_list.extend(residue)
         add_domains_dict[chain] = list(set(added_res_list))
         bfactors_dict[chain] = [float(interface['bfactor'])] * len(add_domains_dict[chain])
@@ -544,7 +542,9 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     change.delete_residues_inverse(pdb_out_path, pdb_out_path)
     change.change_bfactors(pdb_out_path, pdb_out_path)
 
-def calculate_auto_offset(input_list: List[List], length: int) -> List:
+    return add_domains_dict
+
+def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
     
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
