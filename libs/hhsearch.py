@@ -10,7 +10,7 @@ def create_database_from_pdb(fasta_path: str, database_path: str, output_dir: st
     database_dir = os.path.join(output_dir, f'{name}_database')
     utils.create_dir(database_dir, delete_if_exists=True)
     subprocess.call(['ffindex_from_fasta','-s', f'{database_dir}/{name}.ffdata', f'{database_dir}/{name}.ffindex', fasta_path])
-    subprocess.call(['hhblits_omp','-i', f'{database_dir}/{name}', '-d', database_path, '-oa3m', f'{database_dir}/{name}_a3m_wo_ss','-n','2','-v','0'])
+    subprocess.call(['hhblits_omp','-i', f'{database_dir}/{name}', '-d', database_path, '-oa3m', f'{database_dir}/{name}_a3m_wo_ss','-n','2','-cpu','4','-v','0'])
     shutil.copy2(os.path.join(database_dir, f'{name}_a3m_wo_ss.ffdata'), os.path.join(database_dir, f'{name}_a3m.ffdata'))
     shutil.copy2(os.path.join(database_dir, f'{name}_a3m_wo_ss.ffindex'), os.path.join(database_dir, f'{name}_a3m.ffindex'))
     subprocess.call(['ffindex_apply',f'{database_dir}/{name}_a3m.ffdata',f'{database_dir}/{name}_a3m.ffindex','-i', f'{database_dir}/{name}_hhm.ffindex','-d', f'{database_dir}/{name}_hhm.ffdata','--','hhmake','-i','stdin','-o','stdout','-v','0'])

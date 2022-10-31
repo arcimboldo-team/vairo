@@ -212,9 +212,10 @@ def get_hetatm(residue: Residue) -> int:
 
     return residue.get_full_id()[3][0]
 
-def get_chains(structure: Structure) -> List:
+def get_chains(pdb_path: str) -> List[str]:
     #Return all chains from a PDB structure
 
+    structure = get_structure(pdb_path)
     return [chain.get_id() for chain in structure.get_chains()]
 
 def get_structure(pdb_path: str) -> Structure:

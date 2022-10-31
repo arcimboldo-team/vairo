@@ -80,4 +80,3 @@ templates:
   add_to_msa: false
   add_to_templates: true
   generate_multimer: true
-

@@ -9,4 +9,11 @@ class InterfaceName:
 @dataclasses.dataclass(frozen=True)
 class AlignmentSequence:
     fasta_path: str
+    database_path: str
     hhr_path: str
+
+@dataclasses.dataclass(frozen=True)
+class AlignmentDatabase:
+    chain: str
+    fasta_path: str
+    database_path: str
