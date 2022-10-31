@@ -48,12 +48,14 @@ def main():
         feature = features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled)
         for template in a_air.templates_list:
             alignment_dict = {}
+            database_dir = os.path.join(a_air.run_dir, template.pdb_id)
+            utils.create_dir(database_dir)
+            template.generate_database(output_dir=database_dir, database_path=a_air.alphafold_paths.bfd_db_path)
             for sequence in a_air.sequence_assembled.sequence_list:
-                output_dir = os.path.join(a_air.run_dir, sequence.name)
-                utils.create_dir(output_dir)
-                alignment_dict[sequence.name] = template.align(output_dir=output_dir, 
-                                                            fasta_path=sequence.fasta_path,
-                                                            database_path=a_air.alphafold_paths.bfd_db_path)
+                alignment_dir = os.path.join(a_air.run_dir, sequence.name)
+                utils.create_dir(alignment_dir)
+                alignment_dict[sequence.name] = template.align(output_dir=alignment_dir, 
+                                                            fasta_path=sequence.fasta_path)
             results_path_position = template.generate_features(
                     output_dir=a_air.run_dir, 
                     alignment_dict=alignment_dict, 
