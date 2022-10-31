@@ -1,22 +1,24 @@
 import glob
 import os
 import logging
-import shutil
 import subprocess
+from typing import Union
+
 from libs import bioutils, utils, features
 
+
 class AlphaFoldRun:
-    def __init__ (self, output_dir:str, sequence: str, custom_features: bool, feature: features.Features = None):
+    def __init__(self, output_dir: str, sequence: str, custom_features: bool, feature: features.Features = None):
         self.run_alphafold_bash: str
         self.results_dir: str
         self.fasta_path: str
         self.custom_features: bool
-        self.feature: features.Features = None
+        self.feature: Union[features.Features, None] = None
 
         self.feature = feature
         self.custom_features = custom_features
         self.results_dir = output_dir
-        utils.create_dir(self.results_dir,delete_if_exists=False)
+        utils.create_dir(self.results_dir, delete_if_exists=False)
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(output_dir)}.fasta')
         bioutils.write_sequence(sequence, self.fasta_path)
         self.run_alphafold_bash = os.path.join(self.results_dir, 'run_af2.sh')
@@ -24,7 +26,8 @@ class AlphaFoldRun:
     def run_af2(self):
 
         logging.info(f'Running AlphaFold2 in directory {self.results_dir}')
-        af2_output = subprocess.Popen(['bash', self.run_alphafold_bash], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        af2_output = subprocess.Popen(['bash', self.run_alphafold_bash], stdout=subprocess.PIPE,
+                                      stderr=subprocess.STDOUT)
         while True:
             line = af2_output.stdout.readline()
             if not line:
@@ -38,13 +41,13 @@ class AlphaFoldRun:
         logging.info('AlphaFold2 has finished succesfully. Proceeding to analyse the results')
 
     def create_af2_script(self, alphafold_paths):
-        #Create the script to launch alphafold. It contins all the databases,
-        #paths to the outputdir and fasta.
+        # Create the script to launch alphafold. It contins all the databases,
+        # paths to the outputdir and fasta.
 
         previous_path = utils.get_parent_folder(dir_path=self.results_dir)
         if self.custom_features:
-            self.feature.write_pkl(os.path.join(self.results_dir,'features.pkl'))
-    
+            self.feature.write_pkl(os.path.join(self.results_dir, 'features.pkl'))
+
         with open(self.run_alphafold_bash, 'w') as bash_file:
             bash_file.write('#!/bin/bash\n')
             bash_file.write(f'python {alphafold_paths.run_alphafold_script} \\\n')
@@ -63,9 +66,10 @@ class AlphaFoldRun:
             bash_file.write(f'--read_features_pkl={self.custom_features}\n')
             bash_file.close()
 
+
 class AlphaFoldPaths:
 
-    def __init__ (self, af2_dbs_path: str):
+    def __init__(self, af2_dbs_path: str):
         self.run_alphafold_script: str
         self.run_alphafold_bash: str
         self.af2_dbs_path: str
@@ -103,7 +107,7 @@ class AlphaFoldPaths:
             elif 'pdb70' in db:
                 self.pdb70_db_path = f'{self.af2_dbs_path}/{db}/pdb70'
                 logging.info(f'PDB70 DB path: {self.pdb70_db_path}')
-    
+
     def __repr__(self):
         return f' \
         run_alphafold_script: {self.run_alphafold_script} \n \

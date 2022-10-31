@@ -1,11 +1,12 @@
 import logging
 import os
-from typing import List, Dict
+from typing import List, Dict, Union
 from libs import alphafold_classes, bioutils, template, utils, features, sequence
+
 
 class StructureAir:
 
-    def __init__ (self, parameters_dict: Dict):
+    def __init__(self, parameters_dict: Dict):
 
         self.output_dir: str
         self.run_dir: str
@@ -19,10 +20,10 @@ class StructureAir:
         self.verbose: bool = True
         self.glycines: int = 50
         self.template_positions_list: List = [List]
-        self.reference: template.Template = None
+        self.reference: Union[template.Template, None] = None
         self.custom_features: bool = True
-        self.experimental_pdb: str = None
-        self.mosaic: int = None
+        self.experimental_pdb: Union[str, None] = None
+        self.mosaic: Union[int, None] = None
 
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
@@ -32,13 +33,13 @@ class StructureAir:
         utils.create_dir(self.output_dir)
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
-        
-        af2_dbs_path = utils.get_mandatory_value(input_load = parameters_dict, value = 'af2_dbs_path')
+
+        af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.custom_features = parameters_dict.get('custom_features', self.custom_features)
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
-        
+
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
         if experimental_pdb is not None:
             experimental_pdb = bioutils.check_pdb(experimental_pdb, self.input_dir)
@@ -46,7 +47,7 @@ class StructureAir:
             bioutils.generate_multimer_from_pdb(experimental_pdb, self.experimental_pdb)
 
         sequence_list = []
-        if not 'sequences' in parameters_dict:
+        if 'sequences' not in parameters_dict:
             raise Exception('No sequences detected. Mandatory input')
         else:
             for parameters_sequence in parameters_dict.get('sequences'):
@@ -56,13 +57,14 @@ class StructureAir:
 
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
-        if not 'templates' in parameters_dict:
+        if 'templates' not in parameters_dict:
             logging.info('No templates detected')
         else:
             reference = parameters_dict.get('reference')
             for parameters_template in parameters_dict.get('templates'):
-                new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir, 
-                                                input_dir=self.input_dir, num_of_copies=self.sequence_assembled.total_copies)
+                new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir,
+                                                 input_dir=self.input_dir,
+                                                 num_of_copies=self.sequence_assembled.total_copies)
                 self.templates_list.append(new_template)
                 if new_template.pdb_id == reference:
                     self.reference = new_template
@@ -77,12 +79,12 @@ class StructureAir:
 
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=af2_dbs_path)
 
-    def get_template_by_id(self, pdb_id: str) -> template.Template:
-        #Return the template matching the pdb_id
+    def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
+        # Return the template matching the pdb_id
 
-        for template in self.templates_list:
-            if template.pdb_id == pdb_id:
-                return template
+        for temp in self.templates_list:
+            if temp.pdb_id == pdb_id:
+                return temp
         return None
 
     def order_templates_with_restrictions(self):
@@ -96,51 +98,39 @@ class StructureAir:
         if self.reference is not None:
             new_templates_list.append(self.reference)
             old_templates_list.remove(self.reference)
-            
+
         while old_templates_list:
             deleted_items = []
-            for template in old_templates_list:
-                reference_list = template.get_reference_list()
+            for temp in old_templates_list:
+                reference_list = temp.get_reference_list()
                 if set(reference_list).issubset(new_templates_list):
-                    new_templates_list.append(template)
-                    deleted_items.append(template)
+                    new_templates_list.append(temp)
+                    deleted_items.append(temp)
             old_templates_list = [x for x in old_templates_list if (x not in deleted_items)]
             if not deleted_items:
                 raise Exception('The match conditions could not be applied, there is an endless loop')
         self.templates_list = new_templates_list
-        
+
     def append_line_in_templates(self, new_list: List):
-        #Add line to the templates matrix.
-        #The list contains the position of the chains
+        # Add line to the template's matrix.
+        # The list contains the position of the chains
 
         self.template_positions_list.append(new_list)
 
-    def check_if_assembly(self):
-        #Check if it was assembled before the execution of the program
-        #We check if our 'G' pattern matches the input pdb
-        #If so, we can change the parameters to convert it to a multimer
-
-        if self.num_of_copies == 1:
-            split_result = self.query_sequence.split('G'*self.glycines)
-            if len(split_result)>1 and len(set(split_result)) == 1:
-                self.query_sequence = split_result[0]
-                self.num_of_copies = len(split_result)
-                self.query_sequence_assembled = self.generate_query_assembled()
-
     def run_alphafold(self, features_list: List[features.Features]):
-        #Create the script and run alphafold
+        # Create the script and run alphafold
 
         for i, feature in enumerate(features_list):
             name = f'results_{i}'
-            path = os.path.join(self.run_dir, name)                
-            afrun = alphafold_classes.AlphaFoldRun(output_dir=path, 
-                                                    sequence=self.sequence_assembled.sequence_assembled,
-                                                    custom_features=self.custom_features, 
-                                                    feature=feature) 
+            path = os.path.join(self.run_dir, name)
+            afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
+                                                   sequence=self.sequence_assembled.sequence_assembled,
+                                                   custom_features=self.custom_features,
+                                                   feature=feature)
             self.afrun_list.append(afrun)
             afrun.create_af2_script(self.alphafold_paths)
             afrun.run_af2()
-    
+
     def merge_results(self):
         if len(self.afrun_list) == 1:
             self.run_dir = self.afrun_list[0].results_dir
@@ -151,8 +141,4 @@ class StructureAir:
     def __repr__(self) -> str:
         return f' \
         output_dir: {self.output_dir} \n \
-        fasta_path: {self.fasta_path} \n \
-        query_sequence: {self.query_sequence} \n \
-        query_sequence_assembled: {self.query_sequence_assembled} \n \
-        num_of_copies: {self.num_of_copies} \n \
         run_af2: {self.run_af2}'
