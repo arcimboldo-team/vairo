@@ -109,7 +109,8 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
 
 def write_sequence(sequence_amino: str, sequence_path: str) -> str:
     with open(sequence_path, 'w') as f_out:
-        f_out.write(f'{sequence_amino}\n')
+        f_out.write(f'>{utils.get_file_name(sequence_path)}\n')
+        f_out.write(f'{sequence_amino}')
     return sequence_path
 
 
