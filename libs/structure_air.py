@@ -123,10 +123,16 @@ class StructureAir:
         for i, feature in enumerate(features_list):
             name = f'results_{i}'
             path = os.path.join(self.run_dir, name)
-            afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
-                                                   sequence=self.sequence_assembled.sequence_assembled,
-                                                   custom_features=self.custom_features,
-                                                   feature=feature)
+            if feature is not None:
+                afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
+                                                    sequence=self.sequence_assembled.sequence_assembled,
+                                                    custom_features=self.custom_features,
+                                                    feature=feature)
+            else:
+                afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
+                                                    sequence=self.sequence_assembled.sequence_list[0].sequence,
+                                                    custom_features=self.custom_features,
+                                                    feature=feature)                
             self.afrun_list.append(afrun)
             afrun.create_af2_script(self.alphafold_paths)
             afrun.run_af2()
