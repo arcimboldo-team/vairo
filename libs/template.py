@@ -130,8 +130,10 @@ class Template:
         template_sequence = bioutils.extract_sequence_from_file(self.cif_path)
         for extracted_sequence in template_sequence:
             sequence_chain = extracted_sequence[extracted_sequence.find(':')+1:extracted_sequence.find('\n')]
+            sequence_name = extracted_sequence.splitlines()[0]
+            sequence = extracted_sequence.splitlines()[1]
             fasta_path = os.path.join(output_dir, f'{self.pdb_id}_{sequence_chain}.fasta')
-            bioutils.write_sequence(sequence_amino=extracted_sequence, sequence_path=fasta_path)
+            bioutils.write_sequence(sequence_name=sequence_name, sequence_amino=sequence, sequence_path=fasta_path)
             new_database = hhsearch.create_database_from_pdb(fasta_path=fasta_path,
                                                              database_path=database_path,
                                                              output_dir=output_dir)

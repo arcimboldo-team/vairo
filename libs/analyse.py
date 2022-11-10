@@ -156,7 +156,7 @@ def analyse_output(a_air):
     # Create a plot with the ranked plddts, also, calculate the maximum plddt
     plddt_dict = plot_plddt(plot_path=plddt_plot_path, ranked_models_dict=ranked_models_dict)
     max_plddt = max(plddt_dict.values())
-    bioutils.write_sequence(a_air.sequence_assembled.sequence_assembled, sequence_path)
+    bioutils.write_sequence(sequence_name=utils.get_file_name(sequence_path), sequence_amino=a_air.sequence_assembled.sequence_assembled, sequence_path=sequence_path)
 
     # Filter rankeds, split them in chains.
     ranked_filtered = []

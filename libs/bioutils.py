@@ -97,8 +97,7 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
                 results = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}\n'
-                results += record.seq.replace("X", "")
-                # results += record.seq
+                results += str(record.seq.replace("X", ""))
                 results_list.append(results)
         return results_list
     except Exception as e:
@@ -107,9 +106,9 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
     return results_list
 
 
-def write_sequence(sequence_amino: str, sequence_path: str) -> str:
+def write_sequence(sequence_name: str, sequence_amino: str, sequence_path: str) -> str:
     with open(sequence_path, 'w') as f_out:
-        f_out.write(f'>{utils.get_file_name(sequence_path)}\n')
+        f_out.write(f'>{sequence_name}\n')
         f_out.write(f'{sequence_amino}')
     return sequence_path
 
@@ -554,7 +553,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
 
     pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-    pisa_general_txt = os.path.join(interfaces_path, 'general_output.txt')
+    pisa_general_txt = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_general_output.txt')
     with open(pisa_general_txt, 'w') as f_out:
         f_out.write(pisa_output)
 

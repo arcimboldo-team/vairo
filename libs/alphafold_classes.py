@@ -20,7 +20,7 @@ class AlphaFoldRun:
         self.results_dir = output_dir
         utils.create_dir(self.results_dir, delete_if_exists=False)
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(output_dir)}.fasta')
-        bioutils.write_sequence(sequence, self.fasta_path)
+        bioutils.write_sequence(sequence_name=utils.get_file_name(self.fasta_path), sequence_amino=sequence, sequence_path=self.fasta_path)
         self.run_alphafold_bash = os.path.join(self.results_dir, 'run_af2.sh')
 
     def run_af2(self):
