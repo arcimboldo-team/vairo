@@ -116,7 +116,7 @@ class Features:
         index = np.where(self.template_features['template_domain_names'] == name.encode())
         return self.template_features['template_sequence'][index][0].decode()
 
-    def merge_features(self) -> dict[Any, Any]:
+    def merge_features(self) -> Dict[Any, Any]:
 
         logging.info(f'Merging sequence, msa and template features!')
 

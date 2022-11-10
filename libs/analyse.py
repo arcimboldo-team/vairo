@@ -4,7 +4,7 @@ import re
 import shutil
 import sys
 import statistics
-from typing import Dict
+from typing import Dict, List
 from ALEPH.aleph.core import ALEPH
 from libs import bioutils, features, utils
 from Bio.PDB import PDBParser, Selection
@@ -44,7 +44,7 @@ def get_group(res: str) -> str:
     return res
 
 
-def compare_sequences(sequence1: str, sequence2: str) -> list[str]:
+def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
     # Given two sequences with same length, return a list showing
     # if there is a match, a group match, they are different, or
     # they are not aligned

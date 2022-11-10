@@ -9,7 +9,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Tuple, Union
 from sklearn import preprocessing
 from itertools import groupby
 from operator import itemgetter
@@ -84,7 +84,7 @@ def get_working_dir() -> str:
     return os.getcwd()
 
 
-def chunk_string(length: int, size: int, overlap: int = 30) -> list[tuple[int, int]]:
+def chunk_string(length: int, size: int, overlap: int = 30) -> List[Tuple[int, int]]:
     # Slice string in chunks of size
     size = size - overlap
     return [(0 + i, size + i + overlap) for i in range(0, length, size)]
@@ -104,7 +104,7 @@ def get_key_for_value(value: str, search_dict: Dict) -> Union[List[str], None]:
         return None
 
 
-def get_positions_by_chain(path_list: List[str], chain: str) -> list[int]:
+def get_positions_by_chain(path_list: List[str], chain: str) -> List[int]:
     # Give a list of paths, return all the positions in the list
     # that contain the chain
 
@@ -121,7 +121,7 @@ def get_paths_by_chain(path_list: List[str], search_chain: str) -> List[str]:
     return return_list
 
 
-def get_consecutive_numbers(number_list: List[int]) -> list[tuple[int, int]]:
+def get_consecutive_numbers(number_list: List[int]) -> List[Tuple[int, int]]:
     # Given an integer list, return ranges of consecutive numbers
 
     result_list = []
@@ -132,7 +132,7 @@ def get_consecutive_numbers(number_list: List[int]) -> list[tuple[int, int]]:
     return result_list
 
 
-def get_chain_and_number(path_pdb: str) -> tuple:
+def get_chain_and_number(path_pdb: str) -> Tuple[int, int]:
     # Given a path: ../../template_A1.pdb return A and 1
     # Return CHAIN and NUMBER
     name = get_file_name(path_pdb)

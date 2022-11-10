@@ -4,7 +4,7 @@ import logging
 import shutil
 import collections
 from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from libs import structures, sequence
 
 
@@ -210,7 +210,7 @@ class Template:
                 res.apply_mapping(chain, mapping)
 
     def sort_chains_into_positions(self, alignment_dict: Dict, sequence_name_list: List[str], global_reference) \
-            -> list[None]:
+            -> List[Tuple[str, None]]:
 
         composition_path_list = [None] * len(sequence_name_list)
         new_target_code_list = []

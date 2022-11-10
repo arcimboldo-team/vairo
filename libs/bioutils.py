@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import numpy as np
 import itertools
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
 from numpy import ndarray, dtype
@@ -132,7 +132,7 @@ def run_pisa(pdb_path: str) -> str:
     return pisa_output.decode('utf-8')
 
 
-def read_remark_350(pdb_path: str) -> tuple[list[str], list[list[list[Any]]]]:
+def read_remark_350(pdb_path: str) -> Tuple[List[str], List[List[List[Any]]]]:
     pdb_text = open(pdb_path, 'r').read()
     match_biomolecules = [m.start() for m in
                           re.finditer(r'REMARK 350 BIOMOLECULE:', pdb_text)]  # to know how many biomolecules there are.
@@ -175,7 +175,7 @@ def read_remark_350(pdb_path: str) -> tuple[list[str], list[list[list[Any]]]]:
     return chain_list, transformations_list
 
 
-def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: list[list] = None, offset: Optional[int] = 0,
+def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: List[List] = None, offset: Optional[int] = 0,
                  chain: Optional[str] = None):
     with open('/tmp/pdbset.sh', 'w') as f:
         f.write(f'pdbset xyzin {pdb_in_path} xyzout {pdb_out_path} << eof\n')
@@ -197,7 +197,7 @@ def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: list[list]
 
 
 def choose_best_offset(reference, deleted_positions: List[int], align_dict: Dict, code_list: List[str],
-                       name_list: List[str]) -> list[Optional[str]]:
+                       name_list: List[str]) -> List[Optional[str]]:
     results_algorithm = []
 
     for x, code_query_pdb in enumerate(code_list):
@@ -494,7 +494,7 @@ def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
     return state.getKineticEnergy(), state.getPotentialEnergy()  """
 
 
-def superpose_pdbs(pdb_list: List, output_pdb=None) -> tuple[Optional[float], Optional[str], Optional[str]]:
+def superpose_pdbs(pdb_list: List, output_pdb=None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
     superpose_input_list = ['superpose']
     for pdb in pdb_list:
         superpose_input_list.extend([pdb, '-s', '-all'])
@@ -540,13 +540,13 @@ def pdist(query_pdb: str, target_pdb: str) -> float:
     return float(diff_pdist_matrix.mean())
 
 
-def calculate_distance_pdist(res_list: List) -> ndarray[Any, dtype[Any]]:
+def calculate_distance_pdist(res_list: List) -> List:
     coords = [res['CA'].coord for res in res_list]
     calculate_pdist = distance.pdist(coords, "euclidean")
     return distance.squareform(calculate_pdist)
 
 
-def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> list[Union[dict, None]]:
+def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Union[Dict, None]]:
     subprocess.Popen(['pisa', 'temp', '-analyse', pdb_in_path],
                      stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE).communicate()
@@ -579,8 +579,8 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> list[Uni
     return interface_data_list
 
 
-def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict) -> dict[
-    Any, list[Any]]:
+def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict) -> Dict[
+    Any, List[Any]]:
     add_domains_dict = {}
     bfactors_dict = {}
     for chain, residue in zip([interface['chain1'], interface['chain2']],
