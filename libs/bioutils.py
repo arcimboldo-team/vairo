@@ -341,10 +341,9 @@ def split_chains_assembly(pdb_in_path: str,
             chain = Chain.Chain(chain_name)
             new_structure[0].add(chain)
             mapping = {}
-            for j in range(start_min + 1, start_max + 1):
+            for new_id, j in enumerate(range(start_min + 1, start_max + 1), start=1):
                 if j in idres_list:
                     res = residues_list[idres_list.index(j)]
-                    new_id = j % seq_with_glycines_length
                     mapping[new_id] = j
                     new_res = copy.copy(res)
                     chain.add(new_res)
