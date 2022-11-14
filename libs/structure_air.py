@@ -16,7 +16,7 @@ class StructureAir:
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
         self.templates_list: List[template.Template] = []
-        self.run_alphafold: bool = True
+        self.run_af2: bool = True
         self.stop_after_msa: bool = False
         self.verbose: bool = True
         self.glycines: int = 50
