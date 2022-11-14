@@ -3,8 +3,9 @@ import shutil
 from typing import Dict, List
 from libs import bioutils, utils
 
+
 class Sequence:
-    def __init__ (self, parameters_dict: Dict, input_dir: str):
+    def __init__(self, parameters_dict: Dict, input_dir: str):
         self.fasta_path: str
         self.sequence: str
         self.name: str
@@ -19,7 +20,7 @@ class Sequence:
             [self.positions.append(-1) for i in range(self.num_of_copies)]
         else:
             self.positions = positions.replace(' ', '').split(',')
-            self.positions = [int(position)-1 for position in self.positions]
+            self.positions = [int(position) - 1 for position in self.positions]
             self.num_of_copies = len(self.positions)
 
         if self.num_of_copies == 0:
@@ -34,9 +35,10 @@ class Sequence:
             self.sequence = bioutils.extract_sequence(self.fasta_path)
             self.length = len(self.sequence)
 
+
 class SequenceAssembled:
-    def __init__ (self, sequence_list: List[Sequence], glycines: int):
-        
+    def __init__(self, sequence_list: List[Sequence], glycines: int):
+
         self.sequence_assembled: str = ''
         self.sequence_list: List[Sequence] = []
         self.sequence_list_expanded: List[Sequence] = []
@@ -58,14 +60,14 @@ class SequenceAssembled:
                         self.sequence_list_expanded[position] = sequence
                     else:
                         raise Exception('Wrong sequence requirements. Review sequence positions')
-        
+
         for i, position in enumerate(self.sequence_list_expanded):
             if position is None:
                 sequence = positions_to_fill.pop(0)
                 self.sequence_list_expanded[i] = sequence
 
             self.sequence_assembled += self.sequence_list_expanded[i].sequence + self.glycines * 'G'
-        
+
         self.sequence_assembled = self.sequence_assembled[:-self.glycines]
         self.length = len(self.sequence_assembled)
 
@@ -76,11 +78,11 @@ class SequenceAssembled:
     def get_sequence_name(self, i: int) -> str:
 
         return self.sequence_list_expanded[i].name
-    
+
     def get_list_name(self) -> List[str]:
-        
+
         return [sequence.name for sequence in self.sequence_list_expanded]
-    
+
     def get_starting_length(self, i: int) -> int:
 
         offset = 0
