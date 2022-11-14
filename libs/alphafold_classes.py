@@ -26,52 +26,36 @@ class AlphaFoldRun:
     def run_af2(self, alphafold_paths):
 
         logging.info(f'Running AlphaFold2 in directory {self.results_dir}')
-        af2_output = subprocess.Popen(['bash', self.run_alphafold_bash], stdout=subprocess.PIPE,
-                                      stderr=subprocess.STDOUT)
-        while True:
-            line = af2_output.stdout.readline()
-            if not line:
-                break
-            logging.debug(line.decode('utf-8'))
-        af2_output.wait()
-        return_code = af2_output.poll()
-        logging.debug(f'AlphaFold2 return code is {return_code}')
-        if af2_output.returncode != 0:
-            raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
-        logging.info('AlphaFold2 has finished succesfully. Proceeding to analyse the results')
-
-    def create_af2_script(self, alphafold_paths):
-        # Create the script to launch alphafold. It contins all the databases,
-        # paths to the outputdir and fasta.
 
         previous_path = utils.get_parent_folder(dir_path=self.results_dir)
         if self.custom_features:
             self.feature.write_pkl(os.path.join(self.results_dir, 'features.pkl'))
 
-        with open(self.run_alphafold_bash, 'w') as bash_file:
-            bash_file.write('#!/bin/bash\n')
-            bash_file.write(f'python {alphafold_paths.run_alphafold_script} \\\n')
-            bash_file.write(f'--fasta_paths={self.fasta_path} \\\n')
-            bash_file.write(f'--output_dir={previous_path} \\\n')
-            bash_file.write(f'--data_dir={alphafold_paths.af2_dbs_path} \\\n')
-            bash_file.write(f'--uniref90_database_path={alphafold_paths.uniref90_db_path} \\\n')
-            bash_file.write(f'--mgnify_database_path={alphafold_paths.mgnify_db_path} \\\n')
-            bash_file.write(f'--template_mmcif_dir={alphafold_paths.mmcif_db_path} \\\n')
-            bash_file.write('--max_template_date=2022-03-09 \\\n')
-            bash_file.write(f'--obsolete_pdbs_path={alphafold_paths.obsolete_mmcif_db_path} \\\n')
-            bash_file.write('--model_preset=monomer \\\n')
-            bash_file.write(f'--bfd_database_path={alphafold_paths.bfd_db_path} \\\n')
-            bash_file.write(f'--uniclust30_database_path={alphafold_paths.uniclust30_db_path} \\\n')
-            bash_file.write(f'--pdb70_database_path={alphafold_paths.pdb70_db_path} \\\n')
-            bash_file.write(f'--read_features_pkl={self.custom_features}\n')
-            bash_file.close()
+        try:
+            run_alphafold.launch_alphafold2(
+                        fasta_path = [self.fasta_path],
+                        output_dir = previous_path, 
+                        data_dir = alphafold_paths.af2_dbs_path,
+                        uniref90_database_path = alphafold_paths.uniref90_db_path, 
+                        mgnify_database_path = alphafold_paths.mgnify_db_path,
+                        template_mmcif_dir = alphafold_paths.mmcif_db_path,
+                        max_template_date = '2022-10-10',
+                        obsolete_pdbs_path = alphafold_paths.obsolete_mmcif_db_path,
+                        model_preset = 'monomer',
+                        bfd_database_path = alphafold_paths.bfd_db_path,
+                        uniclust30_database_path = alphafold_paths.uniclust30_db_path,
+                        pdb70_database_path = alphafold_paths.pdb70_db_path,
+                        read_features_pkl = self.custom_features,
+                        stop_after_msa = False)
+        except:
+            raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
+
+        logging.info('AlphaFold2 has finished succesfully. Proceeding to analyse the results')
 
 
 class AlphaFoldPaths:
 
     def __init__(self, af2_dbs_path: str):
-        self.run_alphafold_script: str
-        self.run_alphafold_bash: str
         self.af2_dbs_path: str
         self.mgnify_db_path: str
         self.uniref90_db_path: str

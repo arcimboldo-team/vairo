@@ -17,7 +17,6 @@ class StructureAir:
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
         self.templates_list: List[template.Template] = []
         self.run_af2: bool = True
-        self.stop_after_msa: bool = False
         self.verbose: bool = True
         self.glycines: int = 50
         self.template_positions_list: List = [List]
@@ -130,8 +129,7 @@ class StructureAir:
                                                 feature=feature)
              
             self.afrun_list.append(afrun)
-            afrun.create_af2_script(self.alphafold_paths)
-            afrun.run_af2()
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:

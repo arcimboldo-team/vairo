@@ -320,13 +320,14 @@ def main(argv):
     num_ensemble = 1
 
   # Check for duplicate FASTA file names.
-  fasta_names = [pathlib.Path(p).stem for p in FLAGS.fasta_paths]
+  fasta_names = [pathlib.Path(p).stem for p in list(FLAGS.fasta_paths)]
 
   if len(fasta_names) != len(set(fasta_names)):
     raise ValueError('All FASTA paths must have a unique basename.')
 
   # Check that is_prokaryote_list has same number of elements as fasta_paths,
   # and convert to bool.
+
   if FLAGS.is_prokaryote_list:
     if len(FLAGS.is_prokaryote_list) != len(FLAGS.fasta_paths):
       raise ValueError('--is_prokaryote_list must either be omitted or match '
@@ -418,7 +419,7 @@ def main(argv):
   logging.info('Using random seed %d for the data pipeline', random_seed)
 
   # Predict structure for each of the sequences.
-  for i, fasta_path in enumerate(FLAGS.fasta_paths):
+  for i, fasta_path in enumerate(list(FLAGS.fasta_paths)):
     is_prokaryote = is_prokaryote_list[i] if run_multimer_system else None
     fasta_name = fasta_names[i]
     predict_structure(
