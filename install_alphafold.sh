@@ -12,5 +12,5 @@ path=$(python -c 'import site; print(site.getsitepackages()[0])')
 cd $path
 tmpfile=$(mktemp /tmp/openmm.XXXXXX)
 curl https://raw.githubusercontent.com/deepmind/alphafold/main/docker/openmm.patch -o $tmpfile
-patch -p0 < /tmp/openmm.patch
+patch -p0 < $tmpfile
 rm $tmpfile
