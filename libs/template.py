@@ -32,8 +32,6 @@ class Template:
 
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
-        self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path,
-                                           cif_out_path=os.path.join(output_dir, f'{self.pdb_id}.cif'))
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
@@ -46,8 +44,21 @@ class Template:
 
         for paramaters_change_res in parameters_dict.get('change_res', self.change_res_list):
             change_res_dict = {}
-            resname = utils.get_mandatory_value(paramaters_change_res, 'resname')
-            del paramaters_change_res['resname']
+            resname = paramaters_change_res.get('resname', None)
+            fasta_path = paramaters_change_res.get('fasta_path', None)
+            when = paramaters_change_res.get('when', 'after_alignment')
+            try:
+                del paramaters_change_res['resname']
+            except:
+                pass
+            try:
+                del paramaters_change_res['fasta_path']
+            except:
+                pass
+            try:
+                del paramaters_change_res['when']
+            except:
+                pass
             for values in paramaters_change_res.items():
                 if len(values) != 2:
                     raise Exception('Wrong change residues format')
@@ -55,7 +66,21 @@ class Template:
                 change_list = utils.expand_residues(change)
                 change_chain_list = bioutils.get_chains(self.pdb_path) if chain.lower() == 'all' else [chain]
                 change_res_dict.update({key: list(set(change_list)) for key in change_chain_list})
-            self.change_res_list.append(change_res.ChangeResidues(chain_res_dict=change_res_dict, resname=resname))
+            self.change_res_list.append(change_res.ChangeResidues(chain_res_dict=change_res_dict, resname=resname, fasta_path=fasta_path, when=when))
+
+        tmp_dir = os.path.join(output_dir, 'tmp')
+        utils.create_dir(tmp_dir)
+        cryst_card = bioutils.extract_cryst_card_pdb(pdb_in_path=self.pdb_path)
+        aux_chain_dict = bioutils.split_pdb_in_chains(output_dir=tmp_dir, pdb_in_path=self.pdb_path)
+        self.apply_changes(chain_dict=aux_chain_dict, when='before_alignment')
+        aux_list = utils.dict_values_to_list(aux_chain_dict)
+        aux_list = utils.remove_list_layer(input_list=aux_list)
+        bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
+        if cryst_card is not None:
+            bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
+
+        self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path,
+                                           cif_out_path=os.path.join(output_dir, f'{self.pdb_id}.cif'))
 
         for parameters_match_dict in parameters_dict.get('match', self.match_restrict_list):
             self.match_restrict_list.append(match_restrictions.MatchRestrictions(parameters_match_dict))
@@ -117,20 +142,21 @@ class Template:
         logging.info(f'Positions of chains in the template {self.pdb_id}: {self.results_path_position}')
         return self.results_path_position
 
-    def apply_changes(self, chain_dict: Dict):
+    def apply_changes(self, chain_dict: Dict, when: str):
         # Apply changes in the pdb, change residues.
 
         for change_residues in self.change_res_list:
-            for chain, paths_list in chain_dict.items():
-                if chain in change_residues.chain_res_dict.keys():
-                    for path in paths_list:
-                        change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
+            if change_residues.when == when:
+                for chain, paths_list in chain_dict.items():
+                    if chain in change_residues.chain_res_dict.keys():
+                        for path in paths_list:
+                            change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
 
     def generate_database(self, output_dir: str, database_path: str):
         template_sequence = bioutils.extract_sequence_from_file(self.cif_path)
         for extracted_sequence in template_sequence:
             sequence_chain = extracted_sequence[extracted_sequence.find(':')+1:extracted_sequence.find('\n')]
-            sequence_name = extracted_sequence.splitlines()[0]
+            sequence_name = extracted_sequence.splitlines()[0].replace('>', '')
             sequence = extracted_sequence.splitlines()[1]
             fasta_path = os.path.join(output_dir, f'{self.pdb_id}_{sequence_chain}.fasta')
             bioutils.write_sequence(sequence_name=sequence_name, sequence_amino=sequence, sequence_path=fasta_path)
@@ -152,7 +178,9 @@ class Template:
         #   - Change the specified residues in the input in all the templates.
 
         query_sequence = bioutils.extract_sequence(fasta_path)
+
         extracted_chain_dict = {}
+
         if not self.aligned:
             for database in self.chain_database:
                 align_seq = structures.AlignmentSequence(fasta_path=fasta_path, database_path=database.database_path,
@@ -179,10 +207,7 @@ class Template:
                     extracted_chain_dict[database.chain] = [extracted_chain_path]
 
         else:
-            aux_path = os.path.join(output_dir, os.path.basename(self.pdb_path))
-            shutil.copy2(self.pdb_path, aux_path)
-            chain_dict = bioutils.chain_splitter(aux_path)
-            extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
+            extracted_chain_dict = bioutils.split_pdb_in_chains(output_dir=output_dir, pdb_in_path=self.pdb_path)
 
         if not extracted_chain_dict:
             return extracted_chain_dict
@@ -190,7 +215,7 @@ class Template:
         if self.generate_multimer:
             extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
 
-        self.apply_changes(chain_dict=extracted_chain_dict)
+        self.apply_changes(chain_dict=extracted_chain_dict, when='after_alignment')
 
         return extracted_chain_dict
 

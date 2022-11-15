@@ -112,8 +112,15 @@ def write_sequence(sequence_name: str, sequence_amino: str, sequence_path: str) 
         f_out.write(f'{sequence_amino}')
     return sequence_path
 
+def split_pdb_in_chains(output_dir: str, pdb_in_path: str) -> Dict:
+    aux_path = os.path.join(output_dir, os.path.basename(pdb_in_path))
+    shutil.copy2(pdb_in_path, aux_path)
+    chain_dict = chain_splitter(aux_path)
+    extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
+    return extracted_chain_dict
 
-def merge_pdbs(list_of_paths_of_pdbs_to_merge: str, merged_pdb_path: str):
+
+def merge_pdbs(list_of_paths_of_pdbs_to_merge: List[str], merged_pdb_path: str):
     with open(merged_pdb_path, 'w') as f:
         counter = 0
         for pdb_path in list_of_paths_of_pdbs_to_merge:

@@ -58,6 +58,8 @@ templates:
   generate_multimer: false
   change_res:
     - resname: 'ALA'
+      fasta_path:
+      when: after_alignemnt/before_alignment
       B: 10-50
       A: 1-10
   match:
