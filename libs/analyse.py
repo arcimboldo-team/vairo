@@ -133,7 +133,7 @@ def analyse_output(a_air):
 
     # Read all templates and rankeds, if there are no ranked, raise an error
     template_dict = {}
-    template_not_splitted = {}
+    template_nonsplit = {}
     feature = a_air.afrun_list[0].feature
     if feature is not None:
         template_dict = feature.write_all_templates_in_features(output_dir=templates_path)
@@ -144,8 +144,8 @@ def analyse_output(a_air):
 
     # Split the templates with chains
     for template, template_path in template_dict.items():
-        shutil.copy2(template_path, os.path.join(a_air.run_dir, f'{template}_not_splitted.pdb'))
-        template_not_splitted[template] = os.path.join(a_air.run_dir, f'{template}_not_splitted.pdb')
+        shutil.copy2(template_path, os.path.join(a_air.run_dir, f'{template}_nonsplit.pdb'))
+        template_nonsplit[template] = os.path.join(a_air.run_dir, f'{template}_nonsplit.pdb')
         bioutils.split_chains_assembly(pdb_in_path=template_path,
                                        pdb_out_path=template_path,
                                        sequence_assembled=a_air.sequence_assembled)
@@ -164,14 +164,14 @@ def analyse_output(a_air):
     # Filter rankeds, split them in chains.
     ranked_filtered = []
     mappings = {}
-    ranked_not_splitted_filtered = {}
+    ranked_nonsplit_filtered = {}
     for ranked, ranked_path in ranked_models_dict.items():
         if plddt_dict[ranked] >= (PERCENTAGE_FILTER * max_plddt):
-            ranked_not_splitted_filtered[ranked] = ranked_path
+            ranked_nonsplit_filtered[ranked] = ranked_path
             ranked_filtered.append(ranked)
             new_pdb_path = os.path.join(a_air.output_dir, os.path.basename(ranked_path))
         else:
-            new_pdb_path = os.path.join(a_air.run_dir, f'splitted_{os.path.basename(ranked_path)}')
+            new_pdb_path = os.path.join(a_air.run_dir, f'split_{os.path.basename(ranked_path)}')
 
         shutil.copy2(ranked_path, new_pdb_path)
         mapping = bioutils.split_chains_assembly(pdb_in_path=new_pdb_path,
@@ -251,15 +251,15 @@ def analyse_output(a_air):
         output_pdb = os.path.join(a_air.output_dir, os.path.basename(a_air.experimental_pdb))
         bioutils.superpose_pdbs([a_air.experimental_pdb, reference_superpose], output_pdb)
 
-    for template, template_path in template_not_splitted.items():
+    for template, template_path in template_nonsplit.items():
         frobenius_file = os.path.join(frobenius_path, f'frobenius_{template}.txt')
         matrices = os.path.join(a_air.run_dir, 'matrices')
         template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
         with open(frobenius_file, 'w') as sys.stdout:
-            _, _, _, _, _, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path], targets=list(ranked_not_splitted_filtered.values()), write_plot=True, write_matrix=True)
+            _, _, _, _, _, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path], targets=list(ranked_nonsplit_filtered.values()), write_plot=True, write_matrix=True)
         sys.stdout = sys.__stdout__
         [shutil.copy2(plot, frobenius_path) for plot in (list_plot_ang+list_plot_dist)]
-        for ranked, ranked_path in ranked_not_splitted_filtered.items():
+        for ranked, ranked_path in ranked_nonsplit_filtered.items():
             ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
             for interface_list in interfaces_dict[ranked]:
                 frobenius_file = os.path.join(frobenius_path, f'frobenius_{interface_list.name}.txt')

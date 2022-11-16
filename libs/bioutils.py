@@ -327,7 +327,7 @@ def split_chains_assembly(pdb_in_path: str,
     chains = [chain.get_id() for chain in structure.get_chains()]
 
     if len(chains) > 1:
-        logging.info(f'PDB: {pdb_in_path} is already splitted in several chains: {chains}')
+        logging.info(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
         shutil.copy2(pdb_in_path, pdb_out_path)
     else:
         new_structure = Structure.Structure(structure.get_id)

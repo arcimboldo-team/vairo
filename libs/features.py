@@ -165,7 +165,6 @@ def empty_msa_features(query_sequence):
 
     int_msa = []
     deletion_matrix = []
-    uniprot_accession_ids = []
     species_ids = []
     seen_sequences = set()
     for msa_index, msa in enumerate(msas):
@@ -180,8 +179,6 @@ def empty_msa_features(query_sequence):
             deletion_matrix.append(msa.deletion_matrix[sequence_index])
             identifiers = msa_identifiers.get_identifiers(
                 msa.descriptions[sequence_index])
-            uniprot_accession_ids.append(
-                identifiers.uniprot_accession_id.encode('utf-8'))
             species_ids.append(identifiers.species_id.encode('utf-8'))
 
     num_res = len(msas[0].sequences[0])
@@ -191,8 +188,6 @@ def empty_msa_features(query_sequence):
     features['msa'] = np.array(int_msa, dtype=np.int32)
     features['num_alignments'] = np.array(
         [num_alignments] * num_res, dtype=np.int32)
-    features['msa_uniprot_accession_identifiers'] = np.array(
-        uniprot_accession_ids, dtype=np.object_)
     features['msa_species_identifiers'] = np.array(species_ids, dtype=np.object_)
     return features
 
@@ -222,10 +217,10 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     hhr_text = open(hhr_path, 'r').read()
 
     match = re.findall(r'\bNo Hit .*[\r\n]+(.*\n)', hhr_text)
-    splitted = match[0].split()
+    split = match[0].split()
     logging.info(f'Alignment results:')
     logging.info(
-        f'Aligned columns: {splitted[7]}, Query: {splitted[8]}, Template: {splitted[9]}, Residues template: {splitted[10]}')
+        f'Aligned columns: {split[7]}, Query: {split[8]}, Template: {split[9]}, Residues template: {split[10]}')
 
     matches = re.finditer(r'No\s+\d+', hhr_text)
     matches_positions = [match.start() for match in matches] + [len(hhr_text)]

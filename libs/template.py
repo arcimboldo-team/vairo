@@ -122,7 +122,7 @@ class Template:
                                 merged_pdb_path=self.template_path)
         else:
             shutil.copy2(self.pdb_path, self.template_path)
-            aux_path = os.path.join(output_dir, f'{utils.get_file_name(self.pdb_path)}_splitted.pdb')
+            aux_path = os.path.join(output_dir, f'{utils.get_file_name(self.pdb_path)}_split.pdb')
             positions = bioutils.split_chains_assembly(
                 pdb_in_path=self.template_path,
                 pdb_out_path=aux_path,

@@ -224,10 +224,10 @@ def parse_aleph_ss(file_path: str) -> Dict:
     with open(file_path) as f_in:
         lines = f_in.readlines()
         for line in lines:
-            splitted_text = line.split()
-            if len(splitted_text) == 12:
-                chain = splitted_text[3]
-                residues = expand_residues(f'{splitted_text[4]}-{splitted_text[6]}')
+            split_text = line.split()
+            if len(split_text) == 12:
+                chain = split_text[3]
+                residues = expand_residues(f'{split_text[4]}-{split_text[6]}')
                 try:
                     chain_res_dict[chain].append(residues)
                 except KeyError:
