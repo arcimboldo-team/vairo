@@ -74,7 +74,7 @@ def main():
             if template.add_to_templates:
                 feature.append_new_template_features(new_template_features=template.template_features,
                                                      custom_sum_prob=template.sum_prob)
-                logging.info(f'Template \"{template.pdb_id}\" was added to templates')
+                logging.info(f'Template {template.pdb_id} was added to templates')
         feature.write_pkl(os.path.join(a_air.run_dir, 'features.pkl'))
         if a_air.mosaic is not None:
             features_list = feature.slicing_features(mosaic=a_air.mosaic)

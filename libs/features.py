@@ -86,9 +86,9 @@ class Features:
         for seq in msa_from_templates_list[1:]:
             self.append_row_in_msa(sequence=seq[0], sequence_id=seq[1])
 
-    def write_all_templates_in_features(self, output_dir: str, chain='A') -> Dict:
+    def write_all_templates_in_features(self, output_dir: str, chain='A', print_number=True) -> Dict:
 
-        return write_templates_in_features(self.template_features, output_dir, chain)
+        return write_templates_in_features(self.template_features, output_dir, chain, print_number)
 
     def write_pkl(self, pkl_path: str):
 
@@ -317,7 +317,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
         template_container.append(res_container)
     template_all_atom_positions = np.array([template_container])
 
-    template_domain_names = np.array([f'{pdb_id}_{chain_id}'.encode('ascii')])
+    template_domain_names = np.array([pdb_id.encode('ascii')])
 
     template_aatype_container = []
     for res in template_sequence[1:]:
@@ -345,12 +345,13 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     return template_features
 
 
-def write_templates_in_features(template_features: Dict, output_dir: str, chain='A') -> Dict:
+def write_templates_in_features(template_features: Dict, output_dir: str, chain='A', print_number=True) -> Dict:
     templates_dict = {}
 
     for pdb_name in template_features['template_domain_names']:
         pdb = pdb_name.decode('utf-8')
-        pdb_path = os.path.join(output_dir, f'{pdb}1.pdb')
+        number = '1' if print_number else ''
+        pdb_path = os.path.join(output_dir, f'{pdb}{number}.pdb')
         templates_dict[utils.get_file_name(pdb_path)] = pdb_path
         with open(pdb_path, 'w') as output_pdb:
             template_domain_index = np.where(template_features['template_domain_names'] == pdb_name)[0][0]

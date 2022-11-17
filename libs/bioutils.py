@@ -112,6 +112,7 @@ def write_sequence(sequence_name: str, sequence_amino: str, sequence_path: str) 
         f_out.write(f'{sequence_amino}')
     return sequence_path
 
+
 def split_pdb_in_chains(output_dir: str, pdb_in_path: str) -> Dict:
     aux_path = os.path.join(output_dir, os.path.basename(pdb_in_path))
     shutil.copy2(pdb_in_path, aux_path)

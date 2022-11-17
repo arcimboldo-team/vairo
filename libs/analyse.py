@@ -6,14 +6,10 @@ import sys
 import statistics
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
 from typing import Dict, List
-from ALEPH.aleph.core import ALEPH
-from libs import bioutils, features, utils
 from Bio.PDB import PDBParser, Selection
-import matplotlib.pyplot as plt
-import pandas as pd
-from libs import sequence, structures
+from ALEPH.aleph.core import ALEPH
+from libs import bioutils, features, utils, sequence, structures
 
 PERCENTAGE_FILTER = 0.8
 GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
@@ -125,29 +121,32 @@ def analyse_output(a_air):
     analysis_path = f'{plots_path}/analysis.txt'
     aleph_results_path = f'{a_air.run_dir}/output.json'
     plddt_plot_path = f'{plots_path}/plddt.png'
+    nonsplit_path = f'{a_air.run_dir}/nonsplit'
 
     utils.create_dir(dir_path=plots_path, delete_if_exists=True)
     utils.create_dir(dir_path=templates_path, delete_if_exists=True)
     utils.create_dir(dir_path=interfaces_path, delete_if_exists=True)
     utils.create_dir(dir_path=frobenius_path, delete_if_exists=True)
+    utils.create_dir(dir_path=nonsplit_path, delete_if_exists=True)
 
     # Read all templates and rankeds, if there are no ranked, raise an error
     template_dict = {}
     template_nonsplit = {}
     feature = a_air.afrun_list[0].feature
     if feature is not None:
-        template_dict = feature.write_all_templates_in_features(output_dir=templates_path)
+        template_nonsplit = feature.write_all_templates_in_features(output_dir=nonsplit_path, print_number=False)
         # Create gantt diagram
         plot_gantt(plot_type='template', plot_path=plots_path, sequence_assembled=a_air.sequence_assembled,
                    feature=feature)
         plot_gantt(plot_type='msa', plot_path=plots_path, sequence_assembled=a_air.sequence_assembled, feature=feature)
 
     # Split the templates with chains
-    for template, template_path in template_dict.items():
-        shutil.copy2(template_path, os.path.join(a_air.run_dir, f'{template}_nonsplit.pdb'))
-        template_nonsplit[template] = os.path.join(a_air.run_dir, f'{template}_nonsplit.pdb')
-        bioutils.split_chains_assembly(pdb_in_path=template_path,
-                                       pdb_out_path=template_path,
+    for template, template_path in template_nonsplit.items():
+        new_pdb_path = os.path.join(templates_path, f'{template}.pdb')
+        shutil.copy2(template_path, new_pdb_path)
+        template_dict[template] = new_pdb_path
+        bioutils.split_chains_assembly(pdb_in_path=new_pdb_path,
+                                       pdb_out_path=new_pdb_path,
                                        sequence_assembled=a_air.sequence_assembled)
 
     ranked_models_dict = {utils.get_file_name(ranked): os.path.join(a_air.run_dir, ranked) for ranked in
