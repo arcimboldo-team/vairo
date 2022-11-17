@@ -69,7 +69,7 @@ def main():
             if template.add_to_msa:
                 sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
                 feature.append_row_in_msa(sequence=sequence_from_template,
-                                          msa_uniprot_accession_identifiers=template.pdb_id)
+                                          sequence_id=template.pdb_id)
                 logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
             if template.add_to_templates:
                 feature.append_new_template_features(new_template_features=template.template_features,

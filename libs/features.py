@@ -61,12 +61,12 @@ class Features:
 
         return self.template_features
 
-    def append_row_in_msa(self, sequence: str, msa_uniprot_accession_identifiers):
+    def append_row_in_msa(self, sequence: str, sequence_id: str):
 
         sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
         self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
-        self.msa_features['msa_uniprot_accession_identifiers'] = np.hstack(
-            [self.msa_features['msa_uniprot_accession_identifiers'], msa_uniprot_accession_identifiers.encode()])
+        self.msa_features['accession_ids'] = np.hstack(
+            [self.msa_features['accession_ids'], sequence_id.encode()])
         self.msa_features['deletion_matrix_int'] = np.vstack(
             [self.msa_features['deletion_matrix_int'], np.zeros(self.msa_features['msa'].shape[1])])
         self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
@@ -84,7 +84,7 @@ class Features:
                     (seq.decode('utf-8'), template_features['template_domain_names'][num].decode('utf-8')))
 
         for seq in msa_from_templates_list[1:]:
-            self.append_row_in_msa(sequence=seq[0], msa_uniprot_accession_identifiers=seq[1])
+            self.append_row_in_msa(sequence=seq[0], sequence_id=seq[1])
 
     def write_all_templates_in_features(self, output_dir: str, chain='A') -> Dict:
 
@@ -105,7 +105,7 @@ class Features:
     def get_msa_by_name(self, name: str) -> Union[str, None]:
 
         index = np.flatnonzero(
-            np.core.defchararray.find(name.encode(), self.msa_features['msa_uniprot_accession_identifiers']) != -1)
+            np.core.defchararray.find(name.encode(), self.msa_features['accession_ids']) != -1)
         if len(index) > 1:
             return (''.join(
                 [residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][index[1]].tolist()]))
@@ -133,12 +133,11 @@ class Features:
         features_list = []
         for start_min, start_max in chunk_list:
             new_features = Features(query_sequence=sequence[start_min:start_max])
-            for i in range(1, len(self.msa_features['msa_uniprot_accession_identifiers'])):
+            for i in range(1, len(self.msa_features['accession_ids'])):
                 sequence = (
                     ''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][i].tolist()]))
                 new_features.append_row_in_msa(sequence=sequence[start_min:start_max],
-                                               msa_uniprot_accession_identifiers=
-                                               self.msa_features['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
+                                               sequence_id=self.msa_features['accession_ids'][i].decode("utf-8"))
             for i in range(0, len(self.template_features['template_sequence'])):
                 template_dict = {
                     'template_all_atom_positions': np.array(
@@ -165,6 +164,7 @@ def empty_msa_features(query_sequence):
 
     int_msa = []
     deletion_matrix = []
+    accession_ids = []
     species_ids = []
     seen_sequences = set()
     for msa_index, msa in enumerate(msas):
@@ -177,8 +177,8 @@ def empty_msa_features(query_sequence):
             int_msa.append(
                 [residue_constants.HHBLITS_AA_TO_ID[res] for res in sequence])
             deletion_matrix.append(msa.deletion_matrix[sequence_index])
-            identifiers = msa_identifiers.get_identifiers(
-                msa.descriptions[sequence_index])
+            identifiers = msa_identifiers.get_identifiers(msa.descriptions[sequence_index])
+            accession_ids.append(str('').encode('utf-8'))
             species_ids.append(identifiers.species_id.encode('utf-8'))
 
     num_res = len(msas[0].sequences[0])
@@ -188,6 +188,8 @@ def empty_msa_features(query_sequence):
     features['msa'] = np.array(int_msa, dtype=np.int32)
     features['num_alignments'] = np.array(
         [num_alignments] * num_res, dtype=np.int32)
+    features['accession_ids'] = np.array(
+        accession_ids, dtype=np.object_)
     features['msa_species_identifiers'] = np.array(species_ids, dtype=np.object_)
     return features
 
@@ -401,7 +403,7 @@ def print_features_from_file(pkl_in_path: str):
 
     logging.info('\n')
     logging.info('MSA:')
-    for num, name in enumerate(features_dict['msa_uniprot_accession_identifiers']):
+    for num, name in enumerate(features_dict['accession_ids']):
         logging.info(name.decode('utf-8'))
         logging.info('\n')
         logging.info(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][num].tolist()]))
@@ -421,11 +423,10 @@ def create_features_from_file(pkl_in_path: str) -> Features:
     with open(f"{pkl_in_path}", "rb") as input_file:
         features_dict = pickle.load(input_file)
     new_features = Features(query_sequence=features_dict['sequence'][0].decode('utf-8'))
-    for i in range(1, len(features_dict['msa_uniprot_accession_identifiers'])):
+    for i in range(1, len(features_dict['accession_ids'])):
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][i].tolist()]))
         new_features.append_row_in_msa(sequence=sequence,
-                                       msa_uniprot_accession_identifiers=
-                                       features_dict['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
+                                       sequence_id=features_dict['accession_ids'][i].decode("utf-8"))
     for i in range(0, len(features_dict['template_sequence'])):
         template_dict = {
             'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),
