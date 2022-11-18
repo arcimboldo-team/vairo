@@ -14,3 +14,4 @@ tmpfile=$(mktemp /tmp/openmm.XXXXXX)
 curl https://raw.githubusercontent.com/deepmind/alphafold/main/docker/openmm.patch -o $tmpfile
 patch -p0 < $tmpfile
 rm $tmpfile
+wget -q -P ${path}/alphafold/common/ https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
