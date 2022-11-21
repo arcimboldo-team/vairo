@@ -47,11 +47,14 @@ class AlphaFoldRun:
                         pdb70_database_path = alphafold_paths.pdb70_db_path,
                         read_features_pkl = self.custom_features,
                         stop_after_msa = False)
+
+        except SystemExit as e:
+            pass
         except:
             raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
 
         logging.info('AlphaFold2 has finished succesfully. Proceeding to analyse the results')
-
+        
 
 class AlphaFoldPaths:
 

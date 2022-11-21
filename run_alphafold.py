@@ -25,7 +25,8 @@ from typing import Dict, Union, Optional
 
 from absl import app
 from absl import flags
-from absl import logging
+from absl import logging as absl_logging
+import logging
 from alphafold.common import protein
 from alphafold.common import residue_constants
 from alphafold.data import pipeline
@@ -291,10 +292,11 @@ def predict_structure(
   with open(timings_output_path, 'w') as f:
     f.write(json.dumps(timings, indent=4))
 
-
 def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
+
+  logger = logging.getLogger()
+  if len(logger.handlers) > 1:
+    logger.removeHandler(absl_logging._absl_handler)
 
   for tool_name in (
       'jackhmmer', 'hhblits', 'hhsearch', 'hmmsearch', 'hmmbuild', 'kalign'):
@@ -463,6 +465,25 @@ def launch_alphafold2(fasta_path: str,
       'obsolete_pdbs_path',
   ])
 
+  with open(os.path.join(os.path.dirname(fasta_path[0]), 'run_alphafold.sh'), 'w') as bash_file:
+    bash_file.write('#!/bin/bash\n')
+    bash_file.write(f'python {__file__} \\\n')
+    bash_file.write(f'--fasta_paths={fasta_path[0]} \\\n')
+    bash_file.write(f'--output_dir={output_dir} \\\n')
+    bash_file.write(f'--data_dir={data_dir} \\\n')
+    bash_file.write(f'--uniref90_database_path={uniref90_database_path} \\\n')
+    bash_file.write(f'--mgnify_database_path={mgnify_database_path} \\\n')
+    bash_file.write(f'--template_mmcif_dir={template_mmcif_dir} \\\n')
+    bash_file.write(f'--max_template_date={max_template_date} \\\n')
+    bash_file.write(f'--obsolete_pdbs_path={obsolete_pdbs_path} \\\n')
+    bash_file.write(f'--model_preset={model_preset} \\\n')
+    bash_file.write(f'--bfd_database_path={bfd_database_path} \\\n')
+    bash_file.write(f'--uniclust30_database_path={uniclust30_database_path} \\\n')
+    bash_file.write(f'--pdb70_database_path={pdb70_database_path} \\\n')
+    bash_file.write(f'--read_features_pkl={read_features_pkl} \\\n')
+    bash_file.write('--use_gpu_relax=True\n')
+    bash_file.close()
+
   FLAGS.fasta_paths = fasta_path
   FLAGS.output_dir = output_dir
   FLAGS.data_dir = data_dir
@@ -481,7 +502,7 @@ def launch_alphafold2(fasta_path: str,
   FLAGS.use_gpu_relax = True
 
   app.parse_flags_with_usage(['alphafold'])
-  app.run(main([]))
+  app.run(main)
 
 if __name__ == '__main__':
   flags.mark_flags_as_required([
