@@ -119,12 +119,13 @@ class StructureAir:
 
     def run_alphafold(self, features_list: List[features.Features]):
         # Create the script and run alphafold
-
+        partitions = utils.chunk_string(len(self.sequence_assembled.sequence_assembled), self.mosaic)
         for i, feature in enumerate(features_list):
             name = f'results_{i}'
             path = os.path.join(self.run_dir, name)
+            sequence_chunk = self.sequence_assembled.sequence_assembled[partitions[i][0]:partitions[i][1]]
             afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
-                                                sequence=self.sequence_assembled.sequence_assembled,
+                                                sequence=sequence_chunk,
                                                 custom_features=self.custom_features,
                                                 feature=feature)
              

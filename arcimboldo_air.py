@@ -5,7 +5,7 @@ import sys
 import logging
 import yaml
 import shutil
-from libs import analyse, features, structure_air, utils
+from libs import features, output_air, structure_air, utils
 
 
 def main():
@@ -45,6 +45,7 @@ def main():
     shutil.copy2(input_path, a_air.input_dir)
 
     features_list = []
+    feature = None
     if a_air.custom_features:
         logging.info('Generating features.pkl for AlphaFold2')
         feature = features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled)
@@ -81,15 +82,20 @@ def main():
         else:
             features_list.append(feature)
     else:
-        features_list.append(None)
+        num = utils.chunk_string(len(a_air.sequence_assembled.sequence_assembled), a_air.mosaic)
+        features_list = [None] * len(num)
         logging.info('No features.pkl added, default AlphaFold2 run')
+
+    out_air = output_air.OutputAir(output_dir=a_air.output_dir, run_dir=a_air.run_dir)
+    if feature is not None:
+        out_air.create_plot_gantt(sequence_assembled=a_air.sequence_assembled, feature=feature)
 
     if a_air.run_af2:
         logging.info('Start running AlphaFold2')
         a_air.run_alphafold(features_list=features_list)
         a_air.merge_results()
         os.chdir(a_air.run_dir)
-        analyse.analyse_output(a_air=a_air)
+        out_air.analyse_output(sequence_assembled=a_air.sequence_assembled, feature=feature, experimental_pdb=a_air.experimental_pdb)
 
     if not a_air.verbose:
         utils.clean_files(input_dir=a_air.run_dir)
