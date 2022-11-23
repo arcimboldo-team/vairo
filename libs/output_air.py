@@ -90,7 +90,6 @@ def plot_gantt(plot_type: str, plot_path: str, sequence_assembled: sequence.Sequ
     names = feature.get_names()
     legend_elements = []
     for j, name in reversed(list(enumerate(names))):
-
         template = a_air.get_template_by_id(name)
         results_alignment_text = template.get_results_alignment_text()
         template_name = f'T{j+1}'
