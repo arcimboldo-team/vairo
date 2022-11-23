@@ -53,14 +53,13 @@ def main():
             alignment_dict = {}
             database_dir = os.path.join(a_air.run_dir, template.pdb_id)
             utils.create_dir(database_dir)
-
             template.generate_database(output_dir=database_dir, database_path=a_air.alphafold_paths.bfd_db_path)
                         
             for sequence in a_air.sequence_assembled.sequence_list:
                 alignment_dir = os.path.join(a_air.run_dir, sequence.name)
                 utils.create_dir(alignment_dir)
                 alignment_dict[sequence.name] = template.align(output_dir=alignment_dir,
-                                                               fasta_path=sequence.fasta_path)
+                                                            fasta_path=sequence.fasta_path)
             results_path_position = template.generate_features(
                 output_dir=a_air.run_dir,
                 alignment_dict=alignment_dict,
@@ -77,10 +76,8 @@ def main():
                                                      custom_sum_prob=template.sum_prob)
                 logging.info(f'Template {template.pdb_id} was added to templates')
         feature.write_pkl(os.path.join(a_air.run_dir, 'features.pkl'))
-        if a_air.mosaic is not None:
-            features_list = feature.slicing_features(mosaic=a_air.mosaic)
-        else:
-            features_list.append(feature)
+        features_list = feature.slicing_features(mosaic=a_air.mosaic)
+
     else:
         num = utils.chunk_string(len(a_air.sequence_assembled.sequence_assembled), a_air.mosaic)
         features_list = [None] * len(num)
@@ -88,7 +85,7 @@ def main():
 
     out_air = output_air.OutputAir(output_dir=a_air.output_dir, run_dir=a_air.run_dir)
     if feature is not None:
-        out_air.create_plot_gantt(sequence_assembled=a_air.sequence_assembled, feature=feature)
+        out_air.create_plot_gantt(sequence_assembled=a_air.sequence_assembled, feature=feature, a_air=a_air)
 
     if a_air.run_af2:
         logging.info('Start running AlphaFold2')

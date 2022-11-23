@@ -214,15 +214,10 @@ def empty_template_features(query_sequence):
     return template_features
 
 
-def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain_id):
+def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain_id) -> List[str]:
     pdb_id = utils.get_file_name(cif_path)
     hhr_text = open(hhr_path, 'r').read()
 
-    match = re.findall(r'\bNo Hit .*[\r\n]+(.*\n)', hhr_text)
-    split = match[0].split()
-    logging.info(f'Alignment results:')
-    logging.info(
-        f'Aligned columns: {split[7]}, Query: {split[8]}, Template: {split[9]}, Residues template: {split[10]}')
 
     matches = re.finditer(r'No\s+\d+', hhr_text)
     matches_positions = [match.start() for match in matches] + [len(hhr_text)]
@@ -241,6 +236,15 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
 
     file_id = f'{pdb_id.lower()}'
     hit = parsers._parse_hhr_hit(detailed_lines)
+    
+    match = re.findall(r'No 1.*[\r\n]+.*\n+(.*\n)', hhr_text)
+    identities = re.findall(r'Identities=+([0-9]+)', match[0])[0]
+    aligned_columns = re.findall(r'Aligned_cols=+([0-9]+)', match[0])[0]
+    total_columns=len(hit.hit_sequence)
+    evalue = re.findall(r'E-value=+(.*?) ', match[0])[0]
+    logging.info(f'Alignment results:')
+    logging.info(f'Aligned columns: {aligned_columns} ({len(hit.hit_sequence)}), Evalue: {evalue}, Identities: {identities}')
+    
     template_sequence = hit.hit_sequence.replace('-', '')
 
     mapping = templates._build_query_to_hit_index_mapping(
@@ -265,7 +269,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     template_features['template_domain_names'] = np.array([template_features['template_domain_names']])
     template_features['template_sequence'] = np.array([template_features['template_sequence']])
 
-    return template_features, mapping
+    return template_features, mapping, identities, aligned_columns, total_columns, evalue
 
 
 def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str, pdb_path: str, pdb_id: str,

@@ -2,10 +2,8 @@ import glob
 import os
 import logging
 import run_alphafold
-import subprocess
-from typing import Union
-from libs import bioutils, utils, features
-
+from typing import Any, Union
+from libs import bioutils, features, utils
 
 class AlphaFoldRun:
     def __init__(self, output_dir: str, sequence: str, custom_features: bool, feature: features.Features = None):

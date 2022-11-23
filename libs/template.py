@@ -4,14 +4,13 @@ import logging
 import shutil
 import collections
 from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from libs import structures, sequence
 
 
 class Template:
 
     def __init__(self, parameters_dict: Dict, output_dir: str, input_dir: str, num_of_copies: int):
-
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
@@ -25,10 +24,9 @@ class Template:
         self.template_features: Optional[features.Features] = None
         self.match_restrict_list: List[match_restrictions.MatchRestrictions] = []
         self.results_path_position: List = [None] * num_of_copies
-        self.hhr: List[structures.AlignmentSequence] = []
-        self.chain_database: List[structures.AlignmentDatabase] = []
         self.reference: Optional[str] = None
-        self.align_path: Optional[str] = None
+        self.alignments: List[structures.Alignment] = []
+        self.alignment_database: List[structures.AlignmentDatabase] = []
 
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
@@ -164,8 +162,9 @@ class Template:
                                                              database_path=database_path,
                                                              output_dir=output_dir)
 
-            self.chain_database.append(structures.AlignmentDatabase(chain=str(sequence_chain), fasta_path=fasta_path,
-                                                                    database_path=new_database))
+            database = structures.AlignmentDatabase(fasta_path=fasta_path, chain=sequence_chain, database_path=new_database)
+            self.alignment_database.append(database)
+
 
     def align(self, output_dir, fasta_path) -> Dict:
         # If aligned, skip to the end, it is just necessary to extract the features
@@ -182,30 +181,29 @@ class Template:
         extracted_chain_dict = {}
 
         if not self.aligned:
-            for database in self.chain_database:
-                align_seq = structures.AlignmentSequence(fasta_path=fasta_path, database_path=database.database_path,
-                                                         hhr_path=os.path.join(output_dir,
-                                                                               f'{utils.get_file_name(database.fasta_path)}.hhr'))
-                self.hhr.append(align_seq)
+            for database in self.alignment_database:
+                hhr_path = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}.hhr')
 
                 hhsearch.run_hhsearch(fasta_path=fasta_path,
-                                      database_path=database.database_path,
-                                      output_path=align_seq.hhr_path)
-                template_features, mapping = features.extract_template_features_from_pdb(
+                                        database_path=database.database_path,
+                                        output_path=hhr_path)
+                template_features, mapping, identities, aligned_columns, total_columns, evalue = features.extract_template_features_from_pdb(
                     query_sequence=query_sequence,
-                    hhr_path=align_seq.hhr_path,
+                    hhr_path=hhr_path,
                     cif_path=self.cif_path,
                     chain_id=database.chain)
-
+                
                 if template_features is not None:
                     self.mapping_has_changed(chain=database.chain, mapping=mapping)
                     g = features.Features(query_sequence=query_sequence)
                     g.append_new_template_features(new_template_features=template_features,
-                                                   custom_sum_prob=self.sum_prob)
+                                                    custom_sum_prob=self.sum_prob)
                     aux_dict = g.write_all_templates_in_features(output_dir=output_dir, chain=database.chain)
                     extracted_chain_path = list(aux_dict.values())[0]
                     extracted_chain_dict[database.chain] = [extracted_chain_path]
-
+                
+                self.alignments.append(structures.Alignment(hhr_path=hhr_path, identities=identities, aligned_columns=aligned_columns, 
+                                                            total_columns=total_columns, evalue=evalue, database=database, extracted_path=extracted_chain_path))
         else:
             extracted_chain_dict = bioutils.split_pdb_in_chains(output_dir=output_dir, pdb_in_path=self.pdb_path)
 
@@ -329,6 +327,35 @@ class Template:
             if match.reference is not None:
                 new_reference = a_air.get_template_by_id(match.reference)
                 match.set_reference(new_reference)
+
+
+    def get_alignment_by_pdb(self, pdb_path: str) -> structures.Alignment:
+        seq = os.path.basename(os.path.dirname(pdb_path))
+        for alignment in self.alignments:
+            if (os.path.dirname(pdb_path) == os.path.dirname(alignment.extracted_path)):
+                chain1, _ = utils.get_chain_and_number(alignment.extracted_path)
+                chain2, _ = utils.get_chain_and_number(pdb_path)
+                if chain1 == chain2:
+                    return alignment
+
+
+    def get_results_alignment(self) -> List[Union[None, structures.Alignment]]:
+        return_alignments = []
+        for path in self.results_path_position:
+            alignment = None
+            if path is not None:
+                alignment= self.get_alignment_by_pdb(path)
+            return_alignments.append(alignment)
+        return return_alignments
+
+    def get_results_alignment_text(self) -> str:
+        text = ' '
+        for aligment in self.get_results_alignment():
+            if aligment is None:
+                text += '| None | '
+            else:
+                text += f'| Chain {aligment.database.chain}: Aligned={aligment.aligned_columns}({aligment.total_columns}) Evalue={aligment.evalue} Identities={aligment.identities} | '
+        return text
 
     def __repr__(self):
         # Print class

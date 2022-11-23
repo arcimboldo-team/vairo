@@ -55,6 +55,9 @@ class StructureAir:
                 sequence_list.append(new_sequence)
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
 
+        if self.mosaic is None:
+            self.mosaic = len(self.sequence_assembled.sequence_assembled)
+
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
         if 'templates' not in parameters_dict:
@@ -118,7 +121,7 @@ class StructureAir:
         self.template_positions_list.append(new_list)
 
     def run_alphafold(self, features_list: List[features.Features]):
-        # Create the script and run alphafold
+        # Create the script and run alphafold            
         partitions = utils.chunk_string(len(self.sequence_assembled.sequence_assembled), self.mosaic)
         for i, feature in enumerate(features_list):
             name = f'results_{i}'

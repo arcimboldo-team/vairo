@@ -86,8 +86,11 @@ def get_working_dir() -> str:
 
 def chunk_string(length: int, size: int, overlap: int = 30) -> List[Tuple[int, int]]:
     # Slice string in chunks of size
-    size = size - overlap
-    return [(0 + i, size + i + overlap) for i in range(0, length, size)]
+    if length == size:
+        return [(0, length)]
+    else:
+        size = size - overlap
+        return [(0 + i, size + i + overlap) for i in range(0, length, size)]
 
 
 def dict_values_to_list(input_dict: Dict):

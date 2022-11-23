@@ -5,14 +5,18 @@ import shutil
 import sys
 import statistics
 import matplotlib.pyplot as plt
+
+from matplotlib.patches import Patch
 import pandas as pd
 from typing import Dict, List
 from Bio.PDB import PDBParser, Selection
 from ALEPH.aleph.core import ALEPH
-from libs import bioutils, features, utils, sequence, structures
+from libs import bioutils, features, structure_air, template, utils, sequence, structures
 
 PERCENTAGE_FILTER = 0.8
 GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
+plt.set_loglevel('WARNING')
+
 
 
 def plot_plddt(plot_path: str, ranked_models_dict: Dict) -> Dict:
@@ -65,8 +69,8 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
     return return_list
 
 def plot_gantt(plot_type: str, plot_path: str, sequence_assembled: sequence.SequenceAssembled,
-               feature: features.Features):
-    fig, ax = plt.subplots(1, figsize=(16, 6))
+               feature: features.Features, a_air: structure_air.StructureAir):
+    fig , (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios':[6, 1]})
     total_length = len(sequence_assembled.sequence_assembled) + sequence_assembled.glycines
     height = 0.3
     for i in range(sequence_assembled.total_copies):
@@ -84,7 +88,13 @@ def plot_gantt(plot_type: str, plot_path: str, sequence_assembled: sequence.Sequ
         file = os.path.join(plot_path, 'template_gantt.png')
 
     names = feature.get_names()
-    for name in names:
+    legend_elements = []
+    for j, name in reversed(list(enumerate(names))):
+
+        template = a_air.get_template_by_id(name)
+        results_alignment_text = template.get_results_alignment_text()
+        template_name = f'T{j+1}'
+        legend_elements.append(Patch(label=f'{template_name} ({name}): {results_alignment_text}'))
         if plot_type == 'msa':
             features_search = feature.get_msa_by_name(name)
         else:  # should be template:
@@ -93,10 +103,9 @@ def plot_gantt(plot_type: str, plot_path: str, sequence_assembled: sequence.Sequ
             aligned_sequence = compare_sequences(sequence_assembled.sequence_assembled, features_search)
             for i in range(1, len(features_search)):
                 if aligned_sequence[i - 1] != '-':
-                    ax.barh(name, 1, height=height, left=i, color=str(aligned_sequence[i - 1]))
-
+                    ax.barh(template_name, 1, height=height, left=i, color=str(aligned_sequence[i - 1]))
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
-    plt.setp([ax.get_xticklines()], color='b')
+    plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(0, total_length)
     ax.set_xticks([sequence_assembled.get_starting_length(i) + 1 for i in range(sequence_assembled.total_copies)])
     ax.set_xlabel('Residue number')
@@ -105,8 +114,18 @@ def plot_gantt(plot_type: str, plot_path: str, sequence_assembled: sequence.Sequ
     ax.spines['left'].set_visible(False)
     ax.spines['left'].set_position(('outward', 10))
     ax.spines['top'].set_visible(False)
-    ax.spines['bottom'].set_color('b')
-    plt.title(title)
+    ax.spines['bottom'].set_color('k')
+
+    # Put a legend below current axis
+    legend = ax1.legend(handles=legend_elements[::-1], loc='upper left', handlelength=0, handletextpad=0, fancybox=True)
+    plt.setp(legend.get_texts(), color='k')
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['left'].set_visible(False)
+    ax1.spines['top'].set_visible(False)
+    ax1.spines['bottom'].set_visible(False)
+    ax1.set_xticks([])
+    ax1.set_yticks([])
+    plt.suptitle(title)
     plt.savefig(file, bbox_inches='tight', dpi=100)
 
 class OutputAir:
@@ -131,10 +150,10 @@ class OutputAir:
         utils.create_dir(dir_path=self.nonsplit_path, delete_if_exists=True)
 
 
-    def create_plot_gantt(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features):
+    def create_plot_gantt(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features, a_air: structure_air.StructureAir):
         
-        plot_gantt(plot_type='template', plot_path=self.plots_path, sequence_assembled=sequence_assembled, feature=feature)
-        plot_gantt(plot_type='msa', plot_path=self.plots_path, sequence_assembled=sequence_assembled, feature=feature)
+        plot_gantt(plot_type='template', plot_path=self.plots_path, sequence_assembled=sequence_assembled, feature=feature, a_air=a_air)
+        plot_gantt(plot_type='msa', plot_path=self.plots_path, sequence_assembled=sequence_assembled, feature=feature, a_air=a_air)
 
 
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features, experimental_pdb: str):
