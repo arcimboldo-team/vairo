@@ -11,7 +11,7 @@ import pandas as pd
 from typing import Dict, List
 from Bio.PDB import PDBParser, Selection
 from ALEPH.aleph.core import ALEPH
-from libs import bioutils, features, structure_air, template, utils, sequence, structures
+from libs import bioutils, features, structure_air, utils, sequence, structures
 
 PERCENTAGE_FILTER = 0.8
 GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
@@ -139,6 +139,7 @@ class OutputAir:
         self.aleph_results_path = f'{run_dir}/output.json'
         self.plddt_plot_path = f'{self.plots_path}/plddt.png'
         self.nonsplit_path = f'{run_dir}/nonsplit'
+        self.html_path = f'{output_dir}/output.html'
         self.run_dir = run_dir
         self.output_dir=output_dir
 
