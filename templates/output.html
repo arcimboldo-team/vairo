@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+
+    <title>ARCIMBOLDO-AIR</title>
+        <style type='text/css'>
+            body {
+                color: #000000;
+                background: #FFFDE7;
+                font-family: sans-serif;
+                padding: 0px !important;
+                margin: 0px !important;
+                font-size:16px;
+            }
+
+            ul li {
+            list-style: none;
+            }
+
+            #container-main {
+            display: inline-block;
+            margin-left: 140px;
+            margin-top: 40px;
+            max-width: 88%;
+            }
+
+            #sidebar {
+            width: 120px;
+            height: 100%;
+            position: fixed;
+            background: #31393c;
+            }
+
+            #header {
+            padding: 0 15px;
+            position: fixed;
+            left: 0;
+            right: 0;
+            z-index: 1002;
+            background: #2176ff;
+            border-bottom: 1px solid #33a1fd;
+            color: #FFFFFF;
+            text-align: center;
+            }
+
+            h1 {
+            margin-top: 5px;
+            margin-bottom: 5px;
+            }
+
+            h2 {
+            margin-top: 20px;
+            }
+
+            h4 {
+            margin-top: 20px;
+            margin-bottom: 0px;
+            }
+
+            ul.sidebar-menu , ul.sidebar-menu li ul.sub{
+            margin: -2px 0 0;
+            padding: 0;
+            }
+
+            ul.sidebar-menu {
+            margin-top: 75px;
+            }
+
+            ul.sidebar-menu li ul.sub li{
+            background: #31393c;
+            margin-bottom: 0;
+            margin-left: 0;
+            margin-right: 0;
+            }
+
+            ul.sidebar-menu li ul.sub li{
+            font-size: 14px;
+            padding: 6px 0;
+            line-height: 35px;
+            height: 35px;
+            color: #aeb2b7;
+            }
+
+            ul.sidebar-menu li ul.sub li:hover {
+            color: white;
+            background: transparent;
+            }
+
+            ul.sidebar-menu li ul.sub li.active{
+                color: #68dff0;
+                display: block;
+            }
+
+            ul.sidebar-menu li{
+                color: #FFFFFF;
+                text-decoration: none;
+                display: block;
+                padding: 15px 0 15px 10px;
+                font-size: 14px;
+                outline: none;
+                margin-bottom: 5px;
+                margin-left:10px;
+                margin-right:10px;
+            }
+
+            ul.sidebar-menu li.active, ul.sidebar-menu li:hover, ul.sidebar-menu li:focus {
+                background: #767B7D;
+                color: #fff;
+                display: block;
+            }
+
+            .section-div{
+                padding-top: 35px;
+            }
+            .btn {
+                display: inline-block;
+                text-align: center;
+                text-decoration: none;
+                vertical-align: middle;
+                cursor: pointer;
+                float: left;
+                border: 1px solid #424242;
+                background-color: #e7e7e7;
+            }
+            .btn:hover{
+                background-color: #b8b8b8;
+            }
+        </style>
+    </head>
+    <body id="init_body">
+        <header id="header">
+            <h1 class="logo">ARCIMBOLDO-AIR</h1>
+        </header>
+        <aside>
+            <div id="sidebar" class="nav-collapse">
+                <ul class="sidebar-menu">
+                <li name="summary" onclick="move_to(event)" class="sub-menu">Summary</li>
+                <li name="input" onclick="move_to(event)" class="sub-menu">Input</li>
+                {% if 'gantt' in data %}
+                    <li name="alignment" onclick="move_to(event)" class="sub-menu">Alignment</li>
+                {% endif %}
+                {% if 'plddt' in data %}
+                    <li name="plddt" onclick="move_to(event)" class="sub-menu">Rankeds PLDDT</li>
+                {% endif %}
+                {% if 'frobenius' in data %}
+                    <li name="graphs" onclick="move_to(event)" class="sub-menu">Graphs</li>
+                {% endif %}
+                <li name="tables" onclick="move_to(event)" class="sub-menu">Tables</li>
+                <li name="conclusions" onclick="move_to(event)" class="sub-menu">Log file</li>
+                <li name="citations" onclick="move_to(event)" class="sub-menu">Citations</li>
+                <li name="support" onclick="move_to(event)" class="sub-menu">Support</li>
+                </ul>
+            </div>
+        </aside>
+
+        <section id="container-main">
+            <p style="margin-top:30px">ARCIMBOLDO-AIR: Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p>
+            <div id="summary" class="section-div">
+                <h2>Summary</h2>
+            </div>
+            <div id="input" class="section-div">
+                <h2>Input</h2>
+                <div style="padding: 10px;height:400px;width:90%;border:1px solid #000;overflow:auto;">
+                    <pre>{{ data.bor_text }}</pre>
+                </div>
+            </div>
+            {% if 'gantt' in data %}
+                <div id="alignment" class="section-div">
+                    <h2>Alignment</h2>
+                    {% for gantt_graph in data.gantt %}
+                        <img style="width: 90%" src={{ gantt_graph }} alt="Gantt diagram with alignments">
+                    {% endfor %}
+                </div>            
+            {% endif %}
+            {% if 'plddt' in data %}
+                <div id="rankeds" class="section-div">
+                    <h2>Rankeds PLDDT</h2>
+                    <img style="width: 90%" src={{ data.plddt }} alt="PLDDT graph">
+                </div>
+            {% endif %}
+            {% if 'frobenius' in data %}
+                <div id="graphs" class="section-div">
+                    <h2>Graphs</h2>
+                    {% for frobenius_graph in data.frobenius %}
+                        <img style="width: 90%" src={{ frobenius_graph }} alt="Frobenius heatmap">
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div id="tables" class="section-div">
+                <h2>Tables</h2>
+            </div>
+            <div id="conclusions" class="section-div">
+                <h2>Conclusions</h2>
+            </div>  
+            <div id="citations" class="section-div">
+                <h2>Citations</h2>
+                <p>
+                    <a href="https://doi.org/10.1038/s41586-021-03819-2">Highly accurate protein structure prediction with AlphaFold.</a><br>
+                    Jumper, J., Evans, R., Pritzel, A.<br>
+                    (2021) Nature 596, 583–589.
+                </p>
+            </div>        
+            <div id="support" class="section-div">
+                <h2>Support</h2>
+                <p>
+                For online documentation and tutorials visit <a href="http://chango.ibmb.csic.es">www.chango.ibmb.csic.es</a><br/>
+                For developer support send an email to <a href="mailto:bugs-borges@ibmb.csic.es">bugs-borges@ibmb.csic.es</a><br/> 
+                Crystallographic Methods Group <br/> 
+                <a href="http://sbu.csic.es/">Structural Biology Unit </a><br/> 
+                <a href="http://www.ibmb.csic.es/">Molecular Biology Institute of Barcelona </a></p>
+            </div>
+        </section>
+    </body>
+    <script>
+        function move_to(e){
+            window.location.hash = e.target.getAttribute("name");
+        }
+    </script>
+</html>

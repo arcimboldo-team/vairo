@@ -5,8 +5,7 @@ import sys
 import logging
 import yaml
 import shutil
-from libs import features, output_air, structure_air, utils
-
+from libs import features, structure_air, utils
 
 def main():
     utils.create_logger()
@@ -42,13 +41,14 @@ def main():
 
     utils.create_logger_dir(a_air.log_path)
     os.chdir(a_air.run_dir)
-    shutil.copy2(input_path, a_air.input_dir)
+    shutil.copy2(input_path, a_air.input_path)
+    a_air.generate_output()
+
 
     features_list = []
-    feature = None
     if a_air.custom_features:
         logging.info('Generating features.pkl for AlphaFold2')
-        feature = features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled)
+        a_air.set_feature(feature = features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
         for template in a_air.templates_list:
             alignment_dict = {}
             database_dir = os.path.join(a_air.run_dir, template.pdb_id)
@@ -68,31 +68,33 @@ def main():
             a_air.append_line_in_templates(results_path_position)
             if template.add_to_msa:
                 sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
-                feature.append_row_in_msa(sequence=sequence_from_template,
+                a_air.feature.append_row_in_msa(sequence=sequence_from_template,
                                           sequence_id=template.pdb_id)
                 logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
             if template.add_to_templates:
-                feature.append_new_template_features(new_template_features=template.template_features,
+                a_air.feature.append_new_template_features(new_template_features=template.template_features,
                                                      custom_sum_prob=template.sum_prob)
                 logging.info(f'Template {template.pdb_id} was added to templates')
-        feature.write_pkl(os.path.join(a_air.run_dir, 'features.pkl'))
-        features_list = feature.slicing_features(mosaic=a_air.mosaic)
-
+        a_air.feature.write_pkl(os.path.join(a_air.run_dir, 'features.pkl'))
+        features_list = a_air.feature.slicing_features(mosaic=a_air.mosaic)
+    
     else:
         num = utils.chunk_string(len(a_air.sequence_assembled.sequence_assembled), a_air.mosaic)
         features_list = [None] * len(num)
         logging.info('No features.pkl added, default AlphaFold2 run')
 
-    out_air = output_air.OutputAir(output_dir=a_air.output_dir, run_dir=a_air.run_dir)
-    if feature is not None:
-        out_air.create_plot_gantt(sequence_assembled=a_air.sequence_assembled, feature=feature, a_air=a_air)
+    
+    a_air.generate_output()
 
     if a_air.run_af2:
         logging.info('Start running AlphaFold2')
         a_air.run_alphafold(features_list=features_list)
         a_air.merge_results()
         os.chdir(a_air.run_dir)
-        out_air.analyse_output(sequence_assembled=a_air.sequence_assembled, feature=feature, experimental_pdb=a_air.experimental_pdb)
+        a_air.output.set_run_dir(run_dir=a_air.run_dir)
+        a_air.output.analyse_output(sequence_assembled=a_air.sequence_assembled, feature=a_air.feature, experimental_pdb=a_air.experimental_pdb)
+
+    a_air.generate_output()
 
     if not a_air.verbose:
         utils.clean_files(input_dir=a_air.run_dir)

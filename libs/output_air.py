@@ -18,7 +18,6 @@ GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
 plt.set_loglevel('WARNING')
 
 
-
 def plot_plddt(plot_path: str, ranked_models_dict: Dict) -> Dict:
     return_plddt_dict = {}
 
@@ -68,16 +67,15 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
     return return_list
 
-def plot_gantt(plot_type: str, plot_path: str, sequence_assembled: sequence.SequenceAssembled,
-               feature: features.Features, a_air: structure_air.StructureAir):
+def plot_gantt(plot_type: str, plot_path: str, a_air):
     fig , (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios':[6, 1]})
-    total_length = len(sequence_assembled.sequence_assembled) + sequence_assembled.glycines
+    total_length = len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines
     height = 0.3
-    for i in range(sequence_assembled.total_copies):
-        ax.barh('sequence', sequence_assembled.get_sequence_length(i), height=height,
-                left=sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
-        ax.barh('sequence', sequence_assembled.glycines, height=height,
-                left=sequence_assembled.get_starting_length(i) + sequence_assembled.get_sequence_length(i) + 1,
+    for i in range(a_air.sequence_assembled.total_copies):
+        ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i), height=height,
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
+        ax.barh('sequence', a_air.sequence_assembled.glycines, height=height,
+                left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1,
                 color='tab:blue')
 
     if plot_type == 'msa':
@@ -87,7 +85,7 @@ def plot_gantt(plot_type: str, plot_path: str, sequence_assembled: sequence.Sequ
         title = 'TEMPLATES'
         file = os.path.join(plot_path, 'template_gantt.png')
 
-    names = feature.get_names()
+    names = a_air.feature.get_names()
     legend_elements = []
     for j, name in reversed(list(enumerate(names))):
         template = a_air.get_template_by_id(name)
@@ -95,18 +93,18 @@ def plot_gantt(plot_type: str, plot_path: str, sequence_assembled: sequence.Sequ
         template_name = f'T{j+1}'
         legend_elements.append(Patch(label=f'{template_name} ({name}): {results_alignment_text}'))
         if plot_type == 'msa':
-            features_search = feature.get_msa_by_name(name)
+            features_search = a_air.feature.get_msa_by_name(name)
         else:  # should be template:
-            features_search = feature.get_sequence_by_name(name)
+            features_search = a_air.feature.get_sequence_by_name(name)
         if features_search is not None:
-            aligned_sequence = compare_sequences(sequence_assembled.sequence_assembled, features_search)
+            aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
             for i in range(1, len(features_search)):
                 if aligned_sequence[i - 1] != '-':
                     ax.barh(template_name, 1, height=height, left=i, color=str(aligned_sequence[i - 1]))
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(0, total_length)
-    ax.set_xticks([sequence_assembled.get_starting_length(i) + 1 for i in range(sequence_assembled.total_copies)])
+    ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
     ax.spines['right'].set_visible(False)
@@ -126,34 +124,43 @@ def plot_gantt(plot_type: str, plot_path: str, sequence_assembled: sequence.Sequ
     ax1.set_yticks([])
     plt.suptitle(title)
     plt.savefig(file, bbox_inches='tight', dpi=100)
+    return file
+
 
 class OutputAir:
 
-    def __init__(self, output_dir, run_dir):
-        self.plots_path = f'{output_dir}/plots'
-        self.frobenius_path = f'{output_dir}/frobenius'
-        self.sequence_path = os.path.join(self.frobenius_path, 'sequence.fasta')
-        self.templates_path = f'{output_dir}/templates'
-        self.interfaces_path = f'{output_dir}/interfaces'
-        self.analysis_path = f'{self.plots_path}/analysis.txt'
-        self.aleph_results_path = f'{run_dir}/output.json'
-        self.plddt_plot_path = f'{self.plots_path}/plddt.png'
-        self.nonsplit_path = f'{run_dir}/nonsplit'
-        self.html_path = f'{output_dir}/output.html'
-        self.run_dir = run_dir
-        self.output_dir=output_dir
+    def __init__(self, output_dir: str):
+        self.plots_path: str = f'{output_dir}/plots'
+        self.frobenius_path: str = f'{output_dir}/frobenius'
+        self.sequence_path: str = os.path.join(self.frobenius_path, 'sequence.fasta')
+        self.templates_path: str = f'{output_dir}/templates'
+        self.interfaces_path: str = f'{output_dir}/interfaces'
+        self.analysis_path: str = f'{self.plots_path}/analysis.txt'
+        self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
+        self.html_path: str = f'{output_dir}/output.html'
+        self.gantt_plots_path: List[str] = []
+        self.output_dir: str = output_dir
+
+        self.run_dir: str = None
+        self.nonsplit_path: str = None
+        self.aleph_results_path: str = None
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
+
+
+    def create_plot_gantt(self, a_air):
+        self.gantt_plots_path = [plot_gantt(plot_type='template', plot_path=self.plots_path, a_air=a_air)]
+        self.gantt_plots_path.append(plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air))
+
+
+    def set_run_dir(self, run_dir: str):
+        self.run_dir = run_dir
+        self.nonsplit_path = f'{run_dir}/nonsplit'
+        self.aleph_results_path = f'{run_dir}/output.json'
         utils.create_dir(dir_path=self.nonsplit_path, delete_if_exists=True)
-
-
-    def create_plot_gantt(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features, a_air: structure_air.StructureAir):
-        
-        plot_gantt(plot_type='template', plot_path=self.plots_path, sequence_assembled=sequence_assembled, feature=feature, a_air=a_air)
-        plot_gantt(plot_type='msa', plot_path=self.plots_path, sequence_assembled=sequence_assembled, feature=feature, a_air=a_air)
 
 
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features, experimental_pdb: str):
@@ -220,6 +227,7 @@ class OutputAir:
                         rmsd_dict[f'{template}'].append(f'{rmsd}, {nalign} ({res_list_length})')
                     except KeyError:
                         rmsd_dict[f'{template}'] = [f'{rmsd}, {nalign} ({res_list_length})']
+
 
         # Use aleph to generate domains and calculate secondary structure percentage
         interfaces_dict = {}

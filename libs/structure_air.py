@@ -1,8 +1,8 @@
 import logging
 import os
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, template, utils, features, sequence
-
+from libs import alphafold_classes, bioutils, output_air, template, utils, features, sequence
+from jinja2 import Environment, FileSystemLoader
 
 class StructureAir:
 
@@ -11,6 +11,7 @@ class StructureAir:
         self.output_dir: str
         self.run_dir: str
         self.input_dir: str
+        self.input_path: str
         self.log_path: str
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
@@ -24,15 +25,20 @@ class StructureAir:
         self.custom_features: bool = True
         self.experimental_pdb: Union[str, None] = None
         self.mosaic: Union[int, None] = None
+        self.feature: Union[features.Features, None] = None
+        self.output: output_air.OutputAir
 
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
         self.input_dir = os.path.join(self.run_dir, 'input')
         self.log_path = os.path.join(self.output_dir, 'output.log')
+        self.input_path = os.path.join(self.input_dir, 'config.yml')
+        self.output = output_air.OutputAir(output_dir=self.output_dir)
 
         utils.create_dir(self.output_dir)
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
+
 
         af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
@@ -81,6 +87,30 @@ class StructureAir:
                 self.reference = self.templates_list[0]
 
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=af2_dbs_path)
+
+    def generate_output(self):
+        render_dict = {}
+        with open(f'{utils.get_main_path()}/templates/output.html', 'r') as f_in:
+            template_str = f_in.read()
+        template = Environment(loader=FileSystemLoader(f'{utils.get_main_path()}/templates/')).from_string(template_str)
+
+        with open(self.input_path, 'r') as f_in:
+            render_dict['bor_text'] = f_in.read()
+        
+        if self.feature is not None:
+            self.output.create_plot_gantt(self)
+            render_dict['gantt'] = self.output.gantt_plots_path
+
+        frobenius_plots = [os.path.join(self.output.frobenius_path, path) for path in os.listdir(self.output.frobenius_path) if path.endswith('.png')]
+        if frobenius_plots:
+            render_dict['frobenius'] = frobenius_plots
+
+        if self.output.plddt_plot_path:
+            render_dict['plddt'] = self.output.plddt_plot_path
+
+        with open(self.output.html_path, 'w') as f_out:
+            f_out.write(template.render(data=render_dict))
+
 
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
         # Return the template matching the pdb_id
@@ -141,6 +171,10 @@ class StructureAir:
         else:
             for self.afrun in self.afrun_list:
                 print('change things')
+
+    def set_feature(self, feature: features.Features):
+        self.feature = feature
+
 
     def __repr__(self) -> str:
         return f' \
