@@ -5,8 +5,8 @@ import pickle
 import logging
 from typing import Dict, List, Union, Any
 from Bio.PDB import PDBParser, Selection
-from ALPHAFOLD.alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_identifiers
-from ALPHAFOLD.alphafold.common import residue_constants
+from alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
+from alphafold.common import residue_constants
 from libs import bioutils, utils
 
 three_to_one = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ILE': 'I', 'PRO': 'P',
@@ -61,12 +61,12 @@ class Features:
 
         return self.template_features
 
-    def append_row_in_msa(self, sequence: str, msa_uniprot_accession_identifiers):
+    def append_row_in_msa(self, sequence: str, sequence_id: str):
 
         sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
         self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
-        self.msa_features['msa_uniprot_accession_identifiers'] = np.hstack(
-            [self.msa_features['msa_uniprot_accession_identifiers'], msa_uniprot_accession_identifiers.encode()])
+        self.msa_features['accession_ids'] = np.hstack(
+            [self.msa_features['accession_ids'], sequence_id.encode()])
         self.msa_features['deletion_matrix_int'] = np.vstack(
             [self.msa_features['deletion_matrix_int'], np.zeros(self.msa_features['msa'].shape[1])])
         self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
@@ -84,11 +84,11 @@ class Features:
                     (seq.decode('utf-8'), template_features['template_domain_names'][num].decode('utf-8')))
 
         for seq in msa_from_templates_list[1:]:
-            self.append_row_in_msa(sequence=seq[0], msa_uniprot_accession_identifiers=seq[1])
+            self.append_row_in_msa(sequence=seq[0], sequence_id=seq[1])
 
-    def write_all_templates_in_features(self, output_dir: str, chain='A') -> Dict:
+    def write_all_templates_in_features(self, output_dir: str, chain='A', print_number=True) -> Dict:
 
-        return write_templates_in_features(self.template_features, output_dir, chain)
+        return write_templates_in_features(self.template_features, output_dir, chain, print_number)
 
     def write_pkl(self, pkl_path: str):
 
@@ -105,7 +105,7 @@ class Features:
     def get_msa_by_name(self, name: str) -> Union[str, None]:
 
         index = np.flatnonzero(
-            np.core.defchararray.find(name.encode(), self.msa_features['msa_uniprot_accession_identifiers']) != -1)
+            np.core.defchararray.find(name.encode(), self.msa_features['accession_ids']) != -1)
         if len(index) > 1:
             return (''.join(
                 [residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][index[1]].tolist()]))
@@ -133,12 +133,11 @@ class Features:
         features_list = []
         for start_min, start_max in chunk_list:
             new_features = Features(query_sequence=sequence[start_min:start_max])
-            for i in range(1, len(self.msa_features['msa_uniprot_accession_identifiers'])):
+            for i in range(1, len(self.msa_features['accession_ids'])):
                 sequence = (
                     ''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][i].tolist()]))
                 new_features.append_row_in_msa(sequence=sequence[start_min:start_max],
-                                               msa_uniprot_accession_identifiers=
-                                               self.msa_features['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
+                                               sequence_id=self.msa_features['accession_ids'][i].decode("utf-8"))
             for i in range(0, len(self.template_features['template_sequence'])):
                 template_dict = {
                     'template_all_atom_positions': np.array(
@@ -165,7 +164,7 @@ def empty_msa_features(query_sequence):
 
     int_msa = []
     deletion_matrix = []
-    uniprot_accession_ids = []
+    accession_ids = []
     species_ids = []
     seen_sequences = set()
     for msa_index, msa in enumerate(msas):
@@ -178,10 +177,8 @@ def empty_msa_features(query_sequence):
             int_msa.append(
                 [residue_constants.HHBLITS_AA_TO_ID[res] for res in sequence])
             deletion_matrix.append(msa.deletion_matrix[sequence_index])
-            identifiers = msa_identifiers.get_identifiers(
-                msa.descriptions[sequence_index])
-            uniprot_accession_ids.append(
-                identifiers.uniprot_accession_id.encode('utf-8'))
+            identifiers = msa_identifiers.get_identifiers(msa.descriptions[sequence_index])
+            accession_ids.append(str('').encode('utf-8'))
             species_ids.append(identifiers.species_id.encode('utf-8'))
 
     num_res = len(msas[0].sequences[0])
@@ -191,8 +188,8 @@ def empty_msa_features(query_sequence):
     features['msa'] = np.array(int_msa, dtype=np.int32)
     features['num_alignments'] = np.array(
         [num_alignments] * num_res, dtype=np.int32)
-    features['msa_uniprot_accession_identifiers'] = np.array(
-        uniprot_accession_ids, dtype=np.object_)
+    features['accession_ids'] = np.array(
+        accession_ids, dtype=np.object_)
     features['msa_species_identifiers'] = np.array(species_ids, dtype=np.object_)
     return features
 
@@ -217,15 +214,10 @@ def empty_template_features(query_sequence):
     return template_features
 
 
-def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain_id):
+def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain_id) -> List[str]:
     pdb_id = utils.get_file_name(cif_path)
     hhr_text = open(hhr_path, 'r').read()
 
-    match = re.findall(r'\bNo Hit .*[\r\n]+(.*\n)', hhr_text)
-    splitted = match[0].split()
-    logging.info(f'Alignment results:')
-    logging.info(
-        f'Aligned columns: {splitted[7]}, Query: {splitted[8]}, Template: {splitted[9]}, Residues template: {splitted[10]}')
 
     matches = re.finditer(r'No\s+\d+', hhr_text)
     matches_positions = [match.start() for match in matches] + [len(hhr_text)]
@@ -244,6 +236,15 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
 
     file_id = f'{pdb_id.lower()}'
     hit = parsers._parse_hhr_hit(detailed_lines)
+    
+    match = re.findall(r'No 1.*[\r\n]+.*\n+(.*\n)', hhr_text)
+    identities = re.findall(r'Identities=+([0-9]+)', match[0])[0]
+    aligned_columns = re.findall(r'Aligned_cols=+([0-9]+)', match[0])[0]
+    total_columns=len(hit.hit_sequence)
+    evalue = re.findall(r'E-value=+(.*?) ', match[0])[0]
+    logging.info(f'Alignment results:')
+    logging.info(f'Aligned columns: {aligned_columns} ({len(hit.hit_sequence)}), Evalue: {evalue}, Identities: {identities}')
+    
     template_sequence = hit.hit_sequence.replace('-', '')
 
     mapping = templates._build_query_to_hit_index_mapping(
@@ -268,7 +269,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     template_features['template_domain_names'] = np.array([template_features['template_domain_names']])
     template_features['template_sequence'] = np.array([template_features['template_sequence']])
 
-    return template_features, mapping
+    return template_features, mapping, identities, aligned_columns, total_columns, evalue
 
 
 def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str, pdb_path: str, pdb_id: str,
@@ -320,7 +321,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
         template_container.append(res_container)
     template_all_atom_positions = np.array([template_container])
 
-    template_domain_names = np.array([f'{pdb_id}_{chain_id}'.encode('ascii')])
+    template_domain_names = np.array([pdb_id.encode('ascii')])
 
     template_aatype_container = []
     for res in template_sequence[1:]:
@@ -348,12 +349,13 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     return template_features
 
 
-def write_templates_in_features(template_features: Dict, output_dir: str, chain='A') -> Dict:
+def write_templates_in_features(template_features: Dict, output_dir: str, chain='A', print_number=True) -> Dict:
     templates_dict = {}
 
     for pdb_name in template_features['template_domain_names']:
         pdb = pdb_name.decode('utf-8')
-        pdb_path = os.path.join(output_dir, f'{pdb}1.pdb')
+        number = '1' if print_number else ''
+        pdb_path = os.path.join(output_dir, f'{pdb}{number}.pdb')
         templates_dict[utils.get_file_name(pdb_path)] = pdb_path
         with open(pdb_path, 'w') as output_pdb:
             template_domain_index = np.where(template_features['template_domain_names'] == pdb_name)[0][0]
@@ -406,7 +408,7 @@ def print_features_from_file(pkl_in_path: str):
 
     logging.info('\n')
     logging.info('MSA:')
-    for num, name in enumerate(features_dict['msa_uniprot_accession_identifiers']):
+    for num, name in enumerate(features_dict['accession_ids']):
         logging.info(name.decode('utf-8'))
         logging.info('\n')
         logging.info(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][num].tolist()]))
@@ -426,11 +428,10 @@ def create_features_from_file(pkl_in_path: str) -> Features:
     with open(f"{pkl_in_path}", "rb") as input_file:
         features_dict = pickle.load(input_file)
     new_features = Features(query_sequence=features_dict['sequence'][0].decode('utf-8'))
-    for i in range(1, len(features_dict['msa_uniprot_accession_identifiers'])):
+    for i in range(1, len(features_dict['accession_ids'])):
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][i].tolist()]))
         new_features.append_row_in_msa(sequence=sequence,
-                                       msa_uniprot_accession_identifiers=
-                                       features_dict['msa_uniprot_accession_identifiers'][i].decode("utf-8"))
+                                       sequence_id=features_dict['accession_ids'][i].decode("utf-8"))
     for i in range(0, len(features_dict['template_sequence'])):
         template_dict = {
             'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),

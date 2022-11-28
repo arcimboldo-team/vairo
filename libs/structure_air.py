@@ -1,8 +1,8 @@
 import logging
 import os
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, template, utils, features, sequence
-
+from libs import alphafold_classes, bioutils, output_air, template, utils, features, sequence
+from jinja2 import Environment, FileSystemLoader
 
 class StructureAir:
 
@@ -11,12 +11,13 @@ class StructureAir:
         self.output_dir: str
         self.run_dir: str
         self.input_dir: str
+        self.input_path: str
         self.log_path: str
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
         self.templates_list: List[template.Template] = []
-        self.run_af2: bool = False
+        self.run_af2: bool = True
         self.verbose: bool = True
         self.glycines: int = 50
         self.template_positions_list: List = [List]
@@ -24,15 +25,20 @@ class StructureAir:
         self.custom_features: bool = True
         self.experimental_pdb: Union[str, None] = None
         self.mosaic: Union[int, None] = None
+        self.feature: Union[features.Features, None] = None
+        self.output: output_air.OutputAir
 
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
         self.input_dir = os.path.join(self.run_dir, 'input')
         self.log_path = os.path.join(self.output_dir, 'output.log')
+        self.input_path = os.path.join(self.input_dir, 'config.yml')
+        self.output = output_air.OutputAir(output_dir=self.output_dir)
 
         utils.create_dir(self.output_dir)
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
+
 
         af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
@@ -54,6 +60,9 @@ class StructureAir:
                 new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
                 sequence_list.append(new_sequence)
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
+
+        if self.mosaic is None:
+            self.mosaic = len(self.sequence_assembled.sequence_assembled)
 
         if not os.path.exists(af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
@@ -78,6 +87,30 @@ class StructureAir:
                 self.reference = self.templates_list[0]
 
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=af2_dbs_path)
+
+    def generate_output(self):
+        render_dict = {}
+        with open(f'{utils.get_main_path()}/templates/output.html', 'r') as f_in:
+            template_str = f_in.read()
+        template = Environment(loader=FileSystemLoader(f'{utils.get_main_path()}/templates/')).from_string(template_str)
+
+        with open(self.input_path, 'r') as f_in:
+            render_dict['bor_text'] = f_in.read()
+        
+        if self.feature is not None:
+            self.output.create_plot_gantt(self)
+            render_dict['gantt'] = self.output.gantt_plots_path
+
+        frobenius_plots = [os.path.join(self.output.frobenius_path, path) for path in os.listdir(self.output.frobenius_path) if path.endswith('.png')]
+        if frobenius_plots:
+            render_dict['frobenius'] = frobenius_plots
+
+        if self.output.plddt_plot_path:
+            render_dict['plddt'] = self.output.plddt_plot_path
+
+        with open(self.output.html_path, 'w') as f_out:
+            f_out.write(template.render(data=render_dict))
+
 
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
         # Return the template matching the pdb_id
@@ -118,19 +151,19 @@ class StructureAir:
         self.template_positions_list.append(new_list)
 
     def run_alphafold(self, features_list: List[features.Features]):
-        # Create the script and run alphafold
-
+        # Create the script and run alphafold            
+        partitions = utils.chunk_string(len(self.sequence_assembled.sequence_assembled), self.mosaic)
         for i, feature in enumerate(features_list):
             name = f'results_{i}'
             path = os.path.join(self.run_dir, name)
+            sequence_chunk = self.sequence_assembled.sequence_assembled[partitions[i][0]:partitions[i][1]]
             afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
-                                                sequence=self.sequence_assembled.sequence_assembled,
+                                                sequence=sequence_chunk,
                                                 custom_features=self.custom_features,
                                                 feature=feature)
              
             self.afrun_list.append(afrun)
-            afrun.create_af2_script(self.alphafold_paths)
-            afrun.run_af2()
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:
@@ -138,6 +171,10 @@ class StructureAir:
         else:
             for self.afrun in self.afrun_list:
                 print('change things')
+
+    def set_feature(self, feature: features.Features):
+        self.feature = feature
+
 
     def __repr__(self) -> str:
         return f' \

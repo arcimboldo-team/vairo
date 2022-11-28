@@ -113,7 +113,15 @@ def write_sequence(sequence_name: str, sequence_amino: str, sequence_path: str) 
     return sequence_path
 
 
-def merge_pdbs(list_of_paths_of_pdbs_to_merge: str, merged_pdb_path: str):
+def split_pdb_in_chains(output_dir: str, pdb_in_path: str) -> Dict:
+    aux_path = os.path.join(output_dir, os.path.basename(pdb_in_path))
+    shutil.copy2(pdb_in_path, aux_path)
+    chain_dict = chain_splitter(aux_path)
+    extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
+    return extracted_chain_dict
+
+
+def merge_pdbs(list_of_paths_of_pdbs_to_merge: List[str], merged_pdb_path: str):
     with open(merged_pdb_path, 'w') as f:
         counter = 0
         for pdb_path in list_of_paths_of_pdbs_to_merge:
@@ -320,7 +328,7 @@ def split_chains_assembly(pdb_in_path: str,
     chains = [chain.get_id() for chain in structure.get_chains()]
 
     if len(chains) > 1:
-        logging.info(f'PDB: {pdb_in_path} is already splitted in several chains: {chains}')
+        logging.info(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
         shutil.copy2(pdb_in_path, pdb_out_path)
     else:
         new_structure = Structure.Structure(structure.get_id)
@@ -552,6 +560,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
 
     pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+
     pisa_general_txt = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_general_output.txt')
     with open(pisa_general_txt, 'w') as f_out:
         f_out.write(pisa_output)

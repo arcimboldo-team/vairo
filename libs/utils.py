@@ -86,8 +86,11 @@ def get_working_dir() -> str:
 
 def chunk_string(length: int, size: int, overlap: int = 30) -> List[Tuple[int, int]]:
     # Slice string in chunks of size
-    size = size - overlap
-    return [(0 + i, size + i + overlap) for i in range(0, length, size)]
+    if length == size:
+        return [(0, length)]
+    else:
+        size = size - overlap
+        return [(0 + i, size + i + overlap) for i in range(0, length, size)]
 
 
 def dict_values_to_list(input_dict: Dict):
@@ -224,10 +227,10 @@ def parse_aleph_ss(file_path: str) -> Dict:
     with open(file_path) as f_in:
         lines = f_in.readlines()
         for line in lines:
-            splitted_text = line.split()
-            if len(splitted_text) == 12:
-                chain = splitted_text[3]
-                residues = expand_residues(f'{splitted_text[4]}-{splitted_text[6]}')
+            split_text = line.split()
+            if len(split_text) == 12:
+                chain = split_text[3]
+                residues = expand_residues(f'{split_text[4]}-{split_text[6]}')
                 try:
                     chain_res_dict[chain].append(residues)
                 except KeyError:
@@ -336,16 +339,20 @@ def create_dir(dir_path: str, delete_if_exists: bool = False):
         shutil.rmtree(dir_path)
         os.makedirs(dir_path)
 
+def remove_list_layer(input_list: List[List[str]]) -> List[str]:
+    return [j for x in input_list for j in x]
+
 
 def create_logger():
     # Create logger: The information will be stored in a buffer instead of a file. The buffer can be dumped to
     # a file later.
 
     logger = logging.getLogger()
+    logger.handlers.clear()
+
     logging.getLogger('matplotlib.font_manager').setLevel(logging.ERROR)
 
     logger.setLevel(logging.DEBUG)
-
     test = io.StringIO()
     stream_handler_ = logging.StreamHandler(test)
     stream_handler_.setLevel(logging.INFO)

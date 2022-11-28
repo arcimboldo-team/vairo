@@ -4,14 +4,13 @@ import logging
 import shutil
 import collections
 from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from libs import structures, sequence
 
 
 class Template:
 
     def __init__(self, parameters_dict: Dict, output_dir: str, input_dir: str, num_of_copies: int):
-
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
@@ -25,15 +24,12 @@ class Template:
         self.template_features: Optional[features.Features] = None
         self.match_restrict_list: List[match_restrictions.MatchRestrictions] = []
         self.results_path_position: List = [None] * num_of_copies
-        self.hhr: List[structures.AlignmentSequence] = []
-        self.chain_database: List[structures.AlignmentDatabase] = []
         self.reference: Optional[str] = None
-        self.align_path: Optional[str] = None
+        self.alignments: List[structures.Alignment] = []
+        self.alignment_database: List[structures.AlignmentDatabase] = []
 
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
-        self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path,
-                                           cif_out_path=os.path.join(output_dir, f'{self.pdb_id}.cif'))
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
@@ -46,8 +42,21 @@ class Template:
 
         for paramaters_change_res in parameters_dict.get('change_res', self.change_res_list):
             change_res_dict = {}
-            resname = utils.get_mandatory_value(paramaters_change_res, 'resname')
-            del paramaters_change_res['resname']
+            resname = paramaters_change_res.get('resname', None)
+            fasta_path = paramaters_change_res.get('fasta_path', None)
+            when = paramaters_change_res.get('when', 'after_alignment')
+            try:
+                del paramaters_change_res['resname']
+            except:
+                pass
+            try:
+                del paramaters_change_res['fasta_path']
+            except:
+                pass
+            try:
+                del paramaters_change_res['when']
+            except:
+                pass
             for values in paramaters_change_res.items():
                 if len(values) != 2:
                     raise Exception('Wrong change residues format')
@@ -55,7 +64,21 @@ class Template:
                 change_list = utils.expand_residues(change)
                 change_chain_list = bioutils.get_chains(self.pdb_path) if chain.lower() == 'all' else [chain]
                 change_res_dict.update({key: list(set(change_list)) for key in change_chain_list})
-            self.change_res_list.append(change_res.ChangeResidues(chain_res_dict=change_res_dict, resname=resname))
+            self.change_res_list.append(change_res.ChangeResidues(chain_res_dict=change_res_dict, resname=resname, fasta_path=fasta_path, when=when))
+
+        tmp_dir = os.path.join(output_dir, 'tmp')
+        utils.create_dir(tmp_dir)
+        cryst_card = bioutils.extract_cryst_card_pdb(pdb_in_path=self.pdb_path)
+        aux_chain_dict = bioutils.split_pdb_in_chains(output_dir=tmp_dir, pdb_in_path=self.pdb_path)
+        self.apply_changes(chain_dict=aux_chain_dict, when='before_alignment')
+        aux_list = utils.dict_values_to_list(aux_chain_dict)
+        aux_list = utils.remove_list_layer(input_list=aux_list)
+        bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
+        if cryst_card is not None:
+            bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
+
+        self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path,
+                                           cif_out_path=os.path.join(output_dir, f'{self.pdb_id}.cif'))
 
         for parameters_match_dict in parameters_dict.get('match', self.match_restrict_list):
             self.match_restrict_list.append(match_restrictions.MatchRestrictions(parameters_match_dict))
@@ -97,7 +120,7 @@ class Template:
                                 merged_pdb_path=self.template_path)
         else:
             shutil.copy2(self.pdb_path, self.template_path)
-            aux_path = os.path.join(output_dir, f'{utils.get_file_name(self.pdb_path)}_splitted.pdb')
+            aux_path = os.path.join(output_dir, f'{utils.get_file_name(self.pdb_path)}_split.pdb')
             positions = bioutils.split_chains_assembly(
                 pdb_in_path=self.template_path,
                 pdb_out_path=aux_path,
@@ -117,20 +140,21 @@ class Template:
         logging.info(f'Positions of chains in the template {self.pdb_id}: {self.results_path_position}')
         return self.results_path_position
 
-    def apply_changes(self, chain_dict: Dict):
+    def apply_changes(self, chain_dict: Dict, when: str):
         # Apply changes in the pdb, change residues.
 
         for change_residues in self.change_res_list:
-            for chain, paths_list in chain_dict.items():
-                if chain in change_residues.chain_res_dict.keys():
-                    for path in paths_list:
-                        change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
+            if change_residues.when == when:
+                for chain, paths_list in chain_dict.items():
+                    if chain in change_residues.chain_res_dict.keys():
+                        for path in paths_list:
+                            change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
 
     def generate_database(self, output_dir: str, database_path: str):
         template_sequence = bioutils.extract_sequence_from_file(self.cif_path)
         for extracted_sequence in template_sequence:
             sequence_chain = extracted_sequence[extracted_sequence.find(':')+1:extracted_sequence.find('\n')]
-            sequence_name = extracted_sequence.splitlines()[0]
+            sequence_name = extracted_sequence.splitlines()[0].replace('>', '')
             sequence = extracted_sequence.splitlines()[1]
             fasta_path = os.path.join(output_dir, f'{self.pdb_id}_{sequence_chain}.fasta')
             bioutils.write_sequence(sequence_name=sequence_name, sequence_amino=sequence, sequence_path=fasta_path)
@@ -138,8 +162,9 @@ class Template:
                                                              database_path=database_path,
                                                              output_dir=output_dir)
 
-            self.chain_database.append(structures.AlignmentDatabase(chain=str(sequence_chain), fasta_path=fasta_path,
-                                                                    database_path=new_database))
+            database = structures.AlignmentDatabase(fasta_path=fasta_path, chain=sequence_chain, database_path=new_database)
+            self.alignment_database.append(database)
+
 
     def align(self, output_dir, fasta_path) -> Dict:
         # If aligned, skip to the end, it is just necessary to extract the features
@@ -152,37 +177,35 @@ class Template:
         #   - Change the specified residues in the input in all the templates.
 
         query_sequence = bioutils.extract_sequence(fasta_path)
+
         extracted_chain_dict = {}
+
         if not self.aligned:
-            for database in self.chain_database:
-                align_seq = structures.AlignmentSequence(fasta_path=fasta_path, database_path=database.database_path,
-                                                         hhr_path=os.path.join(output_dir,
-                                                                               f'{utils.get_file_name(database.fasta_path)}.hhr'))
-                self.hhr.append(align_seq)
+            for database in self.alignment_database:
+                hhr_path = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}.hhr')
 
                 hhsearch.run_hhsearch(fasta_path=fasta_path,
-                                      database_path=database.database_path,
-                                      output_path=align_seq.hhr_path)
-                template_features, mapping = features.extract_template_features_from_pdb(
+                                        database_path=database.database_path,
+                                        output_path=hhr_path)
+                template_features, mapping, identities, aligned_columns, total_columns, evalue = features.extract_template_features_from_pdb(
                     query_sequence=query_sequence,
-                    hhr_path=align_seq.hhr_path,
+                    hhr_path=hhr_path,
                     cif_path=self.cif_path,
                     chain_id=database.chain)
-
+                
                 if template_features is not None:
                     self.mapping_has_changed(chain=database.chain, mapping=mapping)
                     g = features.Features(query_sequence=query_sequence)
                     g.append_new_template_features(new_template_features=template_features,
-                                                   custom_sum_prob=self.sum_prob)
+                                                    custom_sum_prob=self.sum_prob)
                     aux_dict = g.write_all_templates_in_features(output_dir=output_dir, chain=database.chain)
                     extracted_chain_path = list(aux_dict.values())[0]
                     extracted_chain_dict[database.chain] = [extracted_chain_path]
-
+                
+                self.alignments.append(structures.Alignment(hhr_path=hhr_path, identities=identities, aligned_columns=aligned_columns, 
+                                                            total_columns=total_columns, evalue=evalue, database=database, extracted_path=extracted_chain_path))
         else:
-            aux_path = os.path.join(output_dir, os.path.basename(self.pdb_path))
-            shutil.copy2(self.pdb_path, aux_path)
-            chain_dict = bioutils.chain_splitter(aux_path)
-            extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
+            extracted_chain_dict = bioutils.split_pdb_in_chains(output_dir=output_dir, pdb_in_path=self.pdb_path)
 
         if not extracted_chain_dict:
             return extracted_chain_dict
@@ -190,7 +213,7 @@ class Template:
         if self.generate_multimer:
             extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
 
-        self.apply_changes(chain_dict=extracted_chain_dict)
+        self.apply_changes(chain_dict=extracted_chain_dict, when='after_alignment')
 
         return extracted_chain_dict
 
@@ -304,6 +327,35 @@ class Template:
             if match.reference is not None:
                 new_reference = a_air.get_template_by_id(match.reference)
                 match.set_reference(new_reference)
+
+
+    def get_alignment_by_pdb(self, pdb_path: str) -> structures.Alignment:
+        seq = os.path.basename(os.path.dirname(pdb_path))
+        for alignment in self.alignments:
+            if (os.path.dirname(pdb_path) == os.path.dirname(alignment.extracted_path)):
+                chain1, _ = utils.get_chain_and_number(alignment.extracted_path)
+                chain2, _ = utils.get_chain_and_number(pdb_path)
+                if chain1 == chain2:
+                    return alignment
+
+
+    def get_results_alignment(self) -> List[Union[None, structures.Alignment]]:
+        return_alignments = []
+        for path in self.results_path_position:
+            alignment = None
+            if path is not None:
+                alignment= self.get_alignment_by_pdb(path)
+            return_alignments.append(alignment)
+        return return_alignments
+
+    def get_results_alignment_text(self) -> str:
+        text = ' '
+        for aligment in self.get_results_alignment():
+            if aligment is None:
+                text += '| None | '
+            else:
+                text += f'| Chain {aligment.database.chain}: Aligned={aligment.aligned_columns}({aligment.total_columns}) Evalue={aligment.evalue} Identities={aligment.identities} | '
+        return text
 
     def __repr__(self):
         # Print class
