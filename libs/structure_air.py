@@ -1,3 +1,4 @@
+import base64
 import logging
 import os
 from typing import List, Dict, Union
@@ -27,6 +28,7 @@ class StructureAir:
         self.mosaic: Union[int, None] = None
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
+        self.state: int = 0
 
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
@@ -38,7 +40,6 @@ class StructureAir:
         utils.create_dir(self.output_dir)
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
-
 
         af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
@@ -96,17 +97,44 @@ class StructureAir:
 
         with open(self.input_path, 'r') as f_in:
             render_dict['bor_text'] = f_in.read()
+    
+        with open(self.log_path, 'r') as f_in:
+            render_dict['log_text'] = f_in.read()
         
         if self.feature is not None:
             self.output.create_plot_gantt(self)
-            render_dict['gantt'] = self.output.gantt_plots_path
+            render_dict['gantt'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in self.output.gantt_plots_path]
 
-        frobenius_plots = [os.path.join(self.output.frobenius_path, path) for path in os.listdir(self.output.frobenius_path) if path.endswith('.png')]
-        if frobenius_plots:
-            render_dict['frobenius'] = frobenius_plots
+        aux_frobenius_plots = {}
+        for key, value in self.output.frobenius_plots.items():
+            aux_frobenius_plots[key] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in value]
 
-        if self.output.plddt_plot_path:
-            render_dict['plddt'] = self.output.plddt_plot_path
+        if aux_frobenius_plots:
+            render_dict['frobenius'] = aux_frobenius_plots
+
+        if os.path.exists(self.output.plddt_plot_path):
+            render_dict['plddt'] = base64.b64encode(open(self.output.plddt_plot_path, 'rb').read()).decode('utf-8')
+
+        if self.output.plddt_dict:
+            if not 'table' in render_dict:
+                render_dict['table'] = {}
+            render_dict['table']['plddt_dict'] = self.output.plddt_dict
+        if self.output.rmsd_dict:
+            if not 'table' in render_dict:
+                render_dict['table'] = {}
+            render_dict['table']['rmsd_dict'] = self.output.rmsd_dict
+        if self.output.secondary_dict:
+            if not 'table' in render_dict:
+                render_dict['table'] = {}
+            render_dict['table']['secondary_dict'] = self.output.secondary_dict
+        
+        render_dict['best_ranked'] = self.output.best_ranked
+
+        if self.output.best_ranked in self.output.ranked_filtered:
+            render_dict['ranked_filtered_encoded'] = {k: base64.b64encode(open(v, 'rb').read()).decode('utf-8') for k,v in self.output.ranked_filtered.items()}
+
+        render_dict['ranked_filtered'] = self.output.ranked_filtered
+        render_dict['state'] = self.get_state_text()
 
         with open(self.output.html_path, 'w') as f_out:
             f_out.write(template.render(data=render_dict))
@@ -174,6 +202,18 @@ class StructureAir:
 
     def set_feature(self, feature: features.Features):
         self.feature = feature
+
+    def change_state(self, state: int):
+        self.state = state
+
+    def get_state_text(self):
+        return {
+            '-1': 'Finished with errors, not completed',
+            '0': 'Starting',
+            '1': 'Template alignment',
+            '2': 'Running AlphaFold2',
+            '3': 'Finished'
+        }[str(self.state)]
 
 
     def __repr__(self) -> str:
