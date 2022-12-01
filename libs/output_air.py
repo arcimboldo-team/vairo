@@ -250,7 +250,7 @@ class OutputAir:
             else:
                 break
             if ranked in self.ranked_filtered and os.path.exists(aleph_txt_path):
-                # print(bioutils.run_openmm(ranked_path))
+                #print(bioutils.run_openmm(ranked_path))
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked_path, self.interfaces_path)
                 if interfaces_data_list:
                     interfaces_dict[ranked] = []
@@ -296,12 +296,13 @@ class OutputAir:
             for ranked, ranked_path in utils.sort_by_digit(ranked_nonsplit_filtered):
                 ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
                 interfaces_plots_list = []
-                for interface_list in interfaces_dict[ranked]:
-                    frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface_list.name}.txt')
-                    with open(frobenius_file, 'w') as sys.stdout:
-                        _,_, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plot=True, title=f'Interface: {interface_list.name}')
-                    sys.stdout = sys.__stdout__
-                    new_name = os.path.join(self.frobenius_path, f'{interface_list.name}.png')
-                    plot_path = os.path.join(self.run_dir, os.path.basename(plot))
-                    interfaces_plots_list.append(shutil.copy2(plot_path, new_name))
+                if ranked in interfaces_dict:
+                    for interface_list in interfaces_dict[ranked]:
+                        frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface_list.name}.txt')
+                        with open(frobenius_file, 'w') as sys.stdout:
+                            _,_, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plot=True, title=f'Interface: {interface_list.name}')
+                        sys.stdout = sys.__stdout__
+                        new_name = os.path.join(self.frobenius_path, f'{interface_list.name}.png')
+                        plot_path = os.path.join(self.run_dir, os.path.basename(plot))
+                        interfaces_plots_list.append(shutil.copy2(plot_path, new_name))
                 self.frobenius_plots[ranked] = interfaces_plots_list
