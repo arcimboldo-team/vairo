@@ -139,7 +139,7 @@
                 padding: 8px;
             }
             .best-filtered {
-                background-color: cyan;
+                background-color: blue;
             }
             .best-ranked {
                 background-color: green;
@@ -185,7 +185,7 @@
             <div id="summary" class="section-div">
                 <h2>Summary</h2>
                 <p>State: {{ data.state }}</p>
-                {% if data.best_ranked != ''%}
+                {% if data.best_ranked is not none and 'table' in data%}
                     <p>Best result is <span style="color:green;">{{ data.best_ranked}}</span> with a {{ data.table.plddt_dict[data.best_ranked] }} PLDDT.
                         {% if data.best_ranked in data.ranked_filtered%}
                             Can be found in the following path: <a download="{{ data.best_ranked }}.pdb" href=data:text/plain;base64,{{ data.ranked_filtered_encoded[data.best_ranked] }}>{{ data.ranked_filtered[data.best_ranked] }}</a>
@@ -219,10 +219,10 @@
                     <img style="width: 90%" src="data:image/png;base64,{{ data.plddt }}" alt="PLDDT graph">
                 </div>
             {% endif %}
-            {% if 'frobenius' in data %}
+            {% if 'frobenius_dict' in data %}
                 <div id="graphs" class="section-div">
                     <h2>Graphs</h2>
-                    {% for key, value in data.frobenius.items() %}
+                    {% for key, value in data.frobenius_dict.items() %}
                         <h3>{{ key }}:</h3>
                         {% for frobenius_graph in value %}
                             <img style="width: 90%" src="data:image/png;base64,{{ frobenius_graph }}"alt="Frobenius graph">
@@ -258,25 +258,24 @@
                 {% if 'rmsd_dict' in data.table %}
                     <table>
                         <tr>
-                            <th>template</th>
-                            {% for key, value in data.table.rmsd_dict.items() %}
-                                {% for key2, value2 in value.items() %}               
-                                    <th>{{ key2 }}</th>
+                            <th>ranked</th>
+                            {% for value in data.table.rmsd_dict.values() %}
+                                {% for key in value.keys() if loop.first%}            
+                                    <th>{{ key }}</th>
                                 {% endfor %}
                             {% endfor %}
                         </tr>
                         {% for key, value in data.table.rmsd_dict.items() %}
-                            <tr>
+                            {% if key == data.best_ranked %}
+                                <tr class="best-ranked">
+                            {% elif key in data.ranked_filtered %}
+                                <tr class="best-filtered">
+                            {% else %}
+                                <tr>
+                            {% endif %}
                                 <td>{{ key }}</td>
                                 {% for key2, value2 in value.items() %}
-                                    {% if key2 == data.best_ranked %}
-                                        <td class="best-ranked">
-                                    {% elif key2 in data.ranked_filtered %}
-                                        <td class="best-filtered">
-                                    {% else %}
-                                        <td>
-                                    {% endif %}
-                                    {{ value2.rmsd }} {{ value2.nalign }} ({{ value2.res_list_length }})</td>
+                                    <td>{{ value2.rmsd }} {{ value2.aligned_residues }} ({{ value2.total_residues }})</td>
                                 {% endfor %}
                             </tr>
                         {% endfor %}
@@ -303,6 +302,29 @@
                                 <td>{{ value.ah }}</td>
                                 <td>{{ value.bs }}</td>
                                 <td>{{ value.number_total_residues }}</td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% endif %}
+                <h3>Ranked energies</h3>
+                {% if 'energies_dict' in data.table %}
+                    <table>
+                        <tr>
+                            <th>ranked</th>
+                            <th>Kinetic</th>
+                            <th>Potential</th>
+                        </tr>
+                        {% for key, value in data.table.energies_dict.items() %}
+                            {% if key == data.best_ranked %}
+                                <tr class="best-ranked">
+                            {% elif key in data.ranked_filtered %}
+                                <tr class="best-filtered">
+                            {% else %}
+                                <tr>
+                            {% endif %}
+                                <td>{{ key }}</td>
+                                <td>{{ value.kinetic }}</td>
+                                <td>{{ value.potential }}</td>
                             </tr>
                         {% endfor %}
                     </table>

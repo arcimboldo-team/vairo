@@ -5,7 +5,7 @@ import sys
 import logging
 import yaml
 import shutil
-from libs import features, structure_air, utils
+from libs import bioutils, features, structure_air, utils
 
 def main():
     try:
@@ -44,7 +44,7 @@ def main():
         os.chdir(a_air.run_dir)
         shutil.copy2(input_path, a_air.input_path)
         a_air.generate_output()
-
+        
         features_list = []
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')

@@ -18,25 +18,22 @@ GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
 plt.set_loglevel('WARNING')
 
 
-def plot_plddt(plot_path: str, ranked_models_dict: Dict) -> Dict:
-    return_plddt_dict = {}
-
+def plot_plddt(plot_path: str, ranked_list: List):
     plt.clf()
-    for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
+    for ranked in ranked_list:
         plddt_list = []
-        with open(ranked_path) as f:
+        with open(ranked.path) as f:
             for line in f.readlines():
                 if line[:4] == 'ATOM' and line[13:16] == 'CA ':
                     plddt_list.append(float(line[60:66].replace(" ", "")))
         res_list = [int(item) for item in range(1, len(plddt_list) + 1)]
-        return_plddt_dict[ranked] = round(statistics.median(map(float, plddt_list)), 2)
-        plt.plot(res_list, plddt_list, label=ranked)
+        ranked.set_plddt(round(statistics.median(map(float, plddt_list)), 2))
+        plt.plot(res_list, plddt_list, label=ranked.name)
     plt.legend()
     plt.xlabel('residue number')
     plt.ylabel('pLDDT')
     plt.savefig(plot_path)
 
-    return return_plddt_dict
 
 def get_group(res: str) -> str:
     group = [s for s in GROUPS if res in s]
@@ -139,15 +136,11 @@ class OutputAir:
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
         self.html_path: str = f'{output_dir}/output.html'
         self.gantt_plots_path: List[str] = []
+        self.ranked_list: List[structures.Ranked] = []
         self.output_dir: str = output_dir
-        self.plddt_dict: Dict = {}
-        self.experimental_dict: Dict = {}
-        self.secondary_dict: Dict = {}
-        self.rmsd_dict: Dict = {}
-        self.frobenius_plots: Dict = {}
-        self.ranked_filtered: Dict = {}
-        self.best_ranked: str = ''
-
+        self.frobenius_plots: List[str] = []
+        self.best_ranked: structures.Ranked = None
+        self.experimental_dict = {}
 
         self.run_dir: str = None
         self.nonsplit_path: str = None
@@ -187,98 +180,91 @@ class OutputAir:
                                         pdb_out_path=new_pdb_path,
                                         sequence_assembled=sequence_assembled)
 
-        ranked_models_dict = {utils.get_file_name(ranked): os.path.join(self.run_dir, ranked) for ranked in
-                            os.listdir(self.run_dir) if re.match('ranked_[0-9]+.pdb', ranked)}
-        if not bool(ranked_models_dict):
+        ranked_paths = [path for path in os.listdir(self.run_dir) if re.match('ranked_[0-9]+.pdb', path)]
+        self.ranked_list = [structures.Ranked(os.path.join(self.run_dir, path)) for path in utils.sort_by_digit(ranked_paths)]
+        
+        if not self.ranked_list:
             logging.info('No ranked PDBs found')
             return
 
         # Create a plot with the ranked plddts, also, calculate the maximum plddt
-        self.plddt_dict = plot_plddt(plot_path=self.plddt_plot_path, ranked_models_dict=ranked_models_dict)
-        max_plddt = max(self.plddt_dict.values())
-        self.best_ranked = utils.get_key_for_value(max_plddt, self.plddt_dict)
+        plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
+        max_plddt = max([ranked.plddt for ranked in self.ranked_list])
+        self.best_ranked = next(ranked for ranked in self.ranked_list if max_plddt==ranked.plddt)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path), sequence_amino=sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
 
         # Filter rankeds, split them in chains.
-        mappings = {}
-        ranked_nonsplit_filtered = {}
-        for ranked, ranked_path in ranked_models_dict.items():
-            if self.plddt_dict[ranked] >= (PERCENTAGE_FILTER * max_plddt):
-                ranked_nonsplit_filtered[ranked] = ranked_path
-                self.ranked_filtered[ranked] = ranked_path
-                new_pdb_path = os.path.join(self.output_dir, os.path.basename(ranked_path))
+        for ranked in self.ranked_list:
+            if ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
+                ranked.set_filtered(True)
+                ranked.set_split_path(os.path.join(self.output_dir, os.path.basename(ranked.path)))
             else:
-                new_pdb_path = os.path.join(self.run_dir, f'split_{os.path.basename(ranked_path)}')
+                ranked.set_split_path(os.path.join(self.run_dir, f'split_{os.path.basename(ranked.path)}'))
 
-            shutil.copy2(ranked_path, new_pdb_path)
-            mapping = bioutils.split_chains_assembly(pdb_in_path=new_pdb_path,
-                                                    pdb_out_path=new_pdb_path,
+            shutil.copy2(ranked.path, ranked.split_path)
+            mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.split_path,
+                                                    pdb_out_path=ranked.split_path,
                                                     sequence_assembled=sequence_assembled)
-            mappings[ranked] = mapping
-            ranked_models_dict[ranked] = new_pdb_path
+            ranked.set_mapping(mapping)
 
         # Save superpositions of rankeds and templates
-        reference_superpose = utils.sort_by_digit(list(ranked_models_dict.values()))[0]
-        for path in utils.sort_by_digit(list(ranked_models_dict.values()))[1:] + list(template_dict.values()):
+        reference_superpose = self.ranked_list[0].split_path
+        
+        for path in [ranked.split_path for ranked in self.ranked_list[1:]] + list(template_dict.values()):
             bioutils.superpose_pdbs([path, reference_superpose], path)
 
         # Superpose each template with all the rankeds.
         if template_dict:
-            for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
+            for ranked in self.ranked_list:
                 for template, template_path in template_dict.items():
-                    if not template in self.rmsd_dict:
-                        self.rmsd_dict[template] = {}
-
-                    res_list_length = len(
+                    total_residues = len(
                         [res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
-                    rmsd, nalign, quality_q = bioutils.superpose_pdbs([template_path, ranked_path])
-                    self.rmsd_dict[template][ranked] = {'rmsd': rmsd, 'nalign': nalign, 'res_list_length': res_list_length}
-
+                    rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path])
+                    ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
 
         # Use aleph to generate domains and calculate secondary structure percentage
-        interfaces_dict = {}
-        for ranked, ranked_path in utils.sort_by_digit(ranked_models_dict):
-            aleph_file = os.path.join(self.run_dir, f'aleph_{ranked}.txt')
+        for ranked in self.ranked_list:
+            aleph_file = os.path.join(self.run_dir, f'aleph_{ranked.name}.txt')
             with open(aleph_file, 'w') as sys.stdout:
-                ALEPH.annotate_pdb_model(reference=ranked_path, strictness_ah=0.45, strictness_bs=0.2, peptide_length=3,
+                ALEPH.annotate_pdb_model(reference=ranked.split_path, strictness_ah=0.45, strictness_bs=0.2, peptide_length=3,
                                         width_pic=1, height_pic=1, write_graphml=False, write_pdb=True)
             sys.stdout = sys.__stdout__
             if os.path.exists(self.aleph_results_path):
-                self.secondary_dict[ranked] = utils.parse_aleph_annotate(file_path=self.aleph_results_path)
-                aleph_txt_path = f'{self.run_dir}/aleph_{ranked}.txt'
+                result_dict = utils.parse_aleph_annotate(file_path=self.aleph_results_path)
+                ranked.set_secondary_structure(ah=result_dict['ah'], bs=result_dict['bs'], total_residues=result_dict['number_total_residues'])
+                aleph_txt_path = f'{self.run_dir}/aleph_{ranked.name}.txt'
                 domains_dict = utils.parse_aleph_ss(aleph_txt_path)
             else:
                 break
-            if ranked in self.ranked_filtered and os.path.exists(aleph_txt_path):
-                #print(bioutils.run_openmm(ranked_path))
-                interfaces_data_list = bioutils.find_interface_from_pisa(ranked_path, self.interfaces_path)
+            if ranked.filtered and os.path.exists(aleph_txt_path):
+                ranked.set_minimized_path(os.path.join(self.run_dir, f'{ranked.name}_minimized.pdb'))
+                ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 if interfaces_data_list:
-                    interfaces_dict[ranked] = []
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
                     deltas_list = utils.normalize_list([deltas_list])
                     for i, interface in enumerate(interfaces_data_list):
-                        code = f'{utils.get_file_name(ranked_path)}_{interface["chain1"]}{interface["chain2"]}'
+                        code = f'{utils.get_file_name(ranked.split_path)}_{interface["chain1"]}{interface["chain2"]}'
                         dimers_path = os.path.join(self.interfaces_path, f'{code}.pdb')
                         interface['bfactor'] = deltas_list[i]
                         if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
                             interface['bfactor'] = abs(max(deltas_list)) * 2
-                        extended_res_dict = bioutils.create_interface_domain(pdb_in_path=ranked_path,
+                        extended_res_dict = bioutils.create_interface_domain(pdb_in_path=ranked.split_path,
                                                                             pdb_out_path=dimers_path,
                                                                             interface=interface,
                                                                             domains_dict=domains_dict)
                         renum_residues_list = []
                         renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain1']],
-                                                                        mapping=mappings[ranked][interface['chain1']]))
+                                                                        mapping=ranked.mapping[interface['chain1']]))
                         renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain2']],
-                                                                        mapping=mappings[ranked][interface['chain2']]))
-                        inter_name = structures.InterfaceName(name=code, res_list=renum_residues_list)
-                        interfaces_dict[ranked].append(inter_name)
+                                                                        mapping=ranked.mapping[interface['chain2']]))
+                        ranked.add_interface(structures.InterfaceName(name=code, res_list=renum_residues_list))
 
         # Superpose the experimental pdb with all the rankeds and templates
         if experimental_pdb is not None:
-            for ranked, ranked_path in ranked_models_dict.items():
-                rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, ranked_path])
-                self.experimental_dict[ranked] = rmsd
+            for ranked  in self.ranked_list:
+                rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, ranked.split_path])
+                self.experimental_dict[ranked.name] = rmsd
             for template, template_path in template_dict.items():
                 rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, template_path])
                 self.experimental_dict[template] = rmsd
@@ -289,20 +275,18 @@ class OutputAir:
             frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{template}.txt')
             matrices = os.path.join(self.run_dir, 'matrices')
             template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
+            path_list = [ranked.path for ranked in self.ranked_list if ranked.filtered]
             with open(frobenius_file, 'w') as sys.stdout:
-                _, _, _, _, _, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path], targets=list(ranked_nonsplit_filtered.values()), write_plot=True, write_matrix=True)
+                _, _, _, _, _, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path], targets=list(path_list), write_plot=True, write_matrix=True)
             sys.stdout = sys.__stdout__
-            self.frobenius_plots['general'] = [shutil.copy2(plot, self.frobenius_path) for plot in (list_plot_ang+list_plot_dist)]
-            for ranked, ranked_path in utils.sort_by_digit(ranked_nonsplit_filtered):
-                ranked_matrix = os.path.join(matrices, f'{ranked}_ang.npy')
-                interfaces_plots_list = []
-                if ranked in interfaces_dict:
-                    for interface_list in interfaces_dict[ranked]:
-                        frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface_list.name}.txt')
-                        with open(frobenius_file, 'w') as sys.stdout:
-                            _,_, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plot=True, title=f'Interface: {interface_list.name}')
-                        sys.stdout = sys.__stdout__
-                        new_name = os.path.join(self.frobenius_path, f'{interface_list.name}.png')
-                        plot_path = os.path.join(self.run_dir, os.path.basename(plot))
-                        interfaces_plots_list.append(shutil.copy2(plot_path, new_name))
-                self.frobenius_plots[ranked] = interfaces_plots_list
+            self.frobenius_plots = [shutil.copy2(plot, self.frobenius_path) for plot in (list_plot_ang+list_plot_dist)]
+            for ranked in [ranked_aux for ranked_aux in self.ranked_list if ranked.filtered]:
+                ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
+                for interface_list in ranked.interfaces:
+                    frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface_list.name}.txt')
+                    with open(frobenius_file, 'w') as sys.stdout:
+                        _,_, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plot=True, title=f'Interface: {interface_list.name}')
+                    sys.stdout = sys.__stdout__
+                    new_name = os.path.join(self.frobenius_path, f'{interface_list.name}.png')
+                    plot_path = os.path.join(self.run_dir, os.path.basename(plot))
+                    ranked.add_frobenius_plot(shutil.copy2(plot_path, new_name))
