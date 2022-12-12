@@ -19,12 +19,14 @@ class ChangeResidues:
         self.when: str = 'after_alignment'
         self.resname: Union[str, None] = None
         self.sequence: Union[str, None] = None
+        self.fasta_path: Union[str, None] = None
 
         self.resname = resname
         self.chain_res_dict = chain_res_dict
         self.chain_bfactors_dict = chain_bfactors_dict
         if fasta_path is not None:
             self.sequence = bioutils.extract_sequence(fasta_path=fasta_path)
+            self.fasta_path = fasta_path
         self.when = when
 
         if self.sequence is not None:

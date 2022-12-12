@@ -7,6 +7,7 @@ import statistics
 import matplotlib.pyplot as plt
 
 from matplotlib.patches import Patch
+import numpy as np
 import pandas as pd
 from typing import Dict, List
 from Bio.PDB import PDBParser, Selection
@@ -82,26 +83,56 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
         title = 'TEMPLATES'
         file = os.path.join(plot_path, 'template_gantt.png')
 
-    names = a_air.feature.get_names()
+    if plot_type == 'msa': 
+        names = a_air.feature.get_names_msa()
+    else:
+        names = a_air.feature.get_names_templates()
     legend_elements = []
-    for j, name in reversed(list(enumerate(names))):
-        template = a_air.get_template_by_id(name)
-        results_alignment_text = template.get_results_alignment_text()
-        template_name = f'T{j+1}'
-        legend_elements.append(Patch(label=f'{template_name} ({name}): {results_alignment_text}'))
-        if plot_type == 'msa':
+
+    names = [name for name in names if name != '']
+    if len(names) > 30:
+        aligned_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
+        for name in names:
             features_search = a_air.feature.get_msa_by_name(name)
-        else:  # should be template:
-            features_search = a_air.feature.get_sequence_by_name(name)
-        if features_search is not None:
             aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
-            for i in range(1, len(features_search)):
-                if aligned_sequence[i - 1] != '-':
-                    ax.barh(template_name, 1, height=height, left=i, color=str(aligned_sequence[i - 1]))
+            new_array = [0 if align == '0' else 1 for align in aligned_sequence]
+            aligned_sequences = np.add(new_array, aligned_sequences)
+        aligned_sequences = [aligned / len(names) for aligned in aligned_sequences]
+        for i in range(1, len(aligned_sequences)):
+            ax.barh('Percentage', 1, height=height, left=i, color=str(aligned_sequences[i - 1]))       
+
+    else:
+        for j, name in reversed(list(enumerate(names))):
+            template = a_air.get_template_by_id(name)
+            if template is not None:
+                results_alignment_text = template.get_results_alignment_text()
+                if len(name) > 4:
+                    template_name = f'T{j+1}'
+                    legend_elements.append(Patch(label=f'{template_name} ({name}): {results_alignment_text}'))
+                else:
+                    template_name = name
+                    legend_elements.append(Patch(label=f'{template_name}: {results_alignment_text}'))
+            else:
+                results_alignment_text = ''
+                template_name = name
+            
+            if plot_type == 'msa':
+                features_search = a_air.feature.get_msa_by_name(name)
+            else:  # should be template:
+                features_search = a_air.feature.get_sequence_by_name(name)
+            
+            if features_search is not None:
+                aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
+                for i in range(1, len(features_search)):
+                    if aligned_sequence[i - 1] != '-':
+                        ax.barh(template_name, 1, height=height, left=i, color=str(aligned_sequence[i - 1]))
+    
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(0, total_length)
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
+    
+    
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
     ax.spines['right'].set_visible(False)
@@ -167,9 +198,7 @@ class OutputAir:
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features, experimental_pdb: str):
         # Read all templates and rankeds, if there are no ranked, raise an error
         template_dict = {}
-        template_nonsplit = {}
-        if feature is not None:
-            template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path, print_number=False)
+        template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path, print_number=False)
 
         # Split the templates with chains
         for template, template_path in template_nonsplit.items():
@@ -279,8 +308,9 @@ class OutputAir:
             with open(frobenius_file, 'w') as sys.stdout:
                 _, _, _, _, _, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path], targets=list(path_list), write_plot=True, write_matrix=True)
             sys.stdout = sys.__stdout__
-            self.frobenius_plots = [shutil.copy2(plot, self.frobenius_path) for plot in (list_plot_ang+list_plot_dist)]
-            for ranked in [ranked_aux for ranked_aux in self.ranked_list if ranked.filtered]:
+            self.frobenius_plots += [shutil.copy2(plot, self.frobenius_path) for plot in (list_plot_ang+list_plot_dist)]
+            ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
+            for ranked in ranked_filtered:
                 ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
                 for interface_list in ranked.interfaces:
                     frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface_list.name}.txt')

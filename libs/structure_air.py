@@ -14,6 +14,7 @@ class StructureAir:
         self.input_dir: str
         self.input_path: str
         self.log_path: str
+        self.af2_dbs_path: str
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
@@ -41,7 +42,7 @@ class StructureAir:
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
 
-        af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
+        self.af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.custom_features = parameters_dict.get('custom_features', self.custom_features)
@@ -65,7 +66,7 @@ class StructureAir:
         if self.mosaic is None:
             self.mosaic = len(self.sequence_assembled.sequence_assembled)
 
-        if not os.path.exists(af2_dbs_path):
+        if not os.path.exists(self.af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
         if 'templates' not in parameters_dict:
             logging.info('No templates detected')
@@ -87,7 +88,7 @@ class StructureAir:
             if self.reference is None:
                 self.reference = self.templates_list[0]
 
-        self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=af2_dbs_path)
+        self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
 
     def generate_output(self):
         render_dict = {}
@@ -128,7 +129,8 @@ class StructureAir:
                     rmsd_dict[ranked.name] = {}
                     for rankedtemplate in ranked.superposition_templates:
                         rmsd_dict[ranked.name][rankedtemplate.template] = {'rmsd': rankedtemplate.rmsd, 'aligned_residues': rankedtemplate.aligned_residues, 'total_residues': rankedtemplate.total_residues}
-                    frobenius_dict[ranked.name] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in ranked.frobenius_plot]
+                    if ranked.filtered and ranked.frobenius_plot:
+                        frobenius_dict[ranked.name] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in ranked.frobenius_plot]
             except:
                 pass
             if plddt_dict:
@@ -203,7 +205,7 @@ class StructureAir:
                                                 feature=feature)
              
             self.afrun_list.append(afrun)
-            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:
@@ -227,6 +229,63 @@ class StructureAir:
             '3': 'Finished'
         }[str(self.state)]
 
+    def write_input_file(self):
+        with open(self.input_path, 'w') as f_out:
+            f_out.write(f'output_dir: {self.output_dir}\n')
+            f_out.write(f'run_dir: {self.run_dir}\n')
+            f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
+            f_out.write(f'verbose: {self.verbose}\n')
+            f_out.write(f'glycines: {self.glycines}\n')
+            f_out.write(f'run_af2: {self.run_af2}\n')
+            if self.reference is not None:
+                f_out.write(f'reference: {self.reference.pdb_path}\n')
+            if self.experimental_pdb is not None:
+                f_out.write(f'experimental_pdb: {self.experimental_pdb}\n')
+            f_out.write(f'custom_features: {self.custom_features}\n')
+            f_out.write(f'mosaic: {self.mosaic}\n')
+            f_out.write(f'\nsequences:\n')
+            for sequence in self.sequence_assembled.sequence_list:
+                f_out.write('-')
+                f_out.write(f' fasta_path: {sequence.fasta_path}\n')
+                f_out.write(f'  num_of_copies: {sequence.num_of_copies}\n')
+                new_positions = [position+1 if position != -1 else position for position in sequence.positions ]
+                f_out.write(f'  positions: {",".join(map(str, new_positions)) }\n')
+
+            if self.templates_list:
+                f_out.write(f'\ntemplates:\n')
+                for template in self.templates_list:
+                    f_out.write('-')
+                    f_out.write(f' pdb: {template.pdb_path}\n')
+                    f_out.write(f'  add_to_msa: {template.add_to_msa}\n')
+                    f_out.write(f'  add_to_templates: {template.add_to_templates}\n')
+                    f_out.write(f'  generate_multimer: {template.generate_multimer}\n')
+                    
+                    if template.change_res_list:
+                        f_out.write(f'  change_res:\n')
+                        for change in template.change_res_list:
+                            f_out.write('  -')
+                            if change.resname is not None:
+                                f_out.write(f' resname: {change.resname}\n')
+                            elif change.sequence is not None:
+                                f_out.write(f' fasta_path: {change.fasta_path}\n')
+                            f_out.write(f'    when: {change.when}\n')
+                            for key, value in change.chain_res_dict.items():
+                                f_out.write(f'    {key}: {",".join(map(str,value))}\n')
+
+                    if template.match_restrict_list:
+                        f_out.write(f'  match:\n')
+                        for match in template.match_restrict_list:
+                            f_out.write('  -')
+                            f_out.write(f' chain: {match.chain}\n')
+                            if match.position != '':
+                                f_out.write(f'    position: {match.position+1}\n')
+                            if match.residues is not None:
+                                f_out.write(f'    residues: {",".join(map(str, match.residues))}\n')
+                            if match.reference is not None:
+                                f_out.write(f'    reference: {match.reference}\n')
+                            if match.reference_chain is not None:
+                                f_out.write(f'    reference_chain: {match.reference_chain}\n')
+                    
 
     def __repr__(self) -> str:
         return f' \

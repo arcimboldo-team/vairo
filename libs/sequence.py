@@ -17,10 +17,12 @@ class Sequence:
         positions = parameters_dict.get('positions', '')
         if positions == '':
             self.num_of_copies = parameters_dict.get('num_of_copies', self.num_of_copies)
-            [self.positions.append(-1) for i in range(self.num_of_copies)]
+            self.positions = [-1] * self.num_of_copies
         else:
-            self.positions = positions.replace(' ', '').split(',')
-            self.positions = [int(position) - 1 for position in self.positions]
+            positions_list = positions.replace(' ', '').split(',')
+            for position in positions_list:
+                position = int(position) - 1 if int(position) != -1 else int(position)
+                self.positions.append(position)
             self.num_of_copies = len(self.positions)
 
         if self.num_of_copies == 0:
@@ -30,7 +32,11 @@ class Sequence:
             raise Exception(f'{fasta_path} does not exist')
         else:
             self.fasta_path = os.path.join(input_dir, os.path.basename(fasta_path))
-            shutil.copy2(fasta_path, self.fasta_path)
+            try:
+                shutil.copy2(fasta_path, self.fasta_path)
+            except shutil.SameFileError:
+                pass
+            
             self.name = utils.get_file_name(self.fasta_path)
             self.sequence = bioutils.extract_sequence(self.fasta_path)
             self.length = len(self.sequence)

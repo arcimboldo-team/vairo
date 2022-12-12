@@ -225,7 +225,7 @@
                     {% for key, value in data.frobenius_dict.items() %}
                         <h3>{{ key }}:</h3>
                         {% for frobenius_graph in value %}
-                            <img style="width: 90%" src="data:image/png;base64,{{ frobenius_graph }}"alt="Frobenius graph">
+                            <img style="width: 60%" src="data:image/png;base64,{{ frobenius_graph }}"alt="Frobenius graph">
                         {% endfor %}
                     {% endfor %}
                 </div>

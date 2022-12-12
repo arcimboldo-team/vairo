@@ -9,12 +9,9 @@ import itertools
 from typing import Any, Dict, List, Optional, Tuple, Union
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
-from libs import change_res, structures, utils
+from libs import change_res, structures, utils, sequence
 from scipy.spatial import distance
-from libs import sequence
-
 from simtk import unit, openmm
-from sys import stdout
 
 
 def download_pdb(pdb_id: str, output_dir: str):
@@ -505,7 +502,6 @@ def superpose_pdbs(pdb_list: List, output_pdb=None) -> Tuple[Optional[float], Op
         superpose_input_list.extend(['-o', output_pdb])
 
     superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
-
     rmsd, quality_q, nalign = None, None, None
     for line in superpose_output.split('\n'):
         if 'r.m.s.d:' in line:

@@ -4,8 +4,7 @@ import os
 import sys
 import logging
 import yaml
-import shutil
-from libs import bioutils, features, structure_air, utils
+from libs import features, structure_air, utils
 
 def main():
     try:
@@ -42,7 +41,7 @@ def main():
 
         utils.create_logger_dir(a_air.log_path)
         os.chdir(a_air.run_dir)
-        shutil.copy2(input_path, a_air.input_path)
+        a_air.write_input_file()
         a_air.generate_output()
         
         features_list = []
@@ -91,6 +90,9 @@ def main():
             logging.info('Start running AlphaFold2')
             a_air.run_alphafold(features_list=features_list)
             a_air.merge_results()
+            if a_air.feature is None:
+                new_features = features.create_features_from_file(os.path.join(a_air.run_dir, 'features.pkl'))
+                a_air.set_feature(new_features)
             os.chdir(a_air.run_dir)
             a_air.output.set_run_dir(run_dir=a_air.run_dir)
             a_air.output.analyse_output(sequence_assembled=a_air.sequence_assembled, feature=a_air.feature, experimental_pdb=a_air.experimental_pdb)
