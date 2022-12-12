@@ -9,17 +9,10 @@ import itertools
 from typing import Any, Dict, List, Optional, Tuple, Union
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
-from numpy import ndarray, dtype
-
-from libs import change_res, utils
+from libs import change_res, structures, utils, sequence
 from scipy.spatial import distance
-from libs import sequence
+from simtk import unit, openmm
 
-
-# from openmmforcefields.generators import SystemGenerator
-# from simtk import unit, openmm
-# from simtk.openmm.app import PDBFile, Simulation
-# from Bio.PDB import NeighborSearch
 
 def download_pdb(pdb_id: str, output_dir: str):
     pdbl = PDBList()
@@ -481,24 +474,24 @@ def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
 
 def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
     command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all --keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0'
-    subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p.communicate()
 
+def run_openmm(pdb_in_path: str, pdb_out_path: str) -> List:
 
-""" def run_openmm(pdb_in_path: str) -> List:
-
-    pdb_aux = os.path.join(os.path.dirname(pdb_in_path), f'{utils.get_file_name(pdb_in_path)}_energy.pdb')
-    run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_aux)
-    protein_pdb = PDBFile(pdb_aux)
-    system_generator = SystemGenerator(forcefields=['amber/ff14SB.xml'])
-    system = system_generator.create_system(protein_pdb.topology)
-    integrator = openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.02 * unit.picoseconds)
-    simulation = Simulation(protein_pdb.topology, system, integrator)
+    run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
+    protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)
+    forcefield = openmm.app.ForceField('amber99sb.xml')
+    system = forcefield.createSystem(protein_pdb.topology, constraints=openmm.app.HBonds)
+    integrator = openmm.openmm.LangevinIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds)
+    simulation = openmm.app.simulation.Simulation(protein_pdb.topology, system, integrator)
     simulation.context.setPositions(protein_pdb.positions)
-    simulation.minimizeEnergy()    
-    state = simulation.context.getState(getPositions=True, enforcePeriodicBox=False, getEnergy=True)
-    with open(pdb_aux, 'w+') as f_handler:
-        PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_handler, keepIds=True)
-    return state.getKineticEnergy(), state.getPotentialEnergy()  """
+    simulation.minimizeEnergy()
+    simulation.step(1000)
+    state = simulation.context.getState(getPositions=True, getEnergy=True)
+    with open(pdb_out_path, 'w') as f_out:
+        openmm.app.pdbfile.PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_out, keepIds=True)
+    return structures.OpenmmEnergies(state.getKineticEnergy(), state.getPotentialEnergy())
 
 
 def superpose_pdbs(pdb_list: List, output_pdb=None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
@@ -509,7 +502,6 @@ def superpose_pdbs(pdb_list: List, output_pdb=None) -> Tuple[Optional[float], Op
         superpose_input_list.extend(['-o', output_pdb])
 
     superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
-
     rmsd, quality_q, nalign = None, None, None
     for line in superpose_output.split('\n'):
         if 'r.m.s.d:' in line:

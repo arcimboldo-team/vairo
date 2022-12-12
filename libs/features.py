@@ -98,9 +98,13 @@ class Features:
         with open(pkl_path, 'wb') as f_out:
             pickle.dump(merged_features, f_out, protocol=pickle.HIGHEST_PROTOCOL)
 
-    def get_names(self) -> List[str]:
+    def get_names_templates(self) -> List[str]:
 
         return [x.decode() for x in self.template_features['template_domain_names']]
+
+    def get_names_msa(self) -> List[str]:
+
+        return [x.decode() for x in self.msa_features['accession_ids']]
 
     def get_msa_by_name(self, name: str) -> Union[str, None]:
 
@@ -408,8 +412,8 @@ def print_features_from_file(pkl_in_path: str):
 
     logging.info('\n')
     logging.info('MSA:')
-    for num, name in enumerate(features_dict['accession_ids']):
-        logging.info(name.decode('utf-8'))
+    for num, name in enumerate(features_dict['msa']):
+        logging.info(num)
         logging.info('\n')
         logging.info(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][num].tolist()]))
         logging.info('\n')
@@ -428,10 +432,11 @@ def create_features_from_file(pkl_in_path: str) -> Features:
     with open(f"{pkl_in_path}", "rb") as input_file:
         features_dict = pickle.load(input_file)
     new_features = Features(query_sequence=features_dict['sequence'][0].decode('utf-8'))
-    for i in range(1, len(features_dict['accession_ids'])):
+    for i in range(1, len(features_dict['msa'])):
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][i].tolist()]))
         new_features.append_row_in_msa(sequence=sequence,
-                                       sequence_id=features_dict['accession_ids'][i].decode("utf-8"))
+                                       sequence_id=str(i))
+
     for i in range(0, len(features_dict['template_sequence'])):
         template_dict = {
             'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),

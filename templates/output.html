@@ -128,6 +128,27 @@
             .btn:hover{
                 background-color: #b8b8b8;
             }
+            table {
+                border-collapse: collapse;
+                width: auto;
+            }
+            th{
+                border: 2px solid #000000;
+                background-color: #b8b8b8;
+                text-align: left;
+                padding: 8px;
+            }
+            .best-filtered {
+                background-color: blue;
+            }
+            .best-ranked {
+                background-color: green;
+            }
+            td{
+                border: 2px solid #000000;
+                text-align: left;
+                padding: 8px;
+            }
         </style>
     </head>
     <body id="init_body">
@@ -146,10 +167,13 @@
                     <li name="plddt" onclick="move_to(event)" class="sub-menu">Rankeds PLDDT</li>
                 {% endif %}
                 {% if 'frobenius' in data %}
-                    <li name="graphs" onclick="move_to(event)" class="sub-menu">Graphs</li>
+                    <li name="graphs" onclick="move_to(event)" class="sub-menu">Graphs</li>                
                 {% endif %}
-                <li name="tables" onclick="move_to(event)" class="sub-menu">Tables</li>
-                <li name="conclusions" onclick="move_to(event)" class="sub-menu">Log file</li>
+                {% if 'table' in data %}
+                    <li name="tables" onclick="move_to(event)" class="sub-menu">Tables</li>
+                {% endif %}
+                <li name="log" onclick="move_to(event)" class="sub-menu">Log file</li>
+                <li name="conclusions" onclick="move_to(event)" class="sub-menu">Conclusions</li>
                 <li name="citations" onclick="move_to(event)" class="sub-menu">Citations</li>
                 <li name="support" onclick="move_to(event)" class="sub-menu">Support</li>
                 </ul>
@@ -160,6 +184,20 @@
             <p style="margin-top:30px">ARCIMBOLDO-AIR: Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p>
             <div id="summary" class="section-div">
                 <h2>Summary</h2>
+                <p>State: {{ data.state }}</p>
+                {% if data.best_ranked is not none and 'table' in data%}
+                    <p>Best result is <span style="color:green;">{{ data.best_ranked}}</span> with a {{ data.table.plddt_dict[data.best_ranked] }} PLDDT.
+                        {% if data.best_ranked in data.ranked_filtered%}
+                            Can be found in the following path: <a download="{{ data.best_ranked }}.pdb" href=data:text/plain;base64,{{ data.ranked_filtered_encoded[data.best_ranked] }}>{{ data.ranked_filtered[data.best_ranked] }}</a>
+                        {% endif %}
+                    </p>
+                    <p>Other possible solutions are:</p>
+                        <ul>
+                            {% for key, value in data.ranked_filtered_encoded.items() if key != data.best_ranked%}
+                                <li><span style="color:blue;">{{ key }}</span>: <a download="{{ key }}.pdb" href=data:text/plain;base64,{{ value }}> {{ data.ranked_filtered[key] }}</a> ({{ data.table.plddt_dict[key] }} PLDDT)</li>
+                            {% endfor %}
+                        </ul>
+                {% endif %}
             </div>
             <div id="input" class="section-div">
                 <h2>Input</h2>
@@ -171,27 +209,134 @@
                 <div id="alignment" class="section-div">
                     <h2>Alignment</h2>
                     {% for gantt_graph in data.gantt %}
-                        <img style="width: 90%" src={{ gantt_graph }} alt="Gantt diagram with alignments">
+                        <img style="width: 90%" src="data:image/png;base64,{{ gantt_graph }}" alt="Gantt diagram with alignments">
                     {% endfor %}
                 </div>            
             {% endif %}
             {% if 'plddt' in data %}
-                <div id="rankeds" class="section-div">
+                <div id="plddt" class="section-div">
                     <h2>Rankeds PLDDT</h2>
-                    <img style="width: 90%" src={{ data.plddt }} alt="PLDDT graph">
+                    <img style="width: 90%" src="data:image/png;base64,{{ data.plddt }}" alt="PLDDT graph">
                 </div>
             {% endif %}
-            {% if 'frobenius' in data %}
+            {% if 'frobenius_dict' in data %}
                 <div id="graphs" class="section-div">
                     <h2>Graphs</h2>
-                    {% for frobenius_graph in data.frobenius %}
-                        <img style="width: 90%" src={{ frobenius_graph }} alt="Frobenius heatmap">
+                    {% for key, value in data.frobenius_dict.items() %}
+                        <h3>{{ key }}:</h3>
+                        {% for frobenius_graph in value %}
+                            <img style="width: 60%" src="data:image/png;base64,{{ frobenius_graph }}"alt="Frobenius graph">
+                        {% endfor %}
                     {% endfor %}
                 </div>
             {% endif %}
+            {% if 'table' in data %}
             <div id="tables" class="section-div">
                 <h2>Tables</h2>
+                <h3>rankeds PLDDT</h3>
+                {% if 'plddt_dict' in data.table %}
+                    <table>
+                        <tr>
+                            <th>ranked</th>
+                            <th>PLDDT</th>
+                        </tr>
+                        {% for key, value in data.table.plddt_dict.items() %}
+                            {% if key == data.best_ranked %}
+                                <tr class="best-ranked">
+                            {% elif key in data.ranked_filtered %}
+                                <tr class="best-filtered">
+                            {% else %}
+                                <tr>
+                            {% endif %}
+                                <td>{{ key }}</td>
+                                <td>{{ value }}</td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% endif %}
+                <h3>Superposition of rankeds and templates</h3>
+                {% if 'rmsd_dict' in data.table %}
+                    <table>
+                        <tr>
+                            <th>ranked</th>
+                            {% for value in data.table.rmsd_dict.values() %}
+                                {% for key in value.keys() if loop.first%}            
+                                    <th>{{ key }}</th>
+                                {% endfor %}
+                            {% endfor %}
+                        </tr>
+                        {% for key, value in data.table.rmsd_dict.items() %}
+                            {% if key == data.best_ranked %}
+                                <tr class="best-ranked">
+                            {% elif key in data.ranked_filtered %}
+                                <tr class="best-filtered">
+                            {% else %}
+                                <tr>
+                            {% endif %}
+                                <td>{{ key }}</td>
+                                {% for key2, value2 in value.items() %}
+                                    <td>{{ value2.rmsd }} {{ value2.aligned_residues }} ({{ value2.total_residues }})</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% endif %}
+                <h3>Secondary structure percentages calculated with ALEPH</h3>
+                {% if 'secondary_dict' in data.table %}
+                    <table>
+                        <tr>
+                            <th>ranked</th>
+                            <th>ah</th>
+                            <th>bs</th>
+                            <th>number of residues</th>
+                        </tr>
+                        {% for key, value in data.table.secondary_dict.items() %}
+                            {% if key == data.best_ranked %}
+                                <tr class="best-ranked">
+                            {% elif key in data.ranked_filtered %}
+                                <tr class="best-filtered">
+                            {% else %}
+                                <tr>
+                            {% endif %}
+                                <td>{{ key }}</td>
+                                <td>{{ value.ah }}</td>
+                                <td>{{ value.bs }}</td>
+                                <td>{{ value.number_total_residues }}</td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% endif %}
+                <h3>Ranked energies</h3>
+                {% if 'energies_dict' in data.table %}
+                    <table>
+                        <tr>
+                            <th>ranked</th>
+                            <th>Kinetic</th>
+                            <th>Potential</th>
+                        </tr>
+                        {% for key, value in data.table.energies_dict.items() %}
+                            {% if key == data.best_ranked %}
+                                <tr class="best-ranked">
+                            {% elif key in data.ranked_filtered %}
+                                <tr class="best-filtered">
+                            {% else %}
+                                <tr>
+                            {% endif %}
+                                <td>{{ key }}</td>
+                                <td>{{ value.kinetic }}</td>
+                                <td>{{ value.potential }}</td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% endif %}
             </div>
+            {% endif %}
+            <div id="log" class="section-div">
+                <h2>Log</h2>
+                <div style="padding: 10px;height:400px;width:90%;border:1px solid #000;overflow:auto;">
+                    <pre>{{ data.log_text }}</pre>
+                </div>
+            </div>  
             <div id="conclusions" class="section-div">
                 <h2>Conclusions</h2>
             </div>  

@@ -1,3 +1,4 @@
+import base64
 import logging
 import os
 from typing import List, Dict, Union
@@ -13,6 +14,7 @@ class StructureAir:
         self.input_dir: str
         self.input_path: str
         self.log_path: str
+        self.af2_dbs_path: str
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
@@ -27,6 +29,7 @@ class StructureAir:
         self.mosaic: Union[int, None] = None
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
+        self.state: int = 0
 
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
@@ -39,8 +42,7 @@ class StructureAir:
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
 
-
-        af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
+        self.af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
         self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.custom_features = parameters_dict.get('custom_features', self.custom_features)
@@ -64,7 +66,7 @@ class StructureAir:
         if self.mosaic is None:
             self.mosaic = len(self.sequence_assembled.sequence_assembled)
 
-        if not os.path.exists(af2_dbs_path):
+        if not os.path.exists(self.af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
         if 'templates' not in parameters_dict:
             logging.info('No templates detected')
@@ -86,27 +88,67 @@ class StructureAir:
             if self.reference is None:
                 self.reference = self.templates_list[0]
 
-        self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=af2_dbs_path)
+        self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
 
     def generate_output(self):
         render_dict = {}
+        frobenius_dict = {}
+        
         with open(f'{utils.get_main_path()}/templates/output.html', 'r') as f_in:
             template_str = f_in.read()
         template = Environment(loader=FileSystemLoader(f'{utils.get_main_path()}/templates/')).from_string(template_str)
 
         with open(self.input_path, 'r') as f_in:
             render_dict['bor_text'] = f_in.read()
+    
+        with open(self.log_path, 'r') as f_in:
+            render_dict['log_text'] = f_in.read()
         
         if self.feature is not None:
             self.output.create_plot_gantt(self)
-            render_dict['gantt'] = self.output.gantt_plots_path
+            render_dict['gantt'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in self.output.gantt_plots_path]
 
-        frobenius_plots = [os.path.join(self.output.frobenius_path, path) for path in os.listdir(self.output.frobenius_path) if path.endswith('.png')]
-        if frobenius_plots:
-            render_dict['frobenius'] = frobenius_plots
+        if self.output.frobenius_plots:
+            frobenius_dict['general'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in self.output.frobenius_plots]
 
-        if self.output.plddt_plot_path:
-            render_dict['plddt'] = self.output.plddt_plot_path
+        if os.path.exists(self.output.plddt_plot_path):
+            render_dict['plddt'] = base64.b64encode(open(self.output.plddt_plot_path, 'rb').read()).decode('utf-8')
+
+        if self.output.ranked_list:
+            render_dict['table'] = {}
+            plddt_dict = {}
+            secondary_dict = {}
+            rmsd_dict = {}
+            energies_dict = {}
+            try:
+                for ranked in self.output.ranked_list:
+                    plddt_dict[ranked.name] = ranked.plddt
+                    secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs, 'number_total_residues': ranked.total_residues}
+                    if ranked.energies is not None:
+                        energies_dict[ranked.name] = {'kinetic': ranked.energies.kinetic, 'potential':ranked.energies.potential}
+                    rmsd_dict[ranked.name] = {}
+                    for rankedtemplate in ranked.superposition_templates:
+                        rmsd_dict[ranked.name][rankedtemplate.template] = {'rmsd': rankedtemplate.rmsd, 'aligned_residues': rankedtemplate.aligned_residues, 'total_residues': rankedtemplate.total_residues}
+                    if ranked.filtered and ranked.frobenius_plot:
+                        frobenius_dict[ranked.name] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in ranked.frobenius_plot]
+            except:
+                pass
+            if plddt_dict:
+                render_dict['table']['plddt_dict'] = plddt_dict
+            if secondary_dict:
+                render_dict['table']['secondary_dict'] = secondary_dict
+            if rmsd_dict:
+                render_dict['table']['rmsd_dict'] = rmsd_dict
+            if energies_dict:
+                render_dict['table']['energies_dict'] = energies_dict
+        
+        if frobenius_dict:
+            render_dict['frobenius_dict'] = frobenius_dict
+        if self.output.best_ranked is not None:
+            render_dict['best_ranked'] = self.output.best_ranked.name
+        render_dict['ranked_filtered'] = {ranked.name: ranked.split_path for ranked in self.output.ranked_list if ranked.filtered}
+        render_dict['ranked_filtered_encoded'] = {ranked.name: base64.b64encode(open(ranked.split_path, 'rb').read()).decode('utf-8') for ranked in self.output.ranked_list if ranked.filtered}        
+        render_dict['state'] = self.get_state_text()
 
         with open(self.output.html_path, 'w') as f_out:
             f_out.write(template.render(data=render_dict))
@@ -175,6 +217,75 @@ class StructureAir:
     def set_feature(self, feature: features.Features):
         self.feature = feature
 
+    def change_state(self, state: int):
+        self.state = state
+
+    def get_state_text(self):
+        return {
+            '-1': 'Finished with errors, not completed',
+            '0': 'Starting',
+            '1': 'Template alignment',
+            '2': 'Running AlphaFold2',
+            '3': 'Finished'
+        }[str(self.state)]
+
+    def write_input_file(self):
+        with open(self.input_path, 'w') as f_out:
+            f_out.write(f'output_dir: {self.output_dir}\n')
+            f_out.write(f'run_dir: {self.run_dir}\n')
+            f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
+            f_out.write(f'verbose: {self.verbose}\n')
+            f_out.write(f'glycines: {self.glycines}\n')
+            f_out.write(f'run_af2: {self.run_af2}\n')
+            if self.reference is not None:
+                f_out.write(f'reference: {self.reference.pdb_path}\n')
+            if self.experimental_pdb is not None:
+                f_out.write(f'experimental_pdb: {self.experimental_pdb}\n')
+            f_out.write(f'custom_features: {self.custom_features}\n')
+            f_out.write(f'mosaic: {self.mosaic}\n')
+            f_out.write(f'\nsequences:\n')
+            for sequence in self.sequence_assembled.sequence_list:
+                f_out.write('-')
+                f_out.write(f' fasta_path: {sequence.fasta_path}\n')
+                f_out.write(f'  num_of_copies: {sequence.num_of_copies}\n')
+                new_positions = [position+1 if position != -1 else position for position in sequence.positions ]
+                f_out.write(f'  positions: {",".join(map(str, new_positions)) }\n')
+
+            if self.templates_list:
+                f_out.write(f'\ntemplates:\n')
+                for template in self.templates_list:
+                    f_out.write('-')
+                    f_out.write(f' pdb: {template.pdb_path}\n')
+                    f_out.write(f'  add_to_msa: {template.add_to_msa}\n')
+                    f_out.write(f'  add_to_templates: {template.add_to_templates}\n')
+                    f_out.write(f'  generate_multimer: {template.generate_multimer}\n')
+                    
+                    if template.change_res_list:
+                        f_out.write(f'  change_res:\n')
+                        for change in template.change_res_list:
+                            f_out.write('  -')
+                            if change.resname is not None:
+                                f_out.write(f' resname: {change.resname}\n')
+                            elif change.sequence is not None:
+                                f_out.write(f' fasta_path: {change.fasta_path}\n')
+                            f_out.write(f'    when: {change.when}\n')
+                            for key, value in change.chain_res_dict.items():
+                                f_out.write(f'    {key}: {",".join(map(str,value))}\n')
+
+                    if template.match_restrict_list:
+                        f_out.write(f'  match:\n')
+                        for match in template.match_restrict_list:
+                            f_out.write('  -')
+                            f_out.write(f' chain: {match.chain}\n')
+                            if match.position != '':
+                                f_out.write(f'    position: {match.position+1}\n')
+                            if match.residues is not None:
+                                f_out.write(f'    residues: {",".join(map(str, match.residues))}\n')
+                            if match.reference is not None:
+                                f_out.write(f'    reference: {match.reference}\n')
+                            if match.reference_chain is not None:
+                                f_out.write(f'    reference_chain: {match.reference_chain}\n')
+                    
 
     def __repr__(self) -> str:
         return f' \
