@@ -141,7 +141,12 @@ class StructureAir:
                 render_dict['table']['rmsd_dict'] = rmsd_dict
             if energies_dict:
                 render_dict['table']['energies_dict'] = energies_dict
+            if self.output.experimental_dict:
+                render_dict['table']['experimental_dict'] = self.output.experimental_dict
         
+            self.output.write_tables(rmsd_dict=rmsd_dict, secondary_dict=secondary_dict,plddt_dict=plddt_dict,
+                                    energies_dict=energies_dict)
+
         if frobenius_dict:
             render_dict['frobenius_dict'] = frobenius_dict
         if self.output.best_ranked is not None:
@@ -214,11 +219,14 @@ class StructureAir:
             for self.afrun in self.afrun_list:
                 print('change things')
 
+
     def set_feature(self, feature: features.Features):
         self.feature = feature
 
+
     def change_state(self, state: int):
         self.state = state
+
 
     def get_state_text(self):
         return {
@@ -228,6 +236,7 @@ class StructureAir:
             '2': 'Running AlphaFold2',
             '3': 'Finished'
         }[str(self.state)]
+
 
     def write_input_file(self):
         with open(self.input_path, 'w') as f_out:

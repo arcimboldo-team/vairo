@@ -233,8 +233,8 @@
             {% if 'table' in data %}
             <div id="tables" class="section-div">
                 <h2>Tables</h2>
-                <h3>rankeds PLDDT</h3>
                 {% if 'plddt_dict' in data.table %}
+                    <h3>rankeds PLDDT</h3>
                     <table>
                         <tr>
                             <th>ranked</th>
@@ -254,8 +254,8 @@
                         {% endfor %}
                     </table>
                 {% endif %}
-                <h3>Superposition of rankeds and templates</h3>
                 {% if 'rmsd_dict' in data.table %}
+                    <h3>Superposition of rankeds and templates</h3>
                     <table>
                         <tr>
                             <th>ranked</th>
@@ -281,8 +281,8 @@
                         {% endfor %}
                     </table>
                 {% endif %}
-                <h3>Secondary structure percentages calculated with ALEPH</h3>
                 {% if 'secondary_dict' in data.table %}
+                    <h3>Secondary structure percentages calculated with ALEPH</h3>
                     <table>
                         <tr>
                             <th>ranked</th>
@@ -306,13 +306,13 @@
                         {% endfor %}
                     </table>
                 {% endif %}
-                <h3>Ranked energies</h3>
                 {% if 'energies_dict' in data.table %}
+                    <h3>Ranked energies</h3>
                     <table>
                         <tr>
                             <th>ranked</th>
-                            <th>Kinetic</th>
-                            <th>Potential</th>
+                            <th>kinetic</th>
+                            <th>potential</th>
                         </tr>
                         {% for key, value in data.table.energies_dict.items() %}
                             {% if key == data.best_ranked %}
@@ -325,6 +325,21 @@
                                 <td>{{ key }}</td>
                                 <td>{{ value.kinetic }}</td>
                                 <td>{{ value.potential }}</td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% endif %}
+                {% if 'experimental_dict' in data.table %}
+                    <h3>Experimental pdb</h3>
+                    <table>
+                        <tr>
+                            <th>pdb</th>
+                            <th>rmsd</th>
+                        </tr>
+                        {% for key, value in data.table.experimental_dict.items() %}
+                            <tr>
+                                <td>{{ key }}</td>
+                                <td>{{ value }}</td>
                             </tr>
                         {% endfor %}
                     </table>

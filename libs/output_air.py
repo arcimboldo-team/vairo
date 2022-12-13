@@ -320,3 +320,58 @@ class OutputAir:
                     new_name = os.path.join(self.frobenius_path, f'{interface_list.name}.png')
                     plot_path = os.path.join(self.run_dir, os.path.basename(plot))
                     ranked.add_frobenius_plot(shutil.copy2(plot_path, new_name))
+
+
+    def write_tables(self, rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict, energies_dict: Dict):
+        with open(self.analysis_path, 'w') as f_in:
+
+            if bool(rmsd_dict):
+                f_in.write('\n\n')
+                f_in.write('Superpositions of rankeds and templates\n')
+                data = {'ranked': rmsd_dict.keys()}
+                for templates in rmsd_dict.values():
+                    for template, value in templates.items():
+                        data.setdefault(template,[]).append(f'{value["rmsd"]} {value["aligned_residues"]} ({value["total_residues"]})')
+                df = pd.DataFrame(data)
+                f_in.write(df.to_markdown())
+
+            if bool(secondary_dict):
+                f_in.write('\n\n')
+                f_in.write('Secondary structure percentages calculated with ALEPH\n')
+                data = {'ranked': secondary_dict.keys(),
+                        'ah': [value['ah'] for value in secondary_dict.values()],
+                        'bs': [value['bs'] for value in secondary_dict.values()],
+                        'number_total_residues': [value['number_total_residues'] for value in secondary_dict.values()]
+                        }
+                df = pd.DataFrame(data)
+                f_in.write(df.to_markdown())
+
+            if bool(plddt_dict):
+                f_in.write('\n\n')
+                f_in.write('rankeds PLDDT\n')
+                data = {'ranked': plddt_dict.keys(),
+                        'plddt': [value for value in plddt_dict.values()],
+                        }
+                df = pd.DataFrame(data)
+                f_in.write(df.to_markdown())
+
+            if bool(energies_dict):
+                f_in.write('\n\n')
+                f_in.write('OPENMM Energies\n')
+                data = {'ranked': energies_dict.keys(),
+                        'kinetic': [value['kinetic'] for value in energies_dict.values()],
+                        'potential': [value['potential'] for value in energies_dict.values()]
+                        }
+                df = pd.DataFrame(data)
+                f_in.write(df.to_markdown())
+
+            if bool(self.experimental_dict):
+                f_in.write('\n\n')
+                f_in.write(f'Superposition with experimental structure\n')
+                data = {'pdb': self.experimental_dict.keys(),
+                        'rmsd': self.experimental_dict.values()
+                        }
+                df = pd.DataFrame(data)
+                f_in.write(df.to_markdown())
+
+            f_in.write('\n\n')
