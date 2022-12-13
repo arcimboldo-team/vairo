@@ -21,6 +21,7 @@ class StructureAir:
         self.templates_list: List[template.Template] = []
         self.run_af2: bool = True
         self.verbose: bool = True
+        self.small_bfd: bool = False
         self.glycines: int = 50
         self.template_positions_list: List = [List]
         self.reference: Union[template.Template, None] = None
@@ -47,6 +48,7 @@ class StructureAir:
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.custom_features = parameters_dict.get('custom_features', self.custom_features)
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
+        self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
 
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
         if experimental_pdb is not None:
@@ -207,8 +209,8 @@ class StructureAir:
             afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
                                                 sequence=sequence_chunk,
                                                 custom_features=self.custom_features,
+                                                small_bfd=self.small_bfd,
                                                 feature=feature)
-             
             self.afrun_list.append(afrun)
             afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
@@ -251,6 +253,7 @@ class StructureAir:
             if self.experimental_pdb is not None:
                 f_out.write(f'experimental_pdb: {self.experimental_pdb}\n')
             f_out.write(f'custom_features: {self.custom_features}\n')
+            f_out.write(f'small_bfd: {self.small_bfd}\n')
             f_out.write(f'mosaic: {self.mosaic}\n')
             f_out.write(f'\nsequences:\n')
             for sequence in self.sequence_assembled.sequence_list:

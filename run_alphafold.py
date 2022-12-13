@@ -430,9 +430,11 @@ def launch_alphafold2(fasta_path: str,
                       bfd_database_path: str,
                       uniclust30_database_path: str,
                       pdb70_database_path: str,
+                      small_bfd_database_path: str,
+                      small_bfd: bool,
                       read_features_pkl: str,
                       stop_after_msa: bool):
-  
+                            
   flags.mark_flags_as_required([
       'fasta_paths',
       'output_dir',
@@ -450,16 +452,20 @@ def launch_alphafold2(fasta_path: str,
     bash_file.write(f'--fasta_paths={fasta_path[0]} \\\n')
     bash_file.write(f'--output_dir={output_dir} \\\n')
     bash_file.write(f'--data_dir={data_dir} \\\n')
-    bash_file.write(f'--uniref90_database_path={uniref90_database_path} \\\n')
     bash_file.write(f'--mgnify_database_path={mgnify_database_path} \\\n')
     bash_file.write(f'--template_mmcif_dir={template_mmcif_dir} \\\n')
+    bash_file.write(f'--pdb70_database_path={pdb70_database_path} \\\n')
+    bash_file.write(f'--uniref90_database_path={uniref90_database_path} \\\n')
     bash_file.write(f'--max_template_date={max_template_date} \\\n')
     bash_file.write(f'--obsolete_pdbs_path={obsolete_pdbs_path} \\\n')
     bash_file.write(f'--model_preset={model_preset} \\\n')
-    bash_file.write(f'--bfd_database_path={bfd_database_path} \\\n')
-    bash_file.write(f'--uniclust30_database_path={uniclust30_database_path} \\\n')
-    bash_file.write(f'--pdb70_database_path={pdb70_database_path} \\\n')
     bash_file.write(f'--read_features_pkl={read_features_pkl} \\\n')
+    if small_bfd:
+       bash_file.write(f'--small_bfd_database_path={small_bfd_database_path} \\\n')
+       bash_file.write('--db_preset="reduced_dbs" \\\n')
+    else:
+      bash_file.write(f'--bfd_database_path={bfd_database_path} \\\n')
+      bash_file.write(f'--uniclust30_database_path={uniclust30_database_path} \\\n')
     bash_file.write('--use_gpu_relax=True\n')
     bash_file.close()
 
@@ -472,8 +478,12 @@ def launch_alphafold2(fasta_path: str,
   FLAGS.max_template_date = max_template_date
   FLAGS.obsolete_pdbs_path = obsolete_pdbs_path
   FLAGS.model_preset = model_preset
-  FLAGS.bfd_database_path = bfd_database_path
-  FLAGS.uniclust30_database_path = uniclust30_database_path
+  if small_bfd:
+    FLAGS.small_bfd_database_path = small_bfd_database_path
+    FLAGS.db_preset = 'reduced_dbs'    
+  else:
+    FLAGS.bfd_database_path = bfd_database_path
+    FLAGS.uniclust30_database_path = uniclust30_database_path
   FLAGS.pdb70_database_path = pdb70_database_path
   FLAGS.read_features_pkl = read_features_pkl
   FLAGS.stop_after_msa = stop_after_msa

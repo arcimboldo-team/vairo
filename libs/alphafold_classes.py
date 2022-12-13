@@ -6,15 +6,17 @@ from typing import Any, Union
 from libs import bioutils, features, utils
 
 class AlphaFoldRun:
-    def __init__(self, output_dir: str, sequence: str, custom_features: bool, feature: features.Features = None):
+    def __init__(self, output_dir: str, sequence: str, custom_features: bool, small_bfd: bool, feature: features.Features = None):
         self.run_alphafold_bash: str
         self.results_dir: str
         self.fasta_path: str
         self.custom_features: bool
+        self.small_bfd: bool
         self.feature: Union[features.Features, None] = None
 
         self.feature = feature
         self.custom_features = custom_features
+        self.small_bfd = small_bfd
         self.results_dir = output_dir
         utils.create_dir(self.results_dir, delete_if_exists=False)
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(output_dir)}.fasta')
@@ -34,15 +36,17 @@ class AlphaFoldRun:
                         fasta_path = [self.fasta_path],
                         output_dir = previous_path, 
                         data_dir = alphafold_paths.af2_dbs_path,
+                        max_template_date = '2022-10-10',
+                        model_preset = 'monomer',
                         uniref90_database_path = alphafold_paths.uniref90_db_path, 
                         mgnify_database_path = alphafold_paths.mgnify_db_path,
                         template_mmcif_dir = alphafold_paths.mmcif_db_path,
-                        max_template_date = '2022-10-10',
                         obsolete_pdbs_path = alphafold_paths.obsolete_mmcif_db_path,
-                        model_preset = 'monomer',
                         bfd_database_path = alphafold_paths.bfd_db_path,
                         uniclust30_database_path = alphafold_paths.uniclust30_db_path,
                         pdb70_database_path = alphafold_paths.pdb70_db_path,
+                        small_bfd_database_path = alphafold_paths.small_bfd_path,
+                        small_bfd = self.small_bfd,
                         read_features_pkl = self.custom_features,
                         stop_after_msa = False)
 
@@ -62,35 +66,40 @@ class AlphaFoldPaths:
         self.uniref90_db_path: str
         self.mmcif_db_path: str
         self.obsolete_mmcif_db_path: str
-        self.bfd_db_path: str
-        self.uniclust30_db_path: str
+        self.bfd_db_path: str = ''
+        self.uniclust30_db_path: str = ''
         self.pdb70_db_path: str
+        self.small_bfd_path: str = ''
 
         self.af2_dbs_path = af2_dbs_path
 
         for db in os.listdir(f'{self.af2_dbs_path}'):
-            if 'mgnify' in db:
+            print(db)
+            if 'mgnify' == db:
                 self.mgnify_db_path = glob.glob(f'{self.af2_dbs_path}/{db}/*.fa', recursive=True)[0]
                 logging.info(f'Mgnify DB path: {self.mgnify_db_path}')
-            elif 'uniref90' in db:
+            elif 'uniref90' == db:
                 self.uniref90_db_path = glob.glob(f'{self.af2_dbs_path}/{db}/*.fasta', recursive=True)[0]
                 logging.info(f'Uniref90 DB path {self.uniref90_db_path}')
-            elif 'pdb_mmcif' in db:
+            elif 'pdb_mmcif' == db:
                 self.mmcif_db_path = f'{self.af2_dbs_path}/{db}/mmcif_files'
                 self.obsolete_mmcif_db_path = f'{self.af2_dbs_path}/{db}/obsolete.dat'
                 logging.info(f'mmCIF DB path: {self.mmcif_db_path}')
                 logging.info(f'Obsolte mmCIF path: {self.obsolete_mmcif_db_path}')
-            elif 'bfd' in db:
+            elif 'bfd' == db:
                 self.bfd_db_path = '_'.join(glob.glob(f'{self.af2_dbs_path}/{db}/*', recursive=True)[0].split('_')[:-1])
                 logging.info(f'BFD DB path: {self.bfd_db_path}')
-            elif 'uniclust30' in db:
+            elif 'uniclust30' == db:
                 for file in glob.glob(f'{self.af2_dbs_path}/{db}/**/*', recursive=True):
                     if '.cs219' in file[-6:]:
                         self.uniclust30_db_path = file.split('.')[:-1][0]
                         logging.info(f'Uniclust30 DB path: {self.uniclust30_db_path}')
-            elif 'pdb70' in db:
+            elif 'pdb70' == db:
                 self.pdb70_db_path = f'{self.af2_dbs_path}/{db}/pdb70'
                 logging.info(f'PDB70 DB path: {self.pdb70_db_path}')
+            elif 'small_bfd' == db:
+                self.small_bfd_path = glob.glob(f'{self.af2_dbs_path}/{db}/*.fasta', recursive=True)[0]
+                logging.info(f'Small BFD path {self.small_bfd_path}')            
 
     def __repr__(self):
         return f' \
@@ -101,4 +110,5 @@ class AlphaFoldPaths:
         obsolete_mmcif_db_path: {self.obsolete_mmcif_db_path} \n \
         bfd_db_path: {self.bfd_db_path} \n \
         uniclust30_db_path: {self.uniclust30_db_path} \n \
-        pdb70_db_path: {self.pdb70_db_path}'
+        pdb70_db_path: {self.pdb70_db_path}  \n \
+        small_bfd_path: {self.small_bfd_path}'
