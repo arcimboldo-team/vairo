@@ -74,7 +74,6 @@ class AlphaFoldPaths:
         self.af2_dbs_path = af2_dbs_path
 
         for db in os.listdir(f'{self.af2_dbs_path}'):
-            print(db)
             if 'mgnify' == db:
                 self.mgnify_db_path = glob.glob(f'{self.af2_dbs_path}/{db}/*.fa', recursive=True)[0]
                 logging.info(f'Mgnify DB path: {self.mgnify_db_path}')

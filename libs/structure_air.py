@@ -54,7 +54,10 @@ class StructureAir:
         if experimental_pdb is not None:
             experimental_pdb = bioutils.check_pdb(experimental_pdb, self.input_dir)
             self.experimental_pdb = os.path.join(self.run_dir, os.path.basename(experimental_pdb))
-            bioutils.generate_multimer_from_pdb(experimental_pdb, self.experimental_pdb)
+            try:
+                bioutils.generate_multimer_from_pdb(experimental_pdb, self.experimental_pdb)
+            except:
+                logging.info('Not possible to generate the multimer for the experimental pdb')
 
         sequence_list = []
         if 'sequences' not in parameters_dict:
