@@ -1,6 +1,7 @@
 import base64
 import logging
 import os
+import shutil
 from typing import List, Dict, Union
 from libs import alphafold_classes, bioutils, output_air, template, utils, features, sequence
 from jinja2 import Environment, FileSystemLoader
@@ -28,6 +29,7 @@ class StructureAir:
         self.custom_features: bool = True
         self.experimental_pdb: Union[str, None] = None
         self.mosaic: Union[int, None] = None
+        self.mosaic_overlap: int = 50
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
         self.state: int = 0
@@ -69,7 +71,7 @@ class StructureAir:
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
 
         if self.mosaic is None:
-            self.mosaic = len(self.sequence_assembled.sequence_assembled)
+            self.mosaic = 1
 
         if not os.path.exists(self.af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
@@ -203,8 +205,8 @@ class StructureAir:
         self.template_positions_list.append(new_list)
 
     def run_alphafold(self, features_list: List[features.Features]):
-        # Create the script and run alphafold            
-        partitions = utils.chunk_string(len(self.sequence_assembled.sequence_assembled), self.mosaic)
+        # Create the script and run alphafold         
+        partitions = utils.chunk_string(len(self.sequence_assembled.sequence_assembled), self.mosaic, overlap=self.mosaic_overlap)
         for i, feature in enumerate(features_list):
             name = f'results_{i}'
             path = os.path.join(self.run_dir, name)
@@ -213,6 +215,8 @@ class StructureAir:
                                                 sequence=sequence_chunk,
                                                 custom_features=self.custom_features,
                                                 small_bfd=self.small_bfd,
+                                                start_chunk=partitions[i][0],
+                                                finish_chunk=partitions[i][1],
                                                 feature=feature)
             self.afrun_list.append(afrun)
             afrun.run_af2(alphafold_paths=self.alphafold_paths)
@@ -221,8 +225,46 @@ class StructureAir:
         if len(self.afrun_list) == 1:
             self.run_dir = self.afrun_list[0].results_dir
         else:
-            for self.afrun in self.afrun_list:
-                print('change things')
+            results_dir = os.path.join(self.run_dir, 'results')
+            best_rankeds_dir = os.path.join(results_dir, 'best_rankeds')
+
+            utils.create_dir(results_dir, delete_if_exists=True)
+            utils.create_dir(best_rankeds_dir, delete_if_exists=True)
+
+            best_ranked_list = []
+            for afrun in self.afrun_list:
+                self.ranked_list = output_air.read_rankeds(input_path=afrun.results_dir)
+                if not self.ranked_list:
+                    logging.info('No ranked PDBs found')
+                    return
+                plot_path = os.path.join(afrun.results_dir, 'plddt.png')
+                _, best_ranked = output_air.plot_plddt(plot_path=plot_path, ranked_list=self.ranked_list)
+                new_ranked_path = os.path.join(best_rankeds_dir, f'ranked_{afrun.start_chunk}-{afrun.finish_chunk}.pdb')
+                shutil.copy2(best_ranked.path, new_ranked_path)
+                best_ranked.set_path(path=new_ranked_path)
+                best_ranked_list.append(best_ranked)
+
+            ranked_inf = best_ranked_list[0]
+            for i, ranked in enumerate(best_ranked_list[1:]):
+                print(self.afrun_list[i].fasta_path)
+                print(len(bioutils.extract_sequence(self.afrun_list[i].fasta_path)))
+                inf_ini = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path)) - self.mosaic_overlap
+                inf_end = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
+                inm_ini = 0
+                inm_end = self.mosaic_overlap
+                
+                pdb_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_superposed.pdb')
+                bioutils.run_lsqkab(pdb_inf_path=ranked_inf.path,
+                                    pdb_inm_path=ranked.path,
+                                    fit_ini=inf_ini,
+                                    fit_end=inf_end,
+                                    match_ini=inm_ini,
+                                    match_end=inm_end,
+                                    pdb_out=pdb_out
+                                    )
+
+                ranked_inf = ranked
+            self.run_dir = results_dir
 
 
     def set_feature(self, feature: features.Features):

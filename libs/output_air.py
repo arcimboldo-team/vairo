@@ -19,7 +19,12 @@ GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
 plt.set_loglevel('WARNING')
 
 
-def plot_plddt(plot_path: str, ranked_list: List):
+def read_rankeds(input_path: str):
+    ranked_paths = [path for path in os.listdir(input_path) if re.match('ranked_[0-9]+.pdb', path)]
+    return [structures.Ranked(os.path.join(input_path, path)) for path in utils.sort_by_digit(ranked_paths)]
+
+
+def plot_plddt(plot_path: str, ranked_list: List) -> List:
     plt.clf()
     for ranked in ranked_list:
         plddt_list = []
@@ -34,6 +39,10 @@ def plot_plddt(plot_path: str, ranked_list: List):
     plt.xlabel('residue number')
     plt.ylabel('pLDDT')
     plt.savefig(plot_path)
+
+    max_plddt = max([ranked.plddt for ranked in ranked_list])
+    best_ranked = next(ranked for ranked in ranked_list if max_plddt==ranked.plddt)
+    return max_plddt, best_ranked
 
 
 def get_group(res: str) -> str:
@@ -132,7 +141,6 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
     ax.set_xlim(0, total_length)
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     
-    
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
     ax.spines['right'].set_visible(False)
@@ -209,17 +217,14 @@ class OutputAir:
                                         pdb_out_path=new_pdb_path,
                                         sequence_assembled=sequence_assembled)
 
-        ranked_paths = [path for path in os.listdir(self.run_dir) if re.match('ranked_[0-9]+.pdb', path)]
-        self.ranked_list = [structures.Ranked(os.path.join(self.run_dir, path)) for path in utils.sort_by_digit(ranked_paths)]
+        self.ranked_list = read_rankeds(input_path=self.run_dir)
         
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
             return
 
         # Create a plot with the ranked plddts, also, calculate the maximum plddt
-        plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
-        max_plddt = max([ranked.plddt for ranked in self.ranked_list])
-        self.best_ranked = next(ranked for ranked in self.ranked_list if max_plddt==ranked.plddt)
+        max_plddt, self.best_ranked = plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path), sequence_amino=sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
 
         # Filter rankeds, split them in chains.

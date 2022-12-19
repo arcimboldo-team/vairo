@@ -60,6 +60,9 @@ class Ranked:
 
         self.path = ranked_path
         self.name = utils.get_file_name(ranked_path)
+    
+    def set_path(self, path: str):
+        self.path = path
 
     def set_plddt(self, plddt: float):
         self.plddt = plddt

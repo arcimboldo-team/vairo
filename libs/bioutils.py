@@ -34,6 +34,22 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
     return cif_out_path
 
 
+def run_lsqkab(pdb_inf_path, pdb_inm_path, fit_ini, fit_end, match_ini, match_end, pdb_out):
+    script_path = os.path.join(os.path.dirname(pdb_out), f'{utils.get_file_name(pdb_out)}_lsqkab.sh')
+    with open(script_path, 'w') as f_in:
+        f_in.write('lsqkab ')
+        f_in.write(f'xyzinf {utils.get_file_name(pdb_inf_path)} ')
+        f_in.write(f'xyzinm {utils.get_file_name(pdb_inm_path)} ')
+        f_in.write(f'xyzout {utils.get_file_name(pdb_out)} << END-lsqkab \n')
+        f_in.write('title matching template and predictions \n')
+        f_in.write('output XYZ \n')
+        f_in.write(f'fit RESIDU {fit_ini} TO {fit_end} CHAIN A \n')
+        f_in.write(f'MATCH RESIDU {match_ini} TO {match_end} CHAIN A \n')
+        f_in.write(f'end \n')
+        f_in.write(f'END-lsqkab')
+    subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.path.dirname(pdb_out)).communicate()
+
+
 def check_pdb(pdb: str, output_dir: str) -> str:
     # Check if pdb is a path, and if it doesn't exist, download it.
     # If the pdb is a path, copy it to our input folder
@@ -333,8 +349,6 @@ def split_chains_assembly(pdb_in_path: str,
 
         for i in range(sequence_assembled.total_copies):
             sequence_length = sequence_assembled.get_sequence_length(i)
-            seq_with_glycines_length = sequence_length + sequence_assembled.glycines
-
             start_min = sequence_assembled.get_starting_length(i)
             start_max = start_min + sequence_length
 

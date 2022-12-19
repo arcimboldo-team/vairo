@@ -16,7 +16,7 @@ paramaters:
   reference (optional, string, ''): Existing pdbid or path to a pdb
   experimental_pdb (optional, string, ''): Existing pdbid or path to a pdb
   custom_features (optional, bool, true): Run AlphaFold2 without any modification and with AlphaFold2 generated features.pkl
-  mosaic (optional, integer, None): Split the sequence in several pieces. Each piece will have mosaic size.
+  mosaic (optional, integer, None): Split the sequence in X partitions.
 
 sequences:
 - fasta_path:
