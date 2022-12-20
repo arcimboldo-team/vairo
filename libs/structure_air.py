@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, output_air, template, utils, features, sequence
+from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence
 from jinja2 import Environment, FileSystemLoader
 
 class StructureAir:
@@ -96,6 +96,7 @@ class StructureAir:
                 self.reference = self.templates_list[0]
 
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
+
 
     def generate_output(self):
         render_dict = {}
@@ -239,31 +240,36 @@ class StructureAir:
                     return
                 plot_path = os.path.join(afrun.results_dir, 'plddt.png')
                 _, best_ranked = output_air.plot_plddt(plot_path=plot_path, ranked_list=self.ranked_list)
-                new_ranked_path = os.path.join(best_rankeds_dir, f'ranked_{afrun.start_chunk}-{afrun.finish_chunk}.pdb')
+                new_ranked_path = os.path.join(best_rankeds_dir, f'ranked_{afrun.start_chunk+1}-{afrun.finish_chunk}.pdb')
                 shutil.copy2(best_ranked.path, new_ranked_path)
                 best_ranked.set_path(path=new_ranked_path)
                 best_ranked_list.append(best_ranked)
 
-            ranked_inf = best_ranked_list[0]
+            inf_path = best_ranked_list[0].path
+            merge_pdbs_list = [inf_path]
             for i, ranked in enumerate(best_ranked_list[1:]):
-                print(self.afrun_list[i].fasta_path)
-                print(len(bioutils.extract_sequence(self.afrun_list[i].fasta_path)))
-                inf_ini = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path)) - self.mosaic_overlap
-                inf_end = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
-                inm_ini = 0
+                len_sequence = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
+                inf_ini =  len_sequence - self.mosaic_overlap + 1
+                inf_end = len_sequence
+                inm_ini = 1
                 inm_end = self.mosaic_overlap
-                
                 pdb_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_superposed.pdb')
-                bioutils.run_lsqkab(pdb_inf_path=ranked_inf.path,
+                bioutils.run_lsqkab(pdb_inf_path=inf_path,
                                     pdb_inm_path=ranked.path,
                                     fit_ini=inf_ini,
-                                    fit_end=inf_end,
+                                    fit_end=inf_end+1,
                                     match_ini=inm_ini,
-                                    match_end=inm_end,
+                                    match_end=inm_end+1,
                                     pdb_out=pdb_out
                                     )
+                merge_pdbs_list.append(pdb_out)
+                inf_path = pdb_out
+            
+            delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, self.mosaic_overlap+1, 1)]})
+            for path in merge_pdbs_list[1:]:
+                delete_residues.delete_residues(pdb_in_path=path, pdb_out_path=path)
 
-                ranked_inf = ranked
+            bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list, pdb_out_path=os.path.join(results_dir, 'ranked_0.pdb'))
             self.run_dir = results_dir
 
 

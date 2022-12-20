@@ -90,8 +90,9 @@ def main():
             logging.info('Start running AlphaFold2')
             a_air.run_alphafold(features_list=features_list)
             a_air.merge_results()
-            if a_air.feature is None:
-                new_features = features.create_features_from_file(os.path.join(a_air.run_dir, 'features.pkl'))
+            features_path = os.path.join(a_air.run_dir, 'features.pkl')
+            if a_air.feature is None and os.path.exists(features_path):
+                new_features = features.create_features_from_file(features_path)
                 a_air.set_feature(new_features)
             os.chdir(a_air.run_dir)
             a_air.output.set_run_dir(run_dir=a_air.run_dir)

@@ -93,7 +93,7 @@ def chunk_string(length: int, number_partitions: int, overlap: int = 50) -> List
         chunk_list = []
         size = int((length-reminder)/number_partitions)
         for chunk in range(0, length-reminder, size):
-            chunk_list.append((0+chunk, size + chunk + overlap))
+            chunk_list.append((chunk, size + chunk + overlap))
         last_element = chunk_list[-1]
         chunk_list[-1] = (last_element[0], last_element[1] + reminder - overlap)
         return chunk_list

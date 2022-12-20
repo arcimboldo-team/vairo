@@ -140,6 +140,29 @@ def merge_pdbs(list_of_paths_of_pdbs_to_merge: List[str], merged_pdb_path: str):
                     f.write(line[:4] + str(counter).rjust(7) + line[11:])
 
 
+def merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge: List[str], pdb_out_path: str):
+    new_structure = Structure.Structure('struct')
+    new_model = Model.Model('model')
+    chain = Chain.Chain('A')
+    new_structure.add(new_model)
+    new_model.add(chain)
+
+    count_res = 1
+    for pdb_path in list_of_paths_of_pdbs_to_merge:
+        structure = get_structure(pdb_path=pdb_path)
+        residues_list = list(structure[0]['A'].get_residues())
+        for residue in residues_list:
+            new_res = copy.copy(residue)
+            new_res.id = (' ', count_res, ' ')
+            chain.add(new_res)
+            new_res.parent = chain
+            count_res += 1
+
+    io = PDBIO()
+    io.set_structure(new_structure)
+    io.save(pdb_out_path)
+
+
 def run_pisa(pdb_path: str) -> str:
     logging.info(f'Generating REMARK 350 for {pdb_path} with PISA.')
     subprocess.Popen(['pisa', 'temp', '-analyse', pdb_path], stdout=subprocess.PIPE,
@@ -368,7 +391,7 @@ def split_chains_assembly(pdb_in_path: str,
 
         io = PDBIO()
         io.set_structure(new_structure)
-        io.save(pdb_out_path, preserve_atom_numbering=True)
+        io.save(pdb_out_path)
     return chains_return
 
 
@@ -491,8 +514,8 @@ def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     p.communicate()
 
-def run_openmm(pdb_in_path: str, pdb_out_path: str) -> List:
 
+def run_openmm(pdb_in_path: str, pdb_out_path: str) -> List:
     run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
     protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)
     forcefield = openmm.app.ForceField('amber99sb.xml')

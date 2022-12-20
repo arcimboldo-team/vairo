@@ -206,7 +206,10 @@ class OutputAir:
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features, experimental_pdb: str):
         # Read all templates and rankeds, if there are no ranked, raise an error
         template_dict = {}
-        template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path, print_number=False)
+        template_nonsplit = {}
+
+        if feature is not None:
+            template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path, print_number=False)
 
         # Split the templates with chains
         for template, template_path in template_nonsplit.items():

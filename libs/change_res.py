@@ -98,4 +98,4 @@ class ChangeResidues:
 
         io = PDBIO()
         io.set_structure(structure)
-        io.save(pdb_out_path, select=AtomSelect(), preserve_atom_numbering=True)
+        io.save(pdb_out_path, select=AtomSelect())
