@@ -4,9 +4,9 @@ Using AlphaFold2 and ALEPH.
 Usage: arcimboldo_air.py configuration.bor
 
 The configuration.bor has to be a file with YAML format and can contain the following
-paramaters:
+parameters:
 
-  output_dir (mandatory, string): Path to the results directory.
+  output_dir (mandatory, string): Path to the results' directory.
   af2_dbs_path (mandatory, string): Path to the AlphaFold2 databases, they have to be downloaded.
   run_dir (optional, string, 'run'): Path to the directory where AlphaFold2 will be run.
   verbose (optional, bool, true): Enable debugging.
@@ -26,11 +26,11 @@ sequences:
 - fasta_path:
   num_of_copies:
 
-Templates can be added to the templates section inside the features.pkl, as well as their sequence to the msa, it is possible to add as many templates as the user requiers:
+Templates can be added to the templates section inside the features.pkl, as well as their sequence to the msa, it is possible to add as many templates as the user requires:
 
 templates:
 - pdb (mandatory, string): Existing pdbid or path to a pdb
-  add_to_msa (optional, bool, false): Add tempalte to the msa.
+  add_to_msa (optional, bool, false): Add template to the msa.
   add_to_templates (optional, bool, true): Add template to the features.pkl
   generate_multimer (optional, bool, true if num_of_copies > 1 else false):
   sum_prob (optional, integer, None):
@@ -44,7 +44,7 @@ templates:
 
   match: -> Set restrictions in order to insert the template into the sequence copies
     - chain (mandatory, string): Set the position of the chain
-      position: (optional, string, None, X): Set an specific position
+      position: (optional, string, None, X): Set a specific position
       residues: (optional, int range, ''): Selection of residues to set in a position. Can be a range or an integer (Ex: 100-120, 100), otherwise, the whole chain is going to be selected.
       reference:  (optional, string, ''): Existing pdbid or path to a pdb
       reference_chain: (optional, string, ''): Existing reference chain. The match chain will be fixed in the same position as the reference chain.
@@ -59,7 +59,7 @@ templates:
   change_res:
     - resname: 'ALA'
       fasta_path:
-      when: after_alignemnt/before_alignment
+      when: after_alignmnt/before_alignment
       B: 10-50
       A: 1-10
   match:

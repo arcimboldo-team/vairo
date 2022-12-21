@@ -350,7 +350,7 @@ def parse_pdb_line(line: str) -> Dict:
 def split_chains_assembly(pdb_in_path: str,
                           pdb_out_path: str,
                           sequence_assembled: sequence.SequenceAssembled) -> Dict:
-    # Split the assembly with serveral chains. The assembly is spitted
+    # Split the assembly with several chains. The assembly is spitted
     # by the query sequence length. Also, we have to take into account
     # the glycines, So every query_sequence+glycines we can find a chain.
     # We return the list of chains.
@@ -396,7 +396,7 @@ def split_chains_assembly(pdb_in_path: str,
 
 
 def chain_splitter(pdb_path: str, chain: str = None) -> Dict:
-    # Given a pdb_in and an optional chain, write one or serveral
+    # Given a pdb_in and an optional chain, write one or several
     # pdbs containing each one a chain.
     # If chain is specified, only one file with the specific chain will be created
     # It will return a dictionary with the chain and the corresponding pdb
@@ -445,7 +445,7 @@ def generate_multimer_from_pdb(pdb_in_path: str, pdb_out_path: str):
 
 def change_chains(chain_dict: Dict):
     # The Dict has to be: {A: path}
-    # It will renaim the chains of the path to the
+    # It will rename the chains of the path to the
     # chain indicated in the key
 
     for key, value in chain_dict.items():
@@ -487,7 +487,7 @@ def generate_multimer_chains(pdb_path: str, template_dict: Dict) -> Dict:
 
 
 def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
-    # Tranform MSE HETATM to MSA ATOM
+    # Transform MSE HETATM to MSA ATOM
     # Remove HETATM from pdb
 
     class NonHetSelect(Select):
@@ -510,7 +510,8 @@ def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
 
 
 def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
-    command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all --keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0'
+    command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all ' \
+                   f'--keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0 '
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     p.communicate()
 

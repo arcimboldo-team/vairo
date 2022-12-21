@@ -5,8 +5,10 @@ import run_alphafold
 from typing import Any, Union
 from libs import bioutils, features, utils
 
+
 class AlphaFoldRun:
-    def __init__(self, output_dir: str, sequence: str, custom_features: bool, small_bfd: bool, start_chunk: int, finish_chunk: int, feature: features.Features = None):
+    def __init__(self, output_dir: str, sequence: str, custom_features: bool, small_bfd: bool, start_chunk: int,
+                 finish_chunk: int, feature: features.Features = None):
         self.run_alphafold_bash: str
         self.results_dir: str
         self.fasta_path: str
@@ -14,7 +16,7 @@ class AlphaFoldRun:
         self.small_bfd: bool
         self.feature: Union[features.Features, None] = None
         self.start_chunk: int
-        self.finish_chunk: int 
+        self.finish_chunk: int
 
         self.feature = feature
         self.custom_features = custom_features
@@ -24,7 +26,8 @@ class AlphaFoldRun:
         self.finish_chunk = finish_chunk
         utils.create_dir(self.results_dir, delete_if_exists=False)
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(output_dir)}.fasta')
-        bioutils.write_sequence(sequence_name=utils.get_file_name(self.fasta_path), sequence_amino=sequence, sequence_path=self.fasta_path)
+        bioutils.write_sequence(sequence_name=utils.get_file_name(self.fasta_path), sequence_amino=sequence,
+                                sequence_path=self.fasta_path)
         self.run_alphafold_bash = os.path.join(self.results_dir, 'run_af2.sh')
 
     def run_af2(self, alphafold_paths):
@@ -37,30 +40,30 @@ class AlphaFoldRun:
 
         try:
             run_alphafold.launch_alphafold2(
-                        fasta_path = [self.fasta_path],
-                        output_dir = previous_path, 
-                        data_dir = alphafold_paths.af2_dbs_path,
-                        max_template_date = '2022-10-10',
-                        model_preset = 'monomer',
-                        uniref90_database_path = alphafold_paths.uniref90_db_path, 
-                        mgnify_database_path = alphafold_paths.mgnify_db_path,
-                        template_mmcif_dir = alphafold_paths.mmcif_db_path,
-                        obsolete_pdbs_path = alphafold_paths.obsolete_mmcif_db_path,
-                        bfd_database_path = alphafold_paths.bfd_db_path,
-                        uniclust30_database_path = alphafold_paths.uniclust30_db_path,
-                        pdb70_database_path = alphafold_paths.pdb70_db_path,
-                        small_bfd_database_path = alphafold_paths.small_bfd_path,
-                        small_bfd = self.small_bfd,
-                        read_features_pkl = self.custom_features,
-                        stop_after_msa = False)
+                fasta_path=[self.fasta_path],
+                output_dir=previous_path,
+                data_dir=alphafold_paths.af2_dbs_path,
+                max_template_date='2022-10-10',
+                model_preset='monomer',
+                uniref90_database_path=alphafold_paths.uniref90_db_path,
+                mgnify_database_path=alphafold_paths.mgnify_db_path,
+                template_mmcif_dir=alphafold_paths.mmcif_db_path,
+                obsolete_pdbs_path=alphafold_paths.obsolete_mmcif_db_path,
+                bfd_database_path=alphafold_paths.bfd_db_path,
+                uniclust30_database_path=alphafold_paths.uniclust30_db_path,
+                pdb70_database_path=alphafold_paths.pdb70_db_path,
+                small_bfd_database_path=alphafold_paths.small_bfd_path,
+                small_bfd=self.small_bfd,
+                read_features_pkl=self.custom_features,
+                stop_after_msa=False)
 
         except SystemExit as e:
             pass
         except:
             raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
 
-        logging.info('AlphaFold2 has finished succesfully. Proceeding to analyse the results')
-        
+        logging.info('AlphaFold2 has finished successfully. Proceeding to analyse the results')
+
 
 class AlphaFoldPaths:
 
@@ -102,7 +105,7 @@ class AlphaFoldPaths:
                 logging.info(f'PDB70 DB path: {self.pdb70_db_path}')
             elif 'small_bfd' == db:
                 self.small_bfd_path = glob.glob(f'{self.af2_dbs_path}/{db}/*.fasta', recursive=True)[0]
-                logging.info(f'Small BFD path {self.small_bfd_path}')            
+                logging.info(f'Small BFD path {self.small_bfd_path}')
 
     def __repr__(self):
         return f' \

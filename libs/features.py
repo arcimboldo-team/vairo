@@ -92,7 +92,7 @@ class Features:
 
     def write_pkl(self, pkl_path: str):
 
-        logging.info(f'Writting all input features in {pkl_path}')
+        logging.info(f'Writing all input features in {pkl_path}')
 
         merged_features = self.merge_features()
         with open(pkl_path, 'wb') as f_out:
@@ -148,7 +148,8 @@ class Features:
                     'template_all_atom_masks': np.array(
                         [self.template_features['template_all_atom_masks'][i][start_min:start_max]]),
                     'template_aatype': np.array([self.template_features['template_aatype'][i][start_min:start_max]]),
-                    'template_sequence': np.array([self.template_features['template_sequence'][i][start_min:start_max]]),
+                    'template_sequence': np.array(
+                        [self.template_features['template_sequence'][i][start_min:start_max]]),
                     'template_domain_names': np.array([self.template_features['template_domain_names'][i]]),
                     'template_sum_probs': np.array([self.template_features['template_sum_probs'][i]])
                 }
@@ -186,14 +187,10 @@ def empty_msa_features(query_sequence):
 
     num_res = len(msas[0].sequences[0])
     num_alignments = len(int_msa)
-    features = {}
-    features['deletion_matrix_int'] = np.array(deletion_matrix, dtype=np.int32)
-    features['msa'] = np.array(int_msa, dtype=np.int32)
-    features['num_alignments'] = np.array(
-        [num_alignments] * num_res, dtype=np.int32)
-    features['accession_ids'] = np.array(
-        accession_ids, dtype=np.object_)
-    features['msa_species_identifiers'] = np.array(species_ids, dtype=np.object_)
+    features = {'deletion_matrix_int': np.array(deletion_matrix, dtype=np.int32),
+                'msa': np.array(int_msa, dtype=np.int32), 'num_alignments': np.array(
+            [num_alignments] * num_res, dtype=np.int32), 'accession_ids': np.array(
+            accession_ids, dtype=np.object_), 'msa_species_identifiers': np.array(species_ids, dtype=np.object_)}
     return features
 
 
@@ -221,7 +218,6 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     pdb_id = utils.get_file_name(cif_path)
     hhr_text = open(hhr_path, 'r').read()
 
-
     matches = re.finditer(r'No\s+\d+', hhr_text)
     matches_positions = [match.start() for match in matches] + [len(hhr_text)]
 
@@ -239,15 +235,16 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
 
     file_id = f'{pdb_id.lower()}'
     hit = parsers._parse_hhr_hit(detailed_lines)
-    
+
     match = re.findall(r'No 1.*[\r\n]+.*\n+(.*\n)', hhr_text)
     identities = re.findall(r'Identities=+([0-9]+)', match[0])[0]
     aligned_columns = re.findall(r'Aligned_cols=+([0-9]+)', match[0])[0]
-    total_columns=len(hit.hit_sequence)
+    total_columns = len(hit.hit_sequence)
     evalue = re.findall(r'E-value=+(.*?) ', match[0])[0]
     logging.info(f'Alignment results:')
-    logging.info(f'Aligned columns: {aligned_columns} ({len(hit.hit_sequence)}), Evalue: {evalue}, Identities: {identities}')
-    
+    logging.info(
+        f'Aligned columns: {aligned_columns} ({len(hit.hit_sequence)}), Evalue: {evalue}, Identities: {identities}')
+
     template_sequence = hit.hit_sequence.replace('-', '')
 
     mapping = templates._build_query_to_hit_index_mapping(

@@ -41,7 +41,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> List:
     plt.savefig(plot_path)
 
     max_plddt = max([ranked.plddt for ranked in ranked_list])
-    best_ranked = next(ranked for ranked in ranked_list if max_plddt==ranked.plddt)
+    best_ranked = next(ranked for ranked in ranked_list if max_plddt == ranked.plddt)
     return max_plddt, best_ranked
 
 
@@ -74,15 +74,17 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
     return return_list
 
+
 def plot_gantt(plot_type: str, plot_path: str, a_air):
-    fig , (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios':[6, 1]})
+    fig, (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios': [6, 1]})
     total_length = len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines
     height = 0.3
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i), height=height,
                 left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
         ax.barh('sequence', a_air.sequence_assembled.glycines, height=height,
-                left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1,
+                left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
+                    i) + 1,
                 color='tab:blue')
 
     if plot_type == 'msa':
@@ -92,7 +94,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
         title = 'TEMPLATES'
         file = os.path.join(plot_path, 'template_gantt.png')
 
-    if plot_type == 'msa': 
+    if plot_type == 'msa':
         names = a_air.feature.get_names_msa()
     else:
         names = a_air.feature.get_names_templates()
@@ -108,7 +110,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
             aligned_sequences = np.add(new_array, aligned_sequences)
         aligned_sequences = [aligned / len(names) for aligned in aligned_sequences]
         for i in range(1, len(aligned_sequences)):
-            ax.barh('Percentage', 1, height=height, left=i, color=str(aligned_sequences[i - 1]))       
+            ax.barh('Percentage', 1, height=height, left=i, color=str(aligned_sequences[i - 1]))
 
     else:
         for j, name in reversed(list(enumerate(names))):
@@ -116,7 +118,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
             if template is not None:
                 results_alignment_text = template.get_results_alignment_text()
                 if len(name) > 4:
-                    template_name = f'T{j+1}'
+                    template_name = f'T{j + 1}'
                     legend_elements.append(Patch(label=f'{template_name} ({name}): {results_alignment_text}'))
                 else:
                     template_name = name
@@ -124,23 +126,24 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
             else:
                 results_alignment_text = ''
                 template_name = name
-            
+
             if plot_type == 'msa':
                 features_search = a_air.feature.get_msa_by_name(name)
             else:  # should be template:
                 features_search = a_air.feature.get_sequence_by_name(name)
-            
+
             if features_search is not None:
                 aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
                 for i in range(1, len(features_search)):
                     if aligned_sequence[i - 1] != '-':
                         ax.barh(template_name, 1, height=height, left=i, color=str(aligned_sequence[i - 1]))
-    
+
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(0, total_length)
-    ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-    
+    ax.set_xticks(
+        [a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
+
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
     ax.spines['right'].set_visible(False)
@@ -190,11 +193,9 @@ class OutputAir:
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
-
     def create_plot_gantt(self, a_air):
         self.gantt_plots_path = [plot_gantt(plot_type='template', plot_path=self.plots_path, a_air=a_air)]
         self.gantt_plots_path.append(plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air))
-
 
     def set_run_dir(self, run_dir: str):
         self.run_dir = run_dir
@@ -202,14 +203,15 @@ class OutputAir:
         self.aleph_results_path = f'{run_dir}/output.json'
         utils.create_dir(dir_path=self.nonsplit_path, delete_if_exists=True)
 
-
-    def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features, experimental_pdb: str):
+    def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
+                       experimental_pdb: str):
         # Read all templates and rankeds, if there are no ranked, raise an error
         template_dict = {}
         template_nonsplit = {}
 
         if feature is not None:
-            template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path, print_number=False)
+            template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path,
+                                                                        print_number=False)
 
         # Split the templates with chains
         for template, template_path in template_nonsplit.items():
@@ -217,18 +219,19 @@ class OutputAir:
             shutil.copy2(template_path, new_pdb_path)
             template_dict[template] = new_pdb_path
             bioutils.split_chains_assembly(pdb_in_path=new_pdb_path,
-                                        pdb_out_path=new_pdb_path,
-                                        sequence_assembled=sequence_assembled)
+                                           pdb_out_path=new_pdb_path,
+                                           sequence_assembled=sequence_assembled)
 
         self.ranked_list = read_rankeds(input_path=self.run_dir)
-        
+
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
             return
 
         # Create a plot with the ranked plddts, also, calculate the maximum plddt
         max_plddt, self.best_ranked = plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
-        bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path), sequence_amino=sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
+        bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
+                                sequence_amino=sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
 
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
@@ -240,13 +243,13 @@ class OutputAir:
 
             shutil.copy2(ranked.path, ranked.split_path)
             mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.split_path,
-                                                    pdb_out_path=ranked.split_path,
-                                                    sequence_assembled=sequence_assembled)
+                                                     pdb_out_path=ranked.split_path,
+                                                     sequence_assembled=sequence_assembled)
             ranked.set_mapping(mapping)
 
         # Save superpositions of rankeds and templates
         reference_superpose = self.ranked_list[0].split_path
-        
+
         for path in [ranked.split_path for ranked in self.ranked_list[1:]] + list(template_dict.values()):
             bioutils.superpose_pdbs([path, reference_superpose], path)
 
@@ -255,7 +258,8 @@ class OutputAir:
             for ranked in self.ranked_list:
                 for template, template_path in template_dict.items():
                     total_residues = len(
-                        [res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
+                        [res for res in
+                         Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
                     rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path])
                     ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
 
@@ -263,12 +267,14 @@ class OutputAir:
         for ranked in self.ranked_list:
             aleph_file = os.path.join(self.run_dir, f'aleph_{ranked.name}.txt')
             with open(aleph_file, 'w') as sys.stdout:
-                ALEPH.annotate_pdb_model(reference=ranked.split_path, strictness_ah=0.45, strictness_bs=0.2, peptide_length=3,
-                                        width_pic=1, height_pic=1, write_graphml=False, write_pdb=True)
+                ALEPH.annotate_pdb_model(reference=ranked.split_path, strictness_ah=0.45, strictness_bs=0.2,
+                                         peptide_length=3,
+                                         width_pic=1, height_pic=1, write_graphml=False, write_pdb=True)
             sys.stdout = sys.__stdout__
             if os.path.exists(self.aleph_results_path):
                 result_dict = utils.parse_aleph_annotate(file_path=self.aleph_results_path)
-                ranked.set_secondary_structure(ah=result_dict['ah'], bs=result_dict['bs'], total_residues=result_dict['number_total_residues'])
+                ranked.set_secondary_structure(ah=result_dict['ah'], bs=result_dict['bs'],
+                                               total_residues=result_dict['number_total_residues'])
                 aleph_txt_path = f'{self.run_dir}/aleph_{ranked.name}.txt'
                 domains_dict = utils.parse_aleph_ss(aleph_txt_path)
             else:
@@ -287,9 +293,9 @@ class OutputAir:
                         if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
                             interface['bfactor'] = abs(max(deltas_list)) * 2
                         extended_res_dict = bioutils.create_interface_domain(pdb_in_path=ranked.split_path,
-                                                                            pdb_out_path=dimers_path,
-                                                                            interface=interface,
-                                                                            domains_dict=domains_dict)
+                                                                             pdb_out_path=dimers_path,
+                                                                             interface=interface,
+                                                                             domains_dict=domains_dict)
                         renum_residues_list = []
                         renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain1']],
                                                                         mapping=ranked.mapping[interface['chain1']]))
@@ -299,7 +305,7 @@ class OutputAir:
 
         # Superpose the experimental pdb with all the rankeds and templates
         if experimental_pdb is not None:
-            for ranked  in self.ranked_list:
+            for ranked in self.ranked_list:
                 rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, ranked.split_path])
                 self.experimental_dict[ranked.name] = rmsd
             for template, template_path in template_dict.items():
@@ -314,21 +320,25 @@ class OutputAir:
             template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
             path_list = [ranked.path for ranked in self.ranked_list if ranked.filtered]
             with open(frobenius_file, 'w') as sys.stdout:
-                _, _, _, _, _, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path], targets=list(path_list), write_plot=True, write_matrix=True)
+                _, _, _, _, _, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path],
+                                                                               targets=list(path_list), write_plot=True,
+                                                                               write_matrix=True)
             sys.stdout = sys.__stdout__
-            self.frobenius_plots += [shutil.copy2(plot, self.frobenius_path) for plot in (list_plot_ang+list_plot_dist)]
+            self.frobenius_plots += [shutil.copy2(plot, self.frobenius_path) for plot in
+                                     (list_plot_ang + list_plot_dist)]
             ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
             for ranked in ranked_filtered:
                 ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
                 for interface_list in ranked.interfaces:
                     frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface_list.name}.txt')
                     with open(frobenius_file, 'w') as sys.stdout:
-                        _,_, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix, residues_tar=interface_list.res_list, write_plot=True, title=f'Interface: {interface_list.name}')
+                        _, _, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix,
+                                                                 residues_tar=interface_list.res_list, write_plot=True,
+                                                                 title=f'Interface: {interface_list.name}')
                     sys.stdout = sys.__stdout__
                     new_name = os.path.join(self.frobenius_path, f'{interface_list.name}.png')
                     plot_path = os.path.join(self.run_dir, os.path.basename(plot))
                     ranked.add_frobenius_plot(shutil.copy2(plot_path, new_name))
-
 
     def write_tables(self, rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict, energies_dict: Dict):
         with open(self.analysis_path, 'w') as f_in:
@@ -339,7 +349,8 @@ class OutputAir:
                 data = {'ranked': rmsd_dict.keys()}
                 for templates in rmsd_dict.values():
                     for template, value in templates.items():
-                        data.setdefault(template,[]).append(f'{value["rmsd"]} {value["aligned_residues"]} ({value["total_residues"]})')
+                        data.setdefault(template, []).append(
+                            f'{value["rmsd"]} {value["aligned_residues"]} ({value["total_residues"]})')
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())
 

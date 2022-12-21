@@ -91,8 +91,8 @@ def chunk_string(length: int, number_partitions: int, overlap: int = 50) -> List
     else:
         reminder = length % number_partitions
         chunk_list = []
-        size = int((length-reminder)/number_partitions)
-        for chunk in range(0, length-reminder, size):
+        size = int((length - reminder) / number_partitions)
+        for chunk in range(0, length - reminder, size):
             chunk_list.append((chunk, size + chunk + overlap))
         last_element = chunk_list[-1]
         chunk_list[-1] = (last_element[0], last_element[1] + reminder - overlap)
@@ -141,7 +141,7 @@ def get_consecutive_numbers(number_list: List[int]) -> List[Tuple[int, int]]:
     return result_list
 
 
-def get_chain_and_number(path_pdb: str) -> Tuple[int, int]:
+def get_chain_and_number(path_pdb: str) -> tuple[str, int]:
     # Given a path: ../../template_A1.pdb return A and 1
     # Return CHAIN and NUMBER
     name = get_file_name(path_pdb)
@@ -284,7 +284,7 @@ def parse_pisa_interfaces(pisa_output: str) -> Dict:
     #   res_chain2
     # }]
     # It returns a list with the interface information, each
-    # interface contains the requiered information.
+    # interface contains the required information.
 
     iter_list = iter(pisa_output.split('\n'))
     res_chain1 = []
@@ -344,6 +344,7 @@ def create_dir(dir_path: str, delete_if_exists: bool = False):
     elif delete_if_exists:
         shutil.rmtree(dir_path)
         os.makedirs(dir_path)
+
 
 def remove_list_layer(input_list: List[List[str]]) -> List[str]:
     return [j for x in input_list for j in x]
