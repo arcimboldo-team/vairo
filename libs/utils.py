@@ -141,7 +141,7 @@ def get_consecutive_numbers(number_list: List[int]) -> List[Tuple[int, int]]:
     return result_list
 
 
-def get_chain_and_number(path_pdb: str) -> tuple[str, int]:
+def get_chain_and_number(path_pdb: str) -> Tuple[str, int]:
     # Given a path: ../../template_A1.pdb return A and 1
     # Return CHAIN and NUMBER
     name = get_file_name(path_pdb)

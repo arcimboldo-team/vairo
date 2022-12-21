@@ -30,7 +30,7 @@ class StructureAir:
         self.custom_features: bool = True
         self.experimental_pdb: Union[str, None] = None
         self.mosaic: Union[int, None] = None
-        self.mosaic_overlap: int = 50
+        self.mosaic_overlap: int = 100
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
         self.state: int = 0
@@ -231,7 +231,7 @@ class StructureAir:
                                                    finish_chunk=partitions[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:
@@ -269,9 +269,9 @@ class StructureAir:
                 bioutils.run_lsqkab(pdb_inf_path=inf_path,
                                     pdb_inm_path=ranked.path,
                                     fit_ini=inf_ini,
-                                    fit_end=inf_end + 1,
+                                    fit_end=inf_end,
                                     match_ini=inm_ini,
-                                    match_end=inm_end + 1,
+                                    match_end=inm_end,
                                     pdb_out=pdb_out
                                     )
                 merge_pdbs_list.append(pdb_out)

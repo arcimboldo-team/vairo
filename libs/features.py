@@ -433,6 +433,9 @@ def create_features_from_file(pkl_in_path: str) -> Features:
         new_features.append_row_in_msa(sequence=sequence,
                                        sequence_id=str(i))
 
+        if i > 50:
+            break
+
     for i in range(0, len(features_dict['template_sequence'])):
         template_dict = {
             'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),
