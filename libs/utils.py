@@ -84,7 +84,7 @@ def get_working_dir() -> str:
     return os.getcwd()
 
 
-def chunk_string(length: int, number_partitions: int, overlap: int = 50) -> List[Tuple[int, int]]:
+def chunk_string(length: int, number_partitions: int, overlap: int) -> List[Tuple[int, int]]:
     # Slice string in chunks of size
     if number_partitions == 1:
         return [(0, length)]

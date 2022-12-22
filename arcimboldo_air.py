@@ -77,11 +77,10 @@ def main():
                                                         custom_sum_prob=template.sum_prob)
                     logging.info(f'Template {template.pdb_id} was added to templates')
             a_air.feature.write_pkl(os.path.join(a_air.run_dir, 'features.pkl'))
-            features_list = a_air.feature.slicing_features(mosaic=a_air.mosaic)
+            features_list = a_air.feature.slicing_features(mosaic=a_air.mosaic, overlap=a_air.mosaic_overlap)
         
         else:
-            num = utils.chunk_string(len(a_air.sequence_assembled.sequence_assembled), a_air.mosaic)
-            features_list = [None] * len(num)
+            features_list = [None] * a_air.mosaic
             logging.info('No features.pkl added, default AlphaFold2 run')
 
         a_air.change_state(state=2)

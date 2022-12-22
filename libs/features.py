@@ -126,13 +126,13 @@ class Features:
 
         return {**self.sequence_features, **self.msa_features, **self.template_features}
 
-    def slicing_features(self, mosaic: int) -> List:
+    def slicing_features(self, mosaic: int, overlap: int) -> List:
         # This function will generate as many features
         # as required per size. It will return a list with
         # the path of all the generated features
 
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
-        chunk_list = utils.chunk_string(len(sequence), mosaic)
+        chunk_list = utils.chunk_string(length=len(sequence), mosaic=mosaic, overlap=overlap)
         features_list = []
         for start_min, start_max in chunk_list:
             new_features = Features(query_sequence=sequence[start_min:start_max])
