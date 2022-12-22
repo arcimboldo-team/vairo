@@ -107,12 +107,13 @@ class Features:
         return [x.decode() for x in self.msa_features['accession_ids']]
 
     def get_msa_by_name(self, name: str) -> Union[str, None]:
-
         index = np.flatnonzero(
             np.core.defchararray.find(name.encode(), self.msa_features['accession_ids']) != -1)
+        
         if len(index) > 1:
             return (''.join(
-                [residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][index[1]].tolist()]))
+                [residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][index[-1]].tolist()]))
+        
         return None
 
     def get_sequence_by_name(self, name: str) -> str:
@@ -132,7 +133,7 @@ class Features:
         # the path of all the generated features
 
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
-        chunk_list = utils.chunk_string(length=len(sequence), mosaic=mosaic, overlap=overlap)
+        chunk_list = utils.chunk_string(length=len(sequence), number_partitions=mosaic, overlap=overlap)
         features_list = []
         for start_min, start_max in chunk_list:
             new_features = Features(query_sequence=sequence[start_min:start_max])
@@ -433,8 +434,6 @@ def create_features_from_file(pkl_in_path: str) -> Features:
         new_features.append_row_in_msa(sequence=sequence,
                                        sequence_id=str(i))
 
-        if i > 50:
-            break
 
     for i in range(0, len(features_dict['template_sequence'])):
         template_dict = {
