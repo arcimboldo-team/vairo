@@ -30,7 +30,7 @@ class StructureAir:
         self.custom_features: bool = True
         self.experimental_pdb: Union[str, None] = None
         self.mosaic: Union[int, None] = None
-        self.mosaic_overlap: int = 100
+        self.mosaic_overlap: int = 150
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
         self.state: int = 0
@@ -231,7 +231,7 @@ class StructureAir:
                                                    finish_chunk=partitions[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:
