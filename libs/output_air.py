@@ -113,6 +113,10 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
             ax.barh('Percentage', 1, height=height, left=i, color=str(aligned_sequences[i - 1]))
 
     else:
+        pdb_hits_path = os.path.join(a_air.run_dir, 'msas/pdb_hits.hhr')
+        hhr_text = ''
+        if os.path.exists(pdb_hits_path):
+            hhr_text = open(pdb_hits_path, 'r').read()
         for j, name in reversed(list(enumerate(names))):
             template = a_air.get_template_by_id(name)
             if template is not None:
@@ -124,13 +128,17 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
                     template_name = name
                     legend_elements.append(Patch(label=f'{template_name}: {results_alignment_text}'))
             else:
-                results_alignment_text = ''
                 template_name = name
 
             if plot_type == 'msa':
                 features_search = a_air.feature.get_msa_by_name(name)
-            else:  # should be template:
+            else:
                 features_search = a_air.feature.get_sequence_by_name(name)
+                if hhr_text != '':
+                    match = re.findall(rf'(\d+ {name.upper()}.*$)', hhr_text, re.M)
+                    match_split = match[0].split()[-9:]
+                    legend_elements.append(Patch(label=f'{template_name}: Aligned={match_split[5]}({match_split[8].replace("(","").replace(")","")}) Evalue={match_split[2]}'))
+
 
             if features_search is not None:
                 aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
