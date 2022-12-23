@@ -40,7 +40,7 @@ def run_lsqkab(pdb_inf_path, pdb_inm_path, fit_ini, fit_end, match_ini, match_en
         f_in.write('lsqkab ')
         f_in.write(f'xyzinf {utils.get_file_name(pdb_inf_path)} ')
         f_in.write(f'xyzinm {utils.get_file_name(pdb_inm_path)} ')
-        f_in.write(f'DELTAS {utils.get_file_name(pdb_out)}.delta')
+        f_in.write(f'DELTAS {utils.get_file_name(pdb_out)}.delta ')
         f_in.write(f'xyzout {utils.get_file_name(pdb_out)} << END-lsqkab \n')
         f_in.write('title matching template and predictions \n')
         f_in.write('output deltas \n')
