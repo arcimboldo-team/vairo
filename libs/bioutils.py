@@ -46,7 +46,7 @@ def run_lsqkab(pdb_inf_path, pdb_inm_path, fit_ini, fit_end, match_ini, match_en
         f_in.write('output deltas \n')
         f_in.write('output XYZ \n')
         f_in.write(f'fit RESIDU CA {match_ini} TO {match_end} CHAIN A \n')
-        f_in.write(f'MATCH RESIDU {fit_ini} TO {fit_ini} CHAIN A \n')
+        f_in.write(f'MATCH RESIDU {fit_ini} TO {fit_end} CHAIN A \n')
         f_in.write(f'end \n')
         f_in.write(f'END-lsqkab')
     subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.path.dirname(pdb_out)).communicate()
