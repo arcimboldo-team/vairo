@@ -644,6 +644,9 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
 
 
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
+    if length == 0:
+        return []
+        
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
     for element in combinated_list:
