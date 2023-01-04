@@ -135,7 +135,10 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
             else:
                 features_search = a_air.feature.get_sequence_by_name(name)
                 if hhr_text != '':
+                    print(hhr_text)
+                    print(f'(\d+ {name.upper()}.*$)')
                     match = re.findall(rf'(\d+ {name.upper()}.*$)', hhr_text, re.M)
+                    print(match)
                     match_split = match[0].split()[-9:]
                     legend_elements.append(Patch(label=f'{template_name}: Aligned={match_split[5]}({match_split[8].replace("(","").replace(")","")}) Evalue={match_split[2]}'))
 
