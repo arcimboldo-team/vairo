@@ -7,6 +7,8 @@ from libs import alphafold_classes, bioutils, change_res, output_air, template, 
 from jinja2 import Environment, FileSystemLoader
 
 
+MIN_RMSD_SPLIT = 5
+
 class StructureAir:
 
     def __init__(self, parameters_dict: Dict):
@@ -266,21 +268,37 @@ class StructureAir:
                 inm_ini = 1
                 inm_end = self.mosaic_overlap
                 pdb_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_superposed.pdb')
+                delta_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_deltas.dat')
                 bioutils.run_lsqkab(pdb_inf_path=inf_path,
                                     pdb_inm_path=ranked.path,
                                     fit_ini=inf_ini,
                                     fit_end=inf_end,
                                     match_ini=inm_ini,
                                     match_end=inm_end,
-                                    pdb_out=pdb_out
+                                    pdb_out=pdb_out,
+                                    delta_out=delta_out
                                     )
+
+                best_list = []
+                best_min = MIN_RMSD_SPLIT
+                with open(delta_out, 'r') as f_in:
+                    lines = f_in.readlines()
+                    lines = [line.replace('CA','').split() for line in lines]
+                    for deltas in zip(lines, lines[1:], lines[2:], lines[3:]):
+                        deltas_sum = sum([float(delta[0]) for delta in deltas])
+                        if deltas_sum <= best_min:
+                            best_list = deltas
+                            best_min = deltas_sum
+
+                inf_cut = int(best_list[1][3])
+                inm_cut = int(best_list[2][1])
+                delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(inf_cut + 1, len_sequence + 1, 1)]})
+                delete_residues.delete_residues(pdb_in_path=inf_path, pdb_out_path=inf_path)
+                delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
+                delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
                 merge_pdbs_list.append(pdb_out)
                 inf_path = pdb_out
-
-            delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, self.mosaic_overlap + 1, 1)]})
-            for path in merge_pdbs_list[1:]:
-                delete_residues.delete_residues(pdb_in_path=path, pdb_out_path=path)
-
+            
             bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
                                              pdb_out_path=os.path.join(results_dir, 'ranked_0.pdb'))
             self.run_dir = results_dir

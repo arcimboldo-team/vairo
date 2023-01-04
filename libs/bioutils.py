@@ -34,13 +34,16 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
     return cif_out_path
 
 
-def run_lsqkab(pdb_inf_path, pdb_inm_path, fit_ini, fit_end, match_ini, match_end, pdb_out):
+def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int, match_ini: int, match_end: int, pdb_out: str, delta_out: str):
+    #Run the probram lsqkab. Write the superposed pdb in pdbout and the deltas in delta_out.
+    #LSQKAB will match the CA atoms from the pdb_inf to fit in the pdb_inm.
+    
     script_path = os.path.join(os.path.dirname(pdb_out), f'{utils.get_file_name(pdb_out)}_lsqkab.sh')
     with open(script_path, 'w') as f_in:
         f_in.write('lsqkab ')
         f_in.write(f'xyzinf {utils.get_file_name(pdb_inf_path)} ')
         f_in.write(f'xyzinm {utils.get_file_name(pdb_inm_path)} ')
-        f_in.write(f'DELTAS {utils.get_file_name(pdb_out)}.delta ')
+        f_in.write(f'DELTAS {utils.get_file_name(delta_out)} ')
         f_in.write(f'xyzout {utils.get_file_name(pdb_out)} << END-lsqkab \n')
         f_in.write('title matching template and predictions \n')
         f_in.write('output deltas \n')
@@ -155,6 +158,7 @@ def merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge: List[str], pdb_out_p
         residues_list = list(structure[0]['A'].get_residues())
         for residue in residues_list:
             new_res = copy.copy(residue)
+            new_res.parent = None
             new_res.id = (' ', count_res, ' ')
             chain.add(new_res)
             new_res.parent = chain
@@ -644,9 +648,9 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
 
 
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
-    if length == 0:
+    if length <= 0:
         return []
-        
+
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
     for element in combinated_list:
