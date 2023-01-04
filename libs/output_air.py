@@ -275,9 +275,12 @@ class OutputAir:
         for ranked in self.ranked_list:
             aleph_file = os.path.join(self.run_dir, f'aleph_{ranked.name}.txt')
             with open(aleph_file, 'w') as sys.stdout:
-                ALEPH.annotate_pdb_model(reference=ranked.split_path, strictness_ah=0.45, strictness_bs=0.2,
-                                         peptide_length=3,
-                                         width_pic=1, height_pic=1, write_graphml=False, write_pdb=True)
+                try:
+                    ALEPH.annotate_pdb_model(reference=ranked.split_path, strictness_ah=0.45, strictness_bs=0.2,
+                                            peptide_length=3,
+                                            width_pic=1, height_pic=1, write_graphml=False, write_pdb=True)
+                except:
+                    pass
             sys.stdout = sys.__stdout__
             if os.path.exists(self.aleph_results_path):
                 result_dict = utils.parse_aleph_annotate(file_path=self.aleph_results_path)

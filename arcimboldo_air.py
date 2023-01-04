@@ -100,9 +100,9 @@ def main():
         if not a_air.verbose:
             utils.clean_files(input_dir=a_air.run_dir)
 
-        logging.info('ARCIMBOLDO_AIR has finished succesfully')
         a_air.change_state(state=3)
         a_air.generate_output()
+        logging.info('ARCIMBOLDO_AIR has finished succesfully')
         
     except SystemExit as e:
         sys.exit(e)
