@@ -164,7 +164,7 @@
                     <li name="alignment" onclick="move_to(event)" class="sub-menu">Alignment</li>
                 {% endif %}
                 {% if 'plddt' in data %}
-                    <li name="plddt" onclick="move_to(event)" class="sub-menu">Rankeds PLDDT</li>
+                    <li name="plddt" onclick="move_to(event)" class="sub-menu">PLDDT for predictions</li>
                 {% endif %}
                 {% if 'frobenius_dict' in data %}
                     <li name="graphs" onclick="move_to(event)" class="sub-menu">Graphs</li>                
@@ -181,22 +181,41 @@
         </aside>
 
         <section id="container-main">
-            <p style="margin-top:30px">ARCIMBOLDO-AIR: Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p>
+            <p style="margin-top:30px">
+                ARCIMBOLDO_AIR guides predictions towards particular dynamic states selecting the prior information input or analysing the results of the search.
+                {% if data.custom_features %}
+                    The
+                    {% if data.total_copies > 1 %}
+                        complex
+                    {% else %}
+                        structure
+                    {% endif %}                    
+                    is predicted in homology to {{ data.number_templates }} template/s, {{ data.number_alignments }} alignment/s provided.
+                {% else %}
+                    AF-selected templates will be analysed and structurally clustered. Predictions will be driven towards the different extreme structures.
+                {% endif %}
+                {% if data.mosaic > 1%} 
+                     {{ data.mosaic }} partially overlapping fragments are predicted and merged into the structure.
+                {% endif %}
+            
+            </p>            
             <div id="summary" class="section-div">
                 <h2>Summary</h2>
                 <p>State: {{ data.state }}</p>
                 {% if data.best_ranked is not none and 'table' in data%}
-                    <p>Best result is <span style="color:green;">{{ data.best_ranked}}</span> with a {{ data.table.plddt_dict[data.best_ranked] }} PLDDT.
+                    <p>Best result is <span style="color:green;">{{ data.best_ranked}}</span> with a {{ data.table.plddt_dict[data.best_ranked] }} pLDDT.
                         {% if data.best_ranked in data.ranked_filtered%}
                             Can be found in the following path: <a download="{{ data.best_ranked }}.pdb" href=data:text/plain;base64,{{ data.ranked_filtered_encoded[data.best_ranked] }}>{{ data.ranked_filtered[data.best_ranked] }}</a>
                         {% endif %}
                     </p>
-                    <p>Other possible solutions are:</p>
-                        <ul>
-                            {% for key, value in data.ranked_filtered_encoded.items() if key != data.best_ranked%}
-                                <li><span style="color:blue;">{{ key }}</span>: <a download="{{ key }}.pdb" href=data:text/plain;base64,{{ value }}> {{ data.ranked_filtered[key] }}</a> ({{ data.table.plddt_dict[key] }} PLDDT)</li>
-                            {% endfor %}
-                        </ul>
+                    <ul>
+                        {% for key, value in data.ranked_filtered_encoded.items() if key != data.best_ranked%}
+                            {% if loop.first %}
+                                <p>Other possible solutions are:</p>
+                            {% endif %}
+                            <li><span style="color:blue;">{{ key }}</span>: <a download="{{ key }}.pdb" href=data:text/plain;base64,{{ value }}> {{ data.ranked_filtered[key] }}</a> ({{ data.table.plddt_dict[key] }} pLDDT)</li>
+                        {% endfor %}
+                    </ul>
                 {% endif %}
             </div>
             <div id="input" class="section-div">
@@ -215,7 +234,7 @@
             {% endif %}
             {% if 'plddt' in data %}
                 <div id="plddt" class="section-div">
-                    <h2>Rankeds PLDDT</h2>
+                    <h2>pLDDT for predictions</h2>
                     <img style="width: 90%" src="data:image/png;base64,{{ data.plddt }}" alt="PLDDT graph">
                 </div>
             {% endif %}
@@ -234,10 +253,10 @@
             <div id="tables" class="section-div">
                 <h2>Tables</h2>
                 {% if 'plddt_dict' in data.table %}
-                    <h3>rankeds PLDDT</h3>
+                    <h3>pLDDT for predictions</h3>
                     <table>
                         <tr>
-                            <th>ranked</th>
+                            <th>predictions</th>
                             <th>PLDDT</th>
                         </tr>
                         {% for key, value in data.table.plddt_dict.items() %}
@@ -255,10 +274,10 @@
                     </table>
                 {% endif %}
                 {% if 'rmsd_dict' in data.table %}
-                    <h3>Superposition of rankeds and templates</h3>
+                    <h3>Superposition of predictions and templates</h3>
                     <table>
                         <tr>
-                            <th>ranked</th>
+                            <th>prediction</th>
                             {% for value in data.table.rmsd_dict.values() %}
                                 {% for key in value.keys() if loop.first%}            
                                     <th>{{ key }}</th>
@@ -285,7 +304,7 @@
                     <h3>Secondary structure percentages calculated with ALEPH</h3>
                     <table>
                         <tr>
-                            <th>ranked</th>
+                            <th>prediction</th>
                             <th>ah</th>
                             <th>bs</th>
                             <th>number of residues</th>
@@ -307,10 +326,10 @@
                     </table>
                 {% endif %}
                 {% if 'energies_dict' in data.table %}
-                    <h3>Ranked energies</h3>
+                    <h3>Predictions energies</h3>
                     <table>
                         <tr>
-                            <th>ranked</th>
+                            <th>prediction</th>
                             <th>kinetic</th>
                             <th>potential</th>
                         </tr>

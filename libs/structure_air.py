@@ -27,7 +27,7 @@ class StructureAir:
         self.verbose: bool = True
         self.small_bfd: bool = False
         self.glycines: int = 50
-        self.template_positions_list: List = [List]
+        self.template_positions_list: List[List] = []
         self.reference: Union[template.Template, None] = None
         self.custom_features: bool = True
         self.experimental_pdb: Union[str, None] = None
@@ -108,6 +108,16 @@ class StructureAir:
             template_str = f_in.read()
         jinja_template = Environment(loader=FileSystemLoader(f'{utils.get_main_path()}/templates/')).from_string(
             template_str)
+
+        render_dict['custom_features'] = self.custom_features
+        render_dict['mosaic'] = self.mosaic
+        render_dict['total_copies'] = self.sequence_assembled.total_copies
+        render_dict['number_templates'] = len(self.templates_list)
+        for template_list in self.template_positions_list:
+            print(template_list)
+            for template_path in template_list:
+                print(template_path)
+        render_dict['number_alignments'] = len([template_path for template_list in self.template_positions_list for template_path in template_list if template_path is not None])
 
         with open(self.input_path, 'r') as f_in:
             render_dict['bor_text'] = f_in.read()
@@ -233,7 +243,7 @@ class StructureAir:
                                                    finish_chunk=partitions[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:
@@ -289,6 +299,9 @@ class StructureAir:
                         if deltas_sum <= best_min:
                             best_list = deltas
                             best_min = deltas_sum
+
+                if not best_list:
+                    raise Exception('RMSD minimum requirements not met in order to merge the results in mosaic mode.')
 
                 inf_cut = int(best_list[1][3])
                 inm_cut = int(best_list[2][1])
