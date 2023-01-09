@@ -113,10 +113,6 @@ class StructureAir:
         render_dict['mosaic'] = self.mosaic
         render_dict['total_copies'] = self.sequence_assembled.total_copies
         render_dict['number_templates'] = len(self.templates_list)
-        for template_list in self.template_positions_list:
-            print(template_list)
-            for template_path in template_list:
-                print(template_path)
         render_dict['number_alignments'] = len([template_path for template_list in self.template_positions_list for template_path in template_list if template_path is not None])
 
         with open(self.input_path, 'r') as f_in:
@@ -130,37 +126,58 @@ class StructureAir:
             render_dict['gantt'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in
                                     self.output.gantt_plots_path]
 
-        if self.output.frobenius_plots:
-            frobenius_dict['general'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in
-                                         self.output.frobenius_plots]
-
         if os.path.exists(self.output.plddt_plot_path):
             render_dict['plddt'] = base64.b64encode(open(self.output.plddt_plot_path, 'rb').read()).decode('utf-8')
 
         if self.output.ranked_list:
+            if self.output.best_ranked is not None:
+                render_dict['best_ranked'] = self.output.best_ranked.name
+            render_dict['ranked_filtered'] = {ranked.name: ranked.split_path for ranked in self.output.ranked_list if
+                                            ranked.filtered}
+            render_dict['ranked_filtered_encoded'] = {
+                ranked.name: base64.b64encode(open(ranked.split_path, 'rb').read()).decode('utf-8') for ranked in
+                self.output.ranked_list if ranked.filtered}
+
             render_dict['table'] = {}
             plddt_dict = {}
             secondary_dict = {}
             rmsd_dict = {}
             energies_dict = {}
-            try:
-                for ranked in self.output.ranked_list:
+            color_dict = {}
+            interfaces_dict = {}
+            frobenius_dict = {}
+            green_color = 50
+            for ranked in self.output.ranked_list:
+                try:
+                    if ranked.best and ranked.name != self.output.best_ranked.name:
+                        color_dict[ranked.name] = f'hsl(120, 100% ,{green_color}%)'
+                        green_color += 10
+                        
                     plddt_dict[ranked.name] = ranked.plddt
                     secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
-                                                   'number_total_residues': ranked.total_residues}
+                                                    'number_total_residues': ranked.total_residues}
                     if ranked.energies is not None:
                         energies_dict[ranked.name] = {'kinetic': ranked.energies.kinetic,
-                                                      'potential': ranked.energies.potential}
+                                                        'potential': ranked.energies.potential}
                     rmsd_dict[ranked.name] = {}
                     for ranked_template in ranked.superposition_templates:
                         rmsd_dict[ranked.name][ranked_template.template] = {'rmsd': ranked_template.rmsd,
                                                                             'aligned_residues': ranked_template.aligned_residues,
                                                                             'total_residues': ranked_template.total_residues}
-                    if ranked.filtered and ranked.frobenius_plot:
-                        frobenius_dict[ranked.name] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for
-                                                       plot in ranked.frobenius_plot]
-            except:
-                pass
+                    if ranked.filtered and ranked.interfaces_frobenius_plot:
+                        interfaces_dict[ranked.name] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for
+                                                        plot in ranked.interfaces_frobenius_plot]
+
+                    frobenius_dict[ranked.name] = {}
+                    frobenius_dict[ranked.name]['dist'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for
+                                                        plot in ranked.dist_frobenius_plot],
+                    frobenius_dict[ranked.name]['ang'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for
+                                                        plot in ranked.ang_frobenius_plot]
+                except:
+                    pass
+    
+            if color_dict:
+                render_dict['color_dict'] = color_dict
             if plddt_dict:
                 render_dict['table']['plddt_dict'] = plddt_dict
             if secondary_dict:
@@ -169,21 +186,16 @@ class StructureAir:
                 render_dict['table']['rmsd_dict'] = rmsd_dict
             if energies_dict:
                 render_dict['table']['energies_dict'] = energies_dict
+            if interfaces_dict:
+                render_dict['interfaces_dict'] = interfaces_dict
+            if frobenius_dict:
+                render_dict['frobenius_dict'] = frobenius_dict
             if self.output.experimental_dict:
                 render_dict['table']['experimental_dict'] = self.output.experimental_dict
 
             self.output.write_tables(rmsd_dict=rmsd_dict, secondary_dict=secondary_dict, plddt_dict=plddt_dict,
-                                     energies_dict=energies_dict)
-
-        if frobenius_dict:
-            render_dict['frobenius_dict'] = frobenius_dict
-        if self.output.best_ranked is not None:
-            render_dict['best_ranked'] = self.output.best_ranked.name
-        render_dict['ranked_filtered'] = {ranked.name: ranked.split_path for ranked in self.output.ranked_list if
-                                          ranked.filtered}
-        render_dict['ranked_filtered_encoded'] = {
-            ranked.name: base64.b64encode(open(ranked.split_path, 'rb').read()).decode('utf-8') for ranked in
-            self.output.ranked_list if ranked.filtered}
+                                     energies_dict=energies_dict)        
+        
         render_dict['state'] = self.get_state_text()
 
         with open(self.output.html_path, 'w') as f_out:

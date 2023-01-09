@@ -55,8 +55,11 @@ class Ranked:
         self.mapping: Dict = {}
         self.energies: OpenmmEnergies = None
         self.interfaces: List[InterfaceName] = []
-        self.frobenius_plot: List[str] = []
+        self.interfaces_frobenius_plot: List[str] = []
+        self.dist_frobenius_plot: List[str] = []
+        self.ang_frobenius_plot: List[str] = []
         self.filtered: bool = False
+        self.best: bool = False
 
         self.path = ranked_path
         self.name = utils.get_file_name(ranked_path)
@@ -69,6 +72,9 @@ class Ranked:
 
     def set_filtered(self, filtered: bool):
         self.filtered = filtered
+
+    def set_best(self, best: bool):
+        self.best = best
 
     def set_mapping(self, mapping: Dict):
         self.mapping = mapping
@@ -93,5 +99,11 @@ class Ranked:
     def set_energies(self, energies: OpenmmEnergies):
         self.energies = energies
 
-    def add_frobenius_plot(self, plot):
-        self.frobenius_plot.append(plot)
+    def add_interfaces_frobenius_plot(self, plot: str):
+        self.interfaces_frobenius_plot.append(plot)
+
+    def add_dist_frobenius_plot(self, plots: List[str]):
+        self.dist_frobenius_plot.extend(plots)
+
+    def add_ang_frobenius_plot(self, plots: List[str]):
+        self.ang_frobenius_plot.extend(plots)

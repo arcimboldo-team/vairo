@@ -128,6 +128,20 @@
             .btn:hover{
                 background-color: #b8b8b8;
             }
+
+
+            hidderanked {
+                user-select: none;
+            }
+            showplots {
+            display: flex;
+            cursor: pointer;
+            }
+            showplots::-webkit-details-marker {
+            display: none;
+            }
+
+
             table {
                 border-collapse: collapse;
                 width: auto;
@@ -142,7 +156,7 @@
                 background-color: blue;
             }
             .best-ranked {
-                background-color: green;
+                background-color: rgb(0,204,0);
             }
             td{
                 border: 2px solid #000000;
@@ -167,7 +181,10 @@
                     <li name="plddt" onclick="move_to(event)" class="sub-menu">PLDDT for predictions</li>
                 {% endif %}
                 {% if 'frobenius_dict' in data %}
-                    <li name="graphs" onclick="move_to(event)" class="sub-menu">Graphs</li>                
+                    <li name="frobenius_graphs" onclick="move_to(event)" class="sub-menu">Frobenius Graphs</li>                
+                {% endif %}
+                {% if 'interfaces_dict' in data %}
+                    <li name="interfaces_graphs" onclick="move_to(event)" class="sub-menu">Interfaces Graphs</li>                
                 {% endif %}
                 {% if 'table' in data %}
                     <li name="tables" onclick="move_to(event)" class="sub-menu">Tables</li>
@@ -213,7 +230,13 @@
                             {% if loop.first %}
                                 <p>Other possible solutions are:</p>
                             {% endif %}
-                            <li><span style="color:blue;">{{ key }}</span>: <a download="{{ key }}.pdb" href=data:text/plain;base64,{{ value }}> {{ data.ranked_filtered[key] }}</a> ({{ data.table.plddt_dict[key] }} pLDDT)</li>
+                            {% if key in data.color_dict %}
+                                <li><span style="color:green;">
+                            {% else %}
+                                <li><span style="color:blue;">
+                            {% endif %}
+                            {{ key }}</span>: <a download="{{ key }}.pdb" href=data:text/plain;base64,{{ value }}> {{ data.ranked_filtered[key] }}</a> ({{ data.table.plddt_dict[key] }} pLDDT)</li>
+                            
                         {% endfor %}
                     </ul>
                 {% endif %}
@@ -239,11 +262,24 @@
                 </div>
             {% endif %}
             {% if 'frobenius_dict' in data %}
-                <div id="graphs" class="section-div">
-                    <h2>Graphs</h2>
+                <div id="frobenius_graphs" class="section-div">
+                    <h2>Frobenius Graphs</h2>
                     {% for key, value in data.frobenius_dict.items() %}
-                        <h3>{{ key }}:</h3>
-                        {% for frobenius_graph in value %}
+
+                        <hidderanked>
+                            <h3>{{ key }}:</h3>
+                        </hidderanked>
+                            
+                        {% for frobenius_dict in value['dist'] %}
+                            {% if loop.first %}
+                                <h4>Between distances</h4>
+                            {% endif %}
+                            <img style="width: 60%" src="data:image/png;base64,{{ frobenius_graph }}"alt="Frobenius graph">
+                        {% endfor %}
+                        {% for frobenius_dict in value['ang'] %}
+                            {% if loop.first %}
+                                <h4>Between angles</h4>
+                            {% endif %}
                             <img style="width: 60%" src="data:image/png;base64,{{ frobenius_graph }}"alt="Frobenius graph">
                         {% endfor %}
                     {% endfor %}
@@ -262,6 +298,8 @@
                         {% for key, value in data.table.plddt_dict.items() %}
                             {% if key == data.best_ranked %}
                                 <tr class="best-ranked">
+                            {% elif key in data.color_dict %}
+                                <tr style="background-color:{{data.color_dict[key]}};">
                             {% elif key in data.ranked_filtered %}
                                 <tr class="best-filtered">
                             {% else %}
@@ -287,6 +325,8 @@
                         {% for key, value in data.table.rmsd_dict.items() %}
                             {% if key == data.best_ranked %}
                                 <tr class="best-ranked">
+                            {% elif key in data.color_dict %}
+                                <tr style="background-color:{{data.color_dict[key]}};">
                             {% elif key in data.ranked_filtered %}
                                 <tr class="best-filtered">
                             {% else %}
@@ -312,6 +352,8 @@
                         {% for key, value in data.table.secondary_dict.items() %}
                             {% if key == data.best_ranked %}
                                 <tr class="best-ranked">
+                            {% elif key in data.color_dict %}
+                                <tr style="background-color:{{data.color_dict[key]}};">
                             {% elif key in data.ranked_filtered %}
                                 <tr class="best-filtered">
                             {% else %}
@@ -330,12 +372,14 @@
                     <table>
                         <tr>
                             <th>prediction</th>
-                            <th>kinetic</th>
-                            <th>potential</th>
+                            <th>kinetic (kJ/mol)</th>
+                            <th>potential (kJ/mol)</th>
                         </tr>
                         {% for key, value in data.table.energies_dict.items() %}
                             {% if key == data.best_ranked %}
                                 <tr class="best-ranked">
+                            {% elif key in data.color_dict %}
+                                <tr style="background-color:{{data.color_dict[key]}};">
                             {% elif key in data.ranked_filtered %}
                                 <tr class="best-filtered">
                             {% else %}
@@ -356,7 +400,15 @@
                             <th>rmsd</th>
                         </tr>
                         {% for key, value in data.table.experimental_dict.items() %}
+                        {% if key == data.best_ranked %}
+                            <tr class="best-ranked">
+                        {% elif key in data.color_dict %}
+                            <tr style="background-color:{{data.color_dict[key]}};">
+                        {% elif key in data.ranked_filtered %}
+                            <tr class="best-filtered">
+                        {% else %}
                             <tr>
+                        {% endif %}
                                 <td>{{ key }}</td>
                                 <td>{{ value }}</td>
                             </tr>
@@ -379,7 +431,7 @@
                 <p>
                     <a href="https://doi.org/10.1038/s41586-021-03819-2">Highly accurate protein structure prediction with AlphaFold.</a><br>
                     Jumper, J., Evans, R., Pritzel, A.<br>
-                    (2021) Nature 596, 583–589.
+                    (2021) Nature 596, 583-589.
                 </p>
             </div>        
             <div id="support" class="section-div">

@@ -535,7 +535,7 @@ def run_openmm(pdb_in_path: str, pdb_out_path: str) -> List:
     state = simulation.context.getState(getPositions=True, getEnergy=True)
     with open(pdb_out_path, 'w') as f_out:
         openmm.app.pdbfile.PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_out, keepIds=True)
-    return structures.OpenmmEnergies(state.getKineticEnergy(), state.getPotentialEnergy())
+    return structures.OpenmmEnergies(round(state.getKineticEnergy()._value, 2), round(state.getPotentialEnergy()._value, 2))
 
 
 def superpose_pdbs(pdb_list: List, output_pdb=None) -> Tuple[Optional[float], Optional[str], Optional[str]]:

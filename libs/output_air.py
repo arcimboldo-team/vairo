@@ -15,6 +15,7 @@ from ALEPH.aleph.core import ALEPH
 from libs import bioutils, features, utils, sequence, structures
 
 PERCENTAGE_FILTER = 0.8
+PERCENTAGE_BEST = 0.9
 GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
 plt.set_loglevel('WARNING')
 
@@ -191,7 +192,6 @@ class OutputAir:
         self.gantt_plots_path: List[str] = []
         self.ranked_list: List[structures.Ranked] = []
         self.output_dir: str = output_dir
-        self.frobenius_plots: List[str] = []
         self.best_ranked: structures.Ranked = None
         self.experimental_dict = {}
 
@@ -249,6 +249,8 @@ class OutputAir:
             if ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
                 ranked.set_filtered(True)
                 ranked.set_split_path(os.path.join(self.output_dir, os.path.basename(ranked.path)))
+                if ranked.plddt >= (PERCENTAGE_BEST * max_plddt):
+                    ranked.set_best(True)
             else:
                 ranked.set_split_path(os.path.join(self.run_dir, f'split_{os.path.basename(ranked.path)}'))
 
@@ -272,7 +274,7 @@ class OutputAir:
                         [res for res in
                          Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
                     rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path])
-                    ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
+                    ranked.add_template(structures.TemplateRanked(template, round(rmsd, 2), aligned_residues, total_residues))
 
         # Use aleph to generate domains and calculate secondary structure percentage
         for ranked in self.ranked_list:
@@ -321,10 +323,10 @@ class OutputAir:
         if experimental_pdb is not None:
             for ranked in self.ranked_list:
                 rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, ranked.split_path])
-                self.experimental_dict[ranked.name] = rmsd
+                self.experimental_dict[ranked.name] = round(rmsd, 2)
             for template, template_path in template_dict.items():
                 rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, template_path])
-                self.experimental_dict[template] = rmsd
+                self.experimental_dict[template] = round(rmsd, 2)
             output_pdb = os.path.join(self.output_dir, os.path.basename(experimental_pdb))
             bioutils.superpose_pdbs([experimental_pdb, reference_superpose], output_pdb)
 
@@ -338,10 +340,10 @@ class OutputAir:
                                                                                targets=list(path_list), write_plot=True,
                                                                                write_matrix=True)
             sys.stdout = sys.__stdout__
-            self.frobenius_plots += [shutil.copy2(plot, self.frobenius_path) for plot in
-                                     (list_plot_ang + list_plot_dist)]
             ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
             for ranked in ranked_filtered:
+                ranked.add_dist_frobenius_plot([shutil.copy2(plot, self.frobenius_path) for plot in list_plot_dist if ranked.name in os.path.basename(plot)])
+                ranked.add_ang_frobenius_plot([shutil.copy2(plot, self.frobenius_path) for plot in list_plot_ang if ranked.name in os.path.basename(plot)])
                 ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
                 for interface_list in ranked.interfaces:
                     frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface_list.name}.txt')
@@ -352,7 +354,7 @@ class OutputAir:
                     sys.stdout = sys.__stdout__
                     new_name = os.path.join(self.frobenius_path, f'{interface_list.name}.png')
                     plot_path = os.path.join(self.run_dir, os.path.basename(plot))
-                    ranked.add_frobenius_plot(shutil.copy2(plot_path, new_name))
+                    ranked.add_interfaces_frobenius_plot(shutil.copy2(plot_path, new_name))
 
     def write_tables(self, rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict, energies_dict: Dict):
         with open(self.analysis_path, 'w') as f_in:
