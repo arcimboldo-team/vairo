@@ -169,10 +169,8 @@ class StructureAir:
                                                         plot in ranked.interfaces_frobenius_plot]
 
                     frobenius_dict[ranked.name] = {}
-                    frobenius_dict[ranked.name]['dist'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for
-                                                        plot in ranked.dist_frobenius_plot],
-                    frobenius_dict[ranked.name]['ang'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for
-                                                        plot in ranked.ang_frobenius_plot]
+                    frobenius_dict[ranked.name]['dist'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in ranked.dist_frobenius_plot]
+                    frobenius_dict[ranked.name]['ang'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in ranked.ang_frobenius_plot]
                 except:
                     pass
     

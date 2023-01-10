@@ -35,7 +35,7 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
 
 
 def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int, match_ini: int, match_end: int, pdb_out: str, delta_out: str):
-    #Run the probram lsqkab. Write the superposed pdb in pdbout and the deltas in delta_out.
+    #Run the program lsqkab. Write the superposed pdb in pdbout and the deltas in delta_out.
     #LSQKAB will match the CA atoms from the pdb_inf to fit in the pdb_inm.
     
     script_path = os.path.join(os.path.dirname(pdb_out), f'{utils.get_file_name(pdb_out)}_lsqkab.sh')
@@ -522,7 +522,7 @@ def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
     p.communicate()
 
 
-def run_openmm(pdb_in_path: str, pdb_out_path: str) -> List:
+def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies:
     run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
     protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)
     forcefield = openmm.app.ForceField('amber99sb.xml')

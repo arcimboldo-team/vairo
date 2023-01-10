@@ -265,22 +265,22 @@
                 <div id="frobenius_graphs" class="section-div">
                     <h2>Frobenius Graphs</h2>
                     {% for key, value in data.frobenius_dict.items() %}
-
                         <hidderanked>
                             <h3>{{ key }}:</h3>
                         </hidderanked>
-                            
-                        {% for frobenius_dict in value['dist'] %}
+
+                        {% for plot in value['dist'] %}
                             {% if loop.first %}
                                 <h4>Between distances</h4>
                             {% endif %}
-                            <img style="width: 60%" src="data:image/png;base64,{{ frobenius_graph }}"alt="Frobenius graph">
+                            <img style="width: 60%" src="data:image/png;base64,{{ plot }}" alt="Frobenius distances graph">
                         {% endfor %}
-                        {% for frobenius_dict in value['ang'] %}
+                        {% for plot in value['ang'] %}
                             {% if loop.first %}
                                 <h4>Between angles</h4>
                             {% endif %}
-                            <img style="width: 60%" src="data:image/png;base64,{{ frobenius_graph }}"alt="Frobenius graph">
+                            <img style="width: 60%" src="data:image/png;base64,{{ plot }}"alt="Frobenius angles graph">
+
                         {% endfor %}
                     {% endfor %}
                 </div>
