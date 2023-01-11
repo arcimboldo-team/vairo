@@ -296,7 +296,7 @@ class OutputAir:
                 break
             if ranked.filtered and os.path.exists(aleph_txt_path):
                 ranked.set_minimized_path(os.path.join(self.run_dir, f'{ranked.name}_minimized.pdb'))
-                ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                #ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 if interfaces_data_list:
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
@@ -316,7 +316,7 @@ class OutputAir:
                                                                         mapping=ranked.mapping[interface['chain1']]))
                         renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain2']],
                                                                         mapping=ranked.mapping[interface['chain2']]))
-                        ranked.add_interface(structures.InterfaceName(name=code, res_list=renum_residues_list))
+                        ranked.add_interface(structures.Interface(name=code, res_list=renum_residues_list))
 
         # Superpose the experimental pdb with all the rankeds and templates
         if experimental_pdb is not None:
@@ -339,21 +339,33 @@ class OutputAir:
                                                                                targets=list(path_list), write_plot=True,
                                                                                write_matrix=True)
             sys.stdout = sys.__stdout__
+            frobenius_file_dict = utils.parse_frobenius(frobenius_file)
             ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
             for ranked in ranked_filtered:
-                ranked.add_dist_frobenius_plot([shutil.copy2(plot, self.frobenius_path) for plot in list_plot_dist if ranked.name in os.path.basename(plot)])
-                ranked.add_ang_frobenius_plot([shutil.copy2(plot, self.frobenius_path) for plot in list_plot_ang if ranked.name in os.path.basename(plot)])
+                ranked.add_frobenius_plot(
+                    template=template, 
+                    dist_plot=[shutil.copy2(plot, self.frobenius_path) for plot in list_plot_dist if ranked.name in os.path.basename(plot)][0],
+                    ang_plot=[shutil.copy2(plot, self.frobenius_path) for plot in list_plot_ang if ranked.name in os.path.basename(plot)][0], 
+                    dist_coverage=frobenius_file_dict['dist'][ranked.name], 
+                    ang_coverage=frobenius_file_dict['ang'][ranked.name], 
+                )
                 ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
-                for interface_list in ranked.interfaces:
-                    frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface_list.name}.txt')
+                for interface in ranked.interfaces:
+                    frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface.name}.txt')
                     with open(frobenius_file, 'w') as sys.stdout:
-                        _, _, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix,
-                                                                 residues_tar=interface_list.res_list, write_plot=True,
-                                                                 title=f'Interface: {interface_list.name}')
+                        fro_distance, fro_core, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix,
+                                                                 residues_tar=interface.res_list, write_plot=True,
+                                                                 title=f'Interface: {interface.name}')
                     sys.stdout = sys.__stdout__
-                    new_name = os.path.join(self.frobenius_path, f'{interface_list.name}.png')
+                    new_name = os.path.join(self.frobenius_path, f'{interface.name}.png')
                     plot_path = os.path.join(self.run_dir, os.path.basename(plot))
-                    ranked.add_interfaces_frobenius_plot(shutil.copy2(plot_path, new_name))
+
+                    interface.add_frobenius_information(
+                        dist_coverage = fro_distance,
+                        core = fro_core,
+                        dist_plot = shutil.copy2(plot_path, new_name)
+                    )
+
 
     def write_tables(self, rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict, energies_dict: Dict):
         with open(self.analysis_path, 'w') as f_in:

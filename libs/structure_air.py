@@ -1,4 +1,3 @@
-import base64
 import logging
 import os
 import shutil
@@ -123,11 +122,10 @@ class StructureAir:
 
         if self.feature is not None:
             self.output.create_plot_gantt(self)
-            render_dict['gantt'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in
-                                    self.output.gantt_plots_path]
+            render_dict['gantt'] = [utils.encode_data(plot) for plot in self.output.gantt_plots_path]
 
         if os.path.exists(self.output.plddt_plot_path):
-            render_dict['plddt'] = base64.b64encode(open(self.output.plddt_plot_path, 'rb').read()).decode('utf-8')
+            render_dict['plddt'] = utils.encode_data(self.output.plddt_plot_path)
 
         if self.output.ranked_list:
             if self.output.best_ranked is not None:
@@ -135,8 +133,8 @@ class StructureAir:
             render_dict['ranked_filtered'] = {ranked.name: ranked.split_path for ranked in self.output.ranked_list if
                                             ranked.filtered}
             render_dict['ranked_filtered_encoded'] = {
-                ranked.name: base64.b64encode(open(ranked.split_path, 'rb').read()).decode('utf-8') for ranked in
-                self.output.ranked_list if ranked.filtered}
+                    ranked.name: utils.encode_data(ranked.split_path) for ranked in self.output.ranked_list if ranked.filtered
+                }
 
             render_dict['table'] = {}
             plddt_dict = {}
@@ -163,14 +161,23 @@ class StructureAir:
                     for ranked_template in ranked.superposition_templates:
                         rmsd_dict[ranked.name][ranked_template.template] = {'rmsd': ranked_template.rmsd,
                                                                             'aligned_residues': ranked_template.aligned_residues,
-                                                                            'total_residues': ranked_template.total_residues}
-                    if ranked.filtered and ranked.interfaces_frobenius_plot:
-                        interfaces_dict[ranked.name] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for
-                                                        plot in ranked.interfaces_frobenius_plot]
-
-                    frobenius_dict[ranked.name] = {}
-                    frobenius_dict[ranked.name]['dist'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in ranked.dist_frobenius_plot]
-                    frobenius_dict[ranked.name]['ang'] = [base64.b64encode(open(plot, 'rb').read()).decode('utf-8') for plot in ranked.ang_frobenius_plot]
+                                                                            'total_residues': ranked_template.total_residues
+                                                                            }
+                    if ranked.filtered and ranked.interfaces:
+                        interfaces_dict[ranked.name] ={
+                            'bests':[interface for interface in ranked.interfaces if interface.dist_coverage > 0],
+                            'others':[interface for interface in ranked.interfaces if interface.dist_coverage == 0]
+                        }
+                    
+                    if ranked.frobenius_plots:
+                        ordered_list = sorted(ranked.frobenius_plots, key=lambda x: x.dist_coverage, reverse=True)
+                        frobenius_dict[ranked.name] = {}
+                        frobenius_dict[ranked.name]['best'] = ordered_list.pop(0)
+                        if ordered_list:
+                            frobenius_dict[ranked.name]['worst'] = ordered_list.pop()
+                        if ordered_list:
+                            frobenius_dict[ranked.name]['others'] = ordered_list               
+                
                 except:
                     pass
     
