@@ -136,7 +136,7 @@
             th{
                 border: 2px solid #000000;
                 background-color: #b8b8b8;
-                text-align: left;
+                text-align: center;
                 padding: 8px;
             }
             .best-filtered {
@@ -288,9 +288,9 @@
                                                 <p>Frobenius distance of CV distances: {{ value.best.dist_coverage }}</p>
                                                 <p>Frobenius distance of CV angles: {{ value.best.ang_coverage }}</p>
                                                 <h4>Between distances</h4>
-                                                <img style="width: 60%" src="data:image/png;base64,{{ value.best.encoded_dist_plot  }}" alt="Frobenius distances graph">
+                                                <img style="width: 40%" src="data:image/png;base64,{{ value.best.encoded_dist_plot  }}" alt="Frobenius distances graph">
                                                 <h4>Between angles</h4>
-                                                <img style="width: 60%" src="data:image/png;base64,{{ value.best.encoded_ang_plot  }}" alt="Frobenius angles graph">
+                                                <img style="width: 40%" src="data:image/png;base64,{{ value.best.encoded_ang_plot  }}" alt="Frobenius angles graph">
                                             </div>
                                         </details>
                                     </li>
@@ -318,7 +318,7 @@
                                     <ul>
                                         <li>
                                             <details class="details-frobenius-in">
-                                                <summary><h4 style="display:inline">{{ item.template }}:</h4></summary>
+                                                <summary><h4 style="display:inline">{{ item.template }}</h4></summary>
                                                 <div class="div-frobenius">
                                                     <p>Frobenius distance of CV distances: {{ item.dist_coverage }}</p>
                                                     <p>Frobenius distance of CV angles: {{ item.ang_coverage }}</p>
@@ -520,6 +520,7 @@
             </div>  
             <div id="conclusions" class="section-div">
                 <h2>Conclusions</h2>
+
             </div>  
             <div id="citations" class="section-div">
                 <h2>Citations</h2>
