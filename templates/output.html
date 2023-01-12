@@ -128,6 +128,7 @@
             .btn:hover{
                 background-color: #b8b8b8;
             }
+
             table {
                 border-collapse: collapse;
                 width: auto;
@@ -135,19 +136,40 @@
             th{
                 border: 2px solid #000000;
                 background-color: #b8b8b8;
-                text-align: left;
+                text-align: center;
                 padding: 8px;
             }
             .best-filtered {
                 background-color: blue;
             }
             .best-ranked {
-                background-color: green;
+                background-color: rgb(0,204,0);
             }
             td{
                 border: 2px solid #000000;
                 text-align: left;
                 padding: 8px;
+            }
+            .details-frobenius {
+                border: 2px solid #000000;
+            }
+
+            .details-frobenius-in {
+                padding-left: 10px;
+            }
+
+            .details-frobenius ul{
+                padding: 10px;
+                margin: 0px;
+                border-top: 1px solid black;
+
+            }
+            .summary-frobenius {
+                padding: 10px;
+                background-color: #b8b8b8;
+            }
+            .div-frobenius {
+                padding-left: 15px;
             }
         </style>
     </head>
@@ -164,10 +186,13 @@
                     <li name="alignment" onclick="move_to(event)" class="sub-menu">Alignment</li>
                 {% endif %}
                 {% if 'plddt' in data %}
-                    <li name="plddt" onclick="move_to(event)" class="sub-menu">Rankeds PLDDT</li>
+                    <li name="plddt" onclick="move_to(event)" class="sub-menu">PLDDT for predictions</li>
                 {% endif %}
-                {% if 'frobenius' in data %}
-                    <li name="graphs" onclick="move_to(event)" class="sub-menu">Graphs</li>                
+                {% if 'frobenius_dict' in data %}
+                    <li name="frobenius_graphs" onclick="move_to(event)" class="sub-menu">Frobenius Graphs</li>                
+                {% endif %}
+                {% if 'interfaces_dict' in data %}
+                    <li name="interfaces_graphs" onclick="move_to(event)" class="sub-menu">Interfaces Graphs</li>                
                 {% endif %}
                 {% if 'table' in data %}
                     <li name="tables" onclick="move_to(event)" class="sub-menu">Tables</li>
@@ -181,22 +206,47 @@
         </aside>
 
         <section id="container-main">
-            <p style="margin-top:30px">ARCIMBOLDO-AIR: Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.</p>
+            <p style="margin-top:30px">
+                ARCIMBOLDO_AIR guides predictions towards particular dynamic states selecting the prior information input or analysing the results of the search.
+                {% if data.custom_features %}
+                    The
+                    {% if data.total_copies > 1 %}
+                        complex
+                    {% else %}
+                        structure
+                    {% endif %}                    
+                    is predicted in homology to {{ data.number_templates }} template/s, {{ data.number_alignments }} alignment/s provided.
+                {% else %}
+                    AF-selected templates will be analysed and structurally clustered. Predictions will be driven towards the different extreme structures.
+                {% endif %}
+                {% if data.mosaic > 1%} 
+                     {{ data.mosaic }} partially overlapping fragments are predicted and merged into the structure.
+                {% endif %}
+            
+            </p>            
             <div id="summary" class="section-div">
                 <h2>Summary</h2>
                 <p>State: {{ data.state }}</p>
                 {% if data.best_ranked is not none and 'table' in data%}
-                    <p>Best result is <span style="color:green;">{{ data.best_ranked}}</span> with a {{ data.table.plddt_dict[data.best_ranked] }} PLDDT.
+                    <p>Best result is <span style="color:green;">{{ data.best_ranked}}</span> with a {{ data.table.plddt_dict[data.best_ranked] }} pLDDT.
                         {% if data.best_ranked in data.ranked_filtered%}
                             Can be found in the following path: <a download="{{ data.best_ranked }}.pdb" href=data:text/plain;base64,{{ data.ranked_filtered_encoded[data.best_ranked] }}>{{ data.ranked_filtered[data.best_ranked] }}</a>
                         {% endif %}
                     </p>
-                    <p>Other possible solutions are:</p>
-                        <ul>
-                            {% for key, value in data.ranked_filtered_encoded.items() if key != data.best_ranked%}
-                                <li><span style="color:blue;">{{ key }}</span>: <a download="{{ key }}.pdb" href=data:text/plain;base64,{{ value }}> {{ data.ranked_filtered[key] }}</a> ({{ data.table.plddt_dict[key] }} PLDDT)</li>
-                            {% endfor %}
-                        </ul>
+                    <ul>
+                        {% for key, value in data.ranked_filtered_encoded.items() if key != data.best_ranked%}
+                            {% if loop.first %}
+                                <p>Other possible solutions are:</p>
+                            {% endif %}
+                            {% if key in data.color_dict %}
+                                <li><span style="color:green;">
+                            {% else %}
+                                <li><span style="color:blue;">
+                            {% endif %}
+                            {{ key }}</span>: <a download="{{ key }}.pdb" href=data:text/plain;base64,{{ value }}> {{ data.ranked_filtered[key] }}</a> ({{ data.table.plddt_dict[key] }} pLDDT)</li>
+                            
+                        {% endfor %}
+                    </ul>
                 {% endif %}
             </div>
             <div id="input" class="section-div">
@@ -215,18 +265,118 @@
             {% endif %}
             {% if 'plddt' in data %}
                 <div id="plddt" class="section-div">
-                    <h2>Rankeds PLDDT</h2>
+                    <h2>pLDDT for predictions</h2>
                     <img style="width: 90%" src="data:image/png;base64,{{ data.plddt }}" alt="PLDDT graph">
                 </div>
             {% endif %}
             {% if 'frobenius_dict' in data %}
-                <div id="graphs" class="section-div">
-                    <h2>Graphs</h2>
+                <div id="frobenius_graphs" class="section-div">
+                    <h2>Frobenius Graphs</h2>
                     {% for key, value in data.frobenius_dict.items() %}
-                        <h3>{{ key }}:</h3>
-                        {% for frobenius_graph in value %}
-                            <img style="width: 60%" src="data:image/png;base64,{{ frobenius_graph }}"alt="Frobenius graph">
-                        {% endfor %}
+                        <details class="details-frobenius"
+                        {% if key == data.best_ranked %}
+                         open
+                        {% endif %}
+                        >
+                            <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
+                            {% if value.best %}
+                                <ul>
+                                    <li>
+                                        <details class="details-frobenius-in" open>
+                                            <summary><h4 style="display:inline">{{ value.best.template }}: Best coverage</h4></summary>
+                                            <div class="div-frobenius">
+                                                <p>Frobenius distance of CV distances: {{ value.best.dist_coverage }}</p>
+                                                <p>Frobenius distance of CV angles: {{ value.best.ang_coverage }}</p>
+                                                <h4>Between distances</h4>
+                                                <img style="width: 40%" src="data:image/png;base64,{{ value.best.encoded_dist_plot  }}" alt="Frobenius distances graph">
+                                                <h4>Between angles</h4>
+                                                <img style="width: 40%" src="data:image/png;base64,{{ value.best.encoded_ang_plot  }}" alt="Frobenius angles graph">
+                                            </div>
+                                        </details>
+                                    </li>
+                                </ul>
+                            {% endif %}
+                            {% if value.worst %}
+                            <ul>
+                                <li>
+                                    <details class="details-frobenius-in" open>
+                                        <summary><h4 style="display:inline">{{ value.worst.template }}: Worst coverage</h4></summary>
+                                        <div class="div-frobenius">
+                                            <p>Frobenius distance of CV distances: {{ value.worst.dist_coverage }}</p>
+                                            <p>Frobenius distance of CV angles: {{ value.worst.ang_coverage }}</p>
+                                            <h4>Between distances</h4>
+                                            <img style="width: 60%" src="data:image/png;base64,{{ value.worst.encoded_dist_plot  }}" alt="Frobenius distances graph">
+                                            <h4>Between angles</h4>
+                                            <img style="width: 60%" src="data:image/png;base64,{{ value.worst.encoded_ang_plot  }}" alt="Frobenius angles graph">
+                                        </div>
+                                    </details>
+                                </li>
+                            </ul>
+                            {% endif %}
+                            {% if value.others %}
+                                {% for item in value.others %}
+                                    <ul>
+                                        <li>
+                                            <details class="details-frobenius-in">
+                                                <summary><h4 style="display:inline">{{ item.template }}</h4></summary>
+                                                <div class="div-frobenius">
+                                                    <p>Frobenius distance of CV distances: {{ item.dist_coverage }}</p>
+                                                    <p>Frobenius distance of CV angles: {{ item.ang_coverage }}</p>
+                                                    <h4>Between distances</h4>
+                                                    <img style="width: 60%" src="data:image/png;base64,{{ item.encoded_dist_plot  }}" alt="Frobenius distances graph">
+                                                    <h4>Between angles</h4>
+                                                    <img style="width: 60%" src="data:image/png;base64,{{ item.encoded_ang_plot  }}" alt="Frobenius angles graph">
+                                                </div>
+                                            </details>
+                                        </li>
+                                    </ul>
+                                {% endfor %}
+                            {% endif %}
+                        </details>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% if 'interfaces_dict' in data %}
+                <div id="interfaces_graphs" class="section-div">
+                    <h2>Interfaces Graphs</h2>
+                    {% for key, value in data.interfaces_dict.items() %}
+                        <details class="details-frobenius"
+                        {% if key == data.best_ranked %}
+                         open
+                        {% endif %}
+                        >
+                            <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
+                            {% if value.bests %}
+                                {% for item in value.bests %}
+                                    <ul>
+                                        <li>
+                                            <details class="details-frobenius-in" open>
+                                                <summary><h4 style="display:inline">{{ item.name }}</h4></summary>
+                                                <div class="div-frobenius">
+                                                    <p>Frobenius distance of CV distances: {{ item.dist_coverage }}</p>
+                                                    <img style="width: 60%" src="data:image/png;base64,{{ item.encoded_dist_plot  }}" alt="Frobenius distances graph">
+                                                </div>
+                                            </details>
+                                        </li>
+                                    </ul>
+                                {% endfor %}
+                            {% endif %}
+                            {% if value.others %}
+                                {% for item in value.others %}
+                                    <ul>
+                                        <li>
+                                            <details class="details-frobenius-in">
+                                                <summary><h4 style="display:inline">{{ item.name }}</h4></summary>
+                                                <div class="div-frobenius">
+                                                    <p>Frobenius distance of CV distances: {{ item.dist_coverage }}</p>
+                                                    <img style="width: 60%" src="data:image/png;base64,{{ item.encoded_dist_plot  }}" alt="Frobenius distances graph">
+                                                </div>
+                                            </details>
+                                        </li>
+                                    </ul>
+                                {% endfor %}
+                            {% endif %}
+                        </details>
                     {% endfor %}
                 </div>
             {% endif %}
@@ -234,15 +384,17 @@
             <div id="tables" class="section-div">
                 <h2>Tables</h2>
                 {% if 'plddt_dict' in data.table %}
-                    <h3>rankeds PLDDT</h3>
+                    <h3>pLDDT for predictions</h3>
                     <table>
                         <tr>
-                            <th>ranked</th>
+                            <th>predictions</th>
                             <th>PLDDT</th>
                         </tr>
                         {% for key, value in data.table.plddt_dict.items() %}
                             {% if key == data.best_ranked %}
                                 <tr class="best-ranked">
+                            {% elif key in data.color_dict %}
+                                <tr style="background-color:{{ data.color_dict[key] }};">
                             {% elif key in data.ranked_filtered %}
                                 <tr class="best-filtered">
                             {% else %}
@@ -255,10 +407,10 @@
                     </table>
                 {% endif %}
                 {% if 'rmsd_dict' in data.table %}
-                    <h3>Superposition of rankeds and templates</h3>
+                    <h3>Superposition of predictions and templates</h3>
                     <table>
                         <tr>
-                            <th>ranked</th>
+                            <th>prediction</th>
                             {% for value in data.table.rmsd_dict.values() %}
                                 {% for key in value.keys() if loop.first%}            
                                     <th>{{ key }}</th>
@@ -268,6 +420,8 @@
                         {% for key, value in data.table.rmsd_dict.items() %}
                             {% if key == data.best_ranked %}
                                 <tr class="best-ranked">
+                            {% elif key in data.color_dict %}
+                                <tr style="background-color:{{data.color_dict[key]}};">
                             {% elif key in data.ranked_filtered %}
                                 <tr class="best-filtered">
                             {% else %}
@@ -285,7 +439,7 @@
                     <h3>Secondary structure percentages calculated with ALEPH</h3>
                     <table>
                         <tr>
-                            <th>ranked</th>
+                            <th>prediction</th>
                             <th>ah</th>
                             <th>bs</th>
                             <th>number of residues</th>
@@ -293,6 +447,8 @@
                         {% for key, value in data.table.secondary_dict.items() %}
                             {% if key == data.best_ranked %}
                                 <tr class="best-ranked">
+                            {% elif key in data.color_dict %}
+                                <tr style="background-color:{{data.color_dict[key]}};">
                             {% elif key in data.ranked_filtered %}
                                 <tr class="best-filtered">
                             {% else %}
@@ -307,16 +463,18 @@
                     </table>
                 {% endif %}
                 {% if 'energies_dict' in data.table %}
-                    <h3>Ranked energies</h3>
+                    <h3>Predictions energies</h3>
                     <table>
                         <tr>
-                            <th>ranked</th>
-                            <th>kinetic</th>
-                            <th>potential</th>
+                            <th>prediction</th>
+                            <th>kinetic (kJ/mol)</th>
+                            <th>potential (kJ/mol)</th>
                         </tr>
                         {% for key, value in data.table.energies_dict.items() %}
                             {% if key == data.best_ranked %}
                                 <tr class="best-ranked">
+                            {% elif key in data.color_dict %}
+                                <tr style="background-color:{{data.color_dict[key]}};">
                             {% elif key in data.ranked_filtered %}
                                 <tr class="best-filtered">
                             {% else %}
@@ -337,7 +495,15 @@
                             <th>rmsd</th>
                         </tr>
                         {% for key, value in data.table.experimental_dict.items() %}
+                        {% if key == data.best_ranked %}
+                            <tr class="best-ranked">
+                        {% elif key in data.color_dict %}
+                            <tr style="background-color:{{data.color_dict[key]}};">
+                        {% elif key in data.ranked_filtered %}
+                            <tr class="best-filtered">
+                        {% else %}
                             <tr>
+                        {% endif %}
                                 <td>{{ key }}</td>
                                 <td>{{ value }}</td>
                             </tr>
@@ -354,13 +520,14 @@
             </div>  
             <div id="conclusions" class="section-div">
                 <h2>Conclusions</h2>
+
             </div>  
             <div id="citations" class="section-div">
                 <h2>Citations</h2>
                 <p>
                     <a href="https://doi.org/10.1038/s41586-021-03819-2">Highly accurate protein structure prediction with AlphaFold.</a><br>
                     Jumper, J., Evans, R., Pritzel, A.<br>
-                    (2021) Nature 596, 583–589.
+                    (2021) Nature 596, 583-589.
                 </p>
             </div>        
             <div id="support" class="section-div">

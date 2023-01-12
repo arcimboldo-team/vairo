@@ -34,6 +34,27 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
     return cif_out_path
 
 
+def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int, match_ini: int, match_end: int, pdb_out: str, delta_out: str):
+    #Run the program lsqkab. Write the superposed pdb in pdbout and the deltas in delta_out.
+    #LSQKAB will match the CA atoms from the pdb_inf to fit in the pdb_inm.
+    
+    script_path = os.path.join(os.path.dirname(pdb_out), f'{utils.get_file_name(pdb_out)}_lsqkab.sh')
+    with open(script_path, 'w') as f_in:
+        f_in.write('lsqkab ')
+        f_in.write(f'xyzinf {utils.get_file_name(pdb_inf_path)} ')
+        f_in.write(f'xyzinm {utils.get_file_name(pdb_inm_path)} ')
+        f_in.write(f'DELTAS {utils.get_file_name(delta_out)} ')
+        f_in.write(f'xyzout {utils.get_file_name(pdb_out)} << END-lsqkab \n')
+        f_in.write('title matching template and predictions \n')
+        f_in.write('output deltas \n')
+        f_in.write('output XYZ \n')
+        f_in.write(f'fit RESIDU CA {match_ini} TO {match_end} CHAIN A \n')
+        f_in.write(f'MATCH RESIDU {fit_ini} TO {fit_end} CHAIN A \n')
+        f_in.write(f'end \n')
+        f_in.write(f'END-lsqkab')
+    subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.path.dirname(pdb_out)).communicate()
+
+
 def check_pdb(pdb: str, output_dir: str) -> str:
     # Check if pdb is a path, and if it doesn't exist, download it.
     # If the pdb is a path, copy it to our input folder
@@ -122,6 +143,30 @@ def merge_pdbs(list_of_paths_of_pdbs_to_merge: List[str], merged_pdb_path: str):
                 if line[:4] == 'ATOM':
                     counter += 1
                     f.write(line[:4] + str(counter).rjust(7) + line[11:])
+
+
+def merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge: List[str], pdb_out_path: str):
+    new_structure = Structure.Structure('struct')
+    new_model = Model.Model('model')
+    chain = Chain.Chain('A')
+    new_structure.add(new_model)
+    new_model.add(chain)
+
+    count_res = 1
+    for pdb_path in list_of_paths_of_pdbs_to_merge:
+        structure = get_structure(pdb_path=pdb_path)
+        residues_list = list(structure[0]['A'].get_residues())
+        for residue in residues_list:
+            new_res = copy.copy(residue)
+            new_res.parent = None
+            new_res.id = (' ', count_res, ' ')
+            chain.add(new_res)
+            new_res.parent = chain
+            count_res += 1
+
+    io = PDBIO()
+    io.set_structure(new_structure)
+    io.save(pdb_out_path)
 
 
 def run_pisa(pdb_path: str) -> str:
@@ -311,7 +356,7 @@ def parse_pdb_line(line: str) -> Dict:
 def split_chains_assembly(pdb_in_path: str,
                           pdb_out_path: str,
                           sequence_assembled: sequence.SequenceAssembled) -> Dict:
-    # Split the assembly with serveral chains. The assembly is spitted
+    # Split the assembly with several chains. The assembly is spitted
     # by the query sequence length. Also, we have to take into account
     # the glycines, So every query_sequence+glycines we can find a chain.
     # We return the list of chains.
@@ -333,8 +378,6 @@ def split_chains_assembly(pdb_in_path: str,
 
         for i in range(sequence_assembled.total_copies):
             sequence_length = sequence_assembled.get_sequence_length(i)
-            seq_with_glycines_length = sequence_length + sequence_assembled.glycines
-
             start_min = sequence_assembled.get_starting_length(i)
             start_max = start_min + sequence_length
 
@@ -354,12 +397,12 @@ def split_chains_assembly(pdb_in_path: str,
 
         io = PDBIO()
         io.set_structure(new_structure)
-        io.save(pdb_out_path, preserve_atom_numbering=True)
+        io.save(pdb_out_path)
     return chains_return
 
 
 def chain_splitter(pdb_path: str, chain: str = None) -> Dict:
-    # Given a pdb_in and an optional chain, write one or serveral
+    # Given a pdb_in and an optional chain, write one or several
     # pdbs containing each one a chain.
     # If chain is specified, only one file with the specific chain will be created
     # It will return a dictionary with the chain and the corresponding pdb
@@ -408,7 +451,7 @@ def generate_multimer_from_pdb(pdb_in_path: str, pdb_out_path: str):
 
 def change_chains(chain_dict: Dict):
     # The Dict has to be: {A: path}
-    # It will renaim the chains of the path to the
+    # It will rename the chains of the path to the
     # chain indicated in the key
 
     for key, value in chain_dict.items():
@@ -450,7 +493,7 @@ def generate_multimer_chains(pdb_path: str, template_dict: Dict) -> Dict:
 
 
 def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
-    # Tranform MSE HETATM to MSA ATOM
+    # Transform MSE HETATM to MSA ATOM
     # Remove HETATM from pdb
 
     class NonHetSelect(Select):
@@ -473,12 +516,13 @@ def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
 
 
 def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
-    command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all --keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0'
+    command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all ' \
+                   f'--keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0 '
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     p.communicate()
 
-def run_openmm(pdb_in_path: str, pdb_out_path: str) -> List:
 
+def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies:
     run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
     protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)
     forcefield = openmm.app.ForceField('amber99sb.xml')
@@ -491,7 +535,7 @@ def run_openmm(pdb_in_path: str, pdb_out_path: str) -> List:
     state = simulation.context.getState(getPositions=True, getEnergy=True)
     with open(pdb_out_path, 'w') as f_out:
         openmm.app.pdbfile.PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_out, keepIds=True)
-    return structures.OpenmmEnergies(state.getKineticEnergy(), state.getPotentialEnergy())
+    return structures.OpenmmEnergies(round(state.getKineticEnergy()._value, 2), round(state.getPotentialEnergy()._value, 2))
 
 
 def superpose_pdbs(pdb_list: List, output_pdb=None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
@@ -604,6 +648,9 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
 
 
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
+    if length <= 0:
+        return []
+
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
     for element in combinated_list:

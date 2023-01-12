@@ -55,7 +55,7 @@ class ChangeResidues:
         self.__change_residues(pdb_in_path, pdb_out_path, 'change')
 
     def __change_residues(self, pdb_in_path: str, pdb_out_path: str, type: str):
-        # Chainge residues of chains specified in chain_res_dict
+        # Change residues of chains specified in chain_res_dict
 
         structure = bioutils.get_structure(pdb_in_path)
         chains_struct = bioutils.get_chains(pdb_in_path)
@@ -98,4 +98,4 @@ class ChangeResidues:
 
         io = PDBIO()
         io.set_structure(structure)
-        io.save(pdb_out_path, select=AtomSelect(), preserve_atom_numbering=True)
+        io.save(pdb_out_path, select=AtomSelect())

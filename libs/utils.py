@@ -1,3 +1,4 @@
+import base64
 import copy
 import errno
 import glob
@@ -11,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
 from sklearn import preprocessing
-from itertools import groupby
+from itertools import groupby, takewhile
 from operator import itemgetter
 
 
@@ -84,13 +85,19 @@ def get_working_dir() -> str:
     return os.getcwd()
 
 
-def chunk_string(length: int, size: int, overlap: int = 30) -> List[Tuple[int, int]]:
+def chunk_string(length: int, number_partitions: int, overlap: int) -> List[Tuple[int, int]]:
     # Slice string in chunks of size
-    if length == size:
+    if number_partitions == 1:
         return [(0, length)]
     else:
-        size = size - overlap
-        return [(0 + i, size + i + overlap) for i in range(0, length, size)]
+        reminder = length % number_partitions
+        chunk_list = []
+        size = int((length - reminder) / number_partitions)
+        for chunk in range(0, length - reminder, size):
+            chunk_list.append((chunk, size + chunk + overlap))
+        last_element = chunk_list[-1]
+        chunk_list[-1] = (last_element[0], last_element[1] + reminder - overlap)
+        return chunk_list
 
 
 def dict_values_to_list(input_dict: Dict):
@@ -135,7 +142,7 @@ def get_consecutive_numbers(number_list: List[int]) -> List[Tuple[int, int]]:
     return result_list
 
 
-def get_chain_and_number(path_pdb: str) -> Tuple[int, int]:
+def get_chain_and_number(path_pdb: str) -> Tuple[str, int]:
     # Given a path: ../../template_A1.pdb return A and 1
     # Return CHAIN and NUMBER
     name = get_file_name(path_pdb)
@@ -237,6 +244,23 @@ def parse_aleph_ss(file_path: str) -> Dict:
                     chain_res_dict[chain] = [residues]
     return chain_res_dict
 
+def parse_frobenius(file_path: str) -> Dict:
+    # Parse the frobenius.txt file, get for each ranked, the coverage of angles and distances.
+    
+    results_dict = {'dist': {}, 'ang': {}}
+    with open(file_path) as f_in:
+        lines = f_in.readlines()
+    index = [x for x in range(len(lines)) if 'Frobenius distances of CV' in lines[x]]
+    distances = list(takewhile(lambda x: x!='\n', lines[index[0]+2:]))
+    for distance in distances:
+        distance_split = distance.split()
+        results_dict['dist'][distance_split[0]] = distance_split[1]
+    angles = list(takewhile(lambda x: x!='\n', lines[index[1]+2:]))
+    for angle in angles:
+        angle_split = angle.split()
+        results_dict['ang'][angle_split[0]] = angle_split[1]
+    return results_dict
+
 
 def parse_pisa_general_multimer(pisa_output: str) -> List:
     # It parses the pisa output, in the following format:
@@ -278,7 +302,7 @@ def parse_pisa_interfaces(pisa_output: str) -> Dict:
     #   res_chain2
     # }]
     # It returns a list with the interface information, each
-    # interface contains the requiered information.
+    # interface contains the required information.
 
     iter_list = iter(pisa_output.split('\n'))
     res_chain1 = []
@@ -332,16 +356,19 @@ def sort_by_digit(container: Any, item: int = 0):
 def create_dir(dir_path: str, delete_if_exists: bool = False):
     # If directory not exists, create it
     # If directory exists, delete it and create it
-
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     elif delete_if_exists:
         shutil.rmtree(dir_path)
         os.makedirs(dir_path)
 
+
 def remove_list_layer(input_list: List[List[str]]) -> List[str]:
     return [j for x in input_list for j in x]
 
+
+def encode_data(input_data):
+    return base64.b64encode(open(input_data, 'rb').read()).decode('utf-8')
 
 def create_logger():
     # Create logger: The information will be stored in a buffer instead of a file. The buffer can be dumped to

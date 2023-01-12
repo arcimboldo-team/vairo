@@ -77,11 +77,10 @@ def main():
                                                         custom_sum_prob=template.sum_prob)
                     logging.info(f'Template {template.pdb_id} was added to templates')
             a_air.feature.write_pkl(os.path.join(a_air.run_dir, 'features.pkl'))
-            features_list = a_air.feature.slicing_features(mosaic=a_air.mosaic)
+            features_list = a_air.feature.slicing_features(mosaic=a_air.mosaic, overlap=a_air.mosaic_overlap)
         
         else:
-            num = utils.chunk_string(len(a_air.sequence_assembled.sequence_assembled), a_air.mosaic)
-            features_list = [None] * len(num)
+            features_list = [None] * a_air.mosaic
             logging.info('No features.pkl added, default AlphaFold2 run')
 
         a_air.change_state(state=2)
@@ -90,8 +89,9 @@ def main():
             logging.info('Start running AlphaFold2')
             a_air.run_alphafold(features_list=features_list)
             a_air.merge_results()
-            if a_air.feature is None:
-                new_features = features.create_features_from_file(os.path.join(a_air.run_dir, 'features.pkl'))
+            features_path = os.path.join(a_air.run_dir, 'features.pkl')
+            if a_air.feature is None and os.path.exists(features_path):
+                new_features = features.create_features_from_file(features_path)
                 a_air.set_feature(new_features)
             os.chdir(a_air.run_dir)
             a_air.output.set_run_dir(run_dir=a_air.run_dir)
@@ -100,9 +100,9 @@ def main():
         if not a_air.verbose:
             utils.clean_files(input_dir=a_air.run_dir)
 
-        logging.info('ARCIMBOLDO_AIR has finished succesfully')
         a_air.change_state(state=3)
         a_air.generate_output()
+        logging.info('ARCIMBOLDO_AIR has finished succesfully')
         
     except SystemExit as e:
         sys.exit(e)

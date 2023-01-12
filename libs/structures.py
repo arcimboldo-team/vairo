@@ -21,10 +21,31 @@ class Alignment:
     database: AlignmentDatabase
 
 
-@dataclasses.dataclass(frozen=True)
-class InterfaceName:
+@dataclasses.dataclass
+class Interface:
     name: str
     res_list: List[int]
+    dist_coverage: float = dataclasses.field(init=False, repr=False, default=None)
+    core: int = dataclasses.field(init=False, repr=False, default=None)
+    dist_plot: str = dataclasses.field(init=False, repr=False, default=None)
+    encoded_dist_plot: bytes = dataclasses.field(init=False, repr=False, default=None)
+
+    def add_frobenius_information(self, dist_coverage: float, core: int, dist_plot: str):
+        self.dist_coverage = dist_coverage
+        self.core = core
+        self.dist_plot = dist_plot
+        self.encoded_dist_plot = utils.encode_data(dist_plot)
+
+
+@dataclasses.dataclass(frozen=True)
+class Frobenius:
+    template: str
+    dist_coverage: float
+    encoded_dist_plot: bytes
+    dist_plot: str
+    ang_coverage: float
+    ang_plot: str
+    encoded_ang_plot: bytes
 
 
 @dataclasses.dataclass(frozen=True)
@@ -54,18 +75,25 @@ class Ranked:
         self.superposition_templates: List[TemplateRanked] = []
         self.mapping: Dict = {}
         self.energies: OpenmmEnergies = None
-        self.interfaces: List[InterfaceName] = []
-        self.frobenius_plot: List[str] = []
+        self.interfaces: List[Interface] = []
+        self.frobenius_plots: List[Frobenius] = []
         self.filtered: bool = False
+        self.best: bool = False
 
         self.path = ranked_path
         self.name = utils.get_file_name(ranked_path)
+    
+    def set_path(self, path: str):
+        self.path = path
 
     def set_plddt(self, plddt: float):
         self.plddt = plddt
 
     def set_filtered(self, filtered: bool):
         self.filtered = filtered
+
+    def set_best(self, best: bool):
+        self.best = best
 
     def set_mapping(self, mapping: Dict):
         self.mapping = mapping
@@ -79,7 +107,7 @@ class Ranked:
     def add_template(self, template: TemplateRanked):
         self.superposition_templates.append(template)
 
-    def add_interface(self, interface: InterfaceName):
+    def add_interface(self, interface: Interface):
         self.interfaces.append(interface)
 
     def set_secondary_structure(self, ah: int, bs: int, total_residues: int):
@@ -90,5 +118,17 @@ class Ranked:
     def set_energies(self, energies: OpenmmEnergies):
         self.energies = energies
 
-    def add_frobenius_plot(self, plot):
-        self.frobenius_plot.append(plot)
+    def add_interfaces_frobenius_plot(self, plot: str):
+        self.interfaces_frobenius_plot.append(plot)
+
+    def add_frobenius_plot(self, template: str, dist_plot: str, ang_plot: str, dist_coverage: float, ang_coverage: float):
+        frobenius = Frobenius(
+                        template=template, 
+                        dist_plot=dist_plot, 
+                        encoded_dist_plot=utils.encode_data(dist_plot),
+                        ang_plot=ang_plot,
+                        encoded_ang_plot=utils.encode_data(ang_plot),
+                        dist_coverage=dist_coverage, 
+                        ang_coverage=ang_coverage
+                        )
+        self.frobenius_plots.append(frobenius)
