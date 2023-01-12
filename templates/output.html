@@ -230,7 +230,7 @@
                 {% if data.bests and 'table' in data %}
                     <p>Best result is <span style="color:green;">{{ data.bests[0].name }}</span> with a {{ data.table.plddt_dict[data.bests[0].name] }} pLDDT.
                         {% if data.data.bests[0].name in data.ranked_filtered%}
-                            Can be found in the following path: <a download="{{ data.bests[0].path }}" href=data:text/plain;base64,{{ data.ranked_filtered_encoded[data.bests[0].name }}>{{ data.ranked_filtered[data.bests[0].name] }}</a>
+                            Can be found in the following path: <a download="{{ data.bests[0].path }}" href=data:text/plain;base64,{{ data.ranked_filtered_encoded[data.bests[0].name] }}>{{ data.ranked_filtered[data.bests[0].name] }}</a>
                         {% endif %}
                     </p>
                     <ul>
@@ -510,9 +510,9 @@
             </div>  
             <div id="conclusions" class="section-div">
                 <h2>Conclusions</h2>
-                {% if len(data.bests_dict) == 1 %}
-                    <p>The best predicted model is {{ data.bests[0].name }}. The closest template is {{ data.bests_dict[data.bests[0].name].template }} with a {{ data.bests_dict[data.bests[0].name].rmsd } RMSD}</p>
-                {% elif len(data.bests_dict) > 1 %}
+                {% if data.bests_dict|length == 1 %}
+                    <p>The best predicted model is {{ data.bests[0].name }}. The closest template is {{ data.bests_dict[data.bests[0].name].template }} with a {{ data.bests_dict[data.bests[0].name].rmsd }} RMSD</p>
+                {% elif data.bests_dict|length > 1 %}
                     <p>There are {{ len(data.bests_dict) }} predicted models which have a similar pLDDT:
                         {% for key, value in data.bests_dict.items() %}
                             {{ key }}
