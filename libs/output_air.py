@@ -24,7 +24,7 @@ def read_rankeds(input_path: str):
     return [structures.Ranked(os.path.join(input_path, path)) for path in utils.sort_by_digit(ranked_paths)]
 
 
-def plot_plddt(plot_path: str, ranked_list: List) -> List:
+def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.clf()
     for ranked in ranked_list:
         plddt_list = []
@@ -41,8 +41,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> List:
     plt.savefig(plot_path)
 
     max_plddt = max([ranked.plddt for ranked in ranked_list])
-    best_ranked = next(ranked for ranked in ranked_list if max_plddt == ranked.plddt)
-    return max_plddt, best_ranked
+    return max_plddt
 
 
 def get_group(res: str) -> str:
@@ -191,9 +190,7 @@ class OutputAir:
         self.gantt_plots_path: List[str] = []
         self.ranked_list: List[structures.Ranked] = []
         self.output_dir: str = output_dir
-        self.best_ranked: structures.Ranked = None
         self.experimental_dict = {}
-
         self.run_dir: str = None
         self.nonsplit_path: str = None
         self.aleph_results_path: str = None
@@ -238,10 +235,13 @@ class OutputAir:
             logging.info('No ranked PDBs found')
             return
 
-        # Create a plot with the ranked plddts, also, calculate the maximum plddt
-        max_plddt, self.best_ranked = plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
+        # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
+        max_plddt = plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
                                 sequence_amino=sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
+
+        # Sort list of ranked by pLDDT
+        self.ranked_list.sort(key=lambda x: x.plddt, reverse=True)
 
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
@@ -274,6 +274,7 @@ class OutputAir:
                          Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
                     rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path])
                     ranked.add_template(structures.TemplateRanked(template, round(rmsd, 2), aligned_residues, total_residues))
+                ranked.sort_template_rankeds()
 
         # Use aleph to generate domains and calculate secondary structure percentage
         for ranked in self.ranked_list:

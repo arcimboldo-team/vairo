@@ -132,3 +132,6 @@ class Ranked:
                         ang_coverage=ang_coverage
                         )
         self.frobenius_plots.append(frobenius)
+
+    def sort_template_rankeds(self):
+        self.superposition_templates.sort(key=lambda x: x.rmsd)

@@ -101,7 +101,6 @@ class StructureAir:
 
     def generate_output(self):
         render_dict = {}
-        frobenius_dict = {}
 
         with open(f'{utils.get_main_path()}/templates/output.html', 'r') as f_in:
             template_str = f_in.read()
@@ -128,10 +127,7 @@ class StructureAir:
             render_dict['plddt'] = utils.encode_data(self.output.plddt_plot_path)
 
         if self.output.ranked_list:
-            if self.output.best_ranked is not None:
-                render_dict['best_ranked'] = self.output.best_ranked.name
-            render_dict['ranked_filtered'] = {ranked.name: ranked.split_path for ranked in self.output.ranked_list if
-                                            ranked.filtered}
+            render_dict['ranked_filtered'] = {ranked.name: ranked.split_path for ranked in self.output.ranked_list if ranked.filtered}
             render_dict['ranked_filtered_encoded'] = {
                     ranked.name: utils.encode_data(ranked.split_path) for ranked in self.output.ranked_list if ranked.filtered
                 }
@@ -141,22 +137,32 @@ class StructureAir:
             secondary_dict = {}
             rmsd_dict = {}
             energies_dict = {}
-            color_dict = {}
+            bests_dict = {}
             interfaces_dict = {}
             frobenius_dict = {}
-            green_color = 50
+            template_dict = {}
+            green_color = 40
             for ranked in self.output.ranked_list:
                 try:
-                    if ranked.best and ranked.name != self.output.best_ranked.name:
-                        color_dict[ranked.name] = f'hsl(120, 100% ,{green_color}%)'
+                    if ranked.best:
+                        bests_dict[ranked.name] = {
+                            'name': ranked.name,
+                            'template': ranked.superposition_templates[0],
+                            'color': f'hsl(120, 100% ,{green_color}%)'
+                        }
+
+                        if ranked.superposition_templates:
+                            template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
                         green_color += 10
                         
                     plddt_dict[ranked.name] = ranked.plddt
                     secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
-                                                    'number_total_residues': ranked.total_residues}
+                                                    'number_total_residues': ranked.total_residues
+                                                   }
                     if ranked.energies is not None:
                         energies_dict[ranked.name] = {'kinetic': ranked.energies.kinetic,
-                                                        'potential': ranked.energies.potential}
+                                                      'potential': ranked.energies.potential
+                                                      }
                     rmsd_dict[ranked.name] = {}
                     for ranked_template in ranked.superposition_templates:
                         rmsd_dict[ranked.name][ranked_template.template] = {'rmsd': ranked_template.rmsd,
@@ -165,8 +171,8 @@ class StructureAir:
                                                                             }
                     if ranked.filtered and ranked.interfaces:
                         interfaces_dict[ranked.name] ={
-                            'bests':[interface for interface in ranked.interfaces if interface.dist_coverage > 0],
-                            'others':[interface for interface in ranked.interfaces if interface.dist_coverage == 0]
+                            'bests': [interface for interface in ranked.interfaces if interface.dist_coverage > 0],
+                            'others': [interface for interface in ranked.interfaces if interface.dist_coverage == 0]
                         }
                     
                     if ranked.frobenius_plots:
@@ -180,9 +186,12 @@ class StructureAir:
                 
                 except:
                     pass
-    
-            if color_dict:
-                render_dict['color_dict'] = color_dict
+
+            render_dict['bests_list'] = self.output.ranked_list
+            if bests_dict:
+                render_dict['bests_dict'] = bests_dict
+            if template_dict:
+                render_dict['template_dict'] = template_dict
             if plddt_dict:
                 render_dict['table']['plddt_dict'] = plddt_dict
             if secondary_dict:
@@ -260,7 +269,7 @@ class StructureAir:
                                                    finish_chunk=partitions[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:
