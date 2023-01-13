@@ -134,4 +134,4 @@ class Ranked:
         self.frobenius_plots.append(frobenius)
 
     def sort_template_rankeds(self):
-        self.superposition_templates.sort(key=lambda x: x.rmsd)
+        self.superposition_templates.sort(key=lambda x: (x.rmsd is None, x.rmsd))

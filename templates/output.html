@@ -17,7 +17,7 @@
             }
 
             ul li {
-            list-style: none;
+                list-style: none;
             }
 
             #container-main {
@@ -142,12 +142,14 @@
             .best-filtered {
                 background-color: blue;
             }
-            .best-ranked {
-                background-color: rgb(0,204,0);
+
+            .show_circle {
+                list-style: disc;
             }
+
             td{
                 border: 2px solid #000000;
-                text-align: left;
+                text-align: center;
                 padding: 8px;
             }
             .details-frobenius {
@@ -192,7 +194,7 @@
                     <li name="frobenius_graphs" onclick="move_to(event)" class="sub-menu">Frobenius Graphs</li>                
                 {% endif %}
                 {% if 'interfaces_dict' in data %}
-                    <li name="interfaces_graphs" onclick="move_to(event)" class="sub-menu">Interfaces Graphs</li>                
+                    <li name="interface_graphs" onclick="move_to(event)" class="sub-menu">Interface Graphs</li>                
                 {% endif %}
                 {% if 'table' in data %}
                     <li name="tables" onclick="move_to(event)" class="sub-menu">Tables</li>
@@ -227,23 +229,22 @@
             <div id="summary" class="section-div">
                 <h2>Summary</h2>
                 <p>State: {{ data.state }}</p>
-                {% if data.bests and 'table' in data %}
-                    <p>Best result is <span style="color:green;">{{ data.bests[0].name }}</span> with a {{ data.table.plddt_dict[data.bests[0].name] }} pLDDT.
-                        {% if data.data.bests[0].name in data.ranked_filtered%}
-                            Can be found in the following path: <a download="{{ data.bests[0].path }}" href=data:text/plain;base64,{{ data.ranked_filtered_encoded[data.bests[0].name] }}>{{ data.ranked_filtered[data.bests[0].name] }}</a>
+                {% if data.bests_list and 'table' in data %}
+                    <p>Best result is <span style="color:green;">{{ data.bests_list[0].name }}</span> with a {{ data.table.plddt_dict[data.bests_list[0].name] }} average pLDDT.
+                        {% if data.bests_list[0].name in data.ranked_filtered%}
+                            Can be found in the following path: <a download="{{ data.bests_list[0].path }}" href=data:text/plain;base64,{{ data.ranked_filtered_encoded[data.bests_list[0].name] }}>{{ data.ranked_filtered[data.bests_list[0].name] }}</a>
                         {% endif %}
                     </p>
-                    <ul>
-                        {% for key, value in data.ranked_filtered_encoded.items() if key != data.bests[0].name %}
+                    
+                        {% for key, value in data.ranked_filtered_encoded.items() if key != data.bests_list[0].name %}
                             {% if loop.first %}
-                                <p>Other possible solutions are:</p>
+                                <p>Other similar solutions are:</p>
+                                <ul>
                             {% endif %}
                             {% if key in data.bests_dict %}
-                                <li><span style="color:green;">
-                            {% else %}
-                                <li><span style="color:blue;">
+                                <li class="show_circle"><span style="color:green;">
                             {% endif %}
-                            {{ key }}</span>: <a download="{{ key }}.pdb" href=data:text/plain;base64,{{ value }}> {{ data.ranked_filtered[key] }}</a> ({{ data.table.plddt_dict[key] }} pLDDT)</li>
+                            {{ key }}</span>: <a download="{{ key }}.pdb" href=data:text/plain;base64,{{ value }}> {{ data.ranked_filtered[key] }}</a> ({{ data.table.plddt_dict[key] }} average pLDDT)</li>
                             
                         {% endfor %}
                     </ul>
@@ -274,7 +275,7 @@
                     <h2>Frobenius Graphs</h2>
                     {% for key, value in data.frobenius_dict.items() %}
                         <details class="details-frobenius"
-                        {% if key == data.bests[0].name %}
+                        {% if key == data.bests_list[0].name %}
                          open
                         {% endif %}
                         >
@@ -337,11 +338,11 @@
                 </div>
             {% endif %}
             {% if 'interfaces_dict' in data %}
-                <div id="interfaces_graphs" class="section-div">
-                    <h2>Interfaces Graphs</h2>
+                <div id="interface_graphs" class="section-div">
+                    <h2>Interface Graphs</h2>
                     {% for key, value in data.interfaces_dict.items() %}
                         <details class="details-frobenius"
-                        {% if key == data.bests[0].name %}
+                        {% if key == data.bests_list[0].name %}
                          open
                         {% endif %}
                         >
@@ -388,11 +389,11 @@
                     <table>
                         <tr>
                             <th>predictions</th>
-                            <th>PLDDT</th>
+                            <th>average PLDDT</th>
                         </tr>
                         {% for key, value in data.table.plddt_dict.items() %}
                             {% if key in data.bests_dict %}
-                                <tr style="background-color:{{data.bests_dict[key]['color'] }};">
+                                <tr style="background-color:{{ data.bests_dict[key]['color'] }};">
                             {% elif key in data.ranked_filtered %}
                                 <tr class="best-filtered">
                             {% else %}
@@ -511,27 +512,27 @@
             <div id="conclusions" class="section-div">
                 <h2>Conclusions</h2>
                 {% if data.bests_dict|length == 1 %}
-                    <p>The best predicted model is {{ data.bests[0].name }}. The closest template is {{ data.bests_dict[data.bests[0].name].template }} with a {{ data.bests_dict[data.bests[0].name].rmsd }} RMSD</p>
+                    <p>The best predicted model is {{ data.bests_list[0].name }}. The closest template is {{ data.bests_dict[data.bests_list[0].name].template }} with a {{ ata.bests_dict[data.bests_list[0].name].rmsd }} RMSD</p>
                 {% elif data.bests_dict|length > 1 %}
-                    <p>There are {{ len(data.bests_dict) }} predicted models which have a similar pLDDT:
+                    <p>There are {{ data.bests_dict|length }} predicted models which have a similar average pLDDT:
                         {% for key, value in data.bests_dict.items() %}
                             {{ key }}
                             {% if not loop.last %}
-                                 ,
+                                ,
                             {% endif %}
                         {% endfor %}
                         . The closest templates are the following ones:
                         <ul>
-                        {% for key, value in data.template_dict.items() %}
-                            <li>{{ key }}:
-                            {% for ranked in value %}
-                                {{ ranked }}
-                                {% if not loop.last %}
-                                    ,
-                                {% endif %}
+                            {% for key, value in data.template_dict.items() %}
+                                <li class="show_circle">{{ key }}:
+                                    {% for ranked in value %}
+                                        {{ ranked }}
+                                        {% if not loop.last %}
+                                            ,
+                                        {% endif %}
+                                    {% endfor %}
+                                </li>
                             {% endfor %}
-                            </li>
-                        {% endfor %}
                         </ul>
                     </p>
                 {% else %}
@@ -552,7 +553,6 @@
                 For online documentation and tutorials visit <a href="http://chango.ibmb.csic.es">www.chango.ibmb.csic.es</a><br/>
                 For developer support send an email to <a href="mailto:bugs-borges@ibmb.csic.es">bugs-borges@ibmb.csic.es</a><br/> 
                 Crystallographic Methods Group <br/> 
-                <a href="http://sbu.csic.es/">Structural Biology Unit </a><br/> 
                 <a href="http://www.ibmb.csic.es/">Molecular Biology Institute of Barcelona </a></p>
             </div>
         </section>

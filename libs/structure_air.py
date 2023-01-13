@@ -155,7 +155,7 @@ class StructureAir:
                             template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
                         green_color += 10
                         
-                    plddt_dict[ranked.name] = ranked.plddt
+                    plddt_dict[ranked.name] = round(ranked.plddt)
                     secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
                                                     'number_total_residues': ranked.total_residues
                                                    }

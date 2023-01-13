@@ -273,7 +273,9 @@ class OutputAir:
                         [res for res in
                          Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
                     rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path])
-                    ranked.add_template(structures.TemplateRanked(template, round(rmsd, 2), aligned_residues, total_residues))
+                    if rmsd is not None:
+                        rmsd = round(rmsd, 2)
+                    ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
                 ranked.sort_template_rankeds()
 
         # Use aleph to generate domains and calculate secondary structure percentage
@@ -297,7 +299,7 @@ class OutputAir:
                 break
             if ranked.filtered and os.path.exists(aleph_txt_path):
                 ranked.set_minimized_path(os.path.join(self.run_dir, f'{ranked.name}_minimized.pdb'))
-                ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                #ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 if interfaces_data_list:
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
