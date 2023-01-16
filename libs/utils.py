@@ -244,23 +244,6 @@ def parse_aleph_ss(file_path: str) -> Dict:
                     chain_res_dict[chain] = [residues]
     return chain_res_dict
 
-def parse_frobenius(file_path: str) -> Dict:
-    # Parse the frobenius.txt file, get for each ranked, the coverage of angles and distances.
-    
-    results_dict = {'dist': {}, 'ang': {}}
-    with open(file_path) as f_in:
-        lines = f_in.readlines()
-    index = [x for x in range(len(lines)) if 'Frobenius distances of CV' in lines[x]]
-    distances = list(takewhile(lambda x: x!='\n', lines[index[0]+2:]))
-    for distance in distances:
-        distance_split = distance.split()
-        results_dict['dist'][distance_split[0]] = distance_split[1]
-    angles = list(takewhile(lambda x: x!='\n', lines[index[1]+2:]))
-    for angle in angles:
-        angle_split = angle.split()
-        results_dict['ang'][angle_split[0]] = angle_split[1]
-    return results_dict
-
 
 def parse_pisa_general_multimer(pisa_output: str) -> List:
     # It parses the pisa output, in the following format:

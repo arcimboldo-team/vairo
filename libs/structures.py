@@ -1,4 +1,5 @@
 import dataclasses
+import os
 from typing import Dict, List
 
 from libs import utils
@@ -25,10 +26,10 @@ class Alignment:
 class Interface:
     name: str
     res_list: List[int]
-    dist_coverage: float = dataclasses.field(init=False, repr=False, default=None)
-    core: int = dataclasses.field(init=False, repr=False, default=None)
-    dist_plot: str = dataclasses.field(init=False, repr=False, default=None)
-    encoded_dist_plot: bytes = dataclasses.field(init=False, repr=False, default=None)
+    dist_coverage: float = dataclasses.field(init=False, default=None)
+    core: int = dataclasses.field(init=False, default=None)
+    dist_plot: str = dataclasses.field(init=False, default=None)
+    encoded_dist_plot: bytes = dataclasses.field(init=False, default=None)
 
     def add_frobenius_information(self, dist_coverage: float, core: int, dist_plot: str):
         self.dist_coverage = dist_coverage
@@ -46,6 +47,7 @@ class Frobenius:
     ang_coverage: float
     ang_plot: str
     encoded_ang_plot: bytes
+    core: int
 
 
 @dataclasses.dataclass(frozen=True)
@@ -79,15 +81,21 @@ class Ranked:
         self.frobenius_plots: List[Frobenius] = []
         self.filtered: bool = False
         self.best: bool = False
+        self.rmsd: float
 
         self.path = ranked_path
+        self.split_path = os.path.join(os.path.dirname(self.path), f'split_{os.path.basename(self.path)}')
         self.name = utils.get_file_name(ranked_path)
+
     
     def set_path(self, path: str):
         self.path = path
 
     def set_plddt(self, plddt: float):
         self.plddt = plddt
+
+    def set_rmsd(self, rmsd: float):
+        self.rmsd = rmsd
 
     def set_filtered(self, filtered: bool):
         self.filtered = filtered
@@ -121,7 +129,7 @@ class Ranked:
     def add_interfaces_frobenius_plot(self, plot: str):
         self.interfaces_frobenius_plot.append(plot)
 
-    def add_frobenius_plot(self, template: str, dist_plot: str, ang_plot: str, dist_coverage: float, ang_coverage: float):
+    def add_frobenius_plot(self, template: str, dist_plot: str, ang_plot: str, dist_coverage: float, ang_coverage: float, core: float):
         frobenius = Frobenius(
                         template=template, 
                         dist_plot=dist_plot, 
@@ -129,7 +137,8 @@ class Ranked:
                         ang_plot=ang_plot,
                         encoded_ang_plot=utils.encode_data(ang_plot),
                         dist_coverage=dist_coverage, 
-                        ang_coverage=ang_coverage
+                        ang_coverage=ang_coverage,
+                        core=core
                         )
         self.frobenius_plots.append(frobenius)
 

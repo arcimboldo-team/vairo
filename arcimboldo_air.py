@@ -52,9 +52,10 @@ def main():
             a_air.generate_output()
             for template in a_air.templates_list:
                 alignment_dict = {}
-                database_dir = os.path.join(a_air.run_dir, template.pdb_id)
-                utils.create_dir(database_dir)
-                template.generate_database(output_dir=database_dir, database_path=a_air.alphafold_paths.bfd_db_path)
+                if not template.aligned:
+                    database_dir = os.path.join(a_air.run_dir, template.pdb_id)
+                    utils.create_dir(database_dir)
+                    template.generate_database(output_dir=database_dir, database_path=a_air.alphafold_paths.bfd_db_path)
                 
                 for sequence in a_air.sequence_assembled.sequence_list:
                     alignment_dir = os.path.join(a_air.run_dir, sequence.name)
@@ -102,7 +103,7 @@ def main():
 
         a_air.change_state(state=3)
         a_air.generate_output()
-        logging.info('ARCIMBOLDO_AIR has finished succesfully')
+        logging.info('ARCIMBOLDO_AIR has finished successfully')
         
     except SystemExit as e:
         sys.exit(e)

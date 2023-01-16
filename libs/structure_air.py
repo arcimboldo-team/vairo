@@ -127,11 +127,6 @@ class StructureAir:
             render_dict['plddt'] = utils.encode_data(self.output.plddt_plot_path)
 
         if self.output.ranked_list:
-            render_dict['ranked_filtered'] = {ranked.name: ranked.split_path for ranked in self.output.ranked_list if ranked.filtered}
-            render_dict['ranked_filtered_encoded'] = {
-                    ranked.name: utils.encode_data(ranked.split_path) for ranked in self.output.ranked_list if ranked.filtered
-                }
-
             render_dict['table'] = {}
             plddt_dict = {}
             secondary_dict = {}
@@ -141,55 +136,69 @@ class StructureAir:
             interfaces_dict = {}
             frobenius_dict = {}
             template_dict = {}
+            filtered_dict = {}
             green_color = 40
+            blue_color = 40
+
             for ranked in self.output.ranked_list:
-                try:
-                    if ranked.best:
-                        bests_dict[ranked.name] = {
-                            'name': ranked.name,
-                            'template': ranked.superposition_templates[0],
-                            'color': f'hsl(120, 100% ,{green_color}%)'
-                        }
+                if ranked.best:
+                    bests_dict[ranked.name] = {
+                        'name': ranked.name,
+                        'path': ranked.path,
+                        'template': ranked.superposition_templates[0],
+                        'rmsd': ranked.rmsd,
+                        'encoded': utils.encode_data(ranked.split_path),
+                        'color': f'hsl(120, 100% ,{green_color}%)'
+                    }
+                    if ranked.superposition_templates:
+                        template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
+                    green_color += 10
+                elif ranked.filtered:
+                    filtered_dict[ranked.name] = {
+                        'name': ranked.name,
+                        'path': ranked.path,
+                        'encoded': utils.encode_data(ranked.split_path),
+                        'color': f'hsl(229, 100% ,{blue_color}%)'
+                    }
+                    blue_color += 10
 
-                        if ranked.superposition_templates:
-                            template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
-                        green_color += 10
-                        
-                    plddt_dict[ranked.name] = round(ranked.plddt)
-                    secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
-                                                    'number_total_residues': ranked.total_residues
-                                                   }
-                    if ranked.energies is not None:
-                        energies_dict[ranked.name] = {'kinetic': ranked.energies.kinetic,
-                                                      'potential': ranked.energies.potential
-                                                      }
-                    rmsd_dict[ranked.name] = {}
-                    for ranked_template in ranked.superposition_templates:
-                        rmsd_dict[ranked.name][ranked_template.template] = {'rmsd': ranked_template.rmsd,
-                                                                            'aligned_residues': ranked_template.aligned_residues,
-                                                                            'total_residues': ranked_template.total_residues
-                                                                            }
-                    if ranked.filtered and ranked.interfaces:
-                        interfaces_dict[ranked.name] ={
-                            'bests': [interface for interface in ranked.interfaces if interface.dist_coverage > 0],
-                            'others': [interface for interface in ranked.interfaces if interface.dist_coverage == 0]
-                        }
-                    
-                    if ranked.frobenius_plots:
-                        ordered_list = sorted(ranked.frobenius_plots, key=lambda x: x.dist_coverage, reverse=True)
-                        frobenius_dict[ranked.name] = {}
-                        frobenius_dict[ranked.name]['best'] = ordered_list.pop(0)
-                        if ordered_list:
-                            frobenius_dict[ranked.name]['worst'] = ordered_list.pop()
-                        if ordered_list:
-                            frobenius_dict[ranked.name]['others'] = ordered_list               
-                
-                except:
-                    pass
+                plddt_dict[ranked.name] = round(ranked.plddt)
+                secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
+                                                'number_total_residues': ranked.total_residues
+                                               }
+                if ranked.energies is not None:
+                    energies_dict[ranked.name] = {'kinetic': ranked.energies.kinetic,
+                                                  'potential': ranked.energies.potential
+                                                  }
+                rmsd_dict[ranked.name] = {}
+                for ranked_template in ranked.superposition_templates:
+                    rmsd_dict[ranked.name][ranked_template.template] = {'rmsd': ranked_template.rmsd,
+                                                                        'aligned_residues': ranked_template.aligned_residues,
+                                                                        'total_residues': ranked_template.total_residues
+                                                                        }
+                if ranked.filtered and ranked.interfaces:
+                    interfaces_dict[ranked.name] = {
+                        'bests': [interface for interface in ranked.interfaces if interface.core > 0],
+                        'others': [interface for interface in ranked.interfaces if interface.core == 0]
+                    }
 
-            render_dict['bests_list'] = self.output.ranked_list
+                if ranked.frobenius_plots:
+                    ordered_list = sorted(ranked.frobenius_plots, key=lambda x: x.core, reverse=True)
+                    frobenius_dict[ranked.name] = {}
+                    frobenius_dict[ranked.name]['best'] = ordered_list.pop(0)
+                    if ordered_list:
+                        frobenius_dict[ranked.name]['worst'] = ordered_list.pop()
+                    if ordered_list:
+                        frobenius_dict[ranked.name]['others'] = ordered_list
+
+            if self.templates_list:
+                render_dict['templates_list'] = self.templates_list
+            if self.output.ranked_list:
+                render_dict['bests_list'] = self.output.ranked_list
             if bests_dict:
                 render_dict['bests_dict'] = bests_dict
+            if filtered_dict:
+                render_dict['filtered_dict'] = filtered_dict
             if template_dict:
                 render_dict['template_dict'] = template_dict
             if plddt_dict:
@@ -269,7 +278,7 @@ class StructureAir:
                                                    finish_chunk=partitions[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:
