@@ -94,6 +94,7 @@ class Template:
         return_references_list.append(self.reference)
         return list(filter(None, return_references_list))
 
+
     def generate_features(self, output_dir: str, alignment_dict: Dict, global_reference,
                           sequence_assembled: sequence.SequenceAssembled):
         #   - Generate offset.
