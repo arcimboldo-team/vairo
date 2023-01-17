@@ -16,7 +16,15 @@
                 font-size:16px;
             }
 
-            ul li {
+            .interface_graphs ul li {
+                list-style: none;
+            }
+
+            .frobenius_graphs ul li {
+                list-style: none;
+            }
+
+            .sidebar ul li {
                 list-style: none;
             }
 
@@ -143,10 +151,6 @@
                 background-color: blue;
             }
 
-            .show_circle {
-                list-style: disc;
-            }
-
             td{
                 border: 2px solid #000000;
                 text-align: center;
@@ -238,15 +242,17 @@
                                 <p>Other structural similar solutions are:</p>
                                 <ul>
                             {% endif %}
-                                    <li class="show_circle"><span style="color:green;"> {{ key }}</span>: <a download="{{ value.path }}.pdb" href=data:text/plain;base64,{{ value.encoded }}> {{ value.path }}</a> ({{ value.rmsd }} RMSD)</li>
+                                    <li><span style="color:green;"> {{ key }}</span>: <a download="{{ value.path }}.pdb" href=data:text/plain;base64,{{ value.encoded }}> {{ value.path }}</a> ({{ value.rmsd }} RMSD)</li>
                         {% endfor %}
                                 </ul>
+                {% endif %}
+                {% if data.filtered_dict and 'table' in data %}
                         {% for key, value in data.filtered_dict.items() if key != data.bests_list[0].name %}
                             {% if loop.first %}
                                 <p>Other solutions with similar pLDDT:</p>
                                 <ul>
                             {% endif %}
-                                    <li class="show_circle"><span style="color:blue;"> {{ key }}</span>: <a download="{{ value.path }}.pdb" href=data:text/plain;base64,{{ value.encoded }}> {{ value.path }}</a> ({{ data.table.plddt_dict[key] }} average pLDDT)</li>
+                                    <li><span style="color:blue;"> {{ key }}</span>: <a download="{{ value.path }}.pdb" href=data:text/plain;base64,{{ value.encoded }}> {{ value.path }}</a> ({{ data.table.plddt_dict[key] }} average pLDDT)</li>
                         {% endfor %}
                                 </ul>
                 {% endif %}
@@ -255,15 +261,15 @@
                     {% for template in data.templates_list if template.change_res_list%}
                             {% if loop.first %}
 
-                                <p>The following sequence changes have been done to the templates:</p>
+                                <p>The following sequence changes have been made to the templates:</p>
                                     <ul>
 
                             {% endif %}
-                            <li class="show_circle"> {{ template.pdb_id }}:
+                            <li> {{ template.pdb_id }}:
                                 <ul>
                         {% for change in template.change_res_list %}
-                                    <li class="show_circle">
-                                        The sequence has been changed with
+                                    <li>
+                                        The sequence has been replaced with
                                         {% if change.resname is not none  %}
                                             {{ change.resname }}
                                         {% else %}
@@ -277,7 +283,7 @@
                                         in the following places:
                                         <ul>
                                         {% for key, value in change.chain_res_dict.items() %}
-                                            <li class="show_circle"> Chain {{ key }} in the residues {{ value|join(',') }}</li>
+                                            <li> Chain {{ key }} in the residues {{ value|join(',') }}</li>
                                         {% endfor %}
                                         </ul>
                                     </li>
@@ -342,7 +348,7 @@
                             <ul>
                                 <li>
                                     <details class="details-frobenius-in" open>
-                                        <summary><h4 style="display:inline">{{ value.worst.template }}: Worst coverage< ({{ value.best.core }} CV)</h4></summary>
+                                        <summary><h4 style="display:inline">{{ value.worst.template }}: Worst coverage ({{ value.best.core }} CV)</h4></summary>
                                         <div class="div-frobenius">
                                             <p>Frobenius distance of CV distances: {{ value.worst.dist_coverage }}</p>
                                             <p>Frobenius distance of CV angles: {{ value.worst.ang_coverage }}</p>
@@ -567,7 +573,7 @@
                         . The closest templates are the following ones:
                         <ul>
                             {% for key, value in data.template_dict.items() %}
-                                <li class="show_circle">{{ key }}:
+                                <li>{{ key }}:
                                     {% for ranked in value %}
                                         {{ ranked }}
                                         {% if not loop.last %}
