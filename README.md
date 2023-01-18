@@ -59,7 +59,7 @@ templates:
   change_res:
     - resname: 'ALA'
       fasta_path:
-      when: after_alignmnt/before_alignment
+      when: after_alignment/before_alignment
       B: 10-50
       A: 1-10
   match:

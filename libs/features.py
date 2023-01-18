@@ -431,8 +431,7 @@ def create_features_from_file(pkl_in_path: str) -> Features:
     new_features = Features(query_sequence=features_dict['sequence'][0].decode('utf-8'))
     for i in range(1, len(features_dict['msa'])):
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][i].tolist()]))
-        new_features.append_row_in_msa(sequence=sequence,
-                                       sequence_id=str(i))
+        new_features.append_row_in_msa(sequence=sequence, sequence_id=str(i))
 
     for i in range(0, len(features_dict['template_sequence'])):
         template_dict = {

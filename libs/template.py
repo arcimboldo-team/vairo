@@ -27,6 +27,7 @@ class Template:
         self.reference: Optional[str] = None
         self.alignments: List[structures.Alignment] = []
         self.alignment_database: List[structures.AlignmentDatabase] = []
+        self.changes: List[structures.ChangesChains] = []
 
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         self.pdb_id = utils.get_file_name(self.pdb_path)
@@ -94,6 +95,7 @@ class Template:
         return_references_list.append(self.reference)
         return list(filter(None, return_references_list))
 
+
     def generate_features(self, output_dir: str, alignment_dict: Dict, global_reference,
                           sequence_assembled: sequence.SequenceAssembled):
         #   - Generate offset.
@@ -151,6 +153,7 @@ class Template:
                     if chain in change_residues.chain_res_dict.keys():
                         for path in paths_list:
                             change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
+
 
     def generate_database(self, output_dir: str, database_path: str):
         template_sequence = bioutils.extract_sequence_from_file(self.cif_path)
@@ -322,9 +325,9 @@ class Template:
 
         return composition_path_list
 
+
     def set_reference_templates(self, a_air):
         # Change pdb_id str to the Template reference
-
         if self.reference is not None:
             self.reference = a_air.get_template_by_id(self.reference)
         for match in self.match_restrict_list:
@@ -332,14 +335,34 @@ class Template:
                 new_reference = a_air.get_template_by_id(match.reference)
                 match.set_reference(new_reference)
 
+
+    def get_changes(self):
+        chains_changed = [None] * len(self.results_path_position)
+        chains_deleted = [None] * len(self.results_path_position)
+        for i, path in enumerate(self.results_path_position):
+            if path is not None:
+                chain, _ = utils.get_chain_and_number(path)
+                changed_residues = []
+                for change in self.change_res_list:
+                    if chain in change.chain_res_dict:
+                        changed_residues.extend(change.chain_res_dict[chain])
+                if changed_residues:
+                    chains_changed[i] = changed_residues
+                for change in self.match_restrict_list:
+                    if change.residues is not None and chain in change.residues:
+                        chains_deleted.extend(change.residues.chain_res_dict[chain])
+
+        return chains_changed, chains_deleted
+
+
     def get_alignment_by_pdb(self, pdb_path: str) -> structures.Alignment:
-        seq = os.path.basename(os.path.dirname(pdb_path))
         for alignment in self.alignments:
             if os.path.dirname(pdb_path) == os.path.dirname(alignment.extracted_path):
                 chain1, _ = utils.get_chain_and_number(alignment.extracted_path)
                 chain2, _ = utils.get_chain_and_number(pdb_path)
                 if chain1 == chain2:
                     return alignment
+
 
     def get_results_alignment(self) -> List[Union[None, structures.Alignment]]:
         return_alignments = []
@@ -349,6 +372,7 @@ class Template:
                 alignment = self.get_alignment_by_pdb(path)
             return_alignments.append(alignment)
         return return_alignments
+
 
     def get_results_alignment_text(self) -> str:
         text = ' '

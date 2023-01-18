@@ -14,7 +14,7 @@ from ALEPH.aleph.core import ALEPH
 from libs import bioutils, features, utils, sequence, structures
 
 PERCENTAGE_FILTER = 0.8
-PERCENTAGE_BEST = 0.9
+PERCENTAGE_BEST = 1
 GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
 plt.set_loglevel('WARNING')
 
@@ -24,8 +24,10 @@ def read_rankeds(input_path: str):
     return [structures.Ranked(os.path.join(input_path, path)) for path in utils.sort_by_digit(ranked_paths)]
 
 
-def plot_plddt(plot_path: str, ranked_list: List) -> List:
-    plt.clf()
+
+def plot_plddt(plot_path: str, ranked_list: List) -> float:
+    plt.cla()
+    plt.figure()
     for ranked in ranked_list:
         plddt_list = []
         with open(ranked.path) as f:
@@ -41,8 +43,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> List:
     plt.savefig(plot_path)
 
     max_plddt = max([ranked.plddt for ranked in ranked_list])
-    best_ranked = next(ranked for ranked in ranked_list if max_plddt == ranked.plddt)
-    return max_plddt, best_ranked
+    return max_plddt
 
 
 def get_group(res: str) -> str:
@@ -57,6 +58,7 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
     # if there is a match, a group match, they are different, or
     # they are not aligned
     return_list = []
+
     for i in range(0, len(sequence1)):
         if i < len(sequence2):
             res1 = sequence1[i]
@@ -76,13 +78,17 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
 
 def plot_gantt(plot_type: str, plot_path: str, a_air):
-    fig, (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios': [6, 1]})
+    plt.cla()
+    fig, ax = plt.subplots(1, figsize=(16, 2))
+    legend_elements = []
+    legend_seq = [Patch(label='Sequence', color='tab:cyan'),Patch(label='Glycines', color='tab:blue')]
+    number_of_templates = 1
+
     total_length = len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines
-    height = 0.3
     for i in range(a_air.sequence_assembled.total_copies):
-        ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i), height=height,
+        ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
                 left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
-        ax.barh('sequence', a_air.sequence_assembled.glycines, height=height,
+        ax.barh('sequence', a_air.sequence_assembled.glycines,
                 left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
                     i) + 1,
                 color='tab:blue')
@@ -98,19 +104,22 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
         names = a_air.feature.get_names_msa()
     else:
         names = a_air.feature.get_names_templates()
-    legend_elements = []
 
     names = [name for name in names if name != '']
     if len(names) > 30:
+        number_of_templates += 1
         aligned_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
         for name in names:
-            features_search = a_air.feature.get_msa_by_name(name)
+            if plot_type == 'msa':
+                features_search = a_air.feature.get_msa_by_name(name)
+            else:
+                features_search = a_air.feature.get_sequence_by_name(name)
             aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
             new_array = [0 if align == '0' else 1 for align in aligned_sequence]
             aligned_sequences = np.add(new_array, aligned_sequences)
         aligned_sequences = [aligned / len(names) for aligned in aligned_sequences]
         for i in range(1, len(aligned_sequences)):
-            ax.barh('Percentage', 1, height=height, left=i, color=str(aligned_sequences[i - 1]))
+            ax.barh('Percentage', 1, left=i, height=0.5, color=str(aligned_sequences[i - 1]))
 
     else:
         pdb_hits_path = os.path.join(a_air.run_dir, 'msas/pdb_hits.hhr')
@@ -118,15 +127,25 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
         if os.path.exists(pdb_hits_path):
             hhr_text = open(pdb_hits_path, 'r').read()
         for j, name in reversed(list(enumerate(names))):
+            number_of_templates += 1
             template = a_air.get_template_by_id(name)
+            changed_residues = []
+            deleted_residues = []
             if template is not None:
                 results_alignment_text = template.get_results_alignment_text()
+                changes_residues, deleted_residues = template.get_changes()
+                for m, chain_number in enumerate(changes_residues):
+                    if chain_number is not None:
+                        for residue in chain_number:
+                            result = a_air.sequence_assembled.get_real_residue_number(m, residue)
+                            if result is not None:
+                                changed_residues.append(result)
                 if len(name) > 4:
                     template_name = f'T{j + 1}'
-                    legend_elements.append(Patch(label=f'{template_name} ({name}): {results_alignment_text}'))
+                    legend_elements.append(f'{template_name} ({name}): {results_alignment_text}')
                 else:
                     template_name = name
-                    legend_elements.append(Patch(label=f'{template_name}: {results_alignment_text}'))
+                    legend_elements.append(f'{template_name}: {results_alignment_text}')
             else:
                 template_name = name
 
@@ -138,22 +157,35 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
                     match = re.findall(rf'(\d+ {name.upper()}.*$)', hhr_text, re.M)
                     if match:
                         match_split = match[0].split()[-9:]
-                        legend_elements.append(Patch(label=f'{template_name}: Aligned={match_split[5]}({match_split[8].replace("(","").replace(")","")}) Evalue={match_split[2]}'))
+                        legend_elements.append(f'{template_name}: Aligned={match_split[5]}({match_split[8].replace("(","").replace(")","")}) Evalue={match_split[2]}')
                     else:
-                        legend_elements.append(Patch(label=f'{template_name}'))
-
+                        legend_elements.append(f'{template_name}')
 
             if features_search is not None:
                 aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
                 for i in range(1, len(features_search)):
                     if aligned_sequence[i - 1] != '-':
-                        ax.barh(template_name, 1, height=height, left=i, color=str(aligned_sequence[i - 1]))
-
+                        ax.barh(template_name, 1, left=i, height=0.5, color=str(aligned_sequence[i - 1]))
+                        
+                        if i in changed_residues:
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='yellow')
+                        else:
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red')    
+    
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(0, total_length)
-    ax.set_xticks(
-        [a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
+    ax.set_ylim(0, number_of_templates)
+    if number_of_templates > 10:
+        fig.set_size_inches(16, number_of_templates*0.7)
+    else:
+        fig.set_size_inches(16, number_of_templates)
+    legend_elements.append('The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n\n',)
+    legend_elements.append('Yellow shows which residues have been changed after the alignment, meanwhile the red implies that no modifications have been done.')
+    legend_elements.reverse()
+    plt.figtext(0.05, -0.05, '\n'.join(legend_elements), va='top')
+
+    ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
 
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
@@ -163,16 +195,10 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
     ax.spines['top'].set_visible(False)
     ax.spines['bottom'].set_color('k')
 
-    # Put a legend below current axis
-    legend = ax1.legend(handles=legend_elements[::-1], loc='upper left', handlelength=0, handletextpad=0, fancybox=True)
-    plt.setp(legend.get_texts(), color='k')
-    ax1.spines['right'].set_visible(False)
-    ax1.spines['left'].set_visible(False)
-    ax1.spines['top'].set_visible(False)
-    ax1.spines['bottom'].set_visible(False)
-    ax1.set_xticks([])
-    ax1.set_yticks([])
-    plt.suptitle(title)
+    ax.legend(handles=legend_seq[::-1], loc='best', fancybox=True, shadow=True)
+    fig.tight_layout()
+    fig.subplots_adjust(top=.95)
+    plt.title(title)
     plt.savefig(file, bbox_inches='tight', dpi=100)
     return file
 
@@ -191,9 +217,7 @@ class OutputAir:
         self.gantt_plots_path: List[str] = []
         self.ranked_list: List[structures.Ranked] = []
         self.output_dir: str = output_dir
-        self.best_ranked: structures.Ranked = None
         self.experimental_dict = {}
-
         self.run_dir: str = None
         self.nonsplit_path: str = None
         self.aleph_results_path: str = None
@@ -203,15 +227,18 @@ class OutputAir:
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
+
     def create_plot_gantt(self, a_air):
         self.gantt_plots_path = [plot_gantt(plot_type='template', plot_path=self.plots_path, a_air=a_air)]
         self.gantt_plots_path.append(plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air))
+
 
     def set_run_dir(self, run_dir: str):
         self.run_dir = run_dir
         self.nonsplit_path = f'{run_dir}/nonsplit'
         self.aleph_results_path = f'{run_dir}/output.json'
         utils.create_dir(dir_path=self.nonsplit_path, delete_if_exists=True)
+
 
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
                        experimental_pdb: str):
@@ -222,6 +249,7 @@ class OutputAir:
         if feature is not None:
             template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path,
                                                                         print_number=False)
+
 
         # Split the templates with chains
         for template, template_path in template_nonsplit.items():
@@ -238,42 +266,51 @@ class OutputAir:
             logging.info('No ranked PDBs found')
             return
 
-        # Create a plot with the ranked plddts, also, calculate the maximum plddt
-        max_plddt, self.best_ranked = plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
+        # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
+        max_plddt = plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
                                 sequence_amino=sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
 
+        # Sort list of ranked by pLDDT
+        self.ranked_list.sort(key=lambda x: x.plddt, reverse=True)
+
+        reference_superpose = self.ranked_list[0].path
+        shutil.copy2(self.ranked_list[0].path, self.ranked_list[0].split_path)
+        self.ranked_list[0].set_rmsd(0)
+        for ranked in self.ranked_list[1:]:
+            rmsd, _, _ = bioutils.superpose_pdbs([ranked.path, reference_superpose], ranked.split_path)
+            ranked.set_rmsd(rmsd)
+        self.ranked_list.sort(key=lambda x: x.rmsd)
+
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
-            if ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
+            if ranked.rmsd <= PERCENTAGE_BEST:
+                ranked.set_best(True)
                 ranked.set_filtered(True)
-                ranked.set_split_path(os.path.join(self.output_dir, os.path.basename(ranked.path)))
-                if ranked.plddt >= (PERCENTAGE_BEST * max_plddt):
-                    ranked.set_best(True)
-            else:
-                ranked.set_split_path(os.path.join(self.run_dir, f'split_{os.path.basename(ranked.path)}'))
+                ranked.set_split_path(shutil.copy2(ranked.split_path, os.path.join(self.output_dir, os.path.basename(ranked.path))))
+            elif ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
+                ranked.set_filtered(True)
+                ranked.set_split_path(shutil.copy2(ranked.split_path, os.path.join(self.output_dir, os.path.basename(ranked.path))))
 
-            shutil.copy2(ranked.path, ranked.split_path)
             mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.split_path,
                                                      pdb_out_path=ranked.split_path,
                                                      sequence_assembled=sequence_assembled)
             ranked.set_mapping(mapping)
 
-        # Save superpositions of rankeds and templates
-        reference_superpose = self.ranked_list[0].split_path
-
-        for path in [ranked.split_path for ranked in self.ranked_list[1:]] + list(template_dict.values()):
-            bioutils.superpose_pdbs([path, reference_superpose], path)
-
         # Superpose each template with all the rankeds.
         if template_dict:
-            for ranked in self.ranked_list:
+            for i, ranked in enumerate(self.ranked_list):
                 for template, template_path in template_dict.items():
                     total_residues = len(
-                        [res for res in
-                         Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
-                    rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path])
-                    ranked.add_template(structures.TemplateRanked(template, round(rmsd, 2), aligned_residues, total_residues))
+                        [res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
+                    if i == 0:
+                        rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path], template_path)
+                    else:
+                        rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path])
+                    if rmsd is not None:
+                        rmsd = round(rmsd, 2)
+                    ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
+                ranked.sort_template_rankeds()
 
         # Use aleph to generate domains and calculate secondary structure percentage
         for ranked in self.ranked_list:
@@ -281,8 +318,7 @@ class OutputAir:
             with open(aleph_file, 'w') as sys.stdout:
                 try:
                     ALEPH.annotate_pdb_model(reference=ranked.split_path, strictness_ah=0.45, strictness_bs=0.2,
-                                            peptide_length=3,
-                                            width_pic=1, height_pic=1, write_graphml=False, write_pdb=True)
+                                            peptide_length=3, width_pic=1, height_pic=1, write_graphml=False, write_pdb=True)
                 except:
                     pass
             sys.stdout = sys.__stdout__
@@ -335,27 +371,28 @@ class OutputAir:
             template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
             path_list = [ranked.path for ranked in self.ranked_list if ranked.filtered]
             with open(frobenius_file, 'w') as sys.stdout:
-                _, _, _, _, _, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path],
-                                                                               targets=list(path_list), write_plot=True,
-                                                                               write_matrix=True)
+                _, list_targets, list_core, _, list_frobenius_angles, list_frobenius_distances, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path],
+                                                                                                                                                targets=list(path_list), write_plot=True,
+                                                                                                                                                write_matrix=True)
             sys.stdout = sys.__stdout__
-            frobenius_file_dict = utils.parse_frobenius(frobenius_file)
             ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
             for ranked in ranked_filtered:
+                index = list_targets.index(ranked.name)
                 ranked.add_frobenius_plot(
                     template=template, 
                     dist_plot=[shutil.copy2(plot, self.frobenius_path) for plot in list_plot_dist if ranked.name in os.path.basename(plot)][0],
                     ang_plot=[shutil.copy2(plot, self.frobenius_path) for plot in list_plot_ang if ranked.name in os.path.basename(plot)][0], 
-                    dist_coverage=frobenius_file_dict['dist'][ranked.name], 
-                    ang_coverage=frobenius_file_dict['ang'][ranked.name], 
+                    dist_coverage=list_frobenius_distances[index],
+                    ang_coverage=list_frobenius_angles[index],
+                    core=list_core[index]
                 )
                 ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
                 for interface in ranked.interfaces:
                     frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface.name}.txt')
                     with open(frobenius_file, 'w') as sys.stdout:
                         fro_distance, fro_core, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix,
-                                                                 residues_tar=interface.res_list, write_plot=True,
-                                                                 title=f'Interface: {interface.name}')
+                                                                                    residues_tar=interface.res_list, write_plot=True,
+                                                                                    title=f'Interface: {interface.name}')
                     sys.stdout = sys.__stdout__
                     new_name = os.path.join(self.frobenius_path, f'{interface.name}.png')
                     plot_path = os.path.join(self.run_dir, os.path.basename(plot))
