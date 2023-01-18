@@ -307,19 +307,28 @@
                 <div id="alignment" class="section-div">
                     <h2>Alignment</h2>
                     {% for gantt_graph in data.gantt %}
-                        <img style="width: 90%" src="data:image/png;base64,{{ gantt_graph }}" alt="Gantt diagram with alignments">
+                        <img style="width: 100%" src="data:image/png;base64,{{ gantt_graph }}" alt="Gantt diagram with alignments">
                     {% endfor %}
                 </div>            
             {% endif %}
             {% if 'plddt' in data %}
                 <div id="plddt" class="section-div">
                     <h2>pLDDT for predictions</h2>
-                    <img style="width: 90%" src="data:image/png;base64,{{ data.plddt }}" alt="PLDDT graph">
+                    <img style="width: 70%" src="data:image/png;base64,{{ data.plddt }}" alt="PLDDT graph">
                 </div>
             {% endif %}
             {% if 'frobenius_dict' in data %}
                 <div id="frobenius_graphs" class="section-div">
                     <h2>Frobenius Graphs</h2>
+                    <div>
+                        <span style="vertical-align: middle;">Frobenius equation: </span>
+                        <img style="width: 30%; vertical-align: middle;" src="data:image/png;base64,{{ data.frobenius_equation }}" alt="Frobenius distances graph">
+                    </div>
+                    <div>
+                        <span style="vertical-align: middle;">Where: </span>
+                        <img style="width: 15%; vertical-align: middle;" src="data:image/png;base64,{{ data.frobenius_equation2 }}" alt="Frobenius distances graph">
+                    </div>
+                    <br>
                     {% for key, value in data.frobenius_dict.items() %}
                         <details class="details-frobenius"
                         {% if key == data.bests_list[0].name %}

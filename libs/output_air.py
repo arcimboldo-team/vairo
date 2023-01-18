@@ -26,7 +26,8 @@ def read_rankeds(input_path: str):
 
 
 def plot_plddt(plot_path: str, ranked_list: List) -> float:
-    plt.clf()
+    plt.cla()
+    plt.figure()
     for ranked in ranked_list:
         plddt_list = []
         with open(ranked.path) as f:
@@ -57,6 +58,7 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
     # if there is a match, a group match, they are different, or
     # they are not aligned
     return_list = []
+
     for i in range(0, len(sequence1)):
         if i < len(sequence2):
             res1 = sequence1[i]
@@ -76,13 +78,17 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
 
 def plot_gantt(plot_type: str, plot_path: str, a_air):
-    fig, (ax, ax1) = plt.subplots(2, figsize=(16, 6), gridspec_kw={'height_ratios': [6, 1]})
+    plt.cla()
+    fig, ax = plt.subplots(1, figsize=(16, 2))
+    legend_elements = []
+    legend_seq = [Patch(label='Sequence', color='tab:cyan'),Patch(label='Glycines', color='tab:blue')]
+    number_of_templates = 1
+
     total_length = len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines
-    height = 0.3
     for i in range(a_air.sequence_assembled.total_copies):
-        ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i), height=height,
+        ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
                 left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
-        ax.barh('sequence', a_air.sequence_assembled.glycines, height=height,
+        ax.barh('sequence', a_air.sequence_assembled.glycines,
                 left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
                     i) + 1,
                 color='tab:blue')
@@ -98,19 +104,22 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
         names = a_air.feature.get_names_msa()
     else:
         names = a_air.feature.get_names_templates()
-    legend_elements = []
 
     names = [name for name in names if name != '']
     if len(names) > 30:
+        number_of_templates += 1
         aligned_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
         for name in names:
-            features_search = a_air.feature.get_msa_by_name(name)
+            if plot_type == 'msa':
+                features_search = a_air.feature.get_msa_by_name(name)
+            else:
+                features_search = a_air.feature.get_sequence_by_name(name)
             aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
             new_array = [0 if align == '0' else 1 for align in aligned_sequence]
             aligned_sequences = np.add(new_array, aligned_sequences)
         aligned_sequences = [aligned / len(names) for aligned in aligned_sequences]
         for i in range(1, len(aligned_sequences)):
-            ax.barh('Percentage', 1, height=height, left=i, color=str(aligned_sequences[i - 1]))
+            ax.barh('Percentage', 1, left=i, height=0.5, color=str(aligned_sequences[i - 1]))
 
     else:
         pdb_hits_path = os.path.join(a_air.run_dir, 'msas/pdb_hits.hhr')
@@ -118,15 +127,25 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
         if os.path.exists(pdb_hits_path):
             hhr_text = open(pdb_hits_path, 'r').read()
         for j, name in reversed(list(enumerate(names))):
+            number_of_templates += 1
             template = a_air.get_template_by_id(name)
+            changed_residues = []
+            deleted_residues = []
             if template is not None:
                 results_alignment_text = template.get_results_alignment_text()
+                changes_residues, deleted_residues = template.get_changes()
+                for m, chain_number in enumerate(changes_residues):
+                    if chain_number is not None:
+                        for residue in chain_number:
+                            result = a_air.sequence_assembled.get_real_residue_number(m, residue)
+                            if result is not None:
+                                changed_residues.append(result)
                 if len(name) > 4:
                     template_name = f'T{j + 1}'
-                    legend_elements.append(Patch(label=f'{template_name} ({name}): {results_alignment_text}'))
+                    legend_elements.append(f'{template_name} ({name}): {results_alignment_text}')
                 else:
                     template_name = name
-                    legend_elements.append(Patch(label=f'{template_name}: {results_alignment_text}'))
+                    legend_elements.append(f'{template_name}: {results_alignment_text}')
             else:
                 template_name = name
 
@@ -138,22 +157,35 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
                     match = re.findall(rf'(\d+ {name.upper()}.*$)', hhr_text, re.M)
                     if match:
                         match_split = match[0].split()[-9:]
-                        legend_elements.append(Patch(label=f'{template_name}: Aligned={match_split[5]}({match_split[8].replace("(","").replace(")","")}) Evalue={match_split[2]}'))
+                        legend_elements.append(f'{template_name}: Aligned={match_split[5]}({match_split[8].replace("(","").replace(")","")}) Evalue={match_split[2]}')
                     else:
-                        legend_elements.append(Patch(label=f'{template_name}'))
-
+                        legend_elements.append(f'{template_name}')
 
             if features_search is not None:
                 aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
                 for i in range(1, len(features_search)):
                     if aligned_sequence[i - 1] != '-':
-                        ax.barh(template_name, 1, height=height, left=i, color=str(aligned_sequence[i - 1]))
-
+                        ax.barh(template_name, 1, left=i, height=0.5, color=str(aligned_sequence[i - 1]))
+                        
+                        if i in changed_residues:
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='yellow')
+                        else:
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red')    
+    
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(0, total_length)
-    ax.set_xticks(
-        [a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
+    ax.set_ylim(0, number_of_templates)
+    if number_of_templates > 10:
+        fig.set_size_inches(16, number_of_templates*0.7)
+    else:
+        fig.set_size_inches(16, number_of_templates)
+    legend_elements.append('The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n\n',)
+    legend_elements.append('Yellow shows which residues have been changed after the alignment, meanwhile the red implies that no modifications have been done.')
+    legend_elements.reverse()
+    plt.figtext(0.05, -0.05, '\n'.join(legend_elements), va='top')
+
+    ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
 
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
@@ -163,16 +195,10 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
     ax.spines['top'].set_visible(False)
     ax.spines['bottom'].set_color('k')
 
-    # Put a legend below current axis
-    legend = ax1.legend(handles=legend_elements[::-1], loc='upper left', handlelength=0, handletextpad=0, fancybox=True)
-    plt.setp(legend.get_texts(), color='k')
-    ax1.spines['right'].set_visible(False)
-    ax1.spines['left'].set_visible(False)
-    ax1.spines['top'].set_visible(False)
-    ax1.spines['bottom'].set_visible(False)
-    ax1.set_xticks([])
-    ax1.set_yticks([])
-    plt.suptitle(title)
+    ax.legend(handles=legend_seq[::-1], loc='best', fancybox=True, shadow=True)
+    fig.tight_layout()
+    fig.subplots_adjust(top=.95)
+    plt.title(title)
     plt.savefig(file, bbox_inches='tight', dpi=100)
     return file
 
@@ -201,15 +227,18 @@ class OutputAir:
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
+
     def create_plot_gantt(self, a_air):
         self.gantt_plots_path = [plot_gantt(plot_type='template', plot_path=self.plots_path, a_air=a_air)]
         self.gantt_plots_path.append(plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air))
+
 
     def set_run_dir(self, run_dir: str):
         self.run_dir = run_dir
         self.nonsplit_path = f'{run_dir}/nonsplit'
         self.aleph_results_path = f'{run_dir}/output.json'
         utils.create_dir(dir_path=self.nonsplit_path, delete_if_exists=True)
+
 
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
                        experimental_pdb: str):
@@ -220,6 +249,7 @@ class OutputAir:
         if feature is not None:
             template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path,
                                                                         print_number=False)
+
 
         # Split the templates with chains
         for template, template_path in template_nonsplit.items():

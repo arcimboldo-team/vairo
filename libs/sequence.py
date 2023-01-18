@@ -90,8 +90,15 @@ class SequenceAssembled:
         return [sequence.name for sequence in self.sequence_list_expanded]
 
     def get_starting_length(self, i: int) -> int:
-
+        #Get the starting position of the assembled sequence.
         offset = 0
         for j in range(i):
             offset += len(self.sequence_list_expanded[j].sequence) + self.glycines
         return offset
+
+    def get_real_residue_number(self, i: int, residue: int) -> int:
+        #Given a position (i) and a residue, get the residue number without being splitted in chains
+        init = self.get_starting_length(i)
+        if residue+init <= self.get_starting_length(i)+self.get_sequence_length(i):
+            return residue+init
+        return None

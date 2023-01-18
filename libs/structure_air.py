@@ -102,11 +102,12 @@ class StructureAir:
     def generate_output(self):
         render_dict = {}
 
-        with open(f'{utils.get_main_path()}/templates/output.html', 'r') as f_in:
-            template_str = f_in.read()
+        template_str = open(f'{utils.get_main_path()}/templates/output.html', 'r').read()
         jinja_template = Environment(loader=FileSystemLoader(f'{utils.get_main_path()}/templates/')).from_string(
             template_str)
 
+        render_dict['frobenius_equation'] = utils.encode_data(input_data=f'{utils.get_main_path()}/templates/frobenius_equation.png')
+        render_dict['frobenius_equation2'] = utils.encode_data(input_data=f'{utils.get_main_path()}/templates/frobenius_equation2.png')
         render_dict['custom_features'] = self.custom_features
         render_dict['mosaic'] = self.mosaic
         render_dict['total_copies'] = self.sequence_assembled.total_copies
@@ -278,7 +279,7 @@ class StructureAir:
                                                    finish_chunk=partitions[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:
