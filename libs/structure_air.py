@@ -83,8 +83,7 @@ class StructureAir:
             reference = parameters_dict.get('reference')
             for parameters_template in parameters_dict.get('templates'):
                 new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir,
-                                                 input_dir=self.input_dir,
-                                                 num_of_copies=self.sequence_assembled.total_copies)
+                                                 input_dir=self.input_dir, num_of_copies=self.sequence_assembled.total_copies)
                 self.templates_list.append(new_template)
                 if new_template.pdb_id == reference:
                     self.reference = new_template
@@ -279,7 +278,7 @@ class StructureAir:
                                                    finish_chunk=partitions[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:

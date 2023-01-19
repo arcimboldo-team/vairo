@@ -27,7 +27,7 @@ def read_rankeds(input_path: str):
 
 def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.cla()
-    plt.figure()
+    plt.figure(figsize=(18, 6))
     for ranked in ranked_list:
         plddt_list = []
         with open(ranked.path) as f:
@@ -40,7 +40,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.legend()
     plt.xlabel('residue number')
     plt.ylabel('pLDDT')
-    plt.savefig(plot_path)
+    plt.savefig(plot_path, dpi=100)
 
     max_plddt = max([ranked.plddt for ranked in ranked_list])
     return max_plddt
@@ -81,7 +81,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
     plt.cla()
     fig, ax = plt.subplots(1, figsize=(16, 2))
     legend_elements = []
-    legend_seq = [Patch(label='Sequence', color='tab:cyan'),Patch(label='Glycines', color='tab:blue')]
+    legend_seq = [Patch(label='Sequence', color='tab:cyan'),Patch(label='Linker', color='tab:blue')]
     number_of_templates = 1
 
     total_length = len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines
@@ -180,7 +180,8 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
         fig.set_size_inches(16, number_of_templates*0.7)
     else:
         fig.set_size_inches(16, number_of_templates)
-    legend_elements.append('The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n\n',)
+    legend_elements.append('The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n'
+                           'The darker parts indicate that the residues are the same or belong to the same group.\n\n')
     legend_elements.append('Yellow shows which residues have been changed after the alignment, meanwhile the red implies that no modifications have been done.')
     legend_elements.reverse()
     plt.figtext(0.05, -0.05, '\n'.join(legend_elements), va='top')
@@ -195,7 +196,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
     ax.spines['top'].set_visible(False)
     ax.spines['bottom'].set_color('k')
 
-    ax.legend(handles=legend_seq[::-1], loc='best', fancybox=True, shadow=True)
+    ax.legend(handles=legend_seq[::-1], loc='best', fancybox=True, shadow=True, ncol=2)
     fig.tight_layout()
     fig.subplots_adjust(top=.95)
     plt.title(title)
@@ -332,7 +333,7 @@ class OutputAir:
                 break
             if ranked.filtered and os.path.exists(aleph_txt_path):
                 ranked.set_minimized_path(os.path.join(self.run_dir, f'{ranked.name}_minimized.pdb'))
-                ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                #ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 if interfaces_data_list:
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
