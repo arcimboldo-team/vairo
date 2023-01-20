@@ -11,10 +11,11 @@ import pandas as pd
 from typing import Dict, List
 from Bio.PDB import PDBParser, Selection
 from ALEPH.aleph.core import ALEPH
+from itertools import combinations
 from libs import bioutils, features, utils, sequence, structures
 
 PERCENTAGE_FILTER = 0.8
-PERCENTAGE_BEST = 1
+PERCENTAGE_MAX_RMSD = 1
 GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
 plt.set_loglevel('WARNING')
 
@@ -76,6 +77,14 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
     return return_list
 
+def convert_residues(residues_list: List[List], sequence_assembled):
+    for i in range(0, len(residues_list)):
+        if residues_list[i] is not None:
+            for residue in residues_list[i]:
+                result = sequence_assembled.get_real_residue_number(i, residue)
+                if result is not None:
+                    residues_list.append(result)
+    return residues_list
 
 def plot_gantt(plot_type: str, plot_path: str, a_air):
     plt.cla()
@@ -130,16 +139,13 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
             number_of_templates += 1
             template = a_air.get_template_by_id(name)
             changed_residues = []
+            changed_fasta = []
             deleted_residues = []
             if template is not None:
                 results_alignment_text = template.get_results_alignment_text()
-                changes_residues, deleted_residues = template.get_changes()
-                for m, chain_number in enumerate(changes_residues):
-                    if chain_number is not None:
-                        for residue in chain_number:
-                            result = a_air.sequence_assembled.get_real_residue_number(m, residue)
-                            if result is not None:
-                                changed_residues.append(result)
+                changed_residues, changed_fasta, _ = template.get_changes()
+                changed_residues = convert_residues(changed_residues, a_air.sequence_assembled)
+                changed_fasta = convert_residues(changed_fasta, a_air.sequence_assembled)
                 if len(name) > 4:
                     template_name = f'T{j + 1}'
                     legend_elements.append(f'{template_name} ({name}): {results_alignment_text}')
@@ -166,12 +172,13 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
                 for i in range(1, len(features_search)):
                     if aligned_sequence[i - 1] != '-':
                         ax.barh(template_name, 1, left=i, height=0.5, color=str(aligned_sequence[i - 1]))
-                        
                         if i in changed_residues:
                             ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='yellow')
-                        else:
-                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red')    
-    
+                        elif i in changed_fasta:
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red')
+                        else:  
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='white')
+
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(0, total_length)
@@ -182,7 +189,8 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
         fig.set_size_inches(16, number_of_templates)
     legend_elements.append('The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n'
                            'The darker parts indicate that the residues are the same or belong to the same group.\n\n')
-    legend_elements.append('Yellow shows which residues have been changed after the alignment, meanwhile the red implies that no modifications have been done.')
+    legend_elements.append('Yellow shows which residues have been changed to another specific residue after the alignment, whereas the red shows which residues have been copied from another sequence.\n'
+                            'No information (white) implies that no modifications have been done.')
     legend_elements.reverse()
     plt.figtext(0.05, -0.05, '\n'.join(legend_elements), va='top')
 
@@ -222,6 +230,7 @@ class OutputAir:
         self.run_dir: str = None
         self.nonsplit_path: str = None
         self.aleph_results_path: str = None
+        self.group_ranked_by_rmsd_dict: dict = {}
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -250,8 +259,6 @@ class OutputAir:
         if feature is not None:
             template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path,
                                                                         print_number=False)
-
-
         # Split the templates with chains
         for template, template_path in template_nonsplit.items():
             new_pdb_path = os.path.join(self.templates_path, f'{template}.pdb')
@@ -274,22 +281,38 @@ class OutputAir:
 
         # Sort list of ranked by pLDDT
         self.ranked_list.sort(key=lambda x: x.plddt, reverse=True)
-
-        reference_superpose = self.ranked_list[0].path
         shutil.copy2(self.ranked_list[0].path, self.ranked_list[0].split_path)
-        self.ranked_list[0].set_rmsd(0)
+        results = [items for items in combinations(self.ranked_list, r=2)]
+        for result in results:
+            if result[0].name == self.ranked_list[0].name:
+                rmsd, _, _ = bioutils.superpose_pdbs([result[1].path, result[0].path], result[1].split_path)
+            else:
+                rmsd, _, _ = bioutils.superpose_pdbs([result[1].path, result[0].path])
+            result[0].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[1].name)
+            result[1].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[0].name)
+
+        best_ranked_name = self.ranked_list[0].name
+        reference_superpose = self.ranked_list[0].path
+        self.group_ranked_by_rmsd_dict[best_ranked_name] = [self.ranked_list[0]]
+        green_color = 40
+        self.ranked_list[0].set_green_color(green_color)
+        self.ranked_list[0].set_best(True)
         for ranked in self.ranked_list[1:]:
-            rmsd, _, _ = bioutils.superpose_pdbs([ranked.path, reference_superpose], ranked.split_path)
-            ranked.set_rmsd(rmsd)
-        self.ranked_list.sort(key=lambda x: x.rmsd)
+            if ranked.rmsd_dict[best_ranked_name] > PERCENTAGE_MAX_RMSD:
+                best_ranked_name = ranked.name
+                self.group_ranked_by_rmsd_dict[best_ranked_name] = []
+            else:
+                ranked.set_rmsd(ranked.rmsd_dict[best_ranked_name])
+                if self.ranked_list[0].name == best_ranked_name:
+                    green_color += 10
+                    ranked.set_green_color(green_color)
+                    ranked.set_best(True)
+
+            self.group_ranked_by_rmsd_dict[best_ranked_name].append(ranked)
 
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
-            if ranked.rmsd <= PERCENTAGE_BEST:
-                ranked.set_best(True)
-                ranked.set_filtered(True)
-                ranked.set_split_path(shutil.copy2(ranked.split_path, os.path.join(self.output_dir, os.path.basename(ranked.path))))
-            elif ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
+            if ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
                 ranked.set_filtered(True)
                 ranked.set_split_path(shutil.copy2(ranked.split_path, os.path.join(self.output_dir, os.path.basename(ranked.path))))
 

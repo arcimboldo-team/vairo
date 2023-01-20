@@ -131,38 +131,18 @@ class StructureAir:
             plddt_dict = {}
             secondary_dict = {}
             rmsd_dict = {}
+            ranked_rmsd_dict = {}
             energies_dict = {}
-            bests_dict = {}
             interfaces_dict = {}
             frobenius_dict = {}
             template_dict = {}
-            filtered_dict = {}
-            green_color = 40
-            blue_color = 40
 
             for ranked in self.output.ranked_list:
-                if ranked.best:
-                    bests_dict[ranked.name] = {
-                        'name': ranked.name,
-                        'path': ranked.path,
-                        'template': ranked.superposition_templates[0],
-                        'rmsd': ranked.rmsd,
-                        'encoded': utils.encode_data(ranked.split_path),
-                        'color': f'hsl(120, 100% ,{green_color}%)'
-                    }
-                    if ranked.superposition_templates:
-                        template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
-                    green_color += 10
-                elif ranked.filtered:
-                    filtered_dict[ranked.name] = {
-                        'name': ranked.name,
-                        'path': ranked.path,
-                        'encoded': utils.encode_data(ranked.split_path),
-                        'color': f'hsl(229, 100% ,{blue_color}%)'
-                    }
-                    blue_color += 10
 
-                plddt_dict[ranked.name] = round(ranked.plddt)
+                if ranked.superposition_templates:
+                    template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
+                
+                plddt_dict[ranked.name] = ranked.plddt
                 secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
                                                 'number_total_residues': ranked.total_residues
                                                }
@@ -176,6 +156,10 @@ class StructureAir:
                                                                         'aligned_residues': ranked_template.aligned_residues,
                                                                         'total_residues': ranked_template.total_residues
                                                                         }
+                ranked_rmsd_dict[ranked.name] = {}
+                for key, value in ranked.rmsd_dict.items():
+                    ranked_rmsd_dict[ranked.name][key] = value
+
                 if ranked.filtered and ranked.interfaces:
                     interfaces_dict[ranked.name] = {
                         'bests': [interface for interface in ranked.interfaces if interface.core > 0],
@@ -191,18 +175,17 @@ class StructureAir:
                     if ordered_list:
                         frobenius_dict[ranked.name]['others'] = ordered_list
 
+            
+            render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
+            render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.filtered}
             if self.templates_list:
                 render_dict['templates_list'] = self.templates_list
             if self.output.ranked_list:
-                render_dict['bests_list'] = self.output.ranked_list
-            if bests_dict:
-                render_dict['bests_dict'] = bests_dict
-            if filtered_dict:
-                render_dict['filtered_dict'] = filtered_dict
+                render_dict['ranked_list'] = self.output.ranked_list
+            if self.output.group_ranked_by_rmsd_dict:
+                render_dict['ranked_by_rmsd'] = self.output.group_ranked_by_rmsd_dict
             if template_dict:
                 render_dict['template_dict'] = template_dict
-            if plddt_dict:
-                render_dict['table']['plddt_dict'] = plddt_dict
             if secondary_dict:
                 render_dict['table']['secondary_dict'] = secondary_dict
             if rmsd_dict:

@@ -70,7 +70,7 @@ class Ranked:
         self.name: str
         self.split_path: str
         self.minimized_path: str
-        self.plddt: float
+        self.plddt: int
         self.ah: int
         self.bs: int
         self.total_residues: int
@@ -82,6 +82,8 @@ class Ranked:
         self.filtered: bool = False
         self.best: bool = False
         self.rmsd: float
+        self.rmsd_dict: Dict = {}
+        self.color: str
 
         self.path = ranked_path
         self.split_path = os.path.join(os.path.dirname(self.path), f'split_{os.path.basename(self.path)}')
@@ -92,13 +94,19 @@ class Ranked:
         self.path = path
 
     def set_plddt(self, plddt: float):
-        self.plddt = plddt
+        self.plddt = round(plddt)
 
     def set_rmsd(self, rmsd: float):
-        self.rmsd = rmsd
+        self.rmsd = round(rmsd, 2)
+
+    def set_ranked_to_rmsd_dict(self, rmsd: float, ranked_name: str):
+        self.rmsd_dict[ranked_name] = round(rmsd, 2)
 
     def set_filtered(self, filtered: bool):
         self.filtered = filtered
+
+    def set_green_color(self, color: str):
+        self.color = f'hsl(120, 100% ,{color}%)'
 
     def set_best(self, best: bool):
         self.best = best
