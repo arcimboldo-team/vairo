@@ -351,15 +351,15 @@
                          open
                         {% endif %}
                         >
+                        <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
                         {% for ranked in value %}
-                            <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
                                 <ul>
                                     <li>
                                             {% if loop.index == 2 %}
-                                                <details class="details-frobenius-in" open>
+                                                <details class="details-frobenius-in">
                                                 <summary><h4 style="display:inline">{{ ranked.template }}: Worst coverage ({{ ranked.core }} CV)</h4></summary>
                                             {% elif loop.first %}
-                                                <details class="details-frobenius-in">
+                                                <details class="details-frobenius-in" open>
                                                 <summary><h4 style="display:inline">{{ ranked.template }}: Best coverage ({{ ranked.core }} CV)</h4></summary>
                                             {% else %}
                                                 <details class="details-frobenius-in">
@@ -398,25 +398,24 @@
                         {% endif %}
                         >
                             <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
-                            {% for interface in value %}
-
-                                        <ul>
-                                            <li>
-                                                {% if interface.core > 0 %}
-                                                    <details class="details-frobenius-in" open>
-                                                {% else %}
-                                                    <details class="details-frobenius-in">
-                                                {% endif %}
-                                                <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
-                                                <div class="div-frobenius">
-                                                    <p>Distance Frobenius is: {{ interface.dist_coverage }}</p>
-                                                    <p>Core is: {{ interface.core }} CV</p>
-                                                    <img style="width: 40%" src="data:image/png;base64,{{ interface.encoded_dist_plot  }}" alt="Interface distances graph">
-                                                </div>
-                                                <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
-                                            </details>
-                                            </li>
-                                        </ul>
+                            {% for interface in value if interface.core > 0 %}
+                                {% if loop.first %}
+                                    <ul>
+                                {% endif %}
+                                    <li>
+                                        <details class="details-frobenius-in" open>
+                                        <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
+                                        <div class="div-frobenius">
+                                            <p>Distance Frobenius is: {{ interface.dist_coverage }}</p>
+                                            <p>Core is: {{ interface.core }} CV</p>
+                                            <img style="width: 40%" src="data:image/png;base64,{{ interface.encoded_dist_plot  }}" alt="Interface distances graph">
+                                            <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
+                                        </div>
+                                    </details>
+                                    </li>
+                                {% if loop.last %}
+                                    </ul>
+                                {% endif %}
 
                             {% endfor %}
                         </details>
