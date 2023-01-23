@@ -25,7 +25,6 @@ def read_rankeds(input_path: str):
     return [structures.Ranked(os.path.join(input_path, path)) for path in utils.sort_by_digit(ranked_paths)]
 
 
-
 def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.cla()
     plt.figure(figsize=(18, 6))
@@ -77,6 +76,7 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
     return return_list
 
+
 def convert_residues(residues_list: List[List], sequence_assembled):
     for i in range(0, len(residues_list)):
         if residues_list[i] is not None:
@@ -86,7 +86,36 @@ def convert_residues(residues_list: List[List], sequence_assembled):
                     residues_list.append(result)
     return residues_list
 
-def plot_gantt(plot_type: str, plot_path: str, a_air):
+
+def plot_sequence(plot_path: str, a_air):
+    plt.cla()
+    fig, ax = plt.subplots(1, figsize=(16, 1.4))
+    legend_seq = [Patch(label='Sequence', color='tab:cyan'),Patch(label='Linker', color='tab:blue')]
+    ax.legend(handles=legend_seq[::-1], loc='upper center', bbox_to_anchor=(0.5, -0.4), fancybox=True, shadow=True, ncol=2)
+    for i in range(a_air.sequence_assembled.total_copies):
+        ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
+        ax.barh('sequence', a_air.sequence_assembled.glycines,
+                left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
+                    i) + 1, color='tab:blue')
+
+        xcenters = (a_air.sequence_assembled.get_starting_length(i) + 1) + a_air.sequence_assembled.get_sequence_length(i) / 2
+        ax.text(xcenters, 0, a_air.sequence_assembled.get_sequence_name(i), ha='center', va='center')
+
+    ax_secondary = ax.secondary_xaxis('top')
+    ax_secondary.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
+    ax_secondary.set_xticks(list(ax_secondary.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
+    ax_secondary.set_xticklabels([1]*a_air.sequence_assembled.total_copies+[a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
+
+    ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
+    ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
+    ax.set_xlim(0, len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines)
+    ax.set_yticks([])
+    fig.tight_layout()
+    fig.subplots_adjust(top=.95)
+    plt.savefig(plot_path, bbox_inches='tight', dpi=100)
+
+def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     plt.cla()
     fig, ax = plt.subplots(1, figsize=(16, 2))
     legend_elements = []
@@ -99,8 +128,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
                 left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
         ax.barh('sequence', a_air.sequence_assembled.glycines,
                 left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
-                    i) + 1,
-                color='tab:blue')
+                    i) + 1, color='tab:blue')
 
     if plot_type == 'msa':
         title = 'MSA'
@@ -195,7 +223,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air):
     plt.figtext(0.05, -0.05, '\n'.join(legend_elements), va='top')
 
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-
+    ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
     ax.spines['right'].set_visible(False)
@@ -222,6 +250,7 @@ class OutputAir:
         self.interfaces_path: str = f'{output_dir}/interfaces'
         self.analysis_path: str = f'{self.plots_path}/analysis.txt'
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
+        self.sequence_plot_path: str = f'{self.plots_path}/sequence_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
         self.gantt_plots_path: List[str] = []
         self.ranked_list: List[structures.Ranked] = []
@@ -231,6 +260,7 @@ class OutputAir:
         self.nonsplit_path: str = None
         self.aleph_results_path: str = None
         self.group_ranked_by_rmsd_dict: dict = {}
+        self.template_interfaces: dict = {}
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -241,6 +271,7 @@ class OutputAir:
     def create_plot_gantt(self, a_air):
         self.gantt_plots_path = [plot_gantt(plot_type='template', plot_path=self.plots_path, a_air=a_air)]
         self.gantt_plots_path.append(plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air))
+        plot_sequence(plot_path=self.sequence_plot_path, a_air=a_air)
 
 
     def set_run_dir(self, run_dir: str):
@@ -410,6 +441,13 @@ class OutputAir:
                     ang_coverage=list_frobenius_angles[index],
                     core=list_core[index]
                 )
+
+                interfaces_data_list = bioutils.find_interface_from_pisa(template_dict[template], self.interfaces_path)
+                template_interface_list = []
+                for interface in interfaces_data_list:
+                    template_interface_list.append(f'{interface["chain1"]}{interface["chain2"]}')
+                self.template_interfaces[template] = template_interface_list
+
                 ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
                 for interface in ranked.interfaces:
                     frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface.name}.txt')
@@ -428,7 +466,7 @@ class OutputAir:
                     )
 
 
-    def write_tables(self, rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict, energies_dict: Dict):
+    def write_tables(self, rmsd_dict: Dict, ranked_rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict, energies_dict: Dict):
         with open(self.analysis_path, 'w') as f_in:
 
             if bool(rmsd_dict):
@@ -439,6 +477,16 @@ class OutputAir:
                     for template, value in templates.items():
                         data.setdefault(template, []).append(
                             f'{value["rmsd"]} {value["aligned_residues"]} ({value["total_residues"]})')
+                df = pd.DataFrame(data)
+                f_in.write(df.to_markdown())
+
+            if bool(ranked_rmsd_dict):
+                f_in.write('\n\n')
+                f_in.write('Superposition between predictions\n')
+                data = {'ranked': rmsd_dict.keys()}
+                for ranked in ranked_rmsd_dict.values():
+                    for key, value in ranked.items():
+                        data.setdefault(key, []).append(value)
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())
 

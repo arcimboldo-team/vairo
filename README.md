@@ -22,6 +22,7 @@ sequences:
 - fasta_path:
   num_of_copies:
   positions:
+  name:
 
 - fasta_path:
   num_of_copies:

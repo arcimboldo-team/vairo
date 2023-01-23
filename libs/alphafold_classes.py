@@ -8,7 +8,7 @@ from libs import bioutils, features, utils
 
 class AlphaFoldRun:
     def __init__(self, output_dir: str, sequence: str, custom_features: bool, small_bfd: bool, start_chunk: int,
-                 finish_chunk: int, feature: features.Features = None):
+                 end_chunk: int, feature: features.Features = None):
         self.run_alphafold_bash: str
         self.results_dir: str
         self.fasta_path: str
@@ -16,14 +16,14 @@ class AlphaFoldRun:
         self.small_bfd: bool
         self.feature: Union[features.Features, None] = None
         self.start_chunk: int
-        self.finish_chunk: int
+        self.end_chunk: int
 
         self.feature = feature
         self.custom_features = custom_features
         self.small_bfd = small_bfd
         self.results_dir = output_dir
         self.start_chunk = start_chunk
-        self.finish_chunk = finish_chunk
+        self.end_chunk = end_chunk
         utils.create_dir(self.results_dir, delete_if_exists=False)
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(output_dir)}.fasta')
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.fasta_path), sequence_amino=sequence,

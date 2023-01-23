@@ -126,6 +126,9 @@ class StructureAir:
         if os.path.exists(self.output.plddt_plot_path):
             render_dict['plddt'] = utils.encode_data(self.output.plddt_plot_path)
 
+        if os.path.exists(self.output.sequence_plot_path):
+            render_dict['sequence_plot'] = utils.encode_data(input_data=self.output.sequence_plot_path)
+
         if self.output.ranked_list:
             render_dict['table'] = {}
             plddt_dict = {}
@@ -138,6 +141,12 @@ class StructureAir:
             template_dict = {}
 
             for ranked in self.output.ranked_list:
+                ranked_rmsd_dict[ranked.name] = {}
+                for ranked2 in self.output.ranked_list:
+                    if ranked.name == ranked2.name:
+                        ranked_rmsd_dict[ranked.name][ranked.name] = 0
+                    else:
+                        ranked_rmsd_dict[ranked.name][ranked2.name] = ranked.rmsd_dict[ranked2.name]
 
                 if ranked.superposition_templates:
                     template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
@@ -156,36 +165,31 @@ class StructureAir:
                                                                         'aligned_residues': ranked_template.aligned_residues,
                                                                         'total_residues': ranked_template.total_residues
                                                                         }
-                ranked_rmsd_dict[ranked.name] = {}
-                for key, value in ranked.rmsd_dict.items():
-                    ranked_rmsd_dict[ranked.name][key] = value
 
-                if ranked.filtered and ranked.interfaces:
-                    interfaces_dict[ranked.name] = {
-                        'bests': [interface for interface in ranked.interfaces if interface.core > 0],
-                        'others': [interface for interface in ranked.interfaces if interface.core == 0]
-                    }
+                interfaces_dict[ranked.name] = [interface for interface in ranked.interfaces if ranked.filtered and ranked.interfaces]
 
                 if ranked.frobenius_plots:
                     ordered_list = sorted(ranked.frobenius_plots, key=lambda x: x.core, reverse=True)
-                    frobenius_dict[ranked.name] = {}
-                    frobenius_dict[ranked.name]['best'] = ordered_list.pop(0)
+                    frobenius_plots_list = [ordered_list.pop(0)]
                     if ordered_list:
-                        frobenius_dict[ranked.name]['worst'] = ordered_list.pop()
-                    if ordered_list:
-                        frobenius_dict[ranked.name]['others'] = ordered_list
+                        frobenius_plots_list.append(ordered_list.pop())
+                    frobenius_dict[ranked.name] = frobenius_plots_list + ordered_list
 
-            
             render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
             render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.filtered}
+
             if self.templates_list:
                 render_dict['templates_list'] = self.templates_list
             if self.output.ranked_list:
                 render_dict['ranked_list'] = self.output.ranked_list
             if self.output.group_ranked_by_rmsd_dict:
                 render_dict['ranked_by_rmsd'] = self.output.group_ranked_by_rmsd_dict
+            if self.output.template_interfaces:
+                render_dict['template_interfaces'] = self.output.template_interfaces
             if template_dict:
                 render_dict['template_dict'] = template_dict
+            if ranked_rmsd_dict:
+                render_dict['table']['ranked_rmsd_dict'] = ranked_rmsd_dict
             if secondary_dict:
                 render_dict['table']['secondary_dict'] = secondary_dict
             if rmsd_dict:
@@ -199,7 +203,7 @@ class StructureAir:
             if self.output.experimental_dict:
                 render_dict['table']['experimental_dict'] = self.output.experimental_dict
 
-            self.output.write_tables(rmsd_dict=rmsd_dict, secondary_dict=secondary_dict, plddt_dict=plddt_dict,
+            self.output.write_tables(rmsd_dict=rmsd_dict, ranked_rmsd_dict=ranked_rmsd_dict, secondary_dict=secondary_dict, plddt_dict=plddt_dict,
                                      energies_dict=energies_dict)        
         
         render_dict['state'] = self.get_state_text()
@@ -258,7 +262,7 @@ class StructureAir:
                                                    custom_features=self.custom_features,
                                                    small_bfd=self.small_bfd,
                                                    start_chunk=partitions[i][0],
-                                                   finish_chunk=partitions[i][1],
+                                                   end_chunk=partitions[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
             #afrun.run_af2(alphafold_paths=self.alphafold_paths)
@@ -282,7 +286,7 @@ class StructureAir:
                 plot_path = os.path.join(afrun.results_dir, 'plddt.png')
                 _, best_ranked = output_air.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
                 new_ranked_path = os.path.join(best_rankeds_dir,
-                                               f'ranked_{afrun.start_chunk + 1}-{afrun.finish_chunk}.pdb')
+                                               f'ranked_{afrun.start_chunk + 1}-{afrun.end_chunk}.pdb')
                 shutil.copy2(best_ranked.path, new_ranked_path)
                 best_ranked.set_path(path=new_ranked_path)
                 best_ranked_list.append(best_ranked)

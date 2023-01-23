@@ -351,78 +351,39 @@
                          open
                         {% endif %}
                         >
+                        {% for ranked in value %}
                             <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
-                            {% if value.best %}
                                 <ul>
                                     <li>
-                                        <details class="details-frobenius-in" open>
-                                            <summary><h4 style="display:inline">{{ value.best.template }}: Best coverage ({{ value.best.core }} CV)</h4></summary>
+                                            {% if loop.index == 2 %}
+                                                <details class="details-frobenius-in" open>
+                                                <summary><h4 style="display:inline">{{ ranked.template }}: Worst coverage ({{ ranked.core }} CV)</h4></summary>
+                                            {% elif loop.first %}
+                                                <details class="details-frobenius-in">
+                                                <summary><h4 style="display:inline">{{ ranked.template }}: Best coverage ({{ ranked.core }} CV)</h4></summary>
+                                            {% else %}
+                                                <details class="details-frobenius-in">
+                                                <summary><h4 style="display:inline">{{ ranked.template }} ({{ ranked.core }} CV)</h4></summary>
+                                            {% endif %}
                                             <div class="div-frobenius">
-                                                <p>Frobenius distance of CV distances: {{ value.best.dist_coverage }}</p>
-                                                <p>Frobenius distance of CV angles: {{ value.best.ang_coverage }}</p>
+                                                <p>Frobenius distance of CV distances: {{ ranked.dist_coverage }}</p>
+                                                <p>Frobenius distance of CV angles: {{ ranked.ang_coverage }}</p>
                                                 <div style="display:flex;">
                                                     <div style="float:left;">
                                                         <p>Between distances</p>
-                                                        <img style="width: 80%" src="data:image/png;base64,{{ value.best.encoded_dist_plot  }}" alt="Frobenius distances graph">
+                                                        <img style="width: 80%" src="data:image/png;base64,{{ ranked.encoded_dist_plot  }}" alt="Frobenius distances graph">
                                                     </div>
                                                     <div style="float:left;">
                                                         <p>Between angles</p>
-                                                        <img style="width: 80%" src="data:image/png;base64,{{ value.best.encoded_ang_plot  }}" alt="Frobenius angles graph">
+                                                        <img style="width: 80%" src="data:image/png;base64,{{ ranked.encoded_ang_plot  }}" alt="Frobenius angles graph">
                                                     </div>
                                                 </div>
+                                                <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
                                             </div>
                                         </details>
                                     </li>
                                 </ul>
-                            {% endif %}
-                            {% if value.worst %}
-                            <ul>
-                                <li>
-                                    <details class="details-frobenius-in" open>
-                                        <summary><h4 style="display:inline">{{ value.worst.template }}: Worst coverage ({{ value.worst.core }} CV)</h4></summary>
-                                        <div class="div-frobenius">
-                                            <p>Frobenius distance of CV distances: {{ value.worst.dist_coverage }}</p>
-                                            <p>Frobenius distance of CV angles: {{ value.worst.ang_coverage }}</p>
-                                            <div style="display:flex;">
-                                                <div style="float:left;">    
-                                                    <p>Between distances</p>
-                                                    <img style="width: 80%" src="data:image/png;base64,{{ value.worst.encoded_dist_plot  }}" alt="Frobenius distances graph">
-                                                </div>
-                                                <div style="float:left;">    
-                                                    <p>Between angles</p>
-                                                    <img style="width: 80%" src="data:image/png;base64,{{ value.worst.encoded_ang_plot  }}" alt="Frobenius angles graph">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </details>
-                                </li>
-                            </ul>
-                            {% endif %}
-                            {% if value.others %}
-                                {% for item in value.others %}
-                                    <ul>
-                                        <li>
-                                            <details class="details-frobenius-in">
-                                                <summary><h4 style="display:inline">{{ item.template }} ({{ item.core }} CV)</h4></summary>
-                                                <div class="div-frobenius">
-                                                    <p>Frobenius distance of CV distances: {{ item.dist_coverage }}</p>
-                                                    <p>Frobenius distance of CV angles: {{ item.ang_coverage }}</p>
-                                                    <div style="display:flex;">
-                                                        <div style="float:left;">
-                                                            <p>Between distances</p>
-                                                            <img style="width: 80%" src="data:image/png;base64,{{ item.encoded_dist_plot  }}" alt="Frobenius distances graph">
-                                                        </div>
-                                                        <div style="float:left;">
-                                                            <p>Between angles</p>
-                                                            <img style="width: 80%" src="data:image/png;base64,{{ item.encoded_ang_plot  }}" alt="Frobenius angles graph">
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </details>
-                                        </li>
-                                    </ul>
-                                {% endfor %}
-                            {% endif %}
+                            {% endfor %}
                         </details>
                     {% endfor %}
                 </div>
@@ -437,38 +398,27 @@
                         {% endif %}
                         >
                             <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
-                            {% if value.bests %}
-                                {% for item in value.bests %}
-                                    <ul>
-                                        <li>
-                                            <details class="details-frobenius-in" open>
-                                                <summary><h4 style="display:inline">{{ item.name }}</h4></summary>
+                            {% for interface in value %}
+
+                                        <ul>
+                                            <li>
+                                                {% if interface.core > 0 %}
+                                                    <details class="details-frobenius-in" open>
+                                                {% else %}
+                                                    <details class="details-frobenius-in">
+                                                {% endif %}
+                                                <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
                                                 <div class="div-frobenius">
-                                                    <p>Frobenius distance of CV distances: {{ item.dist_coverage }}</p>
-                                                    <p>Core is: {{ item.core }} CV</p>
-                                                    <img style="width: 40%" src="data:image/png;base64,{{ item.encoded_dist_plot  }}" alt="Frobenius distances graph">
+                                                    <p>Distance Frobenius is: {{ interface.dist_coverage }}</p>
+                                                    <p>Core is: {{ interface.core }} CV</p>
+                                                    <img style="width: 40%" src="data:image/png;base64,{{ interface.encoded_dist_plot  }}" alt="Interface distances graph">
                                                 </div>
+                                                <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
                                             </details>
-                                        </li>
-                                    </ul>
-                                {% endfor %}
-                            {% endif %}
-                            {% if value.others %}
-                                {% for item in value.others %}
-                                    <ul>
-                                        <li>
-                                            <details class="details-frobenius-in">
-                                                <summary><h4 style="display:inline">{{ item.name }}</h4></summary>
-                                                <div class="div-frobenius">
-                                                    <p>Distance Frobenius is: : {{ item.dist_coverage }}</p>
-                                                    <p>Core is: {{ item.core }} CV</p>
-                                                    <img style="width: 40%" src="data:image/png;base64,{{ item.encoded_dist_plot  }}" alt="Frobenius distances graph">
-                                                </div>
-                                            </details>
-                                        </li>
-                                    </ul>
-                                {% endfor %}
-                            {% endif %}
+                                            </li>
+                                        </ul>
+
+                            {% endfor %}
                         </details>
                     {% endfor %}
                 </div>
@@ -495,6 +445,30 @@
                         {% endfor %}
                     </table>
                 {% endif %}
+                {% if 'ranked_rmsd_dict' in data.table %}
+                    <h3>Superposition between predictions</h3>
+                    <table>
+                        <tr>
+                            <th>prediction</th>
+                            {% for key in data.table.ranked_rmsd_dict.keys() %}
+                                <th>{{ key }}</th>
+                            {% endfor %}
+                        </tr>
+                        {% for key, value in data.table.ranked_rmsd_dict.items() %}
+                            {% if key in data.bests_dict %}
+                                <tr style="background-color:{{ data.bests_dict[key].color }};">
+                            {% else %}
+                                <tr>
+                            {% endif %}
+                                <td>{{ key }}</td>
+                                {% for value2 in value.values() %}
+                                    <td>{{ value2 }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </table>
+                {% endif %}
+
                 {% if 'rmsd_dict' in data.table %}
                     <h3>Superposition of predictions and templates</h3>
                     <table>
@@ -623,6 +597,43 @@
                                 </li>
                             {% endfor %}
                         </ul>
+
+                    {% if data.template_interfaces %}
+                        <p>Each template has the following interfaces. The analysis has only been performed with those rankeds that have a high pLDDT average:</p>
+                        <ul>
+                            {% for key, value in data.template_interfaces.items() %}
+                                <li>{{ key }}:
+                                    {% for interface in value %}
+                                        {% if loop.first %}
+                                            <ul>
+                                        {% endif %}
+                                            <li>{{ interface }}
+                                                {% for ranked, interfaces in data.interfaces_dict.items() %}
+                                                    {% for interface2 in interfaces if interface2.name not in value and interface2.name == interface %}
+                                                        {% if loop.first %}
+                                                            <p>: Missing in
+                                                        {% endif %}
+                                                        {% if ranked in data.bests_dict %}
+                                                            <span style="color:green;">{{ ranked }}</span>
+                                                        {% else %}
+                                                            {{ ranked }}
+                                                        {% endif %}
+                                                        {% if not loop.last %}
+                                                                ,
+                                                        {% else %}
+                                                            </p>
+                                                        {% endif %}
+                                                {% endfor %}
+                                            {% endfor %}
+                                            </li>
+                                        {% if loop.last %}
+                                            </ul>
+                                    {% endif %}
+                                {% endfor %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
                 {% else %}
                     <p>Predictions could not be found.</p>
                 {% endif %}
