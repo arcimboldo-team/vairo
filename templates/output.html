@@ -627,9 +627,11 @@
                         </ul>
 
                     {% if data.template_interfaces %}
-                        <p>Each template has the following interfaces. The analysis has only been performed with those rankeds that have a high pLDDT average:</p>
-                        <ul>
-                            {% for key, value in data.template_interfaces.items() %}
+                        {% for key, value in data.template_interfaces.items() if value %}
+                        {% if loop.first %}
+                            <p>Each template has the following interfaces:</p>
+                            <ul>
+                        {% endif %}
                                 <li>{{ key }}:
                                     {% for interface in value %}
                                         {% if loop.first %}
@@ -642,8 +644,22 @@
                                                         {{ interfaces_list.append(ranked) }}
                                                     {% endfor %}
                                                 {% endfor %}
-                                                {% if interface_list %}
-                                                    : Missing in {{ interface_list|join(',') }}
+                                                {% if interfaces_list %}
+                                                    {% for not_interface in interfaces_list %}
+                                                        {% if loop.first %}
+                                                            : Missing in
+                                                        {% endif %}
+                                                        {% if not_interface in data.bests_dict %}
+                                                            <span style="color:green;">{{ not_interface }}</span>
+                                                        {% elif not_interface in data.filtered_dict %}
+                                                            <span style="color:blue;">{{ not_interface }}</span>
+                                                        {% else %}
+                                                            {{ not_interface }}
+                                                        {% endif %}
+                                                        {% if not loop.last %}
+                                                            ,
+                                                        {% endif %}
+                                                    {% endfor %}
                                                 {% endif %}
                                             </li>
                                         {% if loop.last %}
@@ -651,8 +667,11 @@
                                         {% endif %}
                                     {% endfor %}
                                 </li>
-                            {% endfor %}
-                        </ul>
+                        {% if loop.last %}
+                            </ul>
+                            <p> The analysis has only been performed with those rankeds that have a high pLDDT average.</p>
+                        {% endif %}
+                        {% endfor %}
                     {% endif %}
                 {% else %}
                     <p>Predictions could not be found.</p>
