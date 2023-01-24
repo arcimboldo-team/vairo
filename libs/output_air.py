@@ -393,8 +393,8 @@ class OutputAir:
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
                     deltas_list = utils.normalize_list([deltas_list])
                     for i, interface in enumerate(interfaces_data_list):
-                        code = f'{utils.get_file_name(ranked.split_path)}_{interface["chain1"]}{interface["chain2"]}'
-                        dimers_path = os.path.join(self.interfaces_path, f'{code}.pdb')
+                        code = f'{interface["chain1"]}{interface["chain2"]}'
+                        dimers_path = os.path.join(self.interfaces_path, f'{ranked.name}_{code}.pdb')
                         interface['bfactor'] = deltas_list[i]
                         if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
                             interface['bfactor'] = abs(max(deltas_list)) * 2
@@ -431,6 +431,13 @@ class OutputAir:
                                                                                                                                                 write_matrix=True)
             sys.stdout = sys.__stdout__
             ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
+
+            interfaces_data_list = bioutils.find_interface_from_pisa(template_dict[template], self.interfaces_path)
+            template_interface_list = []
+            for interface in interfaces_data_list:
+                template_interface_list.append(f'{interface["chain1"]}{interface["chain2"]}')
+            self.template_interfaces[template] = template_interface_list
+
             for ranked in ranked_filtered:
                 index = list_targets.index(ranked.name)
                 ranked.add_frobenius_plot(
@@ -442,21 +449,15 @@ class OutputAir:
                     core=list_core[index]
                 )
 
-                interfaces_data_list = bioutils.find_interface_from_pisa(template_dict[template], self.interfaces_path)
-                template_interface_list = []
-                for interface in interfaces_data_list:
-                    template_interface_list.append(f'{interface["chain1"]}{interface["chain2"]}')
-                self.template_interfaces[template] = template_interface_list
-
                 ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
                 for interface in ranked.interfaces:
-                    frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{interface.name}.txt')
+                    frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{ranked.name}_{interface.name}.txt')
                     with open(frobenius_file, 'w') as sys.stdout:
                         fro_distance, fro_core, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix,
                                                                                     residues_tar=interface.res_list, write_plot=True,
                                                                                     title=f'Interface: {interface.name}')
                     sys.stdout = sys.__stdout__
-                    new_name = os.path.join(self.frobenius_path, f'{interface.name}.png')
+                    new_name = os.path.join(self.frobenius_path, f'{ranked.name}_{interface.name}.png')
                     plot_path = os.path.join(self.run_dir, os.path.basename(plot))
 
                     interface.add_frobenius_information(
