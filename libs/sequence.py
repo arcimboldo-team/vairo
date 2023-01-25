@@ -37,7 +37,7 @@ class Sequence:
             except shutil.SameFileError:
                 pass
             
-            self.name = utils.get_file_name(self.fasta_path)
+            self.name = parameters_dict.get('name', utils.get_file_name(self.fasta_path))
             self.sequence = bioutils.extract_sequence(self.fasta_path)
             self.length = len(self.sequence)
 

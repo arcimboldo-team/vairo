@@ -338,21 +338,28 @@ class Template:
 
     def get_changes(self):
         chains_changed = [None] * len(self.results_path_position)
+        fasta_changed = [None] * len(self.results_path_position)
         chains_deleted = [None] * len(self.results_path_position)
         for i, path in enumerate(self.results_path_position):
             if path is not None:
                 chain, _ = utils.get_chain_and_number(path)
                 changed_residues = []
+                changed_fasta = []
                 for change in self.change_res_list:
                     if chain in change.chain_res_dict:
-                        changed_residues.extend(change.chain_res_dict[chain])
+                        if change.resname is not None:
+                            changed_residues.extend(change.chain_res_dict[chain])
+                        elif change.fasta_path is not None:
+                            changed_fasta.extend(change.chain_res_dict[chain])
                 if changed_residues:
                     chains_changed[i] = changed_residues
+                if changed_fasta:
+                    fasta_changed[i] = changed_fasta
                 for change in self.match_restrict_list:
                     if change.residues is not None and chain in change.residues:
                         chains_deleted.extend(change.residues.chain_res_dict[chain])
 
-        return chains_changed, chains_deleted
+        return chains_changed, fasta_changed, chains_deleted
 
 
     def get_alignment_by_pdb(self, pdb_path: str) -> structures.Alignment:
