@@ -322,24 +322,28 @@ class OutputAir:
             result[0].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[1].name)
             result[1].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[0].name)
 
-        best_ranked_name = self.ranked_list[0].name
         reference_superpose = self.ranked_list[0].path
-        self.group_ranked_by_rmsd_dict[best_ranked_name] = [self.ranked_list[0]]
         green_color = 40
-        self.ranked_list[0].set_green_color(green_color)
-        self.ranked_list[0].set_best(True)
-        for ranked in self.ranked_list[1:]:
-            if ranked.rmsd_dict[best_ranked_name] > PERCENTAGE_MAX_RMSD:
-                best_ranked_name = ranked.name
-                self.group_ranked_by_rmsd_dict[best_ranked_name] = []
-            else:
-                ranked.set_rmsd(ranked.rmsd_dict[best_ranked_name])
-                if self.ranked_list[0].name == best_ranked_name:
-                    green_color += 10
+
+        for ranked in self.ranked_list:
+            found = False
+            for ranked2 in self.ranked_list:
+                if ranked2.name != ranked.name and ranked2.name in self.group_ranked_by_rmsd_dict and ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
+                    self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
+                    found = True
+                    if self.ranked_list[0].name == ranked.name:
+                        green_color += 10
+                        ranked.set_green_color(green_color)
+                        ranked.set_best(True)
+                        ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
+                    break
+
+            if not found:
+                self.group_ranked_by_rmsd_dict[ranked.name] = [ranked]
+                if self.ranked_list[0].name == ranked.name:
                     ranked.set_green_color(green_color)
                     ranked.set_best(True)
-
-            self.group_ranked_by_rmsd_dict[best_ranked_name].append(ranked)
+                    green_color += 10
 
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
@@ -351,6 +355,7 @@ class OutputAir:
                                                      pdb_out_path=ranked.split_path,
                                                      sequence_assembled=sequence_assembled)
             ranked.set_mapping(mapping)
+            ranked.set_encoded(ranked.split_path)
 
         # Superpose each template with all the rankeds.
         if template_dict:
@@ -387,7 +392,7 @@ class OutputAir:
                 break
             if ranked.filtered and os.path.exists(aleph_txt_path):
                 ranked.set_minimized_path(os.path.join(self.run_dir, f'{ranked.name}_minimized.pdb'))
-                ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                #ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 if interfaces_data_list:
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
@@ -456,11 +461,12 @@ class OutputAir:
                         fro_distance, fro_core, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix,
                                                                                     residues_tar=interface.res_list, write_plot=True,
                                                                                     title=f'Interface: {interface.name}')
-                    sys.stdout = sys.__stdout__
-                    new_name = os.path.join(self.frobenius_path, f'{ranked.name}_{interface.name}.png')
-                    plot_path = os.path.join(self.run_dir, os.path.basename(plot))
 
+                    sys.stdout = sys.__stdout__
+                    new_name = os.path.join(self.frobenius_path, f'{template}_{ranked.name}_{interface.name}.png')
+                    plot_path = os.path.join(self.run_dir, os.path.basename(plot))
                     interface.add_frobenius_information(
+                        template = template,
                         dist_coverage = fro_distance,
                         core = fro_core,
                         dist_plot = shutil.copy2(plot_path, new_name)

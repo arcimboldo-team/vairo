@@ -152,9 +152,7 @@ class StructureAir:
                     template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
                 
                 plddt_dict[ranked.name] = ranked.plddt
-                secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
-                                                'number_total_residues': ranked.total_residues
-                                               }
+                secondary_dict[ranked.name] = { 'ah': ranked.ah, 'bs': ranked.bs, 'number_total_residues': ranked.total_residues }
                 if ranked.energies is not None:
                     energies_dict[ranked.name] = {'kinetic': ranked.energies.kinetic,
                                                   'potential': ranked.energies.potential
@@ -266,7 +264,7 @@ class StructureAir:
                                                    end_chunk=partitions[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         if len(self.afrun_list) == 1:

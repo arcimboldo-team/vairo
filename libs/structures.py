@@ -22,21 +22,29 @@ class Alignment:
     database: AlignmentDatabase
 
 
+@dataclasses.dataclass(frozen=True)
+class InterfaceTemplate:
+    template: str
+    dist_coverage: float
+    core: int
+    dist_plot: str
+    encoded_dist_plot: bytes
+
 @dataclasses.dataclass
 class Interface:
     name: str
     res_list: List[int]
-    dist_coverage: float = dataclasses.field(init=False, default=None)
-    core: int = dataclasses.field(init=False, default=None)
-    dist_plot: str = dataclasses.field(init=False, default=None)
-    encoded_dist_plot: bytes = dataclasses.field(init=False, default=None)
+    interface_template: List[InterfaceTemplate] = dataclasses.field(default_factory=list)
 
-    def add_frobenius_information(self, dist_coverage: float, core: int, dist_plot: str):
-        self.dist_coverage = dist_coverage
-        self.core = core
-        self.dist_plot = dist_plot
-        self.encoded_dist_plot = utils.encode_data(dist_plot)
-
+    def add_frobenius_information(self, template: str, dist_coverage: float, core: int, dist_plot: str):
+        interface = InterfaceTemplate(
+                        template=template,
+                        dist_coverage=dist_coverage,
+                        dist_plot=dist_plot,
+                        encoded_dist_plot=utils.encode_data(dist_plot),
+                        core=core
+                        )
+        self.interface_template.append(interface)
 
 @dataclasses.dataclass(frozen=True)
 class Frobenius:
@@ -84,6 +92,7 @@ class Ranked:
         self.rmsd: float
         self.rmsd_dict: Dict = {}
         self.color: str
+        self.encoded: bytes
 
         self.path = ranked_path
         self.split_path = os.path.join(os.path.dirname(self.path), f'split_{os.path.basename(self.path)}')
@@ -136,6 +145,10 @@ class Ranked:
 
     def add_interfaces_frobenius_plot(self, plot: str):
         self.interfaces_frobenius_plot.append(plot)
+
+    def set_encoded(self, path: str):
+        self.encoded = utils.encode_data(path)
+
 
     def add_frobenius_plot(self, template: str, dist_plot: str, ang_plot: str, dist_coverage: float, ang_coverage: float, core: float):
         frobenius = Frobenius(
