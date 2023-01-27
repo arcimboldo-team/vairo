@@ -393,8 +393,9 @@ class StructureAir:
                             elif change.sequence is not None:
                                 f_out.write(f' fasta_path: {change.fasta_path}\n')
                             f_out.write(f'    when: {change.when}\n')
-                            for key, value in change.chain_res_dict.items():
-                                f_out.write(f'    {key}: {",".join(map(str, value))}\n')
+                            print(change.chain_group_res_dict)
+                            for key, value in change.chain_group_res_dict.items():
+                                f_out.write(f'    {key}: {", ".join(map(str, value))}\n')
 
                     if template_in.match_restrict_list:
                         f_out.write(f'  match:\n')

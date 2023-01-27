@@ -17,6 +17,7 @@ from libs import bioutils, features, utils, sequence, structures
 PERCENTAGE_FILTER = 0.8
 PERCENTAGE_MAX_RMSD = 1
 GROUPS = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
+MATPLOTLIB_FONT = 14
 plt.set_loglevel('WARNING')
 
 
@@ -26,8 +27,8 @@ def read_rankeds(input_path: str):
 
 
 def plot_plddt(plot_path: str, ranked_list: List) -> float:
-    plt.cla()
     plt.figure(figsize=(18, 6))
+    plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
     for ranked in ranked_list:
         plddt_list = []
         with open(ranked.path) as f:
@@ -41,6 +42,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.xlabel('residue number')
     plt.ylabel('pLDDT')
     plt.savefig(plot_path, dpi=100)
+    plt.cla()
 
     max_plddt = max([ranked.plddt for ranked in ranked_list])
     return max_plddt
@@ -88,7 +90,7 @@ def convert_residues(residues_list: List[List], sequence_assembled):
 
 
 def plot_sequence(plot_path: str, a_air):
-    plt.cla()
+    plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
     fig, ax = plt.subplots(1, figsize=(16, 1.4))
     legend_seq = [Patch(label='Sequence', color='tab:cyan'),Patch(label='Linker', color='tab:blue')]
     ax.legend(handles=legend_seq[::-1], loc='upper center', bbox_to_anchor=(0.5, -0.4), fancybox=True, shadow=True, ncol=2)
@@ -105,18 +107,19 @@ def plot_sequence(plot_path: str, a_air):
     ax_secondary = ax.secondary_xaxis('top')
     ax_secondary.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax_secondary.set_xticks(list(ax_secondary.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
-    ax_secondary.set_xticklabels([1]*a_air.sequence_assembled.total_copies+[a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
+    ax_secondary.set_xticklabels([1]*a_air.sequence_assembled.total_copies+[a_air.sequence_assembled.get_sequence_length(i)+1 for i in range(a_air.sequence_assembled.total_copies)])
 
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-    ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
+    ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xlim(0, len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines)
     ax.set_yticks([])
     fig.tight_layout()
     fig.subplots_adjust(top=.95)
     plt.savefig(plot_path, bbox_inches='tight', dpi=100)
+    plt.cla()
 
 def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
-    plt.cla()
+    plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
     fig, ax = plt.subplots(1, figsize=(16, 2))
     legend_elements = []
     legend_seq = [Patch(label='Sequence', color='tab:cyan'),Patch(label='Linker', color='tab:blue')]
@@ -129,6 +132,13 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         ax.barh('sequence', a_air.sequence_assembled.glycines,
                 left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
                     i) + 1, color='tab:blue')
+        print('*********')
+        print(a_air.sequence_assembled.get_sequence_length(i))
+        print(a_air.sequence_assembled.get_starting_length(i) + 1)
+        print('***')
+        print(a_air.sequence_assembled.glycines)
+        print(a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1)
+        print('*********')
 
     if plot_type == 'msa':
         title = 'MSA'
@@ -217,13 +227,14 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         fig.set_size_inches(16, number_of_templates)
     legend_elements.append('The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n'
                            'The darker parts indicate that the residues are the same or belong to the same group.\n\n')
-    legend_elements.append('Yellow shows which residues have been changed to another specific residue after the alignment, whereas the red shows which residues have been copied from another sequence.\n'
+    legend_elements.append('Yellow shows which residues have been changed to another specific residue\n'
+                            'whereas the red shows which residues have been changed from another query sequence.\n'
                             'No information (white) implies that no modifications have been done.')
     legend_elements.reverse()
     plt.figtext(0.05, -0.05, '\n'.join(legend_elements), va='top')
 
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-    ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
+    ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
     ax.spines['right'].set_visible(False)
@@ -237,6 +248,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     fig.subplots_adjust(top=.95)
     plt.title(title)
     plt.savefig(file, bbox_inches='tight', dpi=100)
+    plt.cla()
     return file
 
 
@@ -325,25 +337,6 @@ class OutputAir:
         reference_superpose = self.ranked_list[0].path
         green_color = 40
 
-        for ranked in self.ranked_list:
-            found = False
-            for ranked2 in self.ranked_list:
-                if ranked2.name != ranked.name and ranked2.name in self.group_ranked_by_rmsd_dict and ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
-                    self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
-                    found = True
-                    if self.ranked_list[0].name == ranked.name:
-                        green_color += 10
-                        ranked.set_green_color(green_color)
-                        ranked.set_best(True)
-                        ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
-                    break
-
-            if not found:
-                self.group_ranked_by_rmsd_dict[ranked.name] = [ranked]
-                if self.ranked_list[0].name == ranked.name:
-                    ranked.set_green_color(green_color)
-                    ranked.set_best(True)
-                    green_color += 10
 
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
@@ -356,6 +349,28 @@ class OutputAir:
                                                      sequence_assembled=sequence_assembled)
             ranked.set_mapping(mapping)
             ranked.set_encoded(ranked.split_path)
+
+        for ranked in self.ranked_list:
+            if ranked.filtered:
+                found = False
+                for ranked2 in self.ranked_list:
+                    if ranked2.filtered and ranked2.name != ranked.name and ranked2.name in self.group_ranked_by_rmsd_dict and ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
+                        self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
+                        found = True
+                        ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
+                        if self.ranked_list[0].name == ranked.name:
+                            green_color += 10
+                            ranked.set_green_color(green_color)
+                            ranked.set_best(True)
+                        break
+
+                if not found:
+                    self.group_ranked_by_rmsd_dict[ranked.name] = [ranked]
+                    ranked.set_rmsd(0)
+                    if self.ranked_list[0].name == ranked.name:
+                        ranked.set_green_color(green_color)
+                        ranked.set_best(True)
+                        green_color += 10
 
         # Superpose each template with all the rankeds.
         if template_dict:

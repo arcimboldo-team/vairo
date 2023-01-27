@@ -225,6 +225,11 @@
         <section id="container-main">
             <p style="margin-top:30px">
                 ARCIMBOLDO_AIR guides predictions towards particular dynamic states selecting the prior information input or analysing the results of the search.
+            </p>            
+            <div id="summary" class="section-div">
+                <h2>Summary</h2>
+                <p>State: {{ data.state }}</p>
+                <p></p>
                 {% if data.custom_features %}
                     The
                     {% if data.total_copies > 1 %}
@@ -239,16 +244,12 @@
                 {% if data.mosaic > 1%} 
                      {{ data.mosaic }} partially overlapping fragments are predicted and merged into the structure.
                 {% endif %}
-            
-            </p>            
-            <div id="summary" class="section-div">
-                <h2>Summary</h2>
-                <p>State: {{ data.state }}</p>
+                </p>
                 {% if data.ranked_by_rmsd %}
                     {% for key, values in data.ranked_by_rmsd.items() %}
                         {% if loop.first %}
                             <p>Best result is <span style="color:green;">{{ values[0].name }}</span> with a {{ values[0].plddt }} average pLDDT.
-                                Can be found in the following path: <a download="{{ values[0].name }}" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
+                                Can be found in the following path: <a download="{{ values[0].name }}.pdb" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
                             </p>
                             {% for ranked in values if ranked.name != values[0].name %}
                                 {% if loop.first %}
@@ -262,7 +263,7 @@
                             {% endfor %}
                         {% else %}
                             {% if loop.index == 2 %}
-                                <p>The other predictions can be grouped in {{ data.ranked_by_rmsd|length - 1 }} group/s that has/have similar structures:</p>
+                                <p>Other successful predictions can be grouped in {{ data.ranked_by_rmsd|length - 1 }} structurally consistent sets:</p>
                                 <ul>
                                 {% endif %}
                                 <li>{{ key }} group:</li>
@@ -295,30 +296,28 @@
                 {% if data.templates_list %}
                     {% for template in data.templates_list if template.change_res_list %}
                             {% if loop.first %}
-
                                 <p>The following sequence changes have been made to the templates:</p>
                                     <ul>
-
                             {% endif %}
                             <li> {{ template.pdb_id }}:
                                 <ul>
                         {% for change in template.change_res_list %}
                                     <li>
-                                        The sequence has been replaced with
+                                        {% if change.when == 'before_alignment'  %}
+                                            Before alignment
+                                        {% else %}
+                                            After alignment
+                                            of the templates, sequence has been replaced with
+                                        {% endif %}
                                         {% if change.resname is not none  %}
                                             {{ change.resname }}
                                         {% else %}
-                                            the sequence in {{change.fasta_path }}
+                                            the query sequence in {{change.fasta_path }}
                                         {% endif %}
-                                        {% if change.when == 'before_alignment'  %}
-                                            before alignment
-                                        {% else %}
-                                            after alignment
-                                        {% endif %}
-                                        in the following places:
+                                        in the following residues:
                                         <ul>
-                                        {% for key, value in change.chain_res_dict.items() %}
-                                            <li> Chain {{ key }} in the residues {{ value|join(',') }}</li>
+                                        {% for key, value in change.chain_group_res_dict.items() %}
+                                            <li> Chain {{ key }}: {{ value|join(', ') }}</li>
                                         {% endfor %}
                                         </ul>
                                     </li>
@@ -426,13 +425,14 @@
                                 {% if loop.first %}
                                     <ul style="margin: 0px 0px; padding-left: 0px">
                                 {% endif %}
-                                     <li>
-                                        <details class="details-frobenius-in">
-                                            <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
-                                            {% for template in interface.interface_template %}
-                                                {% if loop.first %}
-                                                    <ul>
-                                                {% endif %}
+                                    {% for template in interface.interface_template if template.core > 0 %}
+                                    {% if loop.first %}
+                                        <li>
+                                            <details class="details-frobenius-in">
+                                                <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
+                                                <p>The interface can be found in the following templates:</p>
+                                                <ul style="padding-left: 5px;">
+                                    {% endif %}
                                                     <li style="border-top: 0px">
                                                         <details class="details-frobenius-in">
                                                             <summary><h4 style="display:inline">{{ template.template }}</h4></summary>
@@ -443,13 +443,13 @@
                                                                 <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
                                                             </div>
                                                         </details>
-                                                    </li>
-                                                {% if loop.last %}
-                                                    </ul>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </details>
-                                     </li>
+                                                    </li> 
+                                        {% if loop.last %}
+                                                </ul>
+                                                </details>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
                                 {% if loop.last %}
                                     </ul>
                                 {% endif %}
@@ -472,16 +472,15 @@
                             {% if ranked.name in data.bests_dict %}
                                 <tr style="background-color:{{ ranked.color }};">
                             {% elif ranked.name in data.filtered_dict %}
-                                <tr class="blue-row hide-row">
+                                <tr class="blue-row">
                             {% else %}
-                                <tr class="hide-row">
+                                <tr>
                             {% endif %}
                                 <td>{{ ranked.name }}</td>
                                 <td>{{ ranked.plddt }}</td>
                             </tr>
                         {% endfor %}
                     </table>
-                     <button onclick="toggleRow()" type="button">Show more rows</button>
                 {% endif %}
                 {% if 'ranked_rmsd_dict' in data.table %}
                     <h3>Superposition between predictions</h3>
@@ -662,9 +661,9 @@
                                             <li>{{ interface }}
                                                 {% set interfaces_list = [] %}
                                                 {% for ranked, interfaces in data.interfaces_dict.items() %}
-                                                    {% for interface in interfaces if interface2.name == interface %}
-                                                        {% for interfaces_template in interface.interface_template if interfaces_template.template == key %}
-                                                            {{ interfaces_list.append(ranked) }}
+                                                    {% for interface2 in interfaces if interface2.name == interface %}
+                                                        {% for interfaces_template in interface2.interface_template if interfaces_template.template == key and interfaces_template.core == 0 %}
+                                                            {{ interfaces_list.append(ranked) or "" }}
                                                         {% endfor %}
                                                     {% endfor %}
                                                 {% endfor %}
