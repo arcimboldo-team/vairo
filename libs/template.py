@@ -10,7 +10,7 @@ from libs import structures, sequence
 
 class Template:
 
-    def __init__(self, parameters_dict: Dict, output_dir: str, input_dir: str, num_of_copies: int):
+    def __init__(self, parameters_dict: Dict, output_dir: str, input_dir: str, num_of_copies: int, new_name=''):
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
@@ -29,8 +29,12 @@ class Template:
         self.alignment_database: List[structures.AlignmentDatabase] = []
         self.changes: List[structures.ChangesChains] = []
 
+        
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
+        if new_name is not None:
+            self.pdb_path = shutil.copy2(self.pdb_path, os.path.join(os.path.dirname(self.pdb_path), f'{new_name}.pdb'))
         self.pdb_id = utils.get_file_name(self.pdb_path)
+
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
@@ -291,7 +295,6 @@ class Template:
                             deleted_positions.append(position)
                             break
                     continue
-
                 new_target_code_list.append(code_pdb)
 
             except Exception as e:
@@ -380,15 +383,6 @@ class Template:
             return_alignments.append(alignment)
         return return_alignments
 
-
-    def get_results_alignment_text(self) -> str:
-        text = ' '
-        for alignment in self.get_results_alignment():
-            if alignment is None:
-                text += '| None | '
-            else:
-                text += f'| Chain {alignment.database.chain}: Aligned={alignment.aligned_columns}({alignment.total_columns}) Evalue={alignment.evalue} Identities={alignment.identities} | '
-        return text
 
     def __repr__(self):
         # Print class

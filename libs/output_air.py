@@ -26,28 +26,6 @@ def read_rankeds(input_path: str):
     return [structures.Ranked(os.path.join(input_path, path)) for path in utils.sort_by_digit(ranked_paths)]
 
 
-def plot_plddt(plot_path: str, ranked_list: List) -> float:
-    plt.figure(figsize=(18, 6))
-    plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
-    for ranked in ranked_list:
-        plddt_list = []
-        with open(ranked.path) as f:
-            for line in f.readlines():
-                if line[:4] == 'ATOM' and line[13:16] == 'CA ':
-                    plddt_list.append(float(line[60:66].replace(" ", "")))
-        res_list = [int(item) for item in range(1, len(plddt_list) + 1)]
-        ranked.set_plddt(round(statistics.median(map(float, plddt_list)), 2))
-        plt.plot(res_list, plddt_list, label=ranked.name)
-    plt.legend()
-    plt.xlabel('residue number')
-    plt.ylabel('pLDDT')
-    plt.savefig(plot_path, dpi=100)
-    plt.cla()
-
-    max_plddt = max([ranked.plddt for ranked in ranked_list])
-    return max_plddt
-
-
 def get_group(res: str) -> str:
     group = [s for s in GROUPS if res in s]
     if group:
@@ -89,11 +67,33 @@ def convert_residues(residues_list: List[List], sequence_assembled):
     return residues_list
 
 
+def plot_plddt(plot_path: str, ranked_list: List) -> float:
+    plt.figure(figsize=(18, 6))
+    plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
+    for ranked in ranked_list:
+        plddt_list = []
+        with open(ranked.path) as f:
+            for line in f.readlines():
+                if line[:4] == 'ATOM' and line[13:16] == 'CA ':
+                    plddt_list.append(float(line[60:66].replace(" ", "")))
+        res_list = [int(item) for item in range(1, len(plddt_list) + 1)]
+        ranked.set_plddt(round(statistics.median(map(float, plddt_list)), 2))
+        plt.plot(res_list, plddt_list, label=ranked.name)
+    plt.legend()
+    plt.xlabel('residue number')
+    plt.ylabel('pLDDT')
+    plt.savefig(plot_path, dpi=100)
+    plt.cla()
+
+    max_plddt = max([ranked.plddt for ranked in ranked_list])
+    return max_plddt
+
+
 def plot_sequence(plot_path: str, a_air):
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
-    fig, ax = plt.subplots(1, figsize=(16, 1.4))
+    fig, ax = plt.subplots(1, figsize=(16, 0.5))
     legend_seq = [Patch(label='Sequence', color='tab:cyan'),Patch(label='Linker', color='tab:blue')]
-    ax.legend(handles=legend_seq[::-1], loc='upper center', bbox_to_anchor=(0.5, -0.4), fancybox=True, shadow=True, ncol=2)
+    ax.legend(handles=legend_seq[::-1], loc='upper center', bbox_to_anchor=(0.5, -0.4), fancybox=True, framealpha=0.5, ncol=2)
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
                 left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
@@ -118,6 +118,7 @@ def plot_sequence(plot_path: str, a_air):
     plt.savefig(plot_path, bbox_inches='tight', dpi=100)
     plt.cla()
 
+
 def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
     fig, ax = plt.subplots(1, figsize=(16, 2))
@@ -132,13 +133,6 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         ax.barh('sequence', a_air.sequence_assembled.glycines,
                 left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
                     i) + 1, color='tab:blue')
-        print('*********')
-        print(a_air.sequence_assembled.get_sequence_length(i))
-        print(a_air.sequence_assembled.get_starting_length(i) + 1)
-        print('***')
-        print(a_air.sequence_assembled.glycines)
-        print(a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1)
-        print('*********')
 
     if plot_type == 'msa':
         title = 'MSA'
@@ -167,7 +161,6 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         aligned_sequences = [aligned / len(names) for aligned in aligned_sequences]
         for i in range(1, len(aligned_sequences)):
             ax.barh('Percentage', 1, left=i, height=0.5, color=str(aligned_sequences[i - 1]))
-
     else:
         pdb_hits_path = os.path.join(a_air.run_dir, 'msas/pdb_hits.hhr')
         hhr_text = ''
@@ -180,16 +173,22 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
             changed_fasta = []
             deleted_residues = []
             if template is not None:
-                results_alignment_text = template.get_results_alignment_text()
                 changed_residues, changed_fasta, _ = template.get_changes()
                 changed_residues = convert_residues(changed_residues, a_air.sequence_assembled)
                 changed_fasta = convert_residues(changed_fasta, a_air.sequence_assembled)
+                text = ''
                 if len(name) > 4:
                     template_name = f'T{j + 1}'
-                    legend_elements.append(f'{template_name} ({name}): {results_alignment_text}')
+                    text = f'\n{template_name} ({name}):'
                 else:
                     template_name = name
-                    legend_elements.append(f'{template_name}: {results_alignment_text}')
+                    text =  f'\n{template_name}:'
+                for alignment in template.get_results_alignment():
+                    if alignment is not None:
+                        text += f'\n   Chain {alignment.database.chain}: Aligned={alignment.aligned_columns}({alignment.total_columns}) Evalue={alignment.evalue} Identities={alignment.identities}'
+                    else:
+                        text += f'\n   No alignment'
+                legend_elements.append(text)
             else:
                 template_name = name
 
@@ -216,6 +215,8 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
                             ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red')
                         else:  
                             ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='white')
+                        ax.barh(template_name, 1, left=i, height=0.1, align='edge', color=str(aligned_sequence[i - 1]))
+
 
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     plt.setp([ax.get_xticklines()], color='k')
@@ -226,7 +227,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     else:
         fig.set_size_inches(16, number_of_templates)
     legend_elements.append('The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n'
-                           'The darker parts indicate that the residues are the same or belong to the same group.\n\n')
+                           'The darker parts indicate that the residues are the same or belong to the same group.\n')
     legend_elements.append('Yellow shows which residues have been changed to another specific residue\n'
                             'whereas the red shows which residues have been changed from another query sequence.\n'
                             'No information (white) implies that no modifications have been done.')
@@ -243,7 +244,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     ax.spines['top'].set_visible(False)
     ax.spines['bottom'].set_color('k')
 
-    ax.legend(handles=legend_seq[::-1], loc='best', fancybox=True, shadow=True, ncol=2)
+    ax.legend(handles=legend_seq[::-1], loc='upper right', framealpha=0.5, fancybox=True, ncol=2)
     fig.tight_layout()
     fig.subplots_adjust(top=.95)
     plt.title(title)
@@ -262,6 +263,7 @@ class OutputAir:
         self.interfaces_path: str = f'{output_dir}/interfaces'
         self.analysis_path: str = f'{self.plots_path}/analysis.txt'
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
+        self.template_dendogram: str = f'{self.plots_path}/templates_dendogram.png'
         self.sequence_plot_path: str = f'{self.plots_path}/sequence_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
         self.gantt_plots_path: List[str] = []
@@ -273,6 +275,7 @@ class OutputAir:
         self.aleph_results_path: str = None
         self.group_ranked_by_rmsd_dict: dict = {}
         self.template_interfaces: dict = {}
+        self.dendogram_division: List = []
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -294,7 +297,7 @@ class OutputAir:
 
 
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
-                       experimental_pdb: str):
+                       experimental_pdb: str, custom_features):
         # Read all templates and rankeds, if there are no ranked, raise an error
         template_dict = {}
         template_nonsplit = {}
@@ -312,11 +315,23 @@ class OutputAir:
                                            sequence_assembled=sequence_assembled)
 
         self.ranked_list = read_rankeds(input_path=self.run_dir)
-
+        dendogram_file = os.path.join(self.run_dir, 'dendogram.txt')
+        dendogram_plot = os.path.join(self.run_dir, 'clustering_dendogram_angles.png')
+        with open(dendogram_file, 'w') as sys.stdout:
+            _, _, _, _, _, _, _, _, dendogram_list = ALEPH.frobenius(references=list(template_nonsplit.values()),
+                                                    targets=list(template_nonsplit.values()), write_plot=True,
+                                                    write_matrix=True)
+        sys.stdout = sys.__stdout__
+        if dendogram_list:
+            shutil.copy2(dendogram_plot, self.template_dendogram)
+            if custom_features:
+                for templates in dendogram_list:
+                    self.dendogram_division.append([template_nonsplit[template] for template in templates])
+        
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
             return
-
+        
         # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
         max_plddt = plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
@@ -336,7 +351,6 @@ class OutputAir:
 
         reference_superpose = self.ranked_list[0].path
         green_color = 40
-
 
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
@@ -407,7 +421,7 @@ class OutputAir:
                 break
             if ranked.filtered and os.path.exists(aleph_txt_path):
                 ranked.set_minimized_path(os.path.join(self.run_dir, f'{ranked.name}_minimized.pdb'))
-                #ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 if interfaces_data_list:
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
@@ -446,7 +460,7 @@ class OutputAir:
             template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
             path_list = [ranked.path for ranked in self.ranked_list if ranked.filtered]
             with open(frobenius_file, 'w') as sys.stdout:
-                _, list_targets, list_core, _, list_frobenius_angles, list_frobenius_distances, list_plot_ang, list_plot_dist = ALEPH.frobenius(references=[template_path],
+                _, list_targets, list_core, _, list_frobenius_angles, list_frobenius_distances, list_plot_ang, list_plot_dist, _ = ALEPH.frobenius(references=[template_path],
                                                                                                                                                 targets=list(path_list), write_plot=True,
                                                                                                                                                 write_matrix=True)
             sys.stdout = sys.__stdout__

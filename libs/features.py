@@ -433,9 +433,6 @@ def create_features_from_file(pkl_in_path: str) -> Features:
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][i].tolist()]))
         new_features.append_row_in_msa(sequence=sequence, sequence_id=str(i))
 
-        if i>20:
-            break
-
     for i in range(0, len(features_dict['template_sequence'])):
         template_dict = {
             'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),
