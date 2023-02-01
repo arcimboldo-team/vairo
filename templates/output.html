@@ -20,6 +20,14 @@
                 list-style: none;
             }
 
+            .blue-row {
+                background-color: rgb(0, 94, 255);
+            }
+
+            .hide-row{
+                display: none
+            }
+
             #frobenius_graphs ul li {
                 list-style: none;
             }
@@ -217,6 +225,11 @@
         <section id="container-main">
             <p style="margin-top:30px">
                 ARCIMBOLDO_AIR guides predictions towards particular dynamic states selecting the prior information input or analysing the results of the search.
+            </p>            
+            <div id="summary" class="section-div">
+                <h2>Summary</h2>
+                <p>State: {{ data.state }}</p>
+                <p></p>
                 {% if data.custom_features %}
                     The
                     {% if data.total_copies > 1 %}
@@ -231,30 +244,26 @@
                 {% if data.mosaic > 1%} 
                      {{ data.mosaic }} partially overlapping fragments are predicted and merged into the structure.
                 {% endif %}
-            
-            </p>            
-            <div id="summary" class="section-div">
-                <h2>Summary</h2>
-                <p>State: {{ data.state }}</p>
+                </p>
                 {% if data.ranked_by_rmsd %}
                     {% for key, values in data.ranked_by_rmsd.items() %}
                         {% if loop.first %}
                             <p>Best result is <span style="color:green;">{{ values[0].name }}</span> with a {{ values[0].plddt }} average pLDDT.
-                                Can be found in the following path: <a download="{{ values[0].path }}" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
+                                Can be found in the following path: <a download="{{ values[0].name }}.pdb" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
                             </p>
                             {% for ranked in values if ranked.name != values[0].name %}
                                 {% if loop.first %}
                                     <p>Other equal structural solutions are:</p>
                                     <ul>
                                 {% endif %}
-                                    <li><span style="color:green;"> {{ ranked.name }}</span>: <a download="{{ ranked.path }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD)</li>
+                                    <li><span style="color:green;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD)</li>
                                 {% if loop.last %}
                                     </ul>
                                 {% endif %}
                             {% endfor %}
                         {% else %}
                             {% if loop.index == 2 %}
-                                <p>The other rankeds can be grouped in {{ data.ranked_by_rmsd|length - 1 }} group/s that has/have similar structures:</p>
+                                <p>Other successful predictions can be grouped in {{ data.ranked_by_rmsd|length - 1 }} structurally consistent sets:</p>
                                 <ul>
                                 {% endif %}
                                 <li>{{ key }} group:</li>
@@ -262,15 +271,15 @@
                                         {% if loop.first %}
                                             <ul>
                                                 {% if ranked.name in data.filtered_dict %}
-                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.path }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.plddt }} average pLDDT)</li>
+                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.plddt }} average pLDDT)</li>
                                                 {% else %}
-                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.path }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.plddt }} average pLDDT)</li>
+                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.plddt }} average pLDDT)</li>
                                                 {% endif %}
                                         {% else %}
                                                 {% if ranked.name in data.filtered_dict %}
-                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.path }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
+                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
                                                 {% else %}
-                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.path }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
+                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
                                                 {% endif %}
                                         {% endif %}
                                         {% if loop.last %}
@@ -287,30 +296,28 @@
                 {% if data.templates_list %}
                     {% for template in data.templates_list if template.change_res_list %}
                             {% if loop.first %}
-
                                 <p>The following sequence changes have been made to the templates:</p>
                                     <ul>
-
                             {% endif %}
                             <li> {{ template.pdb_id }}:
                                 <ul>
                         {% for change in template.change_res_list %}
                                     <li>
-                                        The sequence has been replaced with
+                                        {% if change.when == 'before_alignment'  %}
+                                            Before alignment
+                                        {% else %}
+                                            After alignment
+                                            of the templates, sequence has been replaced with
+                                        {% endif %}
                                         {% if change.resname is not none  %}
                                             {{ change.resname }}
                                         {% else %}
-                                            the sequence in {{change.fasta_path }}
+                                            the query sequence in {{change.fasta_path }}
                                         {% endif %}
-                                        {% if change.when == 'before_alignment'  %}
-                                            before alignment
-                                        {% else %}
-                                            after alignment
-                                        {% endif %}
-                                        in the following places:
+                                        in the following residues:
                                         <ul>
-                                        {% for key, value in change.chain_res_dict.items() %}
-                                            <li> Chain {{ key }} in the residues {{ value|join(',') }}</li>
+                                        {% for key, value in change.chain_group_res_dict.items() %}
+                                            <li> Chain {{ key }}: {{ value|join(', ') }}</li>
                                         {% endfor %}
                                         </ul>
                                     </li>
@@ -348,7 +355,7 @@
                 <div id="frobenius_graphs" class="section-div">
                     <h2>Frobenius Graphs</h2>
                     <div>
-                        <span style="vertical-align: middle;">Frobenius equation: </span>
+                        <span style="vertical-align: middle;">Frobenius distance: </span>
                         <img style="width: 30%; vertical-align: middle;" src="data:image/png;base64,{{ data.frobenius_equation }}" alt="Frobenius distances graph">
                     </div>
                     <div>
@@ -398,7 +405,7 @@
                                 {% if loop.last %}
                                     </ul>
                                 {% endif %}
-                            {% endfor %}
+                        {% endfor %}
                         </details>
                     {% endfor %}
                 </div>
@@ -406,32 +413,46 @@
             {% if 'interfaces_dict' in data %}
                 <div id="interface_graphs" class="section-div">
                     <h2>Interface Graphs</h2>
-                    {% for key, value in data.interfaces_dict.items() %}
+                    {% for key, interfaces in data.interfaces_dict.items() %}
                         <details class="details-frobenius"
                         {% if key == data.ranked_list[0].name %}
                          open
                         {% endif %}
                         >
                             <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
-                            {% for interface in value if interface.core > 0 %}
+
+                            {% for interface in interfaces %}
                                 {% if loop.first %}
                                     <ul style="margin: 0px 0px; padding-left: 0px">
                                 {% endif %}
-                                    <li>
-                                        <details class="details-frobenius-in" open>
-                                        <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
-                                        <div class="div-frobenius">
-                                            <p>Distance Frobenius is: {{ interface.dist_coverage }}</p>
-                                            <p>Core is: {{ interface.core }} CV</p>
-                                            <img style="width: 40%" src="data:image/png;base64,{{ interface.encoded_dist_plot  }}" alt="Interface distances graph">
-                                            <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
-                                        </div>
-                                    </details>
-                                    </li>
+                                    {% for template in interface.interface_template if template.core > 0 %}
+                                    {% if loop.first %}
+                                        <li>
+                                            <details class="details-frobenius-in">
+                                                <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
+                                                <p>The interface can be found in the following templates:</p>
+                                                <ul style="padding-left: 5px;">
+                                    {% endif %}
+                                                    <li style="border-top: 0px">
+                                                        <details class="details-frobenius-in">
+                                                            <summary><h4 style="display:inline">{{ template.template }}</h4></summary>
+                                                            <div class="div-frobenius">
+                                                                <p>Distance Frobenius is: {{ template.dist_coverage }}</p>
+                                                                <p>Core is: {{ template.core }} CV</p>
+                                                                <img style="width: 40%" src="data:image/png;base64,{{ template.encoded_dist_plot  }}" alt="Interface distances graph">
+                                                                <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
+                                                            </div>
+                                                        </details>
+                                                    </li> 
+                                        {% if loop.last %}
+                                                </ul>
+                                                </details>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
                                 {% if loop.last %}
                                     </ul>
                                 {% endif %}
-
                             {% endfor %}
                         </details>
                     {% endfor %}
@@ -451,7 +472,7 @@
                             {% if ranked.name in data.bests_dict %}
                                 <tr style="background-color:{{ ranked.color }};">
                             {% elif ranked.name in data.filtered_dict %}
-                                <tr style="background-color: rgb(0, 94, 255);">
+                                <tr class="blue-row">
                             {% else %}
                                 <tr>
                             {% endif %}
@@ -474,7 +495,7 @@
                             {% if key in data.bests_dict %}
                                 <tr style="background-color:{{ data.bests_dict[key].color }};">
                             {% elif key in data.filtered_dict %}
-                                <tr style="background-color: rgb(0, 94, 255);">
+                                <tr class="blue-row">
                             {% else %}
                                 <tr>
                             {% endif %}
@@ -502,7 +523,7 @@
                             {% if key in data.bests_dict %}
                                 <tr style="background-color:{{ data.bests_dict[key].color }};">
                             {% elif key in data.filtered_dict %}
-                                <tr style="background-color: rgb(0, 94, 255);">
+                                <tr class="blue-row">
                             {% else %}
                                 <tr>
                             {% endif %}
@@ -527,7 +548,7 @@
                             {% if key in data.bests_dict %}
                                 <tr style="background-color:{{ data.bests_dict[key].color }};">
                             {% elif key in data.filtered_dict %}
-                                <tr style="background-color: rgb(0, 94, 255);">
+                                <tr class="blue-row">
                             {% else %}
                                 <tr>
                             {% endif %}
@@ -551,7 +572,7 @@
                             {% if key in data.bests_dict %}
                                 <tr style="background-color:{{ data.bests_dict[key].color }};">
                             {% elif key in data.filtered_dict %}
-                                <tr style="background-color: rgb(0, 94, 255);">
+                                <tr class="blue-row">
                             {% else %}
                                 <tr>
                             {% endif %}
@@ -573,7 +594,7 @@
                             {% if key in data.bests_dict %}
                                 <tr style="background-color:{{ data.bests_dict[key].color }};">
                             {% elif key in data.filtered_dict %}
-                                <tr style="background-color: rgb(0, 94, 255);">
+                                <tr class="blue-row">
                             {% else %}
                                 <tr>
                             {% endif %}
@@ -606,7 +627,7 @@
                     </p>
                 {% endif %}
                 {% if data.template_dict %}
-                    <p>The closest templates to the rankeds are the following ones:</p>
+                    <p>The closest templates to the predictions are the following ones:</p>
                         <ul>
                             {% for key, value in data.template_dict.items() %}
                                 <li>{{ key }}:
@@ -640,8 +661,10 @@
                                             <li>{{ interface }}
                                                 {% set interfaces_list = [] %}
                                                 {% for ranked, interfaces in data.interfaces_dict.items() %}
-                                                    {% for interface2 in interfaces if interface2.core == 0 and interface2.name == interface %}
-                                                        {{ interfaces_list.append(ranked) }}
+                                                    {% for interface2 in interfaces if interface2.name == interface %}
+                                                        {% for interfaces_template in interface2.interface_template if interfaces_template.template == key and interfaces_template.core == 0 %}
+                                                            {{ interfaces_list.append(ranked) or "" }}
+                                                        {% endfor %}
                                                     {% endfor %}
                                                 {% endfor %}
                                                 {% if interfaces_list %}
@@ -669,7 +692,7 @@
                                 </li>
                         {% if loop.last %}
                             </ul>
-                            <p> The analysis has only been performed with those rankeds that have a high pLDDT average.</p>
+                            <p> The analysis has only been performed with those predictions that have a high pLDDT average.</p>
                         {% endif %}
                         {% endfor %}
                     {% endif %}
@@ -698,6 +721,14 @@
     <script>
         function move_to(e){
             window.location.hash = e.target.getAttribute("name");
+        }
+
+        function toggleRow() {
+            if (this.value=="Show more rows") this.value = "Hide rows";
+            else this.value = "Show more rows";
+
+            var row = document.getElementsByClassName("hide-row");
+            next.style.display = next.style.display == "none" ? "table-row" : "none";
         }
     </script>
 </html>

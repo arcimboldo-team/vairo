@@ -15,6 +15,7 @@ class ChangeResidues:
         # If change is a dict, only the chain will be changed.
 
         self.chain_res_dict: Dict
+        self.chain_group_res_dict: Dict = None
         self.chain_bfactors_dict: Union[Dict, None] = None
         self.when: str = 'after_alignment'
         self.resname: Union[str, None] = None
@@ -28,12 +29,7 @@ class ChangeResidues:
             self.sequence = bioutils.extract_sequence(fasta_path=fasta_path)
             self.fasta_path = fasta_path
         self.when = when
-
-        if self.sequence is not None:
-            logging.info(f'The following residues are going to be converted to {self.sequence}: {self.chain_res_dict}')
-  
-        if self.resname is not None:
-            logging.info(f'The following residues are going to be converted to {self.resname}: {self.chain_res_dict}')
+        self.group_change_res()
 
     def apply_mapping(self, chain: str, mapping: Dict):
         # Change residues numbering by the ones in mapping
@@ -41,6 +37,16 @@ class ChangeResidues:
             residues = self.chain_res_dict[chain]
             results = [utils.get_key_for_value(res, mapping) for res in residues]
             self.chain_res_dict[chain] = [x for x in results if x is not None]
+        self.group_change_res()
+
+
+    def group_change_res(self):
+        self.chain_group_res_dict = {}
+        for key, value in self.chain_res_dict.items():
+            grouped_list = utils.get_consecutive_numbers(value)
+            for i, group_range in enumerate(grouped_list):
+                grouped_list[i] = f'{group_range[0]}-{group_range[1]}' if group_range[0] != group_range[1] else str(group_range[0])
+            self.chain_group_res_dict[key] = grouped_list
 
     def delete_residues(self, pdb_in_path: str, pdb_out_path: str):
         self.__change_residues(pdb_in_path, pdb_out_path, 'delete')

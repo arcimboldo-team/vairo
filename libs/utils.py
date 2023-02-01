@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Union
 from sklearn import preprocessing
-from itertools import groupby, takewhile
+from itertools import groupby
 from operator import itemgetter
 
 
@@ -135,10 +135,11 @@ def get_consecutive_numbers(number_list: List[int]) -> List[Tuple[int, int]]:
     # Given an integer list, return ranges of consecutive numbers
 
     result_list = []
-    for k, g in groupby(enumerate(number_list), lambda x: x[0] - x[1]):
+    for _, g in groupby(enumerate(number_list), lambda x: x[0] - x[1]):
         group = (map(itemgetter(1), g))
         group = list(map(int, group))
         result_list.append((group[0], group[-1]))
+    
     return result_list
 
 
@@ -153,7 +154,6 @@ def get_chain_and_number(path_pdb: str) -> Tuple[str, int]:
 def select_paths_in_dict(chain_dict: Dict, code: str) -> str:
     # Search for the files in all the dict that
     # finish with code
-
     for _, paths in chain_dict.items():
         for path in paths:
             split_code = get_chain_and_number(path)
@@ -177,7 +177,6 @@ def select_path_from_code(align_dict: Dict, code: str, position: int, sequence_n
 
 def replace_last_number(text: str, value: int) -> str:
     # Replace the last number of text by the value
-
     return re.sub(r'\d+.pdb', str(value), str(text)) + '.pdb'
 
 

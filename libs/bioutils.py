@@ -513,7 +513,9 @@ def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
                 res.resname = 'MET'
                 for atom in res:
                     if atom.element == 'SE':
-                        atom.element = 'S'
+                        atom.id = 'SD'
+                        atom.fullname = 'SD'
+                        atom.name = 'SD'
 
     io = PDBIO()
     io.set_structure(structure)

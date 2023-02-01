@@ -17,6 +17,8 @@ class StructureAir:
         self.input_dir: str
         self.input_path: str
         self.log_path: str
+        self.division_path: str
+        self.division_paths: List[str]
         self.af2_dbs_path: str
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
@@ -40,6 +42,7 @@ class StructureAir:
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
         self.input_dir = os.path.join(self.run_dir, 'input')
         self.log_path = os.path.join(self.output_dir, 'output.log')
+        self.division_path = os.path.join(self.output_dir, 'division')
         self.input_path = os.path.join(self.input_dir, 'config.yml')
         self.output = output_air.OutputAir(output_dir=self.output_dir)
 
@@ -80,10 +83,17 @@ class StructureAir:
         if 'templates' not in parameters_dict:
             logging.info('No templates detected')
         else:
+            counter = 0
             reference = parameters_dict.get('reference')
+            new_name = None
             for parameters_template in parameters_dict.get('templates'):
+                pdb_id = utils.get_mandatory_value(parameters_template, 'pdb')
+                result = self.get_template_by_id(utils.get_file_name(pdb_id))
+                if result is not None:
+                    counter += 1
+                    new_name = f'{pdb_id}_{counter}'
                 new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir,
-                                                 input_dir=self.input_dir, num_of_copies=self.sequence_assembled.total_copies)
+                                                 input_dir=self.input_dir, num_of_copies=self.sequence_assembled.total_copies, new_name=new_name)
                 self.templates_list.append(new_template)
                 if new_template.pdb_id == reference:
                     self.reference = new_template
@@ -152,9 +162,7 @@ class StructureAir:
                     template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
                 
                 plddt_dict[ranked.name] = ranked.plddt
-                secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
-                                                'number_total_residues': ranked.total_residues
-                                               }
+                secondary_dict[ranked.name] = { 'ah': ranked.ah, 'bs': ranked.bs, 'number_total_residues': ranked.total_residues }
                 if ranked.energies is not None:
                     energies_dict[ranked.name] = {'kinetic': ranked.energies.kinetic,
                                                   'potential': ranked.energies.potential
@@ -212,6 +220,7 @@ class StructureAir:
         with open(self.output.html_path, 'w') as f_out:
             f_out.write(jinja_template.render(data=render_dict))
 
+
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
         # Return the template matching the pdb_id
 
@@ -219,6 +228,7 @@ class StructureAir:
             if temp.pdb_id == pdb_id:
                 return temp
         return None
+
 
     def order_templates_with_restrictions(self):
         # Order the templates list in order to meet the required dependencies
@@ -244,11 +254,13 @@ class StructureAir:
                 raise Exception('The match conditions could not be applied, there is an endless loop')
         self.templates_list = new_templates_list
 
+
     def append_line_in_templates(self, new_list: List):
         # Add line to the template's matrix.
         # The list contains the position of the chains
 
         self.template_positions_list.append(new_list)
+
 
     def run_alphafold(self, features_list: List[features.Features]):
         # Create the script and run alphafold         
@@ -267,6 +279,7 @@ class StructureAir:
                                                    feature=feature)
             self.afrun_list.append(afrun)
             afrun.run_af2(alphafold_paths=self.alphafold_paths)
+
 
     def merge_results(self):
         if len(self.afrun_list) == 1:
@@ -354,6 +367,36 @@ class StructureAir:
             '3': 'Finished'
         }[str(self.state)]
 
+
+    def launch_dendogram_division(self):
+        counter = 0
+        utils.create_dir(self.division_path, delete_if_exists=True)
+        for templates in self.output.dendogram_division:
+            new_path = os.path.join(self.division_path, f'job_{counter}')
+            yml_file = os.path.join(new_path, 'config.yml')
+            utils.create_dir(new_path)
+            self.write_yml_file(job_path=new_path, yml_file=yml_file, templates=templates)
+
+            
+    def write_yml_file(self, job_path, yml_file, templates):
+        with open(yml_file, 'w') as f_out:
+            f_out.write(f'output_dir: {job_path}\n')
+            f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
+            f_out.write(f'glycines: {self.glycines}\n')
+            f_out.write(f'custom_features: True\n')
+            f_out.write(f'\nsequences:\n')
+            for sequence_in in self.sequence_assembled.sequence_list:
+                f_out.write('-')
+                f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
+                f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
+                new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
+                f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
+            for template in templates:
+                f_out.write('-')
+                f_out.write(f' pdb: {template}\n')
+                f_out.write(f'legacy: True\n')
+
+
     def write_input_file(self):
         with open(self.input_path, 'w') as f_out:
             f_out.write(f'output_dir: {self.output_dir}\n')
@@ -395,8 +438,8 @@ class StructureAir:
                             elif change.sequence is not None:
                                 f_out.write(f' fasta_path: {change.fasta_path}\n')
                             f_out.write(f'    when: {change.when}\n')
-                            for key, value in change.chain_res_dict.items():
-                                f_out.write(f'    {key}: {",".join(map(str, value))}\n')
+                            for key, value in change.chain_group_res_dict.items():
+                                f_out.write(f'    {key}: {", ".join(map(str, value))}\n')
 
                     if template_in.match_restrict_list:
                         f_out.write(f'  match:\n')
@@ -411,6 +454,7 @@ class StructureAir:
                                 f_out.write(f'    reference: {match.reference}\n')
                             if match.reference_chain is not None:
                                 f_out.write(f'    reference_chain: {match.reference_chain}\n')
+
 
     def __repr__(self) -> str:
         return f' \
