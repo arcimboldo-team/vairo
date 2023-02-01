@@ -327,6 +327,7 @@ class OutputAir:
             if not custom_features:
                 for templates in dendogram_list:
                     self.dendogram_division.append([template_nonsplit[template] for template in templates])
+        
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
             return

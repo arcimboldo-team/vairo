@@ -534,7 +534,7 @@ def run_arcimboldo_air(yml_path: str):
     command_line = f'{arcimboldo_air_path} {yml_path}'
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
-    if stderr != 0:
+    if stderr and stderr != 0:
         logging.info('Arcimboldo_air run has failed, check the log.')
     else:
         logging.info('Arcimboldo_air run finished successfully.')
