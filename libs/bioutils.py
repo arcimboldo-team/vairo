@@ -529,6 +529,17 @@ def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
     p.communicate()
 
 
+def run_arcimboldo_air(yml_path: str):
+    arcimboldo_air_path = os.path.join(utils.get_main_path(), 'arcimboldo_air.py')
+    command_line = f'{arcimboldo_air_path} {yml_path}'
+    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    if stderr != 0:
+        logging.info('Arcimboldo_air run has failed, check the log.')
+    else:
+        logging.info('Arcimboldo_air run finished successfully.')
+
+
 def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies:
     run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
     protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)

@@ -106,7 +106,7 @@ def plot_sequence(plot_path: str, a_air):
 
     ax_secondary = ax.secondary_xaxis('top')
     ax_secondary.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-    ax_secondary.set_xticks(list(ax_secondary.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
+    ax_secondary.set_xticks(list(ax_secondary.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax_secondary.set_xticklabels([1]*a_air.sequence_assembled.total_copies+[a_air.sequence_assembled.get_sequence_length(i)+1 for i in range(a_air.sequence_assembled.total_copies)])
 
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
@@ -324,10 +324,9 @@ class OutputAir:
         sys.stdout = sys.__stdout__
         if dendogram_list:
             shutil.copy2(dendogram_plot, self.template_dendogram)
-            if custom_features:
+            if not custom_features:
                 for templates in dendogram_list:
                     self.dendogram_division.append([template_nonsplit[template] for template in templates])
-        
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
             return
