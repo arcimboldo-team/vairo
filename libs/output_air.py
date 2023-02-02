@@ -372,10 +372,10 @@ class OutputAir:
                         self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
                         found = True
                         ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
-                        if self.ranked_list[0].name == ranked.name:
-                            green_color += 10
+                        if self.ranked_list[0].name == ranked2.name:
                             ranked.set_green_color(green_color)
                             ranked.set_best(True)
+                            green_color += 10
                         break
 
                 if not found:
