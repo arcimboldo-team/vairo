@@ -275,7 +275,7 @@ class OutputAir:
         self.aleph_results_path: str = None
         self.group_ranked_by_rmsd_dict: dict = {}
         self.template_interfaces: dict = {}
-        self.dendogram_division: List = []
+        self.dendogram_cluster: List = []
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -326,7 +326,7 @@ class OutputAir:
             shutil.copy2(dendogram_plot, self.template_dendogram)
             if not custom_features:
                 for templates in dendogram_list:
-                    self.dendogram_division.append([template_nonsplit[template] for template in templates])
+                    self.dendogram_cluster.append([template_nonsplit[template] for template in templates])
         
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
