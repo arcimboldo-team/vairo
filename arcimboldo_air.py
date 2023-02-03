@@ -97,10 +97,8 @@ def main():
             os.chdir(a_air.run_dir)
             a_air.output.set_run_dir(run_dir=a_air.run_dir)
             a_air.output.analyse_output(sequence_assembled=a_air.sequence_assembled, feature=a_air.feature, experimental_pdb=a_air.experimental_pdb, custom_features=a_air.custom_features)
-        if not a_air.verbose:
-            utils.clean_files(input_dir=a_air.run_dir)
-        if a_air.cluster_templates:
-            a_air.dendogram_clustering()
+            if a_air.cluster_templates:
+                a_air.dendogram_clustering()
         a_air.change_state(state=3)
         a_air.generate_output()
         logging.info('ARCIMBOLDO_AIR has finished successfully')

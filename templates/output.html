@@ -205,6 +205,9 @@
                 {% if 'plddt' in data %}
                     <li name="plddt" onclick="move_to(event)" class="sub-menu">PLDDT for predictions</li>
                 {% endif %}
+                {% if 'template_dendogram' in data %}
+                    <li name="clustering" onclick="move_to(event)" class="sub-menu">Clustering</li>                
+                {% endif %}
                 {% if 'frobenius_dict' in data %}
                     <li name="frobenius_graphs" onclick="move_to(event)" class="sub-menu">Frobenius Graphs</li>                
                 {% endif %}
@@ -349,6 +352,26 @@
                 <div id="plddt" class="section-div">
                     <h2>pLDDT for predictions</h2>
                     <img style="width: 100%" src="data:image/png;base64,{{ data.plddt }}" alt="PLDDT graph">
+                </div>
+            {% endif %}
+            {% if 'template_dendogram' in data %}
+                <div id="clustering" class="section-div">
+                    <h2>Clustering</h2>
+                    <img style="width: 70%" src="data:image/png;base64,{{ data.template_dendogram }}" alt="Dendogram clustering">
+                    {% if 'clustering_dict' in data %}
+                        <p>The templates have been divided in {{ data.clustering_dict | length }} clusters, using the maximum distances.
+                            {{ data.clustering_dict | length }} ARCIMBOLDO_AIR jobs have been launched using the following templates:
+                        </p>
+                        {% for key, value in data.clustering_dict.items() %}
+                            {% if loop.first %}
+                                <ul>
+                            {% endif %}
+                                <li><a href={{ value.path }}/output.html>{{ key }}</a>: {{ value.name_templates|join(', ') }}</li>
+                            {% if loop.last %}
+                                </ul>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
                 </div>
             {% endif %}
             {% if 'frobenius_dict' in data %}

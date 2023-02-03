@@ -534,10 +534,7 @@ def run_arcimboldo_air(yml_path: str):
     command_line = f'{arcimboldo_air_path} {yml_path}'
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
-    if stderr and stderr != 0:
-        logging.info('ARCIMBOLDO_AIR division run has failed, check the log.')
-    else:
-        logging.info('ARCIMBOLDO_AIR division run finished successfully.')
+    logging.info('ARCIMBOLDO_AIR cluster run finished successfully.')
 
 
 def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies:

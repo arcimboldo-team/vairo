@@ -18,7 +18,7 @@ class StructureAir:
         self.input_path: str
         self.log_path: str
         self.cluster_path: str
-        self.cluster_paths: List[str]
+        self.cluster_dict: Dict = {}
         self.af2_dbs_path: str
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
@@ -140,6 +140,12 @@ class StructureAir:
 
         if os.path.exists(self.output.sequence_plot_path):
             render_dict['sequence_plot'] = utils.encode_data(input_data=self.output.sequence_plot_path)
+
+        if os.path.exists(self.output.template_dendogram):
+            render_dict['template_dendogram'] = utils.encode_data(input_data=self.output.template_dendogram)
+
+        if self.cluster_dict:
+            render_dict['clustering_dict'] = self.cluster_dict
 
         if self.output.ranked_list:
             render_dict['table'] = {}
@@ -275,6 +281,7 @@ class StructureAir:
             afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
                                                    sequence=sequence_chunk,
                                                    custom_features=self.custom_features,
+                                                   cluster_templates=self.cluster_templates,
                                                    small_bfd=self.small_bfd,
                                                    start_chunk=partitions[i][0],
                                                    end_chunk=partitions[i][1],
@@ -357,8 +364,10 @@ class StructureAir:
     def set_feature(self, feature: features.Features):
         self.feature = feature
 
+
     def change_state(self, state: int):
         self.state = state
+
 
     def get_state_text(self):
         return {
@@ -384,6 +393,11 @@ class StructureAir:
                 utils.create_dir(new_path)
                 self.write_yml_file(job_path=new_path, yml_path=yml_path, templates=templates)
                 bioutils.run_arcimboldo_air(yml_path=yml_path)
+                self.cluster_dict[utils.get_file_name(new_path)] = {
+                    'path': new_path,
+                    'templates': templates,
+                    'name_templates': [utils.get_file_name(template) for template in templates]
+                }
             
 
     def write_yml_file(self, job_path, yml_path, templates):
