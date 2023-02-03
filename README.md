@@ -17,6 +17,7 @@ parameters:
   experimental_pdb (optional, string, ''): Existing pdbid or path to a pdb
   custom_features (optional, bool, true): Run AlphaFold2 without any modification and with AlphaFold2 generated features.pkl
   mosaic (optional, integer, None): Split the sequence in X partitions.
+  cluster_templates (optional, bool, false): Group templates by distance and relaunch arcimboldo_air with them.
 
 sequences:
 - fasta_path:

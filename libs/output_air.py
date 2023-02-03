@@ -106,7 +106,7 @@ def plot_sequence(plot_path: str, a_air):
 
     ax_secondary = ax.secondary_xaxis('top')
     ax_secondary.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-    ax_secondary.set_xticks(list(ax_secondary.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) for i in range(a_air.sequence_assembled.total_copies)])
+    ax_secondary.set_xticks(list(ax_secondary.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax_secondary.set_xticklabels([1]*a_air.sequence_assembled.total_copies+[a_air.sequence_assembled.get_sequence_length(i)+1 for i in range(a_air.sequence_assembled.total_copies)])
 
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
@@ -275,7 +275,7 @@ class OutputAir:
         self.aleph_results_path: str = None
         self.group_ranked_by_rmsd_dict: dict = {}
         self.template_interfaces: dict = {}
-        self.dendogram_division: List = []
+        self.dendogram_cluster: List = []
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -324,9 +324,9 @@ class OutputAir:
         sys.stdout = sys.__stdout__
         if dendogram_list:
             shutil.copy2(dendogram_plot, self.template_dendogram)
-            if custom_features:
+            if not custom_features:
                 for templates in dendogram_list:
-                    self.dendogram_division.append([template_nonsplit[template] for template in templates])
+                    self.dendogram_cluster.append([template_nonsplit[template] for template in templates])
         
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
@@ -372,10 +372,10 @@ class OutputAir:
                         self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
                         found = True
                         ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
-                        if self.ranked_list[0].name == ranked.name:
-                            green_color += 10
+                        if self.ranked_list[0].name == ranked2.name:
                             ranked.set_green_color(green_color)
                             ranked.set_best(True)
+                            green_color += 10
                         break
 
                 if not found:

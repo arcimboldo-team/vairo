@@ -43,7 +43,7 @@ def main():
         os.chdir(a_air.run_dir)
         a_air.write_input_file()
         a_air.generate_output()
-        
+
         features_list = []
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
@@ -99,7 +99,8 @@ def main():
             a_air.output.analyse_output(sequence_assembled=a_air.sequence_assembled, feature=a_air.feature, experimental_pdb=a_air.experimental_pdb, custom_features=a_air.custom_features)
         if not a_air.verbose:
             utils.clean_files(input_dir=a_air.run_dir)
-        #a_air.launch_dendogram_division()
+        if a_air.cluster_templates:
+            a_air.dendogram_clustering()
         a_air.change_state(state=3)
         a_air.generate_output()
         logging.info('ARCIMBOLDO_AIR has finished successfully')

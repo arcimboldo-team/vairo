@@ -17,8 +17,8 @@ class StructureAir:
         self.input_dir: str
         self.input_path: str
         self.log_path: str
-        self.division_path: str
-        self.division_paths: List[str]
+        self.cluster_path: str
+        self.cluster_paths: List[str]
         self.af2_dbs_path: str
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
@@ -27,6 +27,7 @@ class StructureAir:
         self.run_af2: bool = True
         self.verbose: bool = True
         self.small_bfd: bool = False
+        self.cluster_templates: bool = False
         self.glycines: int = 50
         self.template_positions_list: List[List] = []
         self.reference: Union[template.Template, None] = None
@@ -42,7 +43,7 @@ class StructureAir:
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
         self.input_dir = os.path.join(self.run_dir, 'input')
         self.log_path = os.path.join(self.output_dir, 'output.log')
-        self.division_path = os.path.join(self.output_dir, 'division')
+        self.cluster_path = os.path.join(self.output_dir, 'clustering')
         self.input_path = os.path.join(self.input_dir, 'config.yml')
         self.output = output_air.OutputAir(output_dir=self.output_dir)
 
@@ -56,6 +57,7 @@ class StructureAir:
         self.custom_features = parameters_dict.get('custom_features', self.custom_features)
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
         self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
+        self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
 
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
         if experimental_pdb is not None:
@@ -368,22 +370,27 @@ class StructureAir:
         }[str(self.state)]
 
 
-    def launch_dendogram_division(self):
+    def dendogram_clustering(self):
         counter = 0
-        utils.create_dir(self.division_path, delete_if_exists=True)
-        for templates in self.output.dendogram_division:
-            new_path = os.path.join(self.division_path, f'job_{counter}')
-            yml_file = os.path.join(new_path, 'config.yml')
-            utils.create_dir(new_path)
-            self.write_yml_file(job_path=new_path, yml_file=yml_file, templates=templates)
-
+        utils.create_dir(self.cluster_path, delete_if_exists=True)
+        if self.output.dendogram_cluster:
+            logging.info(f'The templates obtained in alphafold2 can be grouped in { len(self.output.dendogram_cluster) } clusters')
+            for templates in self.output.dendogram_cluster:
+                new_path = os.path.join(self.cluster_path, f'job_{counter}')
+                logging.info(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
+                logging.info((', ').join([utils.get_file_name(template) for template in templates]))
+                counter += 1
+                yml_path = os.path.join(new_path, 'config.yml')
+                utils.create_dir(new_path)
+                self.write_yml_file(job_path=new_path, yml_path=yml_path, templates=templates)
+                bioutils.run_arcimboldo_air(yml_path=yml_path)
             
-    def write_yml_file(self, job_path, yml_file, templates):
-        with open(yml_file, 'w') as f_out:
+
+    def write_yml_file(self, job_path, yml_path, templates):
+        with open(yml_path, 'w') as f_out:
             f_out.write(f'output_dir: {job_path}\n')
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
             f_out.write(f'glycines: {self.glycines}\n')
-            f_out.write(f'custom_features: True\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
@@ -391,10 +398,11 @@ class StructureAir:
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
+            f_out.write(f'\ntemplates:\n')
             for template in templates:
                 f_out.write('-')
                 f_out.write(f' pdb: {template}\n')
-                f_out.write(f'legacy: True\n')
+                f_out.write(f'  legacy: True\n')
 
 
     def write_input_file(self):

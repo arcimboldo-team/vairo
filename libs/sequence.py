@@ -19,7 +19,7 @@ class Sequence:
             self.num_of_copies = parameters_dict.get('num_of_copies', self.num_of_copies)
             self.positions = [-1] * self.num_of_copies
         else:
-            positions_list = positions.replace(' ', '').split(',')
+            positions_list = str(positions).replace(' ', '').split(',')
             for position in positions_list:
                 position = int(position) - 1 if int(position) != -1 else int(position)
                 self.positions.append(position)
