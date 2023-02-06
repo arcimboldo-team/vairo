@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
 import os
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
