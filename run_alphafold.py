@@ -184,6 +184,9 @@ def predict_structure(
         with open(features_output_path, 'wb') as f:
             pickle.dump(feature_dict, f, protocol=4)
 
+    if FLAGS.stop_after_msa:
+        return
+
     timings['features'] = time.time() - t_0
 
     unrelaxed_pdbs = {}
