@@ -537,6 +537,7 @@ def run_arcimboldo_air(yml_path: str):
     logging.info('ARCIMBOLDO_AIR cluster run finished successfully.')
 
 
+
 def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies:
     run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
     protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)

@@ -100,6 +100,7 @@ def main():
             a_air.output.analyse_output(sequence_assembled=a_air.sequence_assembled, feature=a_air.feature, experimental_pdb=a_air.experimental_pdb, custom_features=a_air.custom_features)
             if a_air.cluster_templates:
                 a_air.dendogram_clustering()
+
         a_air.change_state(state=3)
         a_air.generate_output()
         logging.info('ARCIMBOLDO_AIR has finished successfully')
