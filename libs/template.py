@@ -148,9 +148,9 @@ class Template:
         logging.info(f'Positions of chains in the template {self.pdb_id}: {self.results_path_position}')
         return self.results_path_position
 
+
     def apply_changes(self, chain_dict: Dict, when: str):
         # Apply changes in the pdb, change residues.
-
         for change_residues in self.change_res_list:
             if change_residues.when == when:
                 for chain, paths_list in chain_dict.items():
@@ -174,6 +174,7 @@ class Template:
             database = structures.AlignmentDatabase(fasta_path=fasta_path, chain=sequence_chain,
                                                     database_path=new_database)
             self.alignment_database.append(database)
+
 
     def align(self, output_dir: str, fasta_path: str) -> Dict:
         # If aligned, skip to the end, it is just necessary to extract the features
@@ -245,6 +246,7 @@ class Template:
             for res in self.change_res_list:
                 res.apply_mapping(chain, mapping)
 
+
     def sort_chains_into_positions(self, alignment_dict: Dict, sequence_name_list: List[str], global_reference) \
             -> List[Tuple[str, None]]:
 
@@ -258,49 +260,56 @@ class Template:
                 codes = [utils.get_chain_and_number(path) for path in paths]
                 [new_dict[chain].append(f'{code[0]}{code[1]}') for code in codes]
         chain_dict = {chain: sorted(list(set(values))) for chain, values in new_dict.items()}
+        chain_aux = {chain: sorted(list(set(values))) for chain, values in new_dict.items()}
 
         for i, match in enumerate(self.match_restrict_list):
             if match.chain is None or match.chain not in new_dict:
                 logging.info('Restriction could not be applied')
                 continue
-            try:
-                code_pdb = chain_dict[match.chain].pop(0)
+                
+            code_pdb = chain_dict[match.chain].pop(0)
+            chain_dict[match.chain].append(code_pdb)
+            if chain_aux[match.chain]:
+                chain_aux[match.chain].pop(0)
+            
+            if match.residues is not None and (match.position == '' or match.position == 'None'):
+                paths = utils.get_paths_in_alignment(align_dict=alignment_dict, code=code_pdb)
+                for path in paths:
+                    match.residues.delete_residues_inverse(path, path)
 
-                if match.residues is not None:
-                    paths = utils.get_paths_in_alignment(align_dict=alignment_dict, code=code_pdb)
-                    for path in paths:
-                        match.residues.delete_residues_inverse(path, path)
+            if match.position != '' and match.position != 'None':
+                if int(match.position) < len(composition_path_list):
+                    path = utils.select_path_from_code(align_dict=alignment_dict,
+                                                        code=code_pdb,
+                                                        position=match.position,
+                                                        sequence_name_list=sequence_name_list)
+                    if match.residues is not None:
+                        new_path = os.path.join(os.path.dirname(path), f'{i}_{utils.get_file_name(path)}.pdb')
+                        match.residues.delete_residues_inverse(path, new_path)
+                        path = new_path
 
-                if match.position != '' and match.position != 'None':
-                    if int(match.position) < len(composition_path_list):
-                        composition_path_list[match.position] = utils.select_path_from_code(align_dict=alignment_dict,
-                                                                                            code=code_pdb,
-                                                                                            position=match.position,
-                                                                                            sequence_name_list=sequence_name_list)
-                        deleted_positions.append(match.position)
-                        continue
-                    logging.info(
-                        f'Position exceed the length of the sequence, selecting a random position for chain {match.chain}')
-                elif match.position == 'None':
+                    composition_path_list[match.position] = path
+                    deleted_positions.append(match.position)
                     continue
-                elif match.reference is not None and match.reference_chain is not None:
-                    positions = utils.get_positions_by_chain(match.reference.results_path_position,
-                                                             match.reference_chain)
-                    for position in positions:
-                        if composition_path_list[position] is None:
-                            composition_path_list[position] = utils.select_path_from_code(align_dict=alignment_dict,
-                                                                                          code=code_pdb,
-                                                                                          position=match.position,
-                                                                                          sequence_name_list=sequence_name_list)
-                            deleted_positions.append(position)
-                            break
-                    continue
-                new_target_code_list.append(code_pdb)
+                logging.info(f'Position exceed the length of the sequence, selecting a random position for chain {match.chain}')
+            elif match.position == 'None':
+                continue
+            elif match.reference is not None and match.reference_chain is not None:
+                positions = utils.get_positions_by_chain(match.reference.results_path_position,
+                                                            match.reference_chain)
+                for position in positions:
+                    if composition_path_list[position] is None:
+                        composition_path_list[position] = utils.select_path_from_code(align_dict=alignment_dict,
+                                                                                        code=code_pdb,
+                                                                                        position=match.position,
+                                                                                        sequence_name_list=sequence_name_list)
+                        deleted_positions.append(position)
+                        break
+                continue
+            new_target_code_list.append(code_pdb)
 
-            except Exception as e:
-                logging.info('Not enough chains in the pdb.')
 
-        for chain, paths in chain_dict.items():
+        for chain, paths in chain_aux.items():
             [new_target_code_list.append(paths[i]) for i in range(len(paths))]
 
         reference = self.reference if self.reference is not None else None
@@ -359,7 +368,7 @@ class Template:
                 if changed_fasta:
                     fasta_changed[i] = changed_fasta
                 for change in self.match_restrict_list:
-                    if change.residues is not None and chain in change.residues:
+                    if change.residues is not None and chain in change.residues.chain_res_dict:
                         chains_deleted.extend(change.residues.chain_res_dict[chain])
 
         return chains_changed, fasta_changed, chains_deleted

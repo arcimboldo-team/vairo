@@ -471,7 +471,7 @@ class StructureAir:
                             if match.position != '':
                                 f_out.write(f'    position: {match.position + 1}\n')
                             if match.residues is not None:
-                                f_out.write(f'    residues: {",".join(map(str, match.residues))}\n')
+                                f_out.write(f'    residues: {",".join(map(str, list(match.residues.chain_res_dict.values())[0]))}\n')
                             if match.reference is not None:
                                 f_out.write(f'    reference: {match.reference}\n')
                             if match.reference_chain is not None:
