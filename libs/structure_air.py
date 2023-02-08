@@ -119,6 +119,7 @@ class StructureAir:
 
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
 
+
     def generate_output(self):
         render_dict = {}
 
@@ -240,7 +241,6 @@ class StructureAir:
 
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
         # Return the template matching the pdb_id
-
         for temp in self.templates_list:
             if temp.pdb_id == pdb_id:
                 return temp
@@ -251,7 +251,6 @@ class StructureAir:
         # Order the templates list in order to meet the required dependencies
         # All the templates are going to be in order, so the references will be calculated
         # before needed
-
         new_templates_list = []
         old_templates_list = self.templates_list
 
@@ -275,7 +274,6 @@ class StructureAir:
     def append_line_in_templates(self, new_list: List):
         # Add line to the template's matrix.
         # The list contains the position of the chains
-
         self.template_positions_list.append(new_list)
 
 
@@ -481,8 +479,7 @@ class StructureAir:
                         for match in template_in.match_restrict_list:
                             f_out.write('  -')
                             f_out.write(f' chain: {match.chain}\n')
-                            if match.position != '':
-                                f_out.write(f'    position: {match.position + 1}\n')
+                            f_out.write(f'    position: {match.position + 1 if match.position != -1 else match.position}\n')
                             if match.residues is not None:
                                 f_out.write(f'    residues: {",".join(map(str, list(match.residues.chain_res_dict.values())[0]))}\n')
                             if match.reference is not None:

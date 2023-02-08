@@ -260,7 +260,6 @@ class Template:
                 codes = [utils.get_chain_and_number(path) for path in paths]
                 [new_dict[chain].append(f'{code[0]}{code[1]}') for code in codes]
         chain_dict = {chain: sorted(list(set(values))) for chain, values in new_dict.items()}
-        chain_aux = {chain: sorted(list(set(values))) for chain, values in new_dict.items()}
 
         for i, match in enumerate(self.match_restrict_list):
             if match.chain is None or match.chain not in new_dict:
@@ -269,15 +268,21 @@ class Template:
                 
             code_pdb = chain_dict[match.chain].pop(0)
             chain_dict[match.chain].append(code_pdb)
-            if chain_aux[match.chain]:
-                chain_aux[match.chain].pop(0)
-            
-            if match.residues is not None and (match.position == '' or match.position == 'None'):
-                paths = utils.get_paths_in_alignment(align_dict=alignment_dict, code=code_pdb)
-                for path in paths:
-                    match.residues.delete_residues_inverse(path, path)
 
-            if match.position != '' and match.position != 'None':
+            if match.reference is not None and match.reference_chain is not None:
+                positions = utils.get_positions_by_chain(match.reference.results_path_position,
+                                                            match.reference_chain)
+                for position in positions:
+                    if composition_path_list[position] is None:
+                        composition_path_list[position] = utils.select_path_from_code(align_dict=alignment_dict,
+                                                                                        code=code_pdb,
+                                                                                        position=match.position,
+                                                                                        sequence_name_list=sequence_name_list)
+                        deleted_positions.append(position)
+                        break
+                continue
+
+            if match.position != -1:
                 if int(match.position) < len(composition_path_list):
                     path = utils.select_path_from_code(align_dict=alignment_dict,
                                                         code=code_pdb,
@@ -292,25 +297,14 @@ class Template:
                     deleted_positions.append(match.position)
                     continue
                 logging.info(f'Position exceed the length of the sequence, selecting a random position for chain {match.chain}')
-            elif match.position == 'None':
+                new_target_code_list.append(code_pdb)
+            else:
+                new_target_code_list.append(code_pdb)
                 continue
-            elif match.reference is not None and match.reference_chain is not None:
-                positions = utils.get_positions_by_chain(match.reference.results_path_position,
-                                                            match.reference_chain)
-                for position in positions:
-                    if composition_path_list[position] is None:
-                        composition_path_list[position] = utils.select_path_from_code(align_dict=alignment_dict,
-                                                                                        code=code_pdb,
-                                                                                        position=match.position,
-                                                                                        sequence_name_list=sequence_name_list)
-                        deleted_positions.append(position)
-                        break
-                continue
-            new_target_code_list.append(code_pdb)
 
-
-        for chain, paths in chain_aux.items():
-            [new_target_code_list.append(paths[i]) for i in range(len(paths))]
+        if not self.match_restrict_list:    
+            for chain, paths in chain_dict.items():
+                [new_target_code_list.append(paths[i]) for i in range(len(paths))]
 
         reference = self.reference if self.reference is not None else None
         reference = global_reference if reference is None else reference
@@ -327,6 +321,9 @@ class Template:
                         composition_path_list[i] = path
             else:
                 for code in new_target_code_list:
+
+
+                    
                     for i in range(len(composition_path_list)):
                         if composition_path_list[i] is None:
                             composition_path_list[i] = utils.select_path_from_code(align_dict=alignment_dict,

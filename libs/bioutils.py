@@ -252,7 +252,6 @@ def choose_best_offset(reference, deleted_positions: List[int], align_dict: Dict
     results_algorithm = []
 
     for x, code_query_pdb in enumerate(code_list):
-        reference_pdist_list = []
         reference_algorithm = []
         for y, target_pdb in enumerate(reference.results_path_position):
             if y not in deleted_positions:
@@ -260,9 +259,7 @@ def choose_best_offset(reference, deleted_positions: List[int], align_dict: Dict
                                                         code=code_query_pdb,
                                                         position=y,
                                                         sequence_name_list=name_list)
-                if query_pdb is not None:
-                    reference_algorithm.append((x, y, pdist(query_pdb=query_pdb, target_pdb=target_pdb)))
-                    reference_pdist_list.append(pdist(query_pdb=query_pdb, target_pdb=target_pdb))
+                reference_algorithm.append((x, y, pdist(query_pdb=query_pdb, target_pdb=target_pdb)))
         results_algorithm.append(reference_algorithm)
 
     return_offset_list = [None] * (len(reference.results_path_position))
