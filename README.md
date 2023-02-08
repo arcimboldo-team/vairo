@@ -19,6 +19,11 @@ parameters:
   mosaic (optional, integer, None): Split the sequence in X partitions.
   cluster_templates (optional, bool, false): Group templates by distance and relaunch arcimboldo_air with them.
 
+features:
+- path:
+  keep_msa:
+  keep_templates:
+
 sequences:
 - fasta_path:
   num_of_copies:

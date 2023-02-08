@@ -160,6 +160,12 @@ class Features:
             f'Features has been sliced in {len(features_list)} partitions with the following sizes: {chunk_list}')
         return features_list
 
+    def set_msa_features(self, new_msa: Dict):
+        self.msa_features = new_msa
+
+    def set_template_features(self, new_templates: Dict):
+        self.template_features = new_templates
+
 
 def empty_msa_features(query_sequence):
     msa = {'a3m': f'>query\n{query_sequence}'}

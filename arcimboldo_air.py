@@ -49,6 +49,14 @@ def main():
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
             a_air.set_feature(feature = features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
+
+            if a_air.features_input:
+                feat_aux = features.create_features_from_file(pkl_in_path=a_air.features_input.path)
+                if a_air.features_input.keep_msa:
+                    a_air.feature.set_msa_features(feat_aux.msa_features)
+                if a_air.features_input.keep_templates:
+                    a_air.feature.set_template_features(feat_aux.template_features)
+                        
             a_air.change_state(state=1)
             a_air.generate_output()
             for template in a_air.templates_list:

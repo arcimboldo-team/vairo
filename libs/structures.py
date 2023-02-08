@@ -5,6 +5,12 @@ from typing import Dict, List
 from libs import utils
 
 @dataclasses.dataclass(frozen=True)
+class FeaturesInput:
+    path: str
+    keep_msa: bool
+    keep_templates: bool
+
+@dataclasses.dataclass(frozen=True)
 class AlignmentDatabase:
     chain: str
     fasta_path: str

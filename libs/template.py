@@ -395,7 +395,6 @@ class Template:
 
     def __repr__(self):
         # Print class
-
         return f' \
         pdb_path: {self.pdb_path} \n \
         pdb_id: {self.pdb_id} \n \
