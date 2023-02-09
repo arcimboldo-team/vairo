@@ -13,6 +13,7 @@ class Template:
     def __init__(self, parameters_dict: Dict, output_dir: str, input_dir: str, num_of_copies: int, new_name=''):
         self.pdb_path: str
         self.pdb_id: str
+        self.cif_path: str
         self.template_path: str
         self.generate_multimer: bool = True if num_of_copies > 1 else False
         self.change_res_list: List[change_res.ChangeResidues] = []
@@ -21,10 +22,12 @@ class Template:
         self.sum_prob: bool = False
         self.aligned: bool = False
         self.legacy: bool = False
+        self.strict: bool = True
         self.template_features: Optional[features.Features] = None
         self.match_restrict_list: List[match_restrictions.MatchRestrictions] = []
         self.results_path_position: List = [None] * num_of_copies
         self.reference: Optional[str] = None
+        self.alignment_dict = {}
         self.alignments: List[structures.Alignment] = []
         self.alignment_database: List[structures.AlignmentDatabase] = []
         self.changes: List[structures.ChangesChains] = []
@@ -39,6 +42,7 @@ class Template:
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
         self.legacy = parameters_dict.get('legacy', self.legacy)
+        self.strict = parameters_dict.get('strict', self.strict)
         self.aligned = self.legacy
         self.aligned = parameters_dict.get('aligned', self.aligned)
         self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
@@ -100,8 +104,7 @@ class Template:
         return list(filter(None, return_references_list))
 
 
-    def generate_features(self, output_dir: str, alignment_dict: Dict, global_reference,
-                          sequence_assembled: sequence.SequenceAssembled):
+    def generate_features(self, output_dir: str, global_reference, sequence_assembled: sequence.SequenceAssembled):
         #   - Generate offset.
         #   - Apply the generated offset to all the templates.
         #   - Build the new template merging all the templates.
@@ -112,7 +115,6 @@ class Template:
         if not self.legacy:
             merge_list = []
             self.results_path_position = self.sort_chains_into_positions(
-                alignment_dict=alignment_dict,
                 sequence_name_list=sequence_assembled.get_list_name(),
                 global_reference=global_reference)
             for i, pdb_path in enumerate(self.results_path_position):
@@ -146,7 +148,6 @@ class Template:
         self.template_features = copy.deepcopy(template_features)
 
         logging.info(f'Positions of chains in the template {self.pdb_id}: {self.results_path_position}')
-        return self.results_path_position
 
 
     def apply_changes(self, chain_dict: Dict, when: str):
@@ -176,7 +177,7 @@ class Template:
             self.alignment_database.append(database)
 
 
-    def align(self, output_dir: str, fasta_path: str) -> Dict:
+    def align(self, output_dir: str, sequence: sequence.Sequence):
         # If aligned, skip to the end, it is just necessary to extract the features
         # If not aligned:
         #   - Convert pdb to cif, this is necessary to run hhsearch.
@@ -186,7 +187,7 @@ class Template:
         #       the templates for each chain, each template has the chain 'A'.
         #   - Change the specified residues in the input in all the templates.
 
-        query_sequence = bioutils.extract_sequence(fasta_path)
+        query_sequence = bioutils.extract_sequence(sequence.fasta_path)
 
         extracted_chain_dict = {}
 
@@ -194,7 +195,7 @@ class Template:
             for database in self.alignment_database:
                 hhr_path = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}.hhr')
 
-                hhsearch.run_hhsearch(fasta_path=fasta_path,
+                hhsearch.run_hhsearch(fasta_path=sequence.fasta_path,
                                       database_path=database.database_path,
                                       output_path=hhr_path)
                 template_features, mapping, identities, aligned_columns, total_columns, evalue = features.extract_template_features_from_pdb(
@@ -226,8 +227,8 @@ class Template:
             extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
 
         self.apply_changes(chain_dict=extracted_chain_dict, when='after_alignment')
+        self.alignment_dict[sequence.name] = extracted_chain_dict
 
-        return extracted_chain_dict
 
     def mapping_has_changed(self, chain: str, mapping: Dict):
         # It is necessary to update the mapping that generates the alignment
@@ -247,15 +248,21 @@ class Template:
                 res.apply_mapping(chain, mapping)
 
 
-    def sort_chains_into_positions(self, alignment_dict: Dict, sequence_name_list: List[str], global_reference) \
+    def sort_chains_into_positions(self, sequence_name_list: List[str], global_reference) \
             -> List[Tuple[str, None]]:
+        #Given the sequences list and if there is any global reference:
+        #Sort all template chains in the corresponding positions.
+        #If the user has set up any match, only the chains specified in the match will be set.
+        #Otherwise, there is an algorithm that will sort the chains into the positions,
+        #taking into account the pdist between the reference and the chain.
+        #If the evalues are high, the program will stop.
 
         composition_path_list = [None] * len(sequence_name_list)
         new_target_code_list = []
         deleted_positions = []
 
         new_dict = collections.defaultdict(list)
-        for _, chain_dict in alignment_dict.items():
+        for _, chain_dict in self.alignment_dict.items():
             for chain, paths in chain_dict.items():
                 codes = [utils.get_chain_and_number(path) for path in paths]
                 [new_dict[chain].append(f'{code[0]}{code[1]}') for code in codes]
@@ -274,17 +281,19 @@ class Template:
                                                             match.reference_chain)
                 for position in positions:
                     if composition_path_list[position] is None:
-                        composition_path_list[position] = utils.select_path_from_code(align_dict=alignment_dict,
+                        composition_path_list[position] = utils.select_path_from_code(align_dict=self.alignment_dict,
                                                                                         code=code_pdb,
                                                                                         position=match.position,
                                                                                         sequence_name_list=sequence_name_list)
                         deleted_positions.append(position)
+                        self.check_alignment(pdb_path=composition_path_list[position], strict=self.strict)
                         break
+
                 continue
 
             if match.position != -1:
                 if int(match.position) < len(composition_path_list):
-                    path = utils.select_path_from_code(align_dict=alignment_dict,
+                    path = utils.select_path_from_code(align_dict=self.alignment_dict,
                                                         code=code_pdb,
                                                         position=match.position,
                                                         sequence_name_list=sequence_name_list)
@@ -294,6 +303,8 @@ class Template:
                         path = new_path
 
                     composition_path_list[match.position] = path
+                    self.check_alignment(pdb_path=composition_path_list[position], strict=self.strict)
+
                     deleted_positions.append(match.position)
                     continue
                 logging.info(f'Position exceed the length of the sequence, selecting a random position for chain {match.chain}')
@@ -310,33 +321,52 @@ class Template:
         reference = global_reference if reference is None else reference
 
         if new_target_code_list:
-            if reference != self:
-                new_target_path_list = bioutils.choose_best_offset(reference=reference,
-                                                                   deleted_positions=deleted_positions,
-                                                                   align_dict=alignment_dict,
-                                                                   code_list=new_target_code_list,
-                                                                   name_list=sequence_name_list)
-                for i, path in enumerate(new_target_path_list):
-                    if composition_path_list[i] is None:
-                        composition_path_list[i] = path
-            else:
-                for code in new_target_code_list:
+            new_target_path_list = self.choose_best_offset(reference=reference,
+                                                            deleted_positions=deleted_positions,
+                                                            code_list=new_target_code_list,
+                                                            name_list=sequence_name_list)
 
+            if (len(new_target_code_list)+sum(x is not None for x in composition_path_list)) != sum(x is not None for x in new_target_path_list):
+                raise Exception(f'Not all chains have been selected in the template {self.pdb_id}. Probabily there are chains with bad alignment.')
 
-                    
-                    for i in range(len(composition_path_list)):
-                        if composition_path_list[i] is None:
-                            composition_path_list[i] = utils.select_path_from_code(align_dict=alignment_dict,
-                                                                                   code=code,
-                                                                                   position=i,
-                                                                                   sequence_name_list=sequence_name_list)
-                            break
+            if not any(new_target_path_list):
+                raise Exception(f'Not possible to meet the requistes for the template {self.pdb_id}. No chains have good alignments')
+
+            for i, path in enumerate(new_target_path_list):
+                if composition_path_list[i] is None:
+                    composition_path_list[i] = path
 
         return composition_path_list
 
+    def choose_best_offset(self, reference, deleted_positions: List[int], code_list: List[str],
+                        name_list: List[str]) -> List[Optional[str]]:
+        results_algorithm = []
+
+        for x, code_query_pdb in enumerate(code_list):
+            reference_algorithm = []
+            for y, target_pdb in enumerate(reference.results_path_position):
+                if y not in deleted_positions:
+                    query_pdb = utils.select_path_from_code(align_dict=self.alignment_dict,
+                                                            code=code_query_pdb,
+                                                            position=y,
+                                                            sequence_name_list=name_list)
+                    reference_algorithm.append((x, y, bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb), self.check_alignment(query_pdb, False)))
+            results_algorithm.append(reference_algorithm)
+
+        return_offset_list = [None] * (len(reference.results_path_position))
+        best_offset_list = bioutils.calculate_auto_offset(results_algorithm,
+                                                len(return_offset_list) - len(deleted_positions))
+        for x, y, _, _ in best_offset_list:
+            return_offset_list[y] = utils.select_path_from_code(align_dict=self.alignment_dict,
+                                                                code=code_list[x],
+                                                                position=y,
+                                                                sequence_name_list=name_list)
+
+        return return_offset_list
 
     def set_reference_templates(self, a_air):
         # Change pdb_id str to the Template reference
+
         if self.reference is not None:
             self.reference = a_air.get_template_by_id(self.reference)
         for match in self.match_restrict_list:
@@ -346,6 +376,9 @@ class Template:
 
 
     def get_changes(self):
+        #Get the changes that have been done to the templates.
+        #Return all those residues that has been changed.
+
         chains_changed = [None] * len(self.results_path_position)
         fasta_changed = [None] * len(self.results_path_position)
         chains_deleted = [None] * len(self.results_path_position)
@@ -372,15 +405,19 @@ class Template:
 
 
     def get_alignment_by_pdb(self, pdb_path: str) -> structures.Alignment:
+        #Search for the alignment that has the same name as the pdb_path
         for alignment in self.alignments:
             if os.path.dirname(pdb_path) == os.path.dirname(alignment.extracted_path):
                 chain1, _ = utils.get_chain_and_number(alignment.extracted_path)
                 chain2, _ = utils.get_chain_and_number(pdb_path)
                 if chain1 == chain2:
                     return alignment
+        return None
 
 
     def get_results_alignment(self) -> List[Union[None, structures.Alignment]]:
+        #Return the alignments corresponding to the positions.
+
         return_alignments = []
         for path in self.results_path_position:
             alignment = None
@@ -389,6 +426,20 @@ class Template:
             return_alignments.append(alignment)
         return return_alignments
 
+
+    def check_alignment(self, pdb_path: str, strict: bool) -> bool:
+        #Check if the alignment is OK.
+        #Give the pdb alignment path and check the evalues.
+        #If it is ok, the program will continue, otherwise, it will stop.
+        alignment = self.get_alignment_by_pdb(pdb_path)
+        if alignment:
+            if float(alignment.evalue) > 0.12:
+                if strict: 
+                    raise Exception(f'The chain {pdb_path} has a bad alignment, the evalues of the alignment are too high {alignment.evalue}. Stopping the run.')
+                else:
+                    return False
+            return True
+        return True
 
     def __repr__(self):
         # Print class
