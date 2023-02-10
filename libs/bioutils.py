@@ -642,10 +642,13 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
     for element in combinated_list:
-        sort_bool = sorted(element, key=lambda x: x[3], reverse=True)[:length]
-        if not sort_bool[-1]:
+        aux_length = length
+        element_aux = [x for x in element if x[3] is not False]
+        if len(element_aux) <= 0:
             continue
-        sorted_list = sorted(element, key=lambda x: x[2])[:length]
+        elif len(element_aux) < length:
+            aux_length = len(element_aux)
+        sorted_list = sorted(element_aux, key=lambda x: x[2])[:aux_length]
         target_list = [target for _, target, _, _ in sorted_list]
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(sorted_list)

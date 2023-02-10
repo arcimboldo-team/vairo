@@ -286,9 +286,8 @@ class Template:
                                                                                         position=match.position,
                                                                                         sequence_name_list=sequence_name_list)
                         deleted_positions.append(position)
-                        self.check_alignment(pdb_path=composition_path_list[position], strict=self.strict)
+                        self.check_alignment(pdb_path=composition_path_list[position], stop=self.strict)
                         break
-
                 continue
 
             if match.position != -1:
@@ -303,7 +302,7 @@ class Template:
                         path = new_path
 
                     composition_path_list[match.position] = path
-                    self.check_alignment(pdb_path=composition_path_list[position], strict=self.strict)
+                    self.check_alignment(pdb_path=path, stop=self.strict)
 
                     deleted_positions.append(match.position)
                     continue
@@ -326,15 +325,16 @@ class Template:
                                                             code_list=new_target_code_list,
                                                             name_list=sequence_name_list)
 
-            if (len(new_target_code_list)+sum(x is not None for x in composition_path_list)) != sum(x is not None for x in new_target_path_list):
-                raise Exception(f'Not all chains have been selected in the template {self.pdb_id}. Probabily there are chains with bad alignment.')
-
-            if not any(new_target_path_list):
-                raise Exception(f'Not possible to meet the requistes for the template {self.pdb_id}. No chains have good alignments')
 
             for i, path in enumerate(new_target_path_list):
                 if composition_path_list[i] is None:
                     composition_path_list[i] = path
+
+            if (len(new_target_code_list) != sum(x is not None for x in new_target_path_list)):
+                logging.info(f'Not all chains have been selected in the template {self.pdb_id}. Probabily there are chains with bad alignment.')
+
+            if not any(new_target_path_list):
+                raise Exception(f'Not possible to meet the requistes for the template {self.pdb_id}. No chains have good alignments')
 
         return composition_path_list
 
@@ -350,7 +350,8 @@ class Template:
                                                             code=code_query_pdb,
                                                             position=y,
                                                             sequence_name_list=name_list)
-                    reference_algorithm.append((x, y, bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb), self.check_alignment(query_pdb, False)))
+                    alignment = self.check_alignment(query_pdb) if self.strict else True
+                    reference_algorithm.append((x, y, bioutils.pdist(query_pdb=query_pdb, target_pdb=target_pdb), alignment))
             results_algorithm.append(reference_algorithm)
 
         return_offset_list = [None] * (len(reference.results_path_position))
@@ -427,17 +428,16 @@ class Template:
         return return_alignments
 
 
-    def check_alignment(self, pdb_path: str, strict: bool) -> bool:
+    def check_alignment(self, pdb_path: str, stop: bool = False) -> bool:
         #Check if the alignment is OK.
         #Give the pdb alignment path and check the evalues.
-        #If it is ok, the program will continue, otherwise, it will stop.
         alignment = self.get_alignment_by_pdb(pdb_path)
         if alignment:
-            if float(alignment.evalue) > 0.12:
-                if strict: 
-                    raise Exception(f'The chain {pdb_path} has a bad alignment, the evalues of the alignment are too high {alignment.evalue}. Stopping the run.')
-                else:
+            if float(alignment.evalue) > 0.01:
+                if not stop:
                     return False
+                else:
+                    raise Exception(f'Match could not be done. Poor alignment in the template {self.pdb_id}. Stopping the run.')
             return True
         return True
 
