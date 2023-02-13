@@ -42,6 +42,7 @@ templates:
   add_to_templates (optional, bool, true): Add template to the features.pkl
   generate_multimer (optional, bool, true if num_of_copies > 1 else false):
   sum_prob (optional, integer, None):
+  strict (optional, bool True): Check the evalues of the alignment
   aligned (optional, bool, false): If the template has already been aligned with the sequence.
   legacy (optional, bool, false): If the template has been prepared (aligned, one chain)
   reference (optional, string, ''): Existing pdbid or path to a pdb
