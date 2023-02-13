@@ -11,6 +11,7 @@ parameters:
   run_dir (optional, string, 'run'): Path to the directory where AlphaFold2 will be run.
   verbose (optional, bool, true): Enable debugging.
   glycines (optional, integer, 50): Number of glycines between sequence copies.
+  small_bfd (optional, bool, false): Use reduced bfd library.
   run_af2 (optional, bool, true): Run AlphaFold2, it can be used to generate a features.pkl without going further.
   stop_after_msa (optional, bool, false): Run AlphaFold2 and stop it after generating the msa.
   reference (optional, string, ''): Existing pdbid or path to a pdb
@@ -18,6 +19,11 @@ parameters:
   custom_features (optional, bool, true): Run AlphaFold2 without any modification and with AlphaFold2 generated features.pkl
   mosaic (optional, integer, None): Split the sequence in X partitions.
   cluster_templates (optional, bool, false): Group templates by distance and relaunch arcimboldo_air with them.
+
+features:
+- path:
+  keep_msa:
+  keep_templates:
 
 sequences:
 - fasta_path:
@@ -36,6 +42,7 @@ templates:
   add_to_templates (optional, bool, true): Add template to the features.pkl
   generate_multimer (optional, bool, true if num_of_copies > 1 else false):
   sum_prob (optional, integer, None):
+  strict (optional, bool True): Check the evalues of the alignment
   aligned (optional, bool, false): If the template has already been aligned with the sequence.
   legacy (optional, bool, false): If the template has been prepared (aligned, one chain)
   reference (optional, string, ''): Existing pdbid or path to a pdb

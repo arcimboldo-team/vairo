@@ -9,7 +9,7 @@ import itertools
 from typing import Any, Dict, List, Optional, Tuple, Union
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
-from libs import change_res, structures, utils, sequence
+from libs import change_res, structures, template, utils, sequence
 from scipy.spatial import distance
 from simtk import unit, openmm
 
@@ -245,36 +245,6 @@ def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: List[List]
         f.write('eof')
     subprocess.Popen(['bash', '/tmp/pdbset.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
     utils.rmsilent(f'/tmp/pdbset.sh')
-
-
-def choose_best_offset(reference, deleted_positions: List[int], align_dict: Dict, code_list: List[str],
-                       name_list: List[str]) -> List[Optional[str]]:
-    results_algorithm = []
-
-    for x, code_query_pdb in enumerate(code_list):
-        reference_pdist_list = []
-        reference_algorithm = []
-        for y, target_pdb in enumerate(reference.results_path_position):
-            if y not in deleted_positions:
-                query_pdb = utils.select_path_from_code(align_dict=align_dict,
-                                                        code=code_query_pdb,
-                                                        position=y,
-                                                        sequence_name_list=name_list)
-                if query_pdb is not None:
-                    reference_algorithm.append((x, y, pdist(query_pdb=query_pdb, target_pdb=target_pdb)))
-                    reference_pdist_list.append(pdist(query_pdb=query_pdb, target_pdb=target_pdb))
-        results_algorithm.append(reference_algorithm)
-
-    return_offset_list = [None] * (len(reference.results_path_position))
-    best_offset_list = calculate_auto_offset(results_algorithm,
-                                             len(return_offset_list) - len(deleted_positions))
-    for x, y, _ in best_offset_list:
-        return_offset_list[y] = utils.select_path_from_code(align_dict=align_dict,
-                                                            code=code_list[x],
-                                                            position=y,
-                                                            sequence_name_list=name_list)
-
-    return return_offset_list
 
 
 def remove_hydrogens(pdb_in_path: str, pdb_out_path: str):
@@ -672,18 +642,27 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
     for element in combinated_list:
-        sorted_list = sorted(element, key=lambda x: x[2])[:length]
-        target_list = [target for _, target, _ in sorted_list]
+        aux_length = length
+        element_aux = [x for x in element if x[3] is not False]
+        if len(element_aux) <= 0:
+            continue
+        elif len(element_aux) < length:
+            aux_length = len(element_aux)
+        sorted_list = sorted(element_aux, key=lambda x: x[2])[:aux_length]
+        target_list = [target for _, target, _, _ in sorted_list]
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(sorted_list)
 
     score_list = []
     for element in trimmed_list:
-        score_list.append(sum(z for _, _, z in element))
-    min_value = min(score_list)
-    min_index = score_list.index(min_value)
-
-    return trimmed_list[min_index]
+        score_list.append(sum(z for _, _, z, _ in element))
+    
+    if score_list:
+        min_value = min(score_list)
+        min_index = score_list.index(min_value)
+        return trimmed_list[min_index]
+    else:
+        return []
 
 
 def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain1: List, chain2: List):

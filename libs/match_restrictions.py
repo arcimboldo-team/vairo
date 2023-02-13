@@ -7,7 +7,7 @@ class MatchRestrictions:
     def __init__(self, parameters_dict: Dict):
 
         self.chain: str
-        self.position: str = ''
+        self.position: int = -1
         self.residues: Union[change_res.ChangeResidues, None] = None
         self.reference = None
         self.reference_chain: Union[str, None] = None
@@ -20,9 +20,7 @@ class MatchRestrictions:
             self.residues = change_res.ChangeResidues(chain_res_dict=new_dict)
 
         self.position = parameters_dict.get('position', self.position)
-        if self.position != '' and self.position != 'None' and not str(self.position).isdigit():
-            raise Exception(f'Error setting position in match {self.chain}: {self.position}')
-        if str(self.position).isdigit():
+        if self.position != -1:
             self.position = self.position - 1
         self.reference = parameters_dict.get('reference', self.reference)
         self.reference_chain = parameters_dict.get('reference_chain', self.reference_chain)

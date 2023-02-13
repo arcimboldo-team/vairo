@@ -2,7 +2,7 @@ import logging
 import os
 import shutil
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence
+from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence, structures
 from jinja2 import Environment, FileSystemLoader
 
 
@@ -38,6 +38,7 @@ class StructureAir:
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
         self.state: int = 0
+        self.features_input: Union[structures.FeaturesInput, None] = None
 
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
@@ -59,6 +60,14 @@ class StructureAir:
         self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
         self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
 
+        if 'features' in parameters_dict:
+           for parameters_features in parameters_dict.get('features'):
+                self.features_input = structures.FeaturesInput(
+                      path = utils.get_mandatory_value(input_load=parameters_features, value='path'),
+                      keep_msa = parameters_dict.get('keep_msa', True),
+                      keep_templates = parameters_dict.get('keep_templates', True)   
+                )
+                
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
         if experimental_pdb is not None:
             experimental_pdb = bioutils.check_pdb(experimental_pdb, self.input_dir)
@@ -109,6 +118,7 @@ class StructureAir:
                 self.reference = self.templates_list[0]
 
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
+
 
     def generate_output(self):
         render_dict = {}
@@ -231,7 +241,6 @@ class StructureAir:
 
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
         # Return the template matching the pdb_id
-
         for temp in self.templates_list:
             if temp.pdb_id == pdb_id:
                 return temp
@@ -242,7 +251,6 @@ class StructureAir:
         # Order the templates list in order to meet the required dependencies
         # All the templates are going to be in order, so the references will be calculated
         # before needed
-
         new_templates_list = []
         old_templates_list = self.templates_list
 
@@ -266,7 +274,6 @@ class StructureAir:
     def append_line_in_templates(self, new_list: List):
         # Add line to the template's matrix.
         # The list contains the position of the chains
-
         self.template_positions_list.append(new_list)
 
 
@@ -434,6 +441,7 @@ class StructureAir:
             f_out.write(f'custom_features: {self.custom_features}\n')
             f_out.write(f'small_bfd: {self.small_bfd}\n')
             f_out.write(f'mosaic: {self.mosaic}\n')
+            f_out.write(f'cluster_templates: {self.cluster_templates}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
@@ -450,7 +458,10 @@ class StructureAir:
                     f_out.write(f'  add_to_msa: {template_in.add_to_msa}\n')
                     f_out.write(f'  add_to_templates: {template_in.add_to_templates}\n')
                     f_out.write(f'  generate_multimer: {template_in.generate_multimer}\n')
-
+                    f_out.write(f'  aligned: {template_in.aligned}\n')
+                    f_out.write(f'  legacy: {template_in.legacy}\n')
+                    if template_in.reference is not None:
+                        f_out.write(f'  reference: {self.reference}\n')
                     if template_in.change_res_list:
                         f_out.write(f'  change_res:\n')
                         for change in template_in.change_res_list:
@@ -468,8 +479,7 @@ class StructureAir:
                         for match in template_in.match_restrict_list:
                             f_out.write('  -')
                             f_out.write(f' chain: {match.chain}\n')
-                            if match.position != '':
-                                f_out.write(f'    position: {match.position + 1}\n')
+                            f_out.write(f'    position: {match.position + 1 if match.position != -1 else match.position}\n')
                             if match.residues is not None:
                                 f_out.write(f'    residues: {",".join(map(str, list(match.residues.chain_res_dict.values())[0]))}\n')
                             if match.reference is not None:

@@ -49,26 +49,30 @@ def main():
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
             a_air.set_feature(feature = features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
+
+            if a_air.features_input:
+                feat_aux = features.create_features_from_file(pkl_in_path=a_air.features_input.path)
+                if a_air.features_input.keep_msa:
+                    a_air.feature.set_msa_features(feat_aux.msa_features)
+                if a_air.features_input.keep_templates:
+                    a_air.feature.set_template_features(feat_aux.template_features)
+                        
             a_air.change_state(state=1)
             a_air.generate_output()
             for template in a_air.templates_list:
-                alignment_dict = {}
                 if not template.aligned:
                     database_dir = os.path.join(a_air.run_dir, template.pdb_id)
                     utils.create_dir(database_dir)
                     template.generate_database(output_dir=database_dir, database_path=a_air.alphafold_paths.bfd_db_path)
-                
                 for sequence in a_air.sequence_assembled.sequence_list:
                     alignment_dir = os.path.join(a_air.run_dir, sequence.name)
                     utils.create_dir(alignment_dir)
-                    alignment_dict[sequence.name] = template.align(output_dir=alignment_dir,
-                                                                fasta_path=sequence.fasta_path)
-                results_path_position = template.generate_features(
+                    template.align(output_dir=alignment_dir, sequence=sequence)
+                template.generate_features(
                     output_dir=a_air.run_dir,
-                    alignment_dict=alignment_dict,
                     global_reference=a_air.reference,
                     sequence_assembled=a_air.sequence_assembled)
-                a_air.append_line_in_templates(results_path_position)
+                a_air.append_line_in_templates(template.results_path_position)
                 if template.add_to_msa:
                     sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
                     a_air.feature.append_row_in_msa(sequence=sequence_from_template,

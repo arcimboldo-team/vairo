@@ -160,6 +160,12 @@ class Features:
             f'Features has been sliced in {len(features_list)} partitions with the following sizes: {chunk_list}')
         return features_list
 
+    def set_msa_features(self, new_msa: Dict):
+        self.msa_features = new_msa
+
+    def set_template_features(self, new_templates: Dict):
+        self.template_features = new_templates
+
 
 def empty_msa_features(query_sequence):
     msa = {'a3m': f'>query\n{query_sequence}'}
@@ -237,15 +243,6 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     file_id = f'{pdb_id.lower()}'
     hit = parsers._parse_hhr_hit(detailed_lines)
 
-    match = re.findall(r'No 1.*[\r\n]+.*\n+(.*\n)', hhr_text)
-    identities = re.findall(r'Identities=+([0-9]+)', match[0])[0]
-    aligned_columns = re.findall(r'Aligned_cols=+([0-9]+)', match[0])[0]
-    total_columns = len(hit.hit_sequence)
-    evalue = re.findall(r'E-value=+(.*?) ', match[0])[0]
-    logging.info(f'Alignment results:')
-    logging.info(
-        f'Aligned columns: {aligned_columns} ({len(hit.hit_sequence)}), Evalue: {evalue}, Identities: {identities}')
-
     template_sequence = hit.hit_sequence.replace('-', '')
 
     mapping = templates._build_query_to_hit_index_mapping(
@@ -269,6 +266,17 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     template_features['template_all_atom_positions'] = np.array([template_features['template_all_atom_positions']])
     template_features['template_domain_names'] = np.array([template_features['template_domain_names']])
     template_features['template_sequence'] = np.array([template_features['template_sequence']])
+
+
+    match = re.findall(r'No 1.*[\r\n]+.*\n+(.*\n)', hhr_text)
+    identities = re.findall(r'Identities=+([0-9]+)', match[0])[0]
+    aligned_columns = re.findall(r'Aligned_cols=+([0-9]+)', match[0])[0]
+    total_columns = len(parsing_result.mmcif_object.chain_to_seqres[chain_id])
+    evalue = re.findall(r'E-value=+(.*?) ', match[0])[0]
+    
+    logging.info(f'Alignment results:')
+    logging.info(
+        f'Aligned columns: {aligned_columns} ({total_columns}), Evalue: {evalue}, Identities: {identities}')
 
     return template_features, mapping, identities, aligned_columns, total_columns, evalue
 
@@ -432,7 +440,6 @@ def create_features_from_file(pkl_in_path: str) -> Features:
     for i in range(1, len(features_dict['msa'])):
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][i].tolist()]))
         new_features.append_row_in_msa(sequence=sequence, sequence_id=str(i))
-
 
     for i in range(0, len(features_dict['template_sequence'])):
         template_dict = {

@@ -105,12 +105,12 @@ def plot_sequence(plot_path: str, a_air):
         ax.text(xcenters, 0, a_air.sequence_assembled.get_sequence_name(i), ha='center', va='center')
 
     ax_secondary = ax.secondary_xaxis('top')
-    ax_secondary.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-    ax_secondary.set_xticks(list(ax_secondary.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-    ax_secondary.set_xticklabels([1]*a_air.sequence_assembled.total_copies+[a_air.sequence_assembled.get_sequence_length(i)+1 for i in range(a_air.sequence_assembled.total_copies)])
-
-    ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-    ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
+    ax_secondary.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)], rotation=45)
+    ax_secondary.set_xticks(list(ax_secondary.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)], rotation=45)
+    ax_secondary.set_xticklabels([1]*a_air.sequence_assembled.total_copies+[a_air.sequence_assembled.get_sequence_length(i)+1 for i in range(a_air.sequence_assembled.total_copies)], rotation = 45)
+    ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)], rotation=45)
+    ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)], rotation=45)
+    ax.set_xticklabels(ax.get_xticks(), rotation = 45)
     ax.set_xlim(0, len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines)
     ax.set_yticks([])
     fig.tight_layout()
@@ -236,6 +236,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
 
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
+    ax.set_xticklabels(ax.get_xticks(), rotation = 45)
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
     ax.spines['right'].set_visible(False)
