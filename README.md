@@ -21,9 +21,9 @@ parameters:
   cluster_templates (optional, bool, false): Group templates by distance and relaunch arcimboldo_air with them.
 
 features:
-- path:
-  keep_msa:
-  keep_templates:
+- path: (mandatory, string): Path to features.pkl
+  keep_msa: (optional, bool, True): Keep the msa of the features.pkl 
+  keep_templates: (optional, bool, True): Keep the templates of the features.pkl
 
 sequences:
 - fasta_path:
