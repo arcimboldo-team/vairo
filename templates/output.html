@@ -437,15 +437,15 @@
                 <div id="interface_graphs" class="section-div">
                     <h2>Interface Graphs</h2>
                     {% for key, interfaces in data.interfaces_dict.items() %}
-                        <details class="details-frobenius"
-                        {% if key == data.ranked_list[0].name %}
-                         open
-                        {% endif %}
-                        >
-                            <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
-
                             {% for interface in interfaces %}
                                 {% if loop.first %}
+                            
+                                <details class="details-frobenius"
+                                {% if key == data.ranked_list[0].name %}
+                                 open
+                                {% endif %}
+                                >
+                                    <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
                                     <ul style="margin: 0px 0px; padding-left: 0px">
                                 {% endif %}
                                     {% for template in interface.interface_template if template.core > 0 %}
@@ -475,9 +475,10 @@
                                     {% endfor %}
                                 {% if loop.last %}
                                     </ul>
+                                    </details>
+
                                 {% endif %}
                             {% endfor %}
-                        </details>
                     {% endfor %}
                 </div>
             {% endif %}

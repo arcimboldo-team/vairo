@@ -193,7 +193,7 @@ class StructureAir:
                                                                         }
 
                 if ranked.filtered and ranked.interfaces:
-                    interfaces_dict[ranked.name] = [interface for interface in ranked.interfaces if interface.interface_template]
+                    interfaces_dict[ranked.name] = [interface for interface in ranked.interfaces]
 
                 if ranked.frobenius_plots:
                     ordered_list = sorted(ranked.frobenius_plots, key=lambda x: x.core, reverse=True)
