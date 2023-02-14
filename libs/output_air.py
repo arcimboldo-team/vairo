@@ -483,15 +483,15 @@ class OutputAir:
                     ang_coverage=list_frobenius_angles[index],
                     core=list_core[index]
                 )
-
                 ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
+                if not template_interface_list:
+                    continue
                 for interface in ranked.interfaces:
                     frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{ranked.name}_{interface.name}.txt')
                     with open(frobenius_file, 'w') as sys.stdout:
                         fro_distance, fro_core, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix, path_tar=ranked_matrix,
                                                                                     residues_tar=interface.res_list, write_plot=True,
                                                                                     title=f'Interface: {interface.name}')
-
                     sys.stdout = sys.__stdout__
                     new_name = os.path.join(self.frobenius_path, f'{template}_{ranked.name}_{interface.name}.png')
                     plot_path = os.path.join(self.run_dir, os.path.basename(plot))

@@ -31,7 +31,6 @@ class Template:
         self.alignments: List[structures.Alignment] = []
         self.alignment_database: List[structures.AlignmentDatabase] = []
         self.changes: List[structures.ChangesChains] = []
-
         
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         if new_name is not None:
