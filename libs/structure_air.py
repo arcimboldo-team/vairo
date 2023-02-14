@@ -192,7 +192,7 @@ class StructureAir:
                                                                         'total_residues': ranked_template.total_residues
                                                                         }
 
-                if ranked.filtered and ranked.interfaces and ranked.interface.interface_template:
+                if ranked.filtered and ranked.interfaces and ranked.interfaces.interface_template:
                     interfaces_dict[ranked.name] = [interface for interface in ranked.interfaces]
 
                 if ranked.frobenius_plots:
