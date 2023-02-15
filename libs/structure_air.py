@@ -64,8 +64,8 @@ class StructureAir:
            for parameters_features in parameters_dict.get('features'):
                 self.features_input = structures.FeaturesInput(
                       path = utils.get_mandatory_value(input_load=parameters_features, value='path'),
-                      keep_msa = parameters_dict.get('keep_msa', True),
-                      keep_templates = parameters_dict.get('keep_templates', True)   
+                      keep_msa = parameters_features.get('keep_msa', True),
+                      keep_templates = parameters_features.get('keep_templates', True)   
                 )
                 
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
@@ -444,6 +444,12 @@ class StructureAir:
             f_out.write(f'small_bfd: {self.small_bfd}\n')
             f_out.write(f'mosaic: {self.mosaic}\n')
             f_out.write(f'cluster_templates: {self.cluster_templates}\n')
+            if self.features_input:
+               f_out.write(f'\nfeatures:\n') 
+               f_out.write('-')
+               f_out.write(f' path: {self.features_input.path}\n')
+               f_out.write(f'  keep_msa: {self.features_input.keep_msa}\n')
+               f_out.write(f'  keep_templates: {self.features_input.keep_templates}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
@@ -451,7 +457,6 @@ class StructureAir:
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
-
             if self.templates_list:
                 f_out.write(f'\ntemplates:\n')
                 for template_in in self.templates_list:
@@ -462,6 +467,7 @@ class StructureAir:
                     f_out.write(f'  generate_multimer: {template_in.generate_multimer}\n')
                     f_out.write(f'  aligned: {template_in.aligned}\n')
                     f_out.write(f'  legacy: {template_in.legacy}\n')
+                    f_out.write(f'  strict: {template_in.strict}\n')
                     if template_in.reference is not None:
                         f_out.write(f'  reference: {self.reference}\n')
                     if template_in.change_res_list:

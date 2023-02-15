@@ -61,6 +61,16 @@ class Features:
 
         return self.template_features
 
+
+    def append_row_in_msa_from_features(self, new_msa_features: Dict):
+        self.msa_features['msa'] = np.vstack([self.msa_features['msa'], new_msa_features['msa']])
+        self.msa_features['accession_ids'] = np.hstack( [self.msa_features['accession_ids'], new_msa_features['accession_ids']])
+        self.msa_features['deletion_matrix_int'] = np.vstack([self.msa_features['deletion_matrix_int'], new_msa_features['deletion_matrix_int']])
+        self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], new_msa_features['msa_species_identifiers']])
+        self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape,
+                                                      len(self.msa_features['msa']))
+
+
     def append_row_in_msa(self, sequence: str, sequence_id: str):
 
         sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
@@ -160,11 +170,29 @@ class Features:
             f'Features has been sliced in {len(features_list)} partitions with the following sizes: {chunk_list}')
         return features_list
 
-    def set_msa_features(self, new_msa: Dict):
-        self.msa_features = new_msa
+
+    def set_msa_features(self, new_msa: Dict, starting: int = 1):
+        for i in range(starting, len(new_msa['msa'])):
+            msa_dict = {
+                'msa': np.array([new_msa['msa'][i]]),
+                'accession_ids': np.array([new_msa['accession_ids'][i]]),
+                'deletion_matrix_int': np.array([new_msa['deletion_matrix_int'][i]]),
+                'msa_species_identifiers': np.array([new_msa['msa_species_identifiers'][i]]),
+                'num_alignments': np.array([new_msa['num_alignments'][i]])
+            }
+            self.append_row_in_msa_from_features(msa_dict)
 
     def set_template_features(self, new_templates: Dict):
-        self.template_features = new_templates
+        for i in range(0, len(new_templates['template_sequence'])):
+            template_dict = {
+                'template_all_atom_positions': np.array([new_templates['template_all_atom_positions'][i]]),
+                'template_all_atom_masks': np.array([new_templates['template_all_atom_masks'][i]]),
+                'template_aatype': np.array([new_templates['template_aatype'][i]]),
+                'template_sequence': np.array([new_templates['template_sequence'][i]]),
+                'template_domain_names': np.array([new_templates['template_domain_names'][i]]),
+                'template_sum_probs': np.array([new_templates['template_sum_probs'][i]])
+            }
+            self.append_new_template_features(template_dict)
 
 
 def empty_msa_features(query_sequence):
@@ -434,22 +462,10 @@ def print_features_from_file(pkl_in_path: str):
 def create_features_from_file(pkl_in_path: str) -> Features:
     # Read features.pkl and generate a features class
 
-    with open(f"{pkl_in_path}", "rb") as input_file:
+    with open(f'{pkl_in_path}', 'rb') as input_file:
         features_dict = pickle.load(input_file)
     new_features = Features(query_sequence=features_dict['sequence'][0].decode('utf-8'))
-    for i in range(1, len(features_dict['msa'])):
-        sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][i].tolist()]))
-        new_features.append_row_in_msa(sequence=sequence, sequence_id=str(i))
-
-    for i in range(0, len(features_dict['template_sequence'])):
-        template_dict = {
-            'template_all_atom_positions': np.array([features_dict['template_all_atom_positions'][i]]),
-            'template_all_atom_masks': np.array([features_dict['template_all_atom_masks'][i]]),
-            'template_aatype': np.array([features_dict['template_aatype'][i]]),
-            'template_sequence': np.array([features_dict['template_sequence'][i]]),
-            'template_domain_names': np.array([features_dict['template_domain_names'][i]]),
-            'template_sum_probs': np.array([features_dict['template_sum_probs'][i]])
-        }
-        new_features.append_new_template_features(template_dict)
+    new_features.set_msa_features(features_dict)
+    new_features.set_template_features(features_dict)
 
     return new_features
