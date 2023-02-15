@@ -143,14 +143,16 @@ class Features:
         # the path of all the generated features
 
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
+
+
         chunk_list = utils.chunk_string(length=len(sequence), number_partitions=mosaic, overlap=overlap)
         features_list = []
         for start_min, start_max in chunk_list:
             new_features = Features(query_sequence=sequence[start_min:start_max])
             for i in range(1, len(self.msa_features['accession_ids'])):
-                sequence = (
+                sequence_aux = (
                     ''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][i].tolist()]))
-                new_features.append_row_in_msa(sequence=sequence[start_min:start_max],
+                new_features.append_row_in_msa(sequence=sequence_aux[start_min:start_max],
                                                sequence_id=self.msa_features['accession_ids'][i].decode("utf-8"))
             for i in range(0, len(self.template_features['template_sequence'])):
                 template_dict = {
