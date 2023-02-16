@@ -316,12 +316,14 @@ class StructureAir:
                     logging.info('No ranked PDBs found')
                     return
                 plot_path = os.path.join(afrun.results_dir, 'plddt.png')
-                _, best_ranked = output_air.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
+                output_air.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
+                ranked_list.sort(key=lambda x: x.plddt, reverse=True)
+
                 new_ranked_path = os.path.join(best_rankeds_dir,
                                                f'ranked_{afrun.start_chunk + 1}-{afrun.end_chunk}.pdb')
-                shutil.copy2(best_ranked.path, new_ranked_path)
-                best_ranked.set_path(path=new_ranked_path)
-                best_ranked_list.append(best_ranked)
+                shutil.copy2(ranked_list[0].path, new_ranked_path)
+                ranked_list[0].set_path(path=new_ranked_path)
+                best_ranked_list.append(ranked_list[0])
 
             inf_path = best_ranked_list[0].path
             merge_pdbs_list = [inf_path]
