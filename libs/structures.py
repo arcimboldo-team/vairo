@@ -40,6 +40,12 @@ class InterfaceTemplate:
 class Interface:
     name: str
     res_list: List[int]
+    chain1: str
+    chain2: str
+    se_gain1: float
+    se_gain2: float
+    solvation1: float
+    solvation2: float
     interface_template: List[InterfaceTemplate] = dataclasses.field(default_factory=list)
 
     def add_frobenius_information(self, template: str, dist_coverage: float, core: int, dist_plot: str):

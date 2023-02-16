@@ -442,7 +442,15 @@ class OutputAir:
                                                                         mapping=ranked.mapping[interface['chain1']]))
                         renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain2']],
                                                                         mapping=ranked.mapping[interface['chain2']]))
-                        ranked.add_interface(structures.Interface(name=code, res_list=renum_residues_list))
+                        ranked.add_interface(structures.Interface(name=code,
+                                                                res_list=renum_residues_list,
+                                                                chain1=interface["chain1"],
+                                                                chain2=interface["chain2"],
+                                                                se_gain1=float(interface['se_gain1']),
+                                                                se_gain2=float(interface['se_gain2']),
+                                                                solvation1=float(interface['solvation1']),
+                                                                solvation2=float(interface['solvation2'])
+                                                                ))
 
         # Superpose the experimental pdb with all the rankeds and templates
         if experimental_pdb is not None:

@@ -370,6 +370,7 @@ class StructureAir:
                                              pdb_out_path=os.path.join(results_dir, 'ranked_0.pdb'))
             self.run_dir = results_dir
 
+
     def set_feature(self, feature: features.Features):
         self.feature = feature
 

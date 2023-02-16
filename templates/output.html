@@ -439,7 +439,6 @@
                     {% for key, interfaces in data.interfaces_dict.items() %}
                             {% for interface in interfaces %}
                                 {% if loop.first %}
-                            
                                 <details class="details-frobenius"
                                 {% if key == data.ranked_list[0].name %}
                                  open
@@ -453,6 +452,12 @@
                                         <li>
                                             <details class="details-frobenius-in">
                                                 <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
+                                                <p> Solvation for each chain:
+                                                    <ul>
+                                                        <li style="border: none; list-style: disc;">{{ interface.chain1 }}: Solvation: {{ interface.solvation1 }}, SE gain: {{ interface.se_gain1 }}</li>
+                                                        <li style="border: none; list-style: disc;">{{ interface.chain2 }}: Solvation: {{ interface.solvation2 }}, SE gain: {{ interface.se_gain2 }}</li>
+                                                    </ul>
+                                                </p>
                                                 <p>The interface can be found in the following templates:</p>
                                                 <ul style="padding-left: 5px;">
                                     {% endif %}
