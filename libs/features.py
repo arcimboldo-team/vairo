@@ -144,7 +144,6 @@ class Features:
 
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
 
-
         chunk_list = utils.chunk_string(length=len(sequence), number_partitions=mosaic, overlap=overlap)
         features_list = []
         for start_min, start_max in chunk_list:
@@ -177,12 +176,13 @@ class Features:
         for i in range(starting, len(new_msa['msa'])):
             msa_dict = {
                 'msa': np.array([new_msa['msa'][i]]),
-                'accession_ids': np.array([new_msa['accession_ids'][i]]),
+                'accession_ids': np.array(str(i).encode()),
                 'deletion_matrix_int': np.array([new_msa['deletion_matrix_int'][i]]),
                 'msa_species_identifiers': np.array([new_msa['msa_species_identifiers'][i]]),
-                'num_alignments': np.array([new_msa['num_alignments'][i]])
+                'num_alignments': np.zeros(new_msa['num_alignments'].shape)
             }
             self.append_row_in_msa_from_features(msa_dict)
+
 
     def set_template_features(self, new_templates: Dict):
         for i in range(0, len(new_templates['template_sequence'])):
