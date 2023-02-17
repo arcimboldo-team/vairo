@@ -302,7 +302,7 @@ class StructureAir:
                                                    end_chunk=self.chunk_list[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
 
     def merge_results(self):
