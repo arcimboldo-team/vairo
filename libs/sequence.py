@@ -1,6 +1,7 @@
 import os
 import shutil
-from typing import Dict, List
+import collections
+from typing import Dict, List, Tuple
 from libs import bioutils, utils
 
 
@@ -102,3 +103,53 @@ class SequenceAssembled:
         if residue+init <= self.get_starting_length(i)+self.get_sequence_length(i):
             return residue+init
         return None
+
+    def partition(self, number_partitions: int, overlap: int) -> List[Tuple[int, int]]:
+        # Slice string in chunks of size
+        length = len(self.sequence_assembled)
+        if number_partitions == 1:
+            return [(0, length)]
+        elif len(self.sequence_list_expanded) == 1:
+            reminder = length % number_partitions
+            chunk_list = []
+            size = int((length - reminder) / number_partitions)
+            for chunk in range(0, length - reminder, size):
+                chunk_list.append((chunk, size + chunk + overlap))
+            last_element = chunk_list[-1]
+            chunk_list[-1] = (last_element[0], last_element[1] + reminder - overlap)
+            return chunk_list
+        else:
+            length_list = [sequence.length for sequence in self.sequence_list_expanded]
+            aprox_length = length/number_partitions
+            actual_partition = 0
+            partitions = collections.defaultdict(list)
+            for i, element in enumerate(length_list):
+                if number_partitions-actual_partition == len(length_list)-i and not partitions[actual_partition]:
+                    partitions[actual_partition].append(element)
+                    actual_partition += 1
+                elif (number_partitions-1)-actual_partition == 0:
+                    partitions[actual_partition].append(element)
+                else:
+                    length_partition = sum([length for length in partitions[actual_partition]])
+                    if (length_partition+element) > aprox_length*1.2:
+                        actual_partition += 1
+                    partitions[actual_partition].append(element)
+
+            starting_position = 0
+            count = 0
+            chunk_list = []
+            for i in range(0, number_partitions):
+                count += len(partitions[i])
+                starting_length = self.get_starting_length(count-1)
+                sequence_length = self.get_sequence_length(count-1)
+                end_position = starting_length + int(sequence_length/2)
+                if i == 0:
+                    chunk_list.append((int(starting_position), int(end_position + overlap/2)))
+                elif i == number_partitions-1:
+                    chunk_list.append((int(starting_position - overlap/2), int(length)))
+                else:
+                    chunk_list.append((int(starting_position - overlap/2), int(end_position + overlap/2)))
+                starting_position =  end_position
+            return chunk_list
+
+            

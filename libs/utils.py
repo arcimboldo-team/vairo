@@ -85,21 +85,6 @@ def get_working_dir() -> str:
     return os.getcwd()
 
 
-def chunk_string(length: int, number_partitions: int, overlap: int) -> List[Tuple[int, int]]:
-    # Slice string in chunks of size
-    if number_partitions == 1:
-        return [(0, length)]
-    else:
-        reminder = length % number_partitions
-        chunk_list = []
-        size = int((length - reminder) / number_partitions)
-        for chunk in range(0, length - reminder, size):
-            chunk_list.append((chunk, size + chunk + overlap))
-        last_element = chunk_list[-1]
-        chunk_list[-1] = (last_element[0], last_element[1] + reminder - overlap)
-        return chunk_list
-
-
 def dict_values_to_list(input_dict: Dict):
     # Given a Dict, return all the values from the dict in a list
 

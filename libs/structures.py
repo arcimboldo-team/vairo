@@ -10,6 +10,7 @@ class FeaturesInput:
     keep_msa: bool
     keep_templates: bool
 
+
 @dataclasses.dataclass(frozen=True)
 class AlignmentDatabase:
     chain: str
