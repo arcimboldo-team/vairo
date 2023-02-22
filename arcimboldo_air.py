@@ -83,7 +83,7 @@ def main():
                                                         custom_sum_prob=template.sum_prob)
                     logging.info(f'Template {template.pdb_id} was added to templates')
             a_air.feature.write_pkl(os.path.join(a_air.run_dir, 'features.pkl'))
-            features_list = a_air.feature.slicing_features(mosaic=a_air.mosaic, overlap=a_air.mosaic_overlap)
+            features_list = a_air.partition_mosaic()
         
         else:
             features_list = [None] * a_air.mosaic

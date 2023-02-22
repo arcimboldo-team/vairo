@@ -39,6 +39,8 @@ class StructureAir:
         self.output: output_air.OutputAir
         self.state: int = 0
         self.features_input: Union[structures.FeaturesInput, None] = None
+        self.features_list: List[features.Features]
+        self.chunk_list: List
 
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
@@ -118,6 +120,12 @@ class StructureAir:
                 self.reference = self.templates_list[0]
 
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
+
+
+    def partition_mosaic(self) -> List[features.Features]:
+        self.chunk_list = self.sequence_assembled.partition(number_partitions=self.mosaic, overlap=self.mosaic_overlap)
+        self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
+        return self.features_list
 
 
     def generate_output(self):
@@ -281,19 +289,17 @@ class StructureAir:
 
     def run_alphafold(self, features_list: List[features.Features]):
         # Create the script and run alphafold         
-        partitions = utils.chunk_string(len(self.sequence_assembled.sequence_assembled), self.mosaic,
-                                        overlap=self.mosaic_overlap)
         for i, feature in enumerate(features_list):
             name = f'results_{i}'
             path = os.path.join(self.run_dir, name)
-            sequence_chunk = self.sequence_assembled.sequence_assembled[partitions[i][0]:partitions[i][1]]
+            sequence_chunk = self.sequence_assembled.sequence_assembled[self.chunk_list[i][0]:self.chunk_list[i][1]]
             afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
                                                    sequence=sequence_chunk,
                                                    custom_features=self.custom_features,
                                                    cluster_templates=self.cluster_templates,
                                                    small_bfd=self.small_bfd,
-                                                   start_chunk=partitions[i][0],
-                                                   end_chunk=partitions[i][1],
+                                                   start_chunk=self.chunk_list[i][0],
+                                                   end_chunk=self.chunk_list[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
             afrun.run_af2(alphafold_paths=self.alphafold_paths)
