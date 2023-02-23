@@ -35,12 +35,13 @@ class StructureAir:
         self.experimental_pdb: Union[str, None] = None
         self.mosaic: Union[int, None] = None
         self.mosaic_overlap: int = 150
+        self.mosaic_partition: List[int] = []
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
         self.state: int = 0
         self.features_input: Union[structures.FeaturesInput, None] = None
-        self.features_list: List[features.Features]
-        self.chunk_list: List
+        self.features_list: List[features.Features] = []
+        self.chunk_list: List[int] = []
 
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
@@ -61,6 +62,7 @@ class StructureAir:
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
         self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
         self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
+        self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
 
         if 'features' in parameters_dict:
            for parameters_features in parameters_dict.get('features'):
@@ -90,6 +92,10 @@ class StructureAir:
 
         if self.mosaic is None:
             self.mosaic = 1
+
+        if self.mosaic_partition:
+            self.mosaic_partition = utils.expand_partition(self.mosaic_partition)
+            self.mosaic = len(self.mosaic_partition)
 
         if not os.path.exists(self.af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
@@ -123,7 +129,10 @@ class StructureAir:
 
 
     def partition_mosaic(self) -> List[features.Features]:
-        self.chunk_list = self.sequence_assembled.partition(number_partitions=self.mosaic, overlap=self.mosaic_overlap)
+        if not self.mosaic_partition:
+            self.chunk_list = self.sequence_assembled.partition(number_partitions=self.mosaic, overlap=self.mosaic_overlap)
+        else:
+            [self.chunk_list.append((partition[0], partition[1])) for partition in self.mosaic_partition]
         self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
 
@@ -335,6 +344,10 @@ class StructureAir:
             merge_pdbs_list = [inf_path]
             for i, ranked in enumerate(best_ranked_list[1:]):
                 len_sequence = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
+
+                if self.partition_mosaic:
+                    self.mosaic_overlap = self.partition_mosaic[i][1] - self.partition_mosaic[i+1][0]
+
                 inf_ini = len_sequence - self.mosaic_overlap + 1
                 inf_end = len_sequence
                 inm_ini = 1
