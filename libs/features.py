@@ -145,6 +145,7 @@ class Features:
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
         features_list = []
         for start_min, start_max in chunk_list:
+            start_min = start_min-1
             new_features = Features(query_sequence=sequence[start_min:start_max])
             for i in range(1, len(self.msa_features['accession_ids'])):
                 sequence_aux = (
