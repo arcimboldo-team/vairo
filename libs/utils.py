@@ -180,6 +180,15 @@ def expand_residues(res: str) -> List:
     return return_list
 
 
+def expand_partition(res: str) -> List:
+    modified_list = str(res).replace(' ', '').split(',')
+    return_list = []
+    for partition in modified_list:
+        partition_list = list(map(int, partition.split('-')))
+        return_list.append(partition_list)
+    return return_list
+
+
 def renum_residues(res_list: List[int], mapping: Dict) -> List[int]:
     return [mapping[res] for res in res_list]
 

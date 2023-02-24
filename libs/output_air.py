@@ -84,7 +84,6 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.ylabel('pLDDT')
     plt.savefig(plot_path, dpi=100)
     plt.cla()
-
     max_plddt = max([ranked.plddt for ranked in ranked_list])
     return max_plddt
 
@@ -236,7 +235,13 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
 
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
+    
     ax.set_xticklabels(ax.get_xticks(), rotation = 45)
+
+    cut_chunk = [list(tup) for tup in a_air.chunk_list]
+    cut_chunk = utils.remove_list_layer(cut_chunk)
+    ax.set_xticks(list(ax.get_xticks())+cut_chunk)
+
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
     ax.spines['right'].set_visible(False)

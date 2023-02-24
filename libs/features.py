@@ -143,6 +143,7 @@ class Features:
         # the path of all the generated features
 
         sequence = (''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
+        
         features_list = []
         for start_min, start_max in chunk_list:
             new_features = Features(query_sequence=sequence[start_min:start_max])

@@ -87,6 +87,7 @@ def main():
         
         else:
             features_list = [None] * a_air.mosaic
+            a_air.partition_mosaic()
             logging.info('No features.pkl added, default AlphaFold2 run')
 
         a_air.change_state(state=2)
