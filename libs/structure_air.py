@@ -133,7 +133,8 @@ class StructureAir:
             self.chunk_list = self.sequence_assembled.partition(number_partitions=self.mosaic, overlap=self.mosaic_overlap)
         else:
             [self.chunk_list.append((partition[0]-1, partition[1])) for partition in self.mosaic_partition]
-        self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
+        if self.feature is not None:
+            self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
 
 
