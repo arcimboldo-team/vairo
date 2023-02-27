@@ -347,7 +347,7 @@ class StructureAir:
                 len_sequence = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
 
                 if self.mosaic_partition:
-                    self.mosaic_overlap = self.mosaic_partition[i][1] - self.mosaic_partition[i+1][0]
+                    self.mosaic_overlap = self.mosaic_partition[i][1] - self.mosaic_partition[i+1][0] + 1
 
                 inf_ini = len_sequence - self.mosaic_overlap + 1
                 inf_end = len_sequence
