@@ -36,6 +36,7 @@ class StructureAir:
         self.mosaic: Union[int, None] = None
         self.mosaic_overlap: int = 150
         self.mosaic_partition: List[int] = []
+        self.mosaic_seq_partition: List[int] = []
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
         self.state: int = 0
@@ -63,6 +64,7 @@ class StructureAir:
         self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
         self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
         self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
+        self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
 
         if 'features' in parameters_dict:
            for parameters_features in parameters_dict.get('features'):
@@ -95,6 +97,11 @@ class StructureAir:
 
         if self.mosaic_partition:
             self.mosaic_partition = utils.expand_partition(self.mosaic_partition)
+            self.mosaic = len(self.mosaic_partition)
+        elif self.mosaic_seq_partition:
+            expanded = utils.expand_partition(self.mosaic_seq_partition)
+            for exp in expanded:
+                self.mosaic_partition.append([self.sequence_assembled.get_starting_length(exp[0]-1)+1, self.sequence_assembled.get_starting_length(exp[1]-1)+self.sequence_assembled.get_sequence_length(exp[1]-1)])
             self.mosaic = len(self.mosaic_partition)
 
         if not os.path.exists(self.af2_dbs_path):
@@ -466,6 +473,12 @@ class StructureAir:
             f_out.write(f'custom_features: {self.custom_features}\n')
             f_out.write(f'small_bfd: {self.small_bfd}\n')
             f_out.write(f'mosaic: {self.mosaic}\n')
+            if self.mosaic_partition:
+                txt_aux = []
+                for partition in self.mosaic_partition:
+                    txt_aux.append("-".join(map(str, partition)))
+                f_out.write(f'mosaic_partition: {",".join(map(str, txt_aux))}\n')
+            
             f_out.write(f'cluster_templates: {self.cluster_templates}\n')
             if self.features_input:
                f_out.write(f'\nfeatures:\n') 

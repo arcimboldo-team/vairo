@@ -185,6 +185,8 @@ def expand_partition(res: str) -> List:
     return_list = []
     for partition in modified_list:
         partition_list = list(map(int, partition.split('-')))
+        if len(partition_list) == 1:
+            partition_list = [partition_list[0], partition_list[0]]
         return_list.append(partition_list)
     return return_list
 
