@@ -433,6 +433,8 @@ class OutputAir:
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
                     deltas_list = utils.normalize_list([deltas_list])
                     for i, interface in enumerate(interfaces_data_list):
+                        if not interface["chain1"] in domains_dict or not interface["chain2"] in domains_dict:
+                            continue
                         code = f'{interface["chain1"]}{interface["chain2"]}'
                         dimers_path = os.path.join(self.interfaces_path, f'{ranked.name}_{code}.pdb')
                         interface['bfactor'] = deltas_list[i]
