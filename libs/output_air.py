@@ -360,19 +360,21 @@ class OutputAir:
                 new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
                 os.rename(os.path.join(cc_path, file), new_path)
                 trans_dict[index] = utils.get_file_name(file)
-            output_file = bioutils.run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
-            output_file = bioutils.run_cc_analysis(input_path=output_file, cc_analysis_path=cc_analysis_paths.cc_analysis_path)
-            cc_analysis_dict = utils.parse_cc_analysis(file_path=output_file)
-            clean_dict = {}
-            for key, values in cc_analysis_dict.items():
-                if values.module > 0.1:
-                    clean_dict[trans_dict[int(key)-1]] = values
-            plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=clean_dict)
-            points = np.array([[values.x, values.y] for values in clean_dict.values()])
-            kmeans = KMeans(n_clusters=2)
-            kmeans.fit(points)
-            for i, label in enumerate(kmeans.labels_):
-                self.templates_cluster[int(label)].append(template_nonsplit[list(clean_dict.keys())[i]])
+            output_pdb2cc = bioutils.run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
+            if os.path.exists(output_pdb2cc):
+                output_cc = bioutils.run_cc_analysis(input_path=output_pdb2cc, cc_analysis_path=cc_analysis_paths.cc_analysis_path)
+                if os.path.exists(output_cc):
+                    cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
+                    clean_dict = {}
+                    for key, values in cc_analysis_dict.items():
+                        if values.module > 0.1:
+                            clean_dict[trans_dict[int(key)-1]] = values
+                    plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=clean_dict)
+                    points = np.array([[values.x, values.y] for values in clean_dict.values()])
+                    kmeans = KMeans(n_clusters=2)
+                    kmeans.fit(points)
+                    for i, label in enumerate(kmeans.labels_):
+                        self.templates_cluster[int(label)].append(template_nonsplit[list(clean_dict.keys())[i]])
 
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
