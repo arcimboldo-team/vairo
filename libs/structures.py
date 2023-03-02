@@ -1,8 +1,29 @@
 import dataclasses
-import os
+import os, sys
 from typing import Dict, List
 
 from libs import utils
+
+
+@dataclasses.dataclass(frozen=True)
+class CCAnalysisOutput:
+    x: float
+    y: float
+    module: float
+    angle: float
+
+
+class CCAnalysis:
+    def __init__(self, binaries_path):
+        pd2cc_path: str
+        cc_analysis_path: str
+
+        if sys.platform == "darwin":
+            self.cc_analysis_path = os.path.join(binaries_path, 'cc_analysis_mac')
+            self.pd2cc_path = os.path.join(binaries_path, 'pdb2cc_mac')
+        else:
+            self.cc_analysis_path = os.path.join(binaries_path, 'cc_analysis_linux')
+            self.pd2cc_path = os.path.join(binaries_path, 'pdb2cc_linux')
 
 @dataclasses.dataclass(frozen=True)
 class FeaturesInput:

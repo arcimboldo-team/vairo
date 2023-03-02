@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import sys
 from typing import List, Dict, Union
 from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence, structures
 from jinja2 import Environment, FileSystemLoader
@@ -17,9 +18,11 @@ class StructureAir:
         self.input_dir: str
         self.input_path: str
         self.log_path: str
+        self.binaries_path: str
         self.cluster_path: str
         self.cluster_dict: Dict = {}
         self.af2_dbs_path: str
+        self.cc_analysis_paths: structures.CCAnalysis
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
@@ -50,6 +53,8 @@ class StructureAir:
         self.log_path = os.path.join(self.output_dir, 'output.log')
         self.cluster_path = os.path.join(self.output_dir, 'clustering')
         self.input_path = os.path.join(self.input_dir, 'config.yml')
+        self.binaries_path = os.path.join(utils.get_main_path(), 'binaries')
+        self.cc_analysis_paths = structures.CCAnalysis(self.binaries_path)
         self.output = output_air.OutputAir(output_dir=self.output_dir)
 
         utils.create_dir(self.output_dir)
@@ -65,6 +70,7 @@ class StructureAir:
         self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
         self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
         self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
+
 
         if 'features' in parameters_dict:
            for parameters_features in parameters_dict.get('features'):
@@ -418,12 +424,12 @@ class StructureAir:
         }[str(self.state)]
 
 
-    def dendogram_clustering(self):
+    def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=True)
-        if self.output.dendogram_cluster:
-            logging.info(f'The templates obtained in alphafold2 can be grouped in { len(self.output.dendogram_cluster) } clusters')
-            for templates in self.output.dendogram_cluster:
+        if self.output.templates_cluster:
+            logging.info(f'The templates obtained in alphafold2 can be grouped in { len(self.output.templates_cluster) } clusters')
+            for templates in self.output.templates_cluster:
                 new_path = os.path.join(self.cluster_path, f'job_{counter}')
                 logging.info(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
                 logging.info((', ').join([utils.get_file_name(template) for template in templates]))
