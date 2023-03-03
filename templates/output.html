@@ -354,10 +354,10 @@
                     <img style="width: 100%" src="data:image/png;base64,{{ data.plddt }}" alt="PLDDT graph">
                 </div>
             {% endif %}
-            {% if 'template_dendogram' in data %}
+            {% if 'clustering_plot' in data %}
                 <div id="clustering" class="section-div">
                     <h2>Clustering</h2>
-                    <img style="width: 70%" src="data:image/png;base64,{{ data.template_dendogram }}" alt="Dendogram clustering">
+                    <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
                     {% if 'clustering_dict' in data %}
                         <p>The templates have been divided in {{ data.clustering_dict | length }} clusters, using the maximum distances.
                             {{ data.clustering_dict | length }} ARCIMBOLDO_AIR jobs have been launched using the following templates:

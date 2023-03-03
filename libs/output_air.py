@@ -250,11 +250,12 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     
-    ax.set_xticklabels(ax.get_xticks(), rotation = 45)
 
     cut_chunk = [list(tup) for tup in a_air.chunk_list]
     cut_chunk = utils.remove_list_layer(cut_chunk)
-    ax.set_xticks(list(ax.get_xticks())+cut_chunk)
+    ax.set_xticks(list(ax.get_xticks())+[cut+1 for cut in cut_chunk])
+    ax.set_xticklabels(ax.get_xticks(), rotation = 45)
+
 
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
@@ -283,7 +284,7 @@ class OutputAir:
         self.interfaces_path: str = f'{output_dir}/interfaces'
         self.analysis_path: str = f'{self.plots_path}/analysis.txt'
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
-        self.template_dendogram: str = f'{self.plots_path}/templates_dendogram.png'
+        self.clustering_plot: str = f'{self.plots_path}/cc_analysis_plot.png'
         self.sequence_plot_path: str = f'{self.plots_path}/sequence_plot.png'
         self.analysis_plot_path: str = f'{self.plots_path}/cc_analysis_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
