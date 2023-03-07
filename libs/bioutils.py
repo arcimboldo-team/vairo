@@ -98,6 +98,11 @@ def extract_sequence(fasta_path: str) -> str:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
 
+def extract_sequences(fasta_path: str) -> Dict:
+    logging.info(f'Extracting sequences from {fasta_path}')
+    records = list(SeqIO.parse(fasta_path, 'fasta'))
+    return dict([(rec.id, str(rec.seq)) for rec in records])
+
 
 def extract_sequence_from_file(file_path: str) -> List[str]:
     results_list = []
