@@ -21,6 +21,8 @@ parameters:
   mosaic_partition (optional, range, None): Split the sequence by the number of residues.
   mosaic_seq_partition (optional, range, None): Split the sequence by the number of sequences.
   cluster_templates (optional, bool, false): Group templates by distance and relaunch arcimboldo_air with them.
+  cluster_templates_msa (optional, int, 0): Select the msa number to add to the cluster (-1 for all the msas).
+  cluster_templates_msa_delete: (optional, range, None): Delete the specific residues from the msa.
 
 features:
 - path: (mandatory, string): Path to features.pkl

@@ -181,6 +181,8 @@ def expand_residues(res: str) -> List:
 
 
 def expand_partition(res: str) -> List:
+    # Expand a str formatted like this: 10-12, 32, 34
+    # To a list of pairs [10-12, 32-32, 34-34]
     modified_list = str(res).replace(' ', '').split(',')
     return_list = []
     for partition in modified_list:

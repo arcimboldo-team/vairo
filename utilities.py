@@ -6,6 +6,7 @@ import sys
 from libs import features, bioutils
 import logging
 
+
 def write_features(features_path: str, output_dir: str = None):
     with open(os.path.abspath(features_path), 'rb') as f:
         data = pickle.load(f)
@@ -13,9 +14,11 @@ def write_features(features_path: str, output_dir: str = None):
         output_dir = os.getcwd()
     features.write_templates_in_features(data, output_dir)
 
+
 def print_features(features_path: str):
     logging.info = print
     features.print_features_from_file(features_path)
+
 
 def generate_features(query_path: str, fasta_path: str):
     path = os.path.join(os.getcwd(), 'features.pkl')

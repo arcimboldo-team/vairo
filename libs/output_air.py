@@ -89,18 +89,24 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     return max_plddt
 
 
-def plot_cc_analysis(plot_path: str, analysis_dict: Dict):
+def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List):
     plt.figure(figsize=(8, 8))
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
-    x = [float(values.x) for values in analysis_dict.values()]
-    y = [float(values.y) for values in analysis_dict.values()]
-    plt.scatter(x, y)
-    for i, key in enumerate(analysis_dict.keys()):
-        plt.annotate(key, (x[i], y[i]), horizontalalignment='right', verticalalignment='top',)
+    for key, values in analysis_dict.items():
+        if key in [utils.get_file_name(clus) for clus in clusters[0]]:
+            plt.scatter(values.x, values.y, marker='*', color='blue', label='Cluster 0')
+        else:
+            plt.scatter(values.x, values.y, color='blue', label='Cluster 1')
+        plt.annotate(key, (values.x, values.y), horizontalalignment='right', verticalalignment='top',)
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())    
     plt.xlim(-1, 1)
     plt.ylim(-1, 1)
+    plt.title('TEMPLATE CLUSTERING')
     plt.savefig(plot_path, dpi=100)
     plt.cla()
+
 
 def plot_sequence(plot_path: str, a_air):
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
@@ -250,12 +256,10 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     
-
     cut_chunk = [list(tup) for tup in a_air.chunk_list]
     cut_chunk = utils.remove_list_layer(cut_chunk)
     ax.set_xticks(list(ax.get_xticks())+[cut+1 for cut in cut_chunk])
     ax.set_xticklabels(ax.get_xticks(), rotation = 45)
-
 
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
@@ -370,12 +374,14 @@ class OutputAir:
                     for key, values in cc_analysis_dict.items():
                         if values.module > 0.1:
                             clean_dict[trans_dict[int(key)-1]] = values
-                    plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=clean_dict)
                     points = np.array([[values.x, values.y] for values in clean_dict.values()])
                     kmeans = KMeans(n_clusters=2)
                     kmeans.fit(points)
                     for i, label in enumerate(kmeans.labels_):
                         self.templates_cluster[int(label)].append(template_nonsplit[list(clean_dict.keys())[i]])
+
+                    plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=clean_dict, clusters=self.templates_cluster)
+
 
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
