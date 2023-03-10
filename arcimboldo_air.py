@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import os
-#os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
@@ -53,7 +53,7 @@ def main():
             if a_air.features_input:
                 feat_aux = features.create_features_from_file(pkl_in_path=a_air.features_input.path)
                 if a_air.features_input.keep_msa:
-                    a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, starting=0)
+                    a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=0)
                 if a_air.features_input.keep_templates:
                     a_air.feature.set_template_features(new_templates=feat_aux.template_features)
                         
@@ -102,9 +102,13 @@ def main():
                 a_air.set_feature(new_features)
             os.chdir(a_air.run_dir)
             a_air.output.set_run_dir(run_dir=a_air.run_dir)
-            a_air.output.analyse_output(sequence_assembled=a_air.sequence_assembled, feature=a_air.feature, experimental_pdb=a_air.experimental_pdb, custom_features=a_air.custom_features)
+            a_air.output.analyse_output(sequence_assembled=a_air.sequence_assembled, 
+                                        feature=a_air.feature, 
+                                        experimental_pdb=a_air.experimental_pdb, 
+                                        custom_features=a_air.custom_features,
+                                        cc_analysis_paths=a_air.cc_analysis_paths)
             if a_air.cluster_templates:
-                a_air.dendogram_clustering()
+                a_air.templates_clustering()
 
         a_air.change_state(state=3)
         a_air.generate_output()

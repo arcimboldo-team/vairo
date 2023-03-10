@@ -5,6 +5,7 @@ import shutil
 import sys
 import statistics
 import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
 from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
@@ -86,6 +87,25 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.cla()
     max_plddt = max([ranked.plddt for ranked in ranked_list])
     return max_plddt
+
+
+def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List):
+    plt.figure(figsize=(8, 8))
+    plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
+    for key, values in analysis_dict.items():
+        if key in [utils.get_file_name(clus) for clus in clusters[0]]:
+            plt.scatter(values.x, values.y, marker='*', color='blue', label='Cluster 0')
+        else:
+            plt.scatter(values.x, values.y, color='blue', label='Cluster 1')
+        plt.annotate(key, (values.x, values.y), horizontalalignment='right', verticalalignment='top',)
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys())    
+    plt.xlim(-1, 1)
+    plt.ylim(-1, 1)
+    plt.title('TEMPLATES CLUSTERING')
+    plt.savefig(plot_path, dpi=100)
+    plt.cla()
 
 
 def plot_sequence(plot_path: str, a_air):
@@ -236,11 +256,10 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     ax.set_xticks([a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xticks(list(ax.get_xticks())+[a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     
-    ax.set_xticklabels(ax.get_xticks(), rotation = 45)
-
     cut_chunk = [list(tup) for tup in a_air.chunk_list]
     cut_chunk = utils.remove_list_layer(cut_chunk)
-    ax.set_xticks(list(ax.get_xticks())+cut_chunk)
+    ax.set_xticks(list(ax.get_xticks())+[cut+1 for cut in cut_chunk])
+    ax.set_xticklabels(ax.get_xticks(), rotation = 45)
 
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
@@ -269,8 +288,9 @@ class OutputAir:
         self.interfaces_path: str = f'{output_dir}/interfaces'
         self.analysis_path: str = f'{self.plots_path}/analysis.txt'
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
-        self.template_dendogram: str = f'{self.plots_path}/templates_dendogram.png'
+        self.clustering_plot: str = f'{self.plots_path}/cc_analysis_plot.png'
         self.sequence_plot_path: str = f'{self.plots_path}/sequence_plot.png'
+        self.analysis_plot_path: str = f'{self.plots_path}/cc_analysis_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
         self.gantt_plots_path: List[str] = []
         self.ranked_list: List[structures.Ranked] = []
@@ -281,7 +301,7 @@ class OutputAir:
         self.aleph_results_path: str = None
         self.group_ranked_by_rmsd_dict: dict = {}
         self.template_interfaces: dict = {}
-        self.dendogram_cluster: List = []
+        self.templates_cluster: List = [[],[]]
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -303,7 +323,7 @@ class OutputAir:
 
 
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
-                       experimental_pdb: str, custom_features):
+                       experimental_pdb: str, custom_features, cc_analysis_paths):
         # Read all templates and rankeds, if there are no ranked, raise an error
         template_dict = {}
         template_nonsplit = {}
@@ -321,19 +341,48 @@ class OutputAir:
                                            sequence_assembled=sequence_assembled)
 
         self.ranked_list = read_rankeds(input_path=self.run_dir)
-        dendogram_file = os.path.join(self.run_dir, 'dendogram.txt')
-        dendogram_plot = os.path.join(self.run_dir, 'clustering_dendogram_angles.png')
-        with open(dendogram_file, 'w') as sys.stdout:
-            _, _, _, _, _, _, _, _, dendogram_list = ALEPH.frobenius(references=list(template_nonsplit.values()),
-                                                    targets=list(template_nonsplit.values()), write_plot=True,
-                                                    write_matrix=True)
-        sys.stdout = sys.__stdout__
-        if dendogram_list:
-            shutil.copy2(dendogram_plot, self.template_dendogram)
-            if not custom_features:
-                for templates in dendogram_list:
-                    self.dendogram_cluster.append([template_nonsplit[template] for template in templates])
+
+        #dendogram_file = os.path.join(self.run_dir, 'dendogram.txt')
+        #dendogram_plot = os.path.join(self.run_dir, 'clustering_dendogram_angles.png') 
+        #with open(dendogram_file, 'w') as sys.stdout:
+        #    _, _, _, _, _, _, _, _, dendogram_list = ALEPH.frobenius(references=list(  .values()),
+        #                                            targets=list(template_nonsplit.values()), write_plot=True,
+        #                                            write_matrix=True)
+        #sys.stdout = sys.__stdout__
+        #if dendogram_list:
+        #    shutil.copy2(dendogram_plot, self.template_dendogram)
+        #    if not custom_features:
+        #        for templates in dendogram_list:
+        #            self.templates_cluster.append([template_nonsplit[template] for template in templates])
         
+        if not custom_features:
+            cc_path = os.path.join(self.run_dir, 'cc_analysis')
+            shutil.rmtree(cc_path, ignore_errors=True)
+            shutil.copytree(self.templates_path, cc_path)
+            files = os.listdir(cc_path)
+            trans_dict = {}
+            for index, file in enumerate(files):
+                new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
+                os.rename(os.path.join(cc_path, file), new_path)
+                trans_dict[index] = utils.get_file_name(file)
+            output_pdb2cc = bioutils.run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
+            if os.path.exists(output_pdb2cc):
+                output_cc = bioutils.run_cc_analysis(input_path=output_pdb2cc, cc_analysis_path=cc_analysis_paths.cc_analysis_path)
+                if os.path.exists(output_cc):
+                    cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
+                    clean_dict = {}
+                    for key, values in cc_analysis_dict.items():
+                        if values.module > 0.1:
+                            clean_dict[trans_dict[int(key)-1]] = values
+                    points = np.array([[values.x, values.y] for values in clean_dict.values()])
+                    kmeans = KMeans(n_clusters=2)
+                    kmeans.fit(points)
+                    for i, label in enumerate(kmeans.labels_):
+                        self.templates_cluster[int(label)].append(template_nonsplit[list(clean_dict.keys())[i]])
+
+                    plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=clean_dict, clusters=self.templates_cluster)
+
+
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
             return

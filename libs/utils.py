@@ -15,6 +15,8 @@ from sklearn import preprocessing
 from itertools import groupby
 from operator import itemgetter
 
+from libs import structures
+
 
 def print_msg_box(msg, indent=1, title=None):
     lines = msg.split('\n')
@@ -81,13 +83,11 @@ def get_parent_folder(dir_path: str) -> Path:
 
 def get_working_dir() -> str:
     # Get working directory
-
     return os.getcwd()
 
 
 def dict_values_to_list(input_dict: Dict):
     # Given a Dict, return all the values from the dict in a list
-
     return [value for value in input_dict.values()]
 
 
@@ -181,6 +181,8 @@ def expand_residues(res: str) -> List:
 
 
 def expand_partition(res: str) -> List:
+    # Expand a str formatted like this: 10-12, 32, 34
+    # To a list of pairs [10-12, 32-32, 34-34]
     modified_list = str(res).replace(' ', '').split(',')
     return_list = []
     for partition in modified_list:
@@ -211,6 +213,17 @@ def clean_files(input_dir: str):
 
     shutil.rmtree(input_dir)
 
+
+def parse_cc_analysis(file_path: str) -> Dict:
+    #Read the output of the cc analysis file
+    return_dict = {}
+    with open(file_path) as f_in:
+        lines = f_in.readlines()
+        for line in lines:
+            split_text = line.split()
+            return_dict[split_text[0]] = structures.CCAnalysisOutput(float(split_text[1]), float(split_text[2]), float(split_text[3]), float(split_text[4]))
+
+    return return_dict
 
 def parse_aleph_annotate(file_path: str) -> Dict:
     # Read the output of aleph, return a dictionary containing:

@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+import sys
 from typing import List, Dict, Union
 from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence, structures
 from jinja2 import Environment, FileSystemLoader
@@ -17,9 +18,11 @@ class StructureAir:
         self.input_dir: str
         self.input_path: str
         self.log_path: str
+        self.binaries_path: str
         self.cluster_path: str
         self.cluster_dict: Dict = {}
         self.af2_dbs_path: str
+        self.cc_analysis_paths: structures.CCAnalysis
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
@@ -28,6 +31,8 @@ class StructureAir:
         self.verbose: bool = True
         self.small_bfd: bool = False
         self.cluster_templates: bool = False
+        self.cluster_templates_msa: int = 0
+        self.cluster_templates_msa_delete: List[int] = []
         self.glycines: int = 50
         self.template_positions_list: List[List] = []
         self.reference: Union[template.Template, None] = None
@@ -50,6 +55,8 @@ class StructureAir:
         self.log_path = os.path.join(self.output_dir, 'output.log')
         self.cluster_path = os.path.join(self.output_dir, 'clustering')
         self.input_path = os.path.join(self.input_dir, 'config.yml')
+        self.binaries_path = os.path.join(utils.get_main_path(), 'binaries')
+        self.cc_analysis_paths = structures.CCAnalysis(self.binaries_path)
         self.output = output_air.OutputAir(output_dir=self.output_dir)
 
         utils.create_dir(self.output_dir)
@@ -63,6 +70,10 @@ class StructureAir:
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
         self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
         self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
+        self.cluster_templates_msa = parameters_dict.get('cluster_templates_msa', self.cluster_templates_msa)
+        delete_msa = parameters_dict.get('cluster_templates_msa_delete', '')
+        if delete_msa != '':
+            self.cluster_templates_msa_delete = utils.expand_residues(delete_msa)
         self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
         self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
 
@@ -176,8 +187,8 @@ class StructureAir:
         if os.path.exists(self.output.sequence_plot_path):
             render_dict['sequence_plot'] = utils.encode_data(input_data=self.output.sequence_plot_path)
 
-        if os.path.exists(self.output.template_dendogram):
-            render_dict['template_dendogram'] = utils.encode_data(input_data=self.output.template_dendogram)
+        if os.path.exists(self.output.clustering_plot):
+            render_dict['clustering_plot'] = utils.encode_data(input_data=self.output.clustering_plot)
 
         if self.cluster_dict:
             render_dict['clustering_dict'] = self.cluster_dict
@@ -418,28 +429,42 @@ class StructureAir:
         }[str(self.state)]
 
 
-    def dendogram_clustering(self):
+    def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=True)
-        if self.output.dendogram_cluster:
-            logging.info(f'The templates obtained in alphafold2 can be grouped in { len(self.output.dendogram_cluster) } clusters')
-            for templates in self.output.dendogram_cluster:
+        if self.output.templates_cluster:
+            logging.info(f'The templates obtained in alphafold2 can be grouped in { len(self.output.templates_cluster) } clusters')
+            for templates in self.output.templates_cluster:
                 new_path = os.path.join(self.cluster_path, f'job_{counter}')
                 logging.info(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
                 logging.info((', ').join([utils.get_file_name(template) for template in templates]))
                 counter += 1
-                yml_path = os.path.join(new_path, 'config.yml')
-                utils.create_dir(new_path)
-                self.write_yml_file(job_path=new_path, yml_path=yml_path, templates=templates)
+                yml_path = self.create_cluster(job_path=new_path, templates=templates)
                 bioutils.run_arcimboldo_air(yml_path=yml_path)
                 self.cluster_dict[utils.get_file_name(new_path)] = {
                     'path': new_path,
                     'templates': templates,
                     'name_templates': [utils.get_file_name(template) for template in templates]
                 }
-            
+          
 
-    def write_yml_file(self, job_path, yml_path, templates):
+    def create_cluster(self, job_path: str, templates: List[str]) -> str:
+
+        yml_path = os.path.join(job_path, 'config.yml')
+        features_path = os.path.join(job_path, 'features.pkl')
+        utils.create_dir(dir_path=job_path,delete_if_exists=False)
+
+        new_features = features.Features(self.sequence_assembled.sequence_assembled)
+        for template in templates:
+            index = self.feature.get_index_by_name(utils.get_file_name(template))
+            template_dict = self.feature.get_template_by_index(index)
+            new_features.append_new_template_features(template_dict)
+        total_msa = self.feature.get_msa_length() if(self.cluster_templates_msa) == -1 else self.cluster_templates_msa+1
+        if self.cluster_templates_msa != 0:
+            new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa, delete_positions=self.cluster_templates_msa_delete)
+
+        new_features.write_pkl(features_path)
+
         with open(yml_path, 'w') as f_out:
             f_out.write(f'output_dir: {job_path}\n')
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
@@ -451,12 +476,11 @@ class StructureAir:
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
-            f_out.write(f'\ntemplates:\n')
-            for template in templates:
-                f_out.write('-')
-                f_out.write(f' pdb: {template}\n')
-                f_out.write(f'  legacy: True\n')
-
+            f_out.write(f'\nfeatures:\n')
+            f_out.write('-')
+            f_out.write(f' path: {features_path}\n')
+            
+        return yml_path
 
     def write_input_file(self):
         with open(self.input_path, 'w') as f_out:
@@ -478,8 +502,8 @@ class StructureAir:
                 for partition in self.mosaic_partition:
                     txt_aux.append("-".join(map(str, partition)))
                 f_out.write(f'mosaic_partition: {",".join(map(str, txt_aux))}\n')
-            
             f_out.write(f'cluster_templates: {self.cluster_templates}\n')
+            f_out.write(f'cluster_templates_msa: {self.cluster_templates_msa}\n')
             if self.features_input:
                f_out.write(f'\nfeatures:\n') 
                f_out.write('-')

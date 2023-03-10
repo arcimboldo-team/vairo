@@ -98,6 +98,11 @@ def extract_sequence(fasta_path: str) -> str:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
 
+def extract_sequences(fasta_path: str) -> Dict:
+    logging.info(f'Extracting sequences from {fasta_path}')
+    records = list(SeqIO.parse(fasta_path, 'fasta'))
+    return dict([(rec.id, str(rec.seq)) for rec in records])
+
 
 def extract_sequence_from_file(file_path: str) -> List[str]:
     results_list = []
@@ -282,6 +287,29 @@ def get_structure(pdb_path: str) -> Structure:
     pdb_id = utils.get_file_name(pdb_path)
     parser = PDBParser(QUIET=True)
     return parser.get_structure(pdb_id, pdb_path)
+
+
+def run_pdb2cc(templates_path: List[str], pdb2cc_path: str = None) -> str:
+    output_path = f'{templates_path}/cc_analysis.in'
+    if pdb2cc_path is None:
+        pdb2cc_path = 'pdb2cc'
+    command_line = f'{pdb2cc_path} -m -i 10 -y 0.5 "{templates_path}/orig.*.pdb" 0 {output_path}'
+    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p.communicate()
+    return output_path
+
+
+def run_cc_analysis(input_path: str, cc_analysis_path: str = None) -> str:
+    output_path = 'cc_analysis.out'
+    if cc_analysis_path is None:
+        cc_analysis_path = 'cc_analysis'
+    cwd = os.getcwd()
+    os.chdir(os.path.dirname(input_path))
+    command_line = f'{cc_analysis_path} -dim 2 {os.path.basename(input_path)} {output_path}'
+    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p.communicate()
+    os.chdir(cwd)
+    return f'{os.path.join(os.path.dirname(input_path), output_path)}'
 
 
 def extract_cryst_card_pdb(pdb_in_path: str) -> Union[str, None]:
