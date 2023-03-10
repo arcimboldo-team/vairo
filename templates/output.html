@@ -359,7 +359,7 @@
                     <h2>Clustering</h2>
                     <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
                     {% if 'clustering_dict' in data %}
-                        <p>The templates have been divided in {{ data.clustering_dict | length }} clusters, using the maximum distances.
+                        <p>The templates have been divided in {{ data.clustering_dict | length }} clusters.
                             {{ data.clustering_dict | length }} ARCIMBOLDO_AIR jobs have been launched using the following templates:
                         </p>
                         {% for key, value in data.clustering_dict.items() %}

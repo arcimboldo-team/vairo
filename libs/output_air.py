@@ -103,7 +103,7 @@ def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List):
     plt.legend(by_label.values(), by_label.keys())    
     plt.xlim(-1, 1)
     plt.ylim(-1, 1)
-    plt.title('TEMPLATE CLUSTERING')
+    plt.title('TEMPLATES CLUSTERING')
     plt.savefig(plot_path, dpi=100)
     plt.cla()
 
