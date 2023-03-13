@@ -26,8 +26,9 @@ parameters:
 
 features:
 - path: (mandatory, string): Path to features.pkl
-  keep_msa: (optional, bool, True): Keep the msa of the features.pkl 
-  keep_templates: (optional, bool, True): Keep the templates of the features.pkl
+  keep_msa: (optional, int, -1): Keep the msa of the features.pkl 
+  keep_templates: (optional, int, -1): Keep the templates of the features.pkl
+  delete_msa:  (optional, range, None): Delete specific residues from the MSA sequences.
 
 sequences:
 - fasta_path:

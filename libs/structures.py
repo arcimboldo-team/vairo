@@ -28,8 +28,9 @@ class CCAnalysis:
 @dataclasses.dataclass(frozen=True)
 class FeaturesInput:
     path: str
-    keep_msa: bool
-    keep_templates: bool
+    keep_msa: int
+    keep_templates: int
+    delete_msa: List[int]
 
 
 @dataclasses.dataclass(frozen=True)

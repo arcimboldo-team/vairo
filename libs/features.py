@@ -133,6 +133,9 @@ class Features:
     def get_msa_length(self) -> int:
         return len(self.msa_features['msa'])
 
+    def get_templates_length(self) -> int:
+        return len(self.new_templates['template_sequence'])
+
 
     def get_sequence_by_name(self, name: str) -> str:
         index = self.get_index_by_name(name)
@@ -180,8 +183,9 @@ class Features:
             self.append_row_in_msa_from_features(msa_dict)
 
 
-    def set_template_features(self, new_templates: Dict):
-        for i in range(0, len(new_templates['template_sequence'])):
+    def set_template_features(self, new_templates: Dict, finish: int = None):
+        finish = len(new_templates['template_sequence']) if finish is None else finish
+        for i in range(0, finish):
             template_dict = {
                 'template_all_atom_positions': np.array([new_templates['template_all_atom_positions'][i]]),
                 'template_all_atom_masks': np.array([new_templates['template_all_atom_masks'][i]]),
