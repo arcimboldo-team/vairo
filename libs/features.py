@@ -69,8 +69,7 @@ class Features:
         self.msa_features['deletion_matrix_int'] = np.vstack([self.msa_features['deletion_matrix_int'], new_msa_features['deletion_matrix_int']])
         self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], new_msa_features['msa_species_identifiers']])
         self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape,
-                                                      len(self.msa_features['msa']))
-
+                                                      len(self.msa_features['msa']))        
 
     def append_row_in_msa(self, sequence: str, sequence_id: str):
         sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
@@ -170,8 +169,16 @@ class Features:
 
 
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = None, delete_positions: List[int] = []):
-        finish = len(new_msa['msa']) if finish is None else finish
-        for i in range(start, finish):
+        if finish is not None:
+            coverage_msa = []
+            for i in range(start, len(new_msa['msa'])):
+                coverage_msa.append(len([residue for residue in new_msa['msa'][i] if residue != 21]))
+            arr = np.array(coverage_msa)
+            coverage_msa = arr.argsort()[-finish:][::-1]
+            coverage_msa = np.sort(coverage_msa)
+        else:
+            coverage_msa = [i for i in range(start, len(new_msa['msa']))]
+        for i in coverage_msa:
             msa_dict = {
                 'msa': np.array([new_msa['msa'][i]]),
                 'accession_ids': np.array(str(i).encode()),
