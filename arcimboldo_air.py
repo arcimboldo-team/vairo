@@ -54,9 +54,9 @@ def main():
                 feat_aux = features.create_features_from_file(pkl_in_path=a_air.features_input.path)
                 if a_air.features_input.keep_msa != 0:
                     if a_air.features_input.keep_msa == -1:
-                        a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=0)
+                        a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=0, delete_positions=a_air.features_input.msa_delete)
                     else:
-                        a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=0, finish=a_air.features_input.keep_msa)
+                        a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=0, finish=a_air.features_input.keep_msa, delete_positions=a_air.features_input.msa_delete)
                 if a_air.features_input.keep_templates != 0:
                     if a_air.features_input.keep_templates == -1:
                         a_air.feature.set_template_features(new_templates=feat_aux.template_features)

@@ -81,7 +81,7 @@ class StructureAir:
                     path = utils.get_mandatory_value(input_load=parameters_features, value='path'),
                     keep_msa = parameters_features.get('keep_msa', -1),
                     keep_templates = parameters_features.get('keep_templates', -1),
-                    delete_msa = utils.expand_residues(parameters_dict.get('msa_delete', ''))
+                    msa_delete = utils.expand_residues(parameters_features.get('msa_delete', ''))
                 )
                 
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
@@ -510,7 +510,7 @@ class StructureAir:
                f_out.write(f' path: {self.features_input.path}\n')
                f_out.write(f'  keep_msa: {self.features_input.keep_msa}\n')
                f_out.write(f'  keep_templates: {self.features_input.keep_templates}\n')
-               f_out.write(f'  delete_msa: {",".join(map(str, self.features_input.delete_msa))}\n')
+               f_out.write(f'  msa_delete: {",".join(map(str, self.features_input.msa_delete))}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')

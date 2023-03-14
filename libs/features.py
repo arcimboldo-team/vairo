@@ -181,7 +181,7 @@ class Features:
             }
             msa_dict = delete_residues_msa(msa_dict, delete_positions=delete_positions)
             self.append_row_in_msa_from_features(msa_dict)
-
+            
 
     def set_template_features(self, new_templates: Dict, finish: int = None):
         finish = len(new_templates['template_sequence']) if finish is None else finish

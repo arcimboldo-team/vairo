@@ -30,7 +30,7 @@ class FeaturesInput:
     path: str
     keep_msa: int
     keep_templates: int
-    delete_msa: List[int]
+    msa_delete: List[int]
 
 
 @dataclasses.dataclass(frozen=True)
