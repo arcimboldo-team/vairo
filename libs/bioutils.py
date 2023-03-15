@@ -188,6 +188,7 @@ def erase_pisa(name: str) -> str:
     subprocess.Popen(['pisa', name, '-erase'], stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE).communicate()
 
+
 def read_remark_350(pdb_path: str) -> Tuple[List[str], List[List[List[Any]]]]:
     pdb_text = open(pdb_path, 'r').read()
     match_biomolecules = [m.start() for m in
@@ -276,14 +277,12 @@ def get_hetatm(residue: Residue) -> int:
 
 def get_chains(pdb_path: str) -> List[str]:
     # Return all chains from a PDB structure
-
     structure = get_structure(pdb_path)
     return [chain.get_id() for chain in structure.get_chains()]
 
 
 def get_structure(pdb_path: str) -> Structure:
     # Get PDB structure
-
     pdb_id = utils.get_file_name(pdb_path)
     parser = PDBParser(QUIET=True)
     return parser.get_structure(pdb_id, pdb_path)
@@ -355,6 +354,14 @@ def parse_pdb_line(line: str) -> Dict:
 
     return parsed_dict
 
+def read_bfactors_from_residues(pdb_path: str) -> Dict:
+    structure = get_structure(pdb_path=pdb_path)
+    return_dict = {}
+    for chain in structure[0]:
+        return_dict[chain] = [None]*get_resseq(list(chain.get_residues())[-1])
+        for res in list(chain.get_residues()):
+            return_dict[chain][get_resseq(res)] = res.get_atoms[0].bfactor
+    return return_dict
 
 def split_chains_assembly(pdb_in_path: str,
                           pdb_out_path: str,
@@ -411,7 +418,6 @@ def chain_splitter(pdb_path: str, chain: str = None) -> Dict:
     # It will return a dictionary with the chain and the corresponding pdb
 
     return_chain_dict = {}
-
     structure = get_structure(pdb_path=pdb_path)
     chains = [chain.get_id() for chain in structure.get_chains()] if chain is None else [chain]
 

@@ -22,8 +22,12 @@ MATPLOTLIB_FONT = 14
 plt.set_loglevel('WARNING')
 
 
-def read_rankeds(input_path: str):
-    ranked_paths = [path for path in os.listdir(input_path) if re.match('ranked_[0-9]+.pdb', path)]
+def check_ranked(path: str) -> bool:
+    return re.match('ranked_[0-9]+.pdb', path)
+
+
+def read_rankeds(input_path: str) -> List[str]:
+    ranked_paths = [path for path in os.listdir(input_path) if check_ranked(path)]
     return [structures.Ranked(os.path.join(input_path, path)) for path in utils.sort_by_digit(ranked_paths)]
 
 
@@ -72,11 +76,10 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.figure(figsize=(18, 6))
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
     for ranked in ranked_list:
-        plddt_list = []
-        with open(ranked.path) as f:
-            for line in f.readlines():
-                if line[:4] == 'ATOM' and line[13:16] == 'CA ':
-                    plddt_list.append(float(line[60:66].replace(" ", "")))
+        return_dict = bioutils.read_bfactors_from_residues(pdb_path=ranked.path)
+        print(return_dict)
+        plddt_list = return_dict.keys()
+        print(plddt_list)
         res_list = [int(item) for item in range(1, len(plddt_list) + 1)]
         ranked.set_plddt(round(statistics.median(map(float, plddt_list)), 2))
         plt.plot(res_list, plddt_list, label=ranked.name)
@@ -322,6 +325,37 @@ class OutputAir:
         utils.create_dir(dir_path=self.nonsplit_path, delete_if_exists=True)
 
 
+    def cc_analysis(self, files: List[str], cc_analysis_paths: structures.CCAnalysis):
+        cc_path = os.path.join(self.run_dir, 'cc_analysis')
+        shutil.rmtree(cc_path, ignore_errors=True)
+        paths = [shutil.copy2(file, cc_path) for file in files]
+        trans_dict = {}
+        for index, path in enumerate(paths):
+            if check_ranked(path):
+
+            new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
+            os.rename(os.path.join(cc_path, path), new_path)
+            trans_dict[index] = utils.get_file_name(path)
+        output_pdb2cc = bioutils.run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
+        if os.path.exists(output_pdb2cc):
+            output_cc = bioutils.run_cc_analysis(input_path=output_pdb2cc,
+                                                 cc_analysis_path=cc_analysis_paths.cc_analysis_path)
+            if os.path.exists(output_cc):
+                cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
+                clean_dict = {}
+                for key, values in cc_analysis_dict.items():
+                    if values.module > 0.1:
+                        clean_dict[trans_dict[int(key) - 1]] = values
+                points = np.array([[values.x, values.y] for values in clean_dict.values()])
+                kmeans = KMeans(n_clusters=2)
+                kmeans.fit(points)
+                for i, label in enumerate(kmeans.labels_):
+                    self.templates_cluster[int(label)].append(template_nonsplit[list(clean_dict.keys())[i]])
+
+                plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=clean_dict,
+                                 clusters=self.templates_cluster)
+
+
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
                        experimental_pdb: str, custom_features, cc_analysis_paths):
         # Read all templates and rankeds, if there are no ranked, raise an error
@@ -356,32 +390,7 @@ class OutputAir:
         #            self.templates_cluster.append([template_nonsplit[template] for template in templates])
         
         if not custom_features:
-            cc_path = os.path.join(self.run_dir, 'cc_analysis')
-            shutil.rmtree(cc_path, ignore_errors=True)
-            shutil.copytree(self.templates_path, cc_path)
-            files = os.listdir(cc_path)
-            trans_dict = {}
-            for index, file in enumerate(files):
-                new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
-                os.rename(os.path.join(cc_path, file), new_path)
-                trans_dict[index] = utils.get_file_name(file)
-            output_pdb2cc = bioutils.run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
-            if os.path.exists(output_pdb2cc):
-                output_cc = bioutils.run_cc_analysis(input_path=output_pdb2cc, cc_analysis_path=cc_analysis_paths.cc_analysis_path)
-                if os.path.exists(output_cc):
-                    cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
-                    clean_dict = {}
-                    for key, values in cc_analysis_dict.items():
-                        if values.module > 0.1:
-                            clean_dict[trans_dict[int(key)-1]] = values
-                    points = np.array([[values.x, values.y] for values in clean_dict.values()])
-                    kmeans = KMeans(n_clusters=2)
-                    kmeans.fit(points)
-                    for i, label in enumerate(kmeans.labels_):
-                        self.templates_cluster[int(label)].append(template_nonsplit[list(clean_dict.keys())[i]])
-
-                    plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=clean_dict, clusters=self.templates_cluster)
-
+            self.cc_analysis(files=template_nonsplit.keys(), cc_analysis_paths=cc_analysis_paths)
 
         if not self.ranked_list:
             logging.info('No ranked PDBs found')
