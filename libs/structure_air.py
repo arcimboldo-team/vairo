@@ -71,18 +71,17 @@ class StructureAir:
         self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
         self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
         self.cluster_templates_msa = parameters_dict.get('cluster_templates_msa', self.cluster_templates_msa)
-        delete_msa = parameters_dict.get('cluster_templates_msa_delete', '')
-        if delete_msa != '':
-            self.cluster_templates_msa_delete = utils.expand_residues(delete_msa)
+        self.cluster_templates_msa_delete = utils.expand_residues(parameters_dict.get('cluster_templates_msa_delete', ''))
         self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
         self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
 
         if 'features' in parameters_dict:
            for parameters_features in parameters_dict.get('features'):
                 self.features_input = structures.FeaturesInput(
-                      path = utils.get_mandatory_value(input_load=parameters_features, value='path'),
-                      keep_msa = parameters_features.get('keep_msa', True),
-                      keep_templates = parameters_features.get('keep_templates', True)   
+                    path = utils.get_mandatory_value(input_load=parameters_features, value='path'),
+                    keep_msa = parameters_features.get('keep_msa', -1),
+                    keep_templates = parameters_features.get('keep_templates', -1),
+                    msa_delete = utils.expand_residues(parameters_features.get('msa_delete', ''))
                 )
                 
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
@@ -504,12 +503,14 @@ class StructureAir:
                 f_out.write(f'mosaic_partition: {",".join(map(str, txt_aux))}\n')
             f_out.write(f'cluster_templates: {self.cluster_templates}\n')
             f_out.write(f'cluster_templates_msa: {self.cluster_templates_msa}\n')
+            f_out.write(f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
             if self.features_input:
                f_out.write(f'\nfeatures:\n') 
                f_out.write('-')
                f_out.write(f' path: {self.features_input.path}\n')
                f_out.write(f'  keep_msa: {self.features_input.keep_msa}\n')
                f_out.write(f'  keep_templates: {self.features_input.keep_templates}\n')
+               f_out.write(f'  msa_delete: {",".join(map(str, self.features_input.msa_delete))}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')

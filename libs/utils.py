@@ -168,6 +168,8 @@ def replace_last_number(text: str, value: int) -> str:
 def expand_residues(res: str) -> List:
     # Expand a str formatted like this: 10-12, 32, 34
     # To a list: [10,11,12,32,34]
+    if res == '':
+        return []
     modified_list = str(res).replace(' ', '').split(',')
     return_list = []
     for res in modified_list:

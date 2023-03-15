@@ -69,8 +69,7 @@ class Features:
         self.msa_features['deletion_matrix_int'] = np.vstack([self.msa_features['deletion_matrix_int'], new_msa_features['deletion_matrix_int']])
         self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], new_msa_features['msa_species_identifiers']])
         self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape,
-                                                      len(self.msa_features['msa']))
-
+                                                      len(self.msa_features['msa']))        
 
     def append_row_in_msa(self, sequence: str, sequence_id: str):
         sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence])
@@ -133,6 +132,9 @@ class Features:
     def get_msa_length(self) -> int:
         return len(self.msa_features['msa'])
 
+    def get_templates_length(self) -> int:
+        return len(self.new_templates['template_sequence'])
+
 
     def get_sequence_by_name(self, name: str) -> str:
         index = self.get_index_by_name(name)
@@ -167,8 +169,16 @@ class Features:
 
 
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = None, delete_positions: List[int] = []):
-        finish = len(new_msa['msa']) if finish is None else finish
-        for i in range(start, finish):
+        if finish is not None:
+            coverage_msa = []
+            for i in range(start, len(new_msa['msa'])):
+                coverage_msa.append(len([residue for residue in new_msa['msa'][i] if residue != 21]))
+            arr = np.array(coverage_msa)
+            coverage_msa = arr.argsort()[-finish:][::-1]
+            coverage_msa = np.sort(coverage_msa)
+        else:
+            coverage_msa = [i for i in range(start, len(new_msa['msa']))]
+        for i in coverage_msa:
             msa_dict = {
                 'msa': np.array([new_msa['msa'][i]]),
                 'accession_ids': np.array(str(i).encode()),
@@ -178,10 +188,11 @@ class Features:
             }
             msa_dict = delete_residues_msa(msa_dict, delete_positions=delete_positions)
             self.append_row_in_msa_from_features(msa_dict)
+            
 
-
-    def set_template_features(self, new_templates: Dict):
-        for i in range(0, len(new_templates['template_sequence'])):
+    def set_template_features(self, new_templates: Dict, finish: int = None):
+        finish = len(new_templates['template_sequence']) if finish is None else finish
+        for i in range(0, finish):
             template_dict = {
                 'template_all_atom_positions': np.array([new_templates['template_all_atom_positions'][i]]),
                 'template_all_atom_masks': np.array([new_templates['template_all_atom_masks'][i]]),
