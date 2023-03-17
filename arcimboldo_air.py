@@ -101,21 +101,27 @@ def main():
         if a_air.run_af2:
             logging.info('Start running AlphaFold2')
             a_air.run_alphafold(features_list=features_list)
-            a_air.merge_results()
-            features_path = os.path.join(a_air.run_dir, 'features.pkl')
+            if len(features_list) > 1:
+                a_air.merge_results()
+            features_path = os.path.join(a_air.results_dir, 'features.pkl')
             if a_air.feature is None and os.path.exists(features_path):
                 new_features = features.create_features_from_file(features_path)
                 a_air.set_feature(new_features)
-            os.chdir(a_air.run_dir)
-            a_air.output.set_run_dir(run_dir=a_air.run_dir)
-            a_air.output.analyse_output(sequence_assembled=a_air.sequence_assembled, 
+
+            a_air.output.analyse_output(results_dir=a_air.results_dir,
+                                        sequence_assembled=a_air.sequence_assembled, 
                                         feature=a_air.feature, 
                                         experimental_pdb=a_air.experimental_pdb, 
-                                        custom_features=a_air.custom_features,
-                                        cc_analysis_paths=a_air.cc_analysis_paths)
+                                        cc_analysis_paths=a_air.cc_analysis_paths,
+                                        cluster_templates=a_air.cluster_templates)
+
             if a_air.cluster_templates:
                 a_air.templates_clustering()
-
+                a_air.output.analyse_output(results_dir=a_air.results_dir,
+                                            sequence_assembled=a_air.sequence_assembled, 
+                                            feature=a_air.feature, 
+                                            experimental_pdb=a_air.experimental_pdb, 
+                                            cc_analysis_paths=a_air.cc_analysis_paths)
         a_air.change_state(state=3)
         a_air.generate_output()
         logging.info('ARCIMBOLDO_AIR has finished successfully')

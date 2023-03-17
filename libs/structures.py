@@ -26,6 +26,15 @@ class CCAnalysis:
             self.pd2cc_path = os.path.join(binaries_path, 'pdb2cc_linux')
 
 @dataclasses.dataclass(frozen=True)
+class Cluster:
+    name: str
+    path: str
+    relative_path: str
+    rankeds: Dict
+    templates: Dict
+
+
+@dataclasses.dataclass(frozen=True)
 class FeaturesInput:
     path: str
     keep_msa: int
@@ -130,10 +139,8 @@ class Ranked:
         self.encoded: bytes
 
         self.path = ranked_path
-        self.split_path = os.path.join(os.path.dirname(self.path), f'split_{os.path.basename(self.path)}')
         self.name = utils.get_file_name(ranked_path)
 
-    
     def set_path(self, path: str):
         self.path = path
 
@@ -183,7 +190,6 @@ class Ranked:
 
     def set_encoded(self, path: str):
         self.encoded = utils.encode_data(path)
-
 
     def add_frobenius_plot(self, template: str, dist_plot: str, ang_plot: str, dist_coverage: float, ang_coverage: float, core: float):
         frobenius = Frobenius(

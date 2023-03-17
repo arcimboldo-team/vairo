@@ -15,12 +15,14 @@ class StructureAir:
 
         self.output_dir: str
         self.run_dir: str
+        self.results_dir: str
+        self.name_results_dir = 'results'
         self.input_dir: str
         self.input_path: str
         self.log_path: str
         self.binaries_path: str
         self.cluster_path: str
-        self.cluster_dict: Dict = {}
+        self.cluster_list: List[structures.Cluster] = []
         self.af2_dbs_path: str
         self.cc_analysis_paths: structures.CCAnalysis
         self.sequence_assembled = sequence.SequenceAssembled
@@ -51,7 +53,8 @@ class StructureAir:
 
         self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
         self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
-        self.input_dir = os.path.join(self.run_dir, 'input')
+        self.input_dir = os.path.join(self.output_dir, 'input')
+        self.results_dir = os.path.join(self.run_dir, self.name_results_dir)
         self.log_path = os.path.join(self.output_dir, 'output.log')
         self.cluster_path = os.path.join(self.output_dir, 'clustering')
         self.input_path = os.path.join(self.input_dir, 'config.yml')
@@ -186,11 +189,20 @@ class StructureAir:
         if os.path.exists(self.output.sequence_plot_path):
             render_dict['sequence_plot'] = utils.encode_data(input_data=self.output.sequence_plot_path)
 
-        if os.path.exists(self.output.clustering_plot):
-            render_dict['clustering_plot'] = utils.encode_data(input_data=self.output.clustering_plot)
+        if os.path.exists(self.output.analysis_plot_path):
+            render_dict['clustering_plot'] = utils.encode_data(input_data=self.output.analysis_plot_path)
 
-        if self.cluster_dict:
-            render_dict['clustering_dict'] = self.cluster_dict
+        if os.path.exists(self.output.analysis_ranked_plot_path):
+            render_dict['clustering_ranked_plot'] = utils.encode_data(input_data=self.output.analysis_ranked_plot_path)
+
+        if self.output.templates_predictions_cluster:
+            aux_list = [[],[]]
+            for i, cluster in enumerate(self.output.templates_predictions_cluster):
+                aux_list[i] = [utils.get_file_name(temp) for temp in cluster]
+            render_dict['templates_predictions_cluster'] = aux_list
+
+        if self.cluster_list:
+            render_dict['cluster_list'] = self.cluster_list
 
         if self.output.ranked_list:
             render_dict['table'] = {}
@@ -317,10 +329,13 @@ class StructureAir:
     def run_alphafold(self, features_list: List[features.Features]):
         # Create the script and run alphafold         
         for i, feature in enumerate(features_list):
-            name = f'results_{i}'
+            if len(features_list) == 1:
+                name = self.name_results_dir
+            else:
+                name = f'{self.name_results_dir}{i}'
             path = os.path.join(self.run_dir, name)
             sequence_chunk = self.sequence_assembled.sequence_assembled[self.chunk_list[i][0]:self.chunk_list[i][1]]
-            afrun = alphafold_classes.AlphaFoldRun(output_dir=path,
+            afrun = alphafold_classes.AlphaFoldRun(results_dir=path,
                                                    sequence=sequence_chunk,
                                                    custom_features=self.custom_features,
                                                    cluster_templates=self.cluster_templates,
@@ -329,85 +344,80 @@ class StructureAir:
                                                    end_chunk=self.chunk_list[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
 
     def merge_results(self):
-        if len(self.afrun_list) == 1:
-            self.run_dir = self.afrun_list[0].results_dir
-        else:
-            results_dir = os.path.join(self.run_dir, 'results')
-            best_rankeds_dir = os.path.join(results_dir, 'best_rankeds')
+        best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')
 
-            utils.create_dir(results_dir, delete_if_exists=True)
-            utils.create_dir(best_rankeds_dir, delete_if_exists=True)
+        utils.create_dir(self.results_dir, delete_if_exists=True)
+        utils.create_dir(best_rankeds_dir, delete_if_exists=True)
 
-            best_ranked_list = []
-            for afrun in self.afrun_list:
-                ranked_list = output_air.read_rankeds(input_path=afrun.results_dir)
-                if not ranked_list:
-                    logging.info('No ranked PDBs found')
-                    return
-                plot_path = os.path.join(afrun.results_dir, 'plddt.png')
-                output_air.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
-                ranked_list.sort(key=lambda x: x.plddt, reverse=True)
+        best_ranked_list = []
+        for afrun in self.afrun_list:
+            ranked_list = output_air.read_rankeds(input_path=afrun.results_dir)
+            if not ranked_list:
+                logging.info('No ranked PDBs found')
+                return
+            plot_path = os.path.join(afrun.results_dir, 'plddt.png')
+            output_air.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
+            ranked_list.sort(key=lambda x: x.plddt, reverse=True)
 
-                new_ranked_path = os.path.join(best_rankeds_dir,
-                                               f'ranked_{afrun.start_chunk + 1}-{afrun.end_chunk}.pdb')
-                shutil.copy2(ranked_list[0].path, new_ranked_path)
-                ranked_list[0].set_path(path=new_ranked_path)
-                best_ranked_list.append(ranked_list[0])
+            new_ranked_path = os.path.join(best_rankeds_dir,
+                                            f'ranked_{afrun.start_chunk + 1}-{afrun.end_chunk}.pdb')
+            shutil.copy2(ranked_list[0].path, new_ranked_path)
+            ranked_list[0].set_path(path=new_ranked_path)
+            best_ranked_list.append(ranked_list[0])
 
-            inf_path = best_ranked_list[0].path
-            merge_pdbs_list = [inf_path]
-            for i, ranked in enumerate(best_ranked_list[1:]):
-                len_sequence = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
+        inf_path = best_ranked_list[0].path
+        merge_pdbs_list = [inf_path]
+        for i, ranked in enumerate(best_ranked_list[1:]):
+            len_sequence = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
 
-                if self.mosaic_partition:
-                    self.mosaic_overlap = self.mosaic_partition[i][1] - self.mosaic_partition[i+1][0] + 1
+            if self.mosaic_partition:
+                self.mosaic_overlap = self.mosaic_partition[i][1] - self.mosaic_partition[i+1][0] + 1
 
-                inf_ini = len_sequence - self.mosaic_overlap + 1
-                inf_end = len_sequence
-                inm_ini = 1
-                inm_end = self.mosaic_overlap
-                pdb_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_superposed.pdb')
-                delta_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_deltas.dat')
-                bioutils.run_lsqkab(pdb_inf_path=inf_path,
-                                    pdb_inm_path=ranked.path,
-                                    fit_ini=inf_ini,
-                                    fit_end=inf_end,
-                                    match_ini=inm_ini,
-                                    match_end=inm_end,
-                                    pdb_out=pdb_out,
-                                    delta_out=delta_out
-                                    )
+            inf_ini = len_sequence - self.mosaic_overlap + 1
+            inf_end = len_sequence
+            inm_ini = 1
+            inm_end = self.mosaic_overlap
+            pdb_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_superposed.pdb')
+            delta_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_deltas.dat')
+            bioutils.run_lsqkab(pdb_inf_path=inf_path,
+                                pdb_inm_path=ranked.path,
+                                fit_ini=inf_ini,
+                                fit_end=inf_end,
+                                match_ini=inm_ini,
+                                match_end=inm_end,
+                                pdb_out=pdb_out,
+                                delta_out=delta_out
+                                )
 
-                best_list = []
-                best_min = MIN_RMSD_SPLIT
-                with open(delta_out, 'r') as f_in:
-                    lines = f_in.readlines()
-                    lines = [line.replace('CA','').split() for line in lines]
-                    for deltas in zip(lines, lines[1:], lines[2:], lines[3:]):
-                        deltas_sum = sum([float(delta[0]) for delta in deltas])
-                        if deltas_sum <= best_min:
-                            best_list = deltas
-                            best_min = deltas_sum
+            best_list = []
+            best_min = MIN_RMSD_SPLIT
+            with open(delta_out, 'r') as f_in:
+                lines = f_in.readlines()
+                lines = [line.replace('CA','').split() for line in lines]
+                for deltas in zip(lines, lines[1:], lines[2:], lines[3:]):
+                    deltas_sum = sum([float(delta[0]) for delta in deltas])
+                    if deltas_sum <= best_min:
+                        best_list = deltas
+                        best_min = deltas_sum
 
-                if not best_list:
-                    raise Exception('RMSD minimum requirements not met in order to merge the results in mosaic mode.')
+            if not best_list:
+                raise Exception('RMSD minimum requirements not met in order to merge the results in mosaic mode.')
 
-                inf_cut = int(best_list[1][3])
-                inm_cut = int(best_list[2][1])
-                delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(inf_cut + 1, len_sequence + 1, 1)]})
-                delete_residues.delete_residues(pdb_in_path=inf_path, pdb_out_path=inf_path)
-                delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
-                delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
-                merge_pdbs_list.append(pdb_out)
-                inf_path = pdb_out
-            
-            bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
-                                             pdb_out_path=os.path.join(results_dir, 'ranked_0.pdb'))
-            self.run_dir = results_dir
+            inf_cut = int(best_list[1][3])
+            inm_cut = int(best_list[2][1])
+            delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(inf_cut + 1, len_sequence + 1, 1)]})
+            delete_residues.delete_residues(pdb_in_path=inf_path, pdb_out_path=inf_path)
+            delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
+            delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
+            merge_pdbs_list.append(pdb_out)
+            inf_path = pdb_out
+        
+        bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
+                                            pdb_out_path=os.path.join(self.results_dir, 'ranked_0.pdb'))
 
 
     def set_feature(self, feature: features.Features):
@@ -430,29 +440,40 @@ class StructureAir:
 
     def templates_clustering(self):
         counter = 0
-        utils.create_dir(self.cluster_path, delete_if_exists=True)
+        utils.create_dir(self.cluster_path, delete_if_exists=False)
         if self.output.templates_cluster:
             logging.info(f'The templates obtained in alphafold2 can be grouped in { len(self.output.templates_cluster) } clusters')
             for templates in self.output.templates_cluster:
-                new_path = os.path.join(self.cluster_path, f'job_{counter}')
+                name_job = f'cluster_{counter}'
+                new_path = os.path.join(self.cluster_path, name_job)
                 logging.info(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
                 logging.info((', ').join([utils.get_file_name(template) for template in templates]))
                 counter += 1
                 yml_path = self.create_cluster(job_path=new_path, templates=templates)
                 bioutils.run_arcimboldo_air(yml_path=yml_path)
-                self.cluster_dict[utils.get_file_name(new_path)] = {
-                    'path': new_path,
-                    'templates': templates,
-                    'name_templates': [utils.get_file_name(template) for template in templates]
-                }
-          
+                rankeds = output_air.read_rankeds(input_path=new_path)
+                results_path = os.path.join(new_path, os.path.basename(self.run_dir), os.path.basename(self.results_dir))
+                rankeds_path_list = []
+                for ranked in rankeds:
+                    rankeds_path_list.append(ranked.path)
+                    nonsplit_path = os.path.join(results_path, f'{ranked.name}.pdb')
+                    new_name = f'{name_job}_{ranked.name}.pdb'
+                    shutil.copy2(nonsplit_path, os.path.join(self.results_dir, new_name))
+
+                self.cluster_list.append(structures.Cluster(
+                    name=name_job,
+                    path=new_path,
+                    relative_path=os.path.join(os.path.basename(self.output_dir), os.path.relpath(new_path, self.output_dir), os.path.basename(self.output.html_path)),
+                    rankeds={utils.get_file_name(ranked_path): ranked_path for ranked_path in rankeds_path_list},
+                    templates={utils.get_file_name(template): template for template in templates}
+                )) 
+
 
     def create_cluster(self, job_path: str, templates: List[str]) -> str:
 
         yml_path = os.path.join(job_path, 'config.yml')
         features_path = os.path.join(job_path, 'features.pkl')
         utils.create_dir(dir_path=job_path,delete_if_exists=False)
-
         new_features = features.Features(self.sequence_assembled.sequence_assembled)
         for template in templates:
             index = self.feature.get_index_by_name(utils.get_file_name(template))
@@ -466,6 +487,7 @@ class StructureAir:
 
         with open(yml_path, 'w') as f_out:
             f_out.write(f'output_dir: {job_path}\n')
+            f_out.write(f'run_dir: {os.path.join(job_path, os.path.basename(self.run_dir))}\n')
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
             f_out.write(f'glycines: {self.glycines}\n')
             f_out.write(f'\nsequences:\n')
@@ -478,8 +500,9 @@ class StructureAir:
             f_out.write(f'\nfeatures:\n')
             f_out.write('-')
             f_out.write(f' path: {features_path}\n')
-            
+        
         return yml_path
+
 
     def write_input_file(self):
         with open(self.input_path, 'w') as f_out:
@@ -503,14 +526,16 @@ class StructureAir:
                 f_out.write(f'mosaic_partition: {",".join(map(str, txt_aux))}\n')
             f_out.write(f'cluster_templates: {self.cluster_templates}\n')
             f_out.write(f'cluster_templates_msa: {self.cluster_templates_msa}\n')
-            f_out.write(f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
+            if self.cluster_templates_msa_delete:
+                f_out.write(f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
             if self.features_input:
-               f_out.write(f'\nfeatures:\n') 
-               f_out.write('-')
-               f_out.write(f' path: {self.features_input.path}\n')
-               f_out.write(f'  keep_msa: {self.features_input.keep_msa}\n')
-               f_out.write(f'  keep_templates: {self.features_input.keep_templates}\n')
-               f_out.write(f'  msa_delete: {",".join(map(str, self.features_input.msa_delete))}\n')
+                f_out.write(f'\nfeatures:\n') 
+                f_out.write('-')
+                f_out.write(f' path: {self.features_input.path}\n')
+                f_out.write(f'  keep_msa: {self.features_input.keep_msa}\n')
+                f_out.write(f'  keep_templates: {self.features_input.keep_templates}\n')
+                if self.features_input.msa_delete:
+                    f_out.write(f'  msa_delete: {",".join(map(str, self.features_input.msa_delete))}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')

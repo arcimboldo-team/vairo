@@ -205,7 +205,7 @@
                 {% if 'plddt' in data %}
                     <li name="plddt" onclick="move_to(event)" class="sub-menu">PLDDT for predictions</li>
                 {% endif %}
-                {% if 'template_dendogram' in data %}
+                {% if 'clustering_plot' in data %}
                     <li name="clustering" onclick="move_to(event)" class="sub-menu">Clustering</li>                
                 {% endif %}
                 {% if 'frobenius_dict' in data %}
@@ -358,20 +358,31 @@
                 <div id="clustering" class="section-div">
                     <h2>Clustering</h2>
                     <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
-                    {% if 'clustering_dict' in data %}
-                        <p>The templates have been divided in {{ data.clustering_dict | length }} clusters.
-                            {{ data.clustering_dict | length }} ARCIMBOLDO_AIR jobs have been launched using the following templates:
+                    {% if 'cluster_list' in data %}
+                        <p>The templates have been divided in {{ data.cluster_list | length }} clusters.
+                            {{ data.cluster_list | length }} ARCIMBOLDO_AIR jobs have been launched using the following templates:
                         </p>
-                        {% for key, value in data.clustering_dict.items() %}
+                        {% for cluster in data.cluster_list %}
                             {% if loop.first %}
                                 <ul>
                             {% endif %}
-                                <li><a href={{ value.path }}/output.html>{{ key }}</a>: {{ value.name_templates|join(', ') }}</li>
+                                <li><a href=../{{ cluster.relative_path }}>{{ cluster.name }}</a>: {{ cluster.templates | join(', ') }}</li>
                             {% if loop.last %}
                                 </ul>
                             {% endif %}
                         {% endfor %}
                     {% endif %}
+                    {% if 'clustering_ranked_plot' in data %}
+                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_ranked_plot }}" alt="Clustering plot">
+                        {% for cluster in data.templates_predictions_cluster %}
+                            {% if loop.first %}
+                                <ul>
+                            {% endif %}
+                                <li>Cluster {{ loop.index-1 }}: {{ cluster | join(', ') }}</li>
+                            {% if loop.last %}
+                                </ul>
+                            {% endif %}
+                        {% endfor %}                    {% endif %}
                 </div>
             {% endif %}
             {% if 'frobenius_dict' in data %}

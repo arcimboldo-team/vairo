@@ -13,7 +13,7 @@ from typing import Dict, List
 from Bio.PDB import PDBParser, Selection
 from ALEPH.aleph.core import ALEPH
 from itertools import combinations
-from libs import bioutils, features, utils, sequence, structures
+from libs import bioutils, change_res, features, utils, sequence, structures
 
 PERCENTAGE_FILTER = 0.8
 PERCENTAGE_MAX_RMSD = 1
@@ -23,7 +23,7 @@ plt.set_loglevel('WARNING')
 
 
 def check_ranked(path: str) -> bool:
-    return re.match('ranked_[0-9]+.pdb', path)
+    return re.match('ranked_[0-9]+.pdb', path) or re.match('cluster_[0-9]+_ranked_[0-9]+.pdb', path)
 
 
 def read_rankeds(input_path: str) -> List[str]:
@@ -77,9 +77,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
     for ranked in ranked_list:
         return_dict = bioutils.read_bfactors_from_residues(pdb_path=ranked.path)
-        print(return_dict)
-        plddt_list = return_dict.keys()
-        print(plddt_list)
+        plddt_list = [value for value in list(return_dict.values())[0] if value is not None]
         res_list = [int(item) for item in range(1, len(plddt_list) + 1)]
         ranked.set_plddt(round(statistics.median(map(float, plddt_list)), 2))
         plt.plot(res_list, plddt_list, label=ranked.name)
@@ -92,7 +90,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     return max_plddt
 
 
-def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List):
+def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List, predictions: bool = False):
     plt.figure(figsize=(8, 8))
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
     for key, values in analysis_dict.items():
@@ -106,7 +104,10 @@ def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List):
     plt.legend(by_label.values(), by_label.keys())    
     plt.xlim(-1, 1)
     plt.ylim(-1, 1)
-    plt.title('TEMPLATES CLUSTERING')
+    if predictions:
+        plt.title('TEMPLATES AND PREDICTIONS CLUSTERING')
+    else:
+        plt.title('TEMPLATES CLUSTERING')
     plt.savefig(plot_path, dpi=100)
     plt.cla()
 
@@ -184,7 +185,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         for i in range(1, len(aligned_sequences)):
             ax.barh('Percentage', 1, left=i, height=0.5, color=str(aligned_sequences[i - 1]))
     else:
-        pdb_hits_path = os.path.join(a_air.run_dir, 'msas/pdb_hits.hhr')
+        pdb_hits_path = os.path.join(a_air.results_dir, 'msas/pdb_hits.hhr')
         hhr_text = ''
         if os.path.exists(pdb_hits_path):
             hhr_text = open(pdb_hits_path, 'r').read()
@@ -291,20 +292,23 @@ class OutputAir:
         self.interfaces_path: str = f'{output_dir}/interfaces'
         self.analysis_path: str = f'{self.plots_path}/analysis.txt'
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
-        self.clustering_plot: str = f'{self.plots_path}/cc_analysis_plot.png'
         self.sequence_plot_path: str = f'{self.plots_path}/sequence_plot.png'
         self.analysis_plot_path: str = f'{self.plots_path}/cc_analysis_plot.png'
+        self.analysis_ranked_plot_path: str = f'{self.plots_path}/cc_analysis_ranked_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
         self.gantt_plots_path: List[str] = []
         self.ranked_list: List[structures.Ranked] = []
         self.output_dir: str = output_dir
         self.experimental_dict = {}
-        self.run_dir: str = None
-        self.nonsplit_path: str = None
-        self.aleph_results_path: str = None
+        self.results_dir: str
+        self.templates_nonsplit_dir: str
+        self.rankeds_nonsplit_dir: str
+        self.rankeds_split_dir: str
+        self.aleph_results_path: str
         self.group_ranked_by_rmsd_dict: dict = {}
         self.template_interfaces: dict = {}
         self.templates_cluster: List = [[],[]]
+        self.templates_predictions_cluster: List = [[],[]]
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -318,24 +322,27 @@ class OutputAir:
         plot_sequence(plot_path=self.sequence_plot_path, a_air=a_air)
 
 
-    def set_run_dir(self, run_dir: str):
-        self.run_dir = run_dir
-        self.nonsplit_path = f'{run_dir}/nonsplit'
-        self.aleph_results_path = f'{run_dir}/output.json'
-        utils.create_dir(dir_path=self.nonsplit_path, delete_if_exists=True)
-
-
-    def cc_analysis(self, files: List[str], cc_analysis_paths: structures.CCAnalysis):
-        cc_path = os.path.join(self.run_dir, 'cc_analysis')
-        shutil.rmtree(cc_path, ignore_errors=True)
-        paths = [shutil.copy2(file, cc_path) for file in files]
+    def cc_analysis(self, paths_in: Dict, cc_analysis_paths: structures.CCAnalysis):
+        cc_path = os.path.join(self.results_dir, 'cc_analysis')
+        ranked = False
+        utils.create_dir(cc_path, delete_if_exists=True)
+        paths = [shutil.copy2(path, cc_path) for path in paths_in.values()]
         trans_dict = {}
         for index, path in enumerate(paths):
-            if check_ranked(path):
-
+            if check_ranked(os.path.basename(path)):
+                ranked = True
+                bfactors_dict = bioutils.read_bfactors_from_residues(path)
+                for chain, residues in bfactors_dict.items():
+                    for i in range(len(residues)):
+                        if bfactors_dict[chain][i] is not None:
+                            bfactors_dict[chain][i] = round(bfactors_dict[chain][i] - 70.0, 2)
+                residues_dict = bioutils.read_residues_from_pdb(path)
+                change = change_res.ChangeResidues(chain_res_dict=residues_dict, chain_bfactors_dict=bfactors_dict)
+                change.change_bfactors(path, path)
             new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
             os.rename(os.path.join(cc_path, path), new_path)
             trans_dict[index] = utils.get_file_name(path)
+
         output_pdb2cc = bioutils.run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
         if os.path.exists(output_pdb2cc):
             output_cc = bioutils.run_cc_analysis(input_path=output_pdb2cc,
@@ -349,32 +356,52 @@ class OutputAir:
                 points = np.array([[values.x, values.y] for values in clean_dict.values()])
                 kmeans = KMeans(n_clusters=2)
                 kmeans.fit(points)
+                aux_templates_cluster = [[],[]]
                 for i, label in enumerate(kmeans.labels_):
-                    self.templates_cluster[int(label)].append(template_nonsplit[list(clean_dict.keys())[i]])
+                    aux_templates_cluster[int(label)].append(paths_in[list(clean_dict.keys())[i]])
+                if not ranked:
+                    self.templates_cluster = aux_templates_cluster
+                    plot_path = self.analysis_plot_path
+                else:
+                    self.templates_predictions_cluster = aux_templates_cluster
+                    plot_path = self.analysis_ranked_plot_path
+                plot_cc_analysis(plot_path=plot_path, analysis_dict=clean_dict,
+                            clusters=aux_templates_cluster, predictions=ranked)
 
-                plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=clean_dict,
-                                 clusters=self.templates_cluster)
 
-
-    def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
-                       experimental_pdb: str, custom_features, cc_analysis_paths):
+    def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
+                       experimental_pdb: str, cc_analysis_paths, cluster_templates: bool = False):
         # Read all templates and rankeds, if there are no ranked, raise an error
-        template_dict = {}
-        template_nonsplit = {}
+
+        self.results_dir = results_dir
+        self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
+        self.rankeds_split_dir = f'{self.results_dir}/rankeds_split'
+        self.tmp_dir = f'{self.results_dir}/tmp'
+        self.aleph_results_path = f'{self.tmp_dir}/output.json'
+
+        utils.create_dir(dir_path=self.templates_nonsplit_dir, delete_if_exists=True)
+        utils.create_dir(dir_path=self.rankeds_split_dir, delete_if_exists=True)
+        utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
+
+        store_old_dir = os.getcwd()
+        os.chdir(self.tmp_dir)
+
+        templates_dict = {}
+        templates_nonsplit_dict = {}
 
         if feature is not None:
-            template_nonsplit = feature.write_all_templates_in_features(output_dir=self.nonsplit_path,
+            templates_nonsplit_dict = feature.write_all_templates_in_features(output_dir=self.templates_nonsplit_dir,
                                                                         print_number=False)
         # Split the templates with chains
-        for template, template_path in template_nonsplit.items():
+        for template, template_path in templates_nonsplit_dict.items():
             new_pdb_path = os.path.join(self.templates_path, f'{template}.pdb')
             shutil.copy2(template_path, new_pdb_path)
-            template_dict[template] = new_pdb_path
+            templates_dict[template] = new_pdb_path
             bioutils.split_chains_assembly(pdb_in_path=new_pdb_path,
                                            pdb_out_path=new_pdb_path,
                                            sequence_assembled=sequence_assembled)
 
-        self.ranked_list = read_rankeds(input_path=self.run_dir)
+        self.ranked_list = read_rankeds(input_path=self.results_dir)
 
         #dendogram_file = os.path.join(self.run_dir, 'dendogram.txt')
         #dendogram_plot = os.path.join(self.run_dir, 'clustering_dendogram_angles.png') 
@@ -389,17 +416,20 @@ class OutputAir:
         #        for templates in dendogram_list:
         #            self.templates_cluster.append([template_nonsplit[template] for template in templates])
         
-        if not custom_features:
-            self.cc_analysis(files=template_nonsplit.keys(), cc_analysis_paths=cc_analysis_paths)
+        self.cc_analysis(paths_in=templates_dict, cc_analysis_paths=cc_analysis_paths)
 
-        if not self.ranked_list:
+        if not self.ranked_list or cluster_templates:
             logging.info('No ranked PDBs found')
+            os.chdir(store_old_dir)
             return
         
         # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
         max_plddt = plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
                                 sequence_amino=sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
+
+        # Save split path of all rankeds, taking into account the split dir
+        [ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path))) for ranked in self.ranked_list]
 
         # Sort list of ranked by pLDDT
         self.ranked_list.sort(key=lambda x: x.plddt, reverse=True)
@@ -450,10 +480,13 @@ class OutputAir:
                         ranked.set_best(True)
                         green_color += 10
 
+        aux_dict = dict({ranked.name:ranked.split_path for ranked in self.ranked_list}, **templates_dict)
+        self.cc_analysis(paths_in=aux_dict, cc_analysis_paths=cc_analysis_paths)
+
         # Superpose each template with all the rankeds.
-        if template_dict:
+        if templates_dict:
             for i, ranked in enumerate(self.ranked_list):
-                for template, template_path in template_dict.items():
+                for template, template_path in templates_dict.items():
                     total_residues = len(
                         [res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
                     if i == 0:
@@ -467,7 +500,7 @@ class OutputAir:
 
         # Use aleph to generate domains and calculate secondary structure percentage
         for ranked in self.ranked_list:
-            aleph_file = os.path.join(self.run_dir, f'aleph_{ranked.name}.txt')
+            aleph_file = os.path.join(self.tmp_dir, f'aleph_{ranked.name}.txt')
             with open(aleph_file, 'w') as sys.stdout:
                 try:
                     ALEPH.annotate_pdb_model(reference=ranked.split_path, strictness_ah=0.45, strictness_bs=0.2,
@@ -479,12 +512,12 @@ class OutputAir:
                 result_dict = utils.parse_aleph_annotate(file_path=self.aleph_results_path)
                 ranked.set_secondary_structure(ah=result_dict['ah'], bs=result_dict['bs'],
                                                total_residues=result_dict['number_total_residues'])
-                aleph_txt_path = f'{self.run_dir}/aleph_{ranked.name}.txt'
+                aleph_txt_path = f'{self.tmp_dir}/aleph_{ranked.name}.txt'
                 domains_dict = utils.parse_aleph_ss(aleph_txt_path)
             else:
                 break
             if ranked.filtered and os.path.exists(aleph_txt_path):
-                ranked.set_minimized_path(os.path.join(self.run_dir, f'{ranked.name}_minimized.pdb'))
+                ranked.set_minimized_path(os.path.join(self.tmp_dir, f'{ranked.name}_minimized.pdb'))
                 ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 if interfaces_data_list:
@@ -522,15 +555,15 @@ class OutputAir:
             for ranked in self.ranked_list:
                 rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, ranked.split_path])
                 self.experimental_dict[ranked.name] = round(rmsd, 2)
-            for template, template_path in template_dict.items():
+            for template, template_path in templates_dict.items():
                 rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, template_path])
                 self.experimental_dict[template] = round(rmsd, 2)
             output_pdb = os.path.join(self.output_dir, os.path.basename(experimental_pdb))
             bioutils.superpose_pdbs([experimental_pdb, reference_superpose], output_pdb)
 
-        for template, template_path in template_nonsplit.items():
+        for template, template_path in templates_nonsplit_dict.items():
             frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{template}.txt')
-            matrices = os.path.join(self.run_dir, 'matrices')
+            matrices = os.path.join(self.tmp_dir, 'matrices')
             template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
             path_list = [ranked.path for ranked in self.ranked_list if ranked.filtered]
             with open(frobenius_file, 'w') as sys.stdout:
@@ -540,7 +573,7 @@ class OutputAir:
             sys.stdout = sys.__stdout__
             ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
 
-            interfaces_data_list = bioutils.find_interface_from_pisa(template_dict[template], self.interfaces_path)
+            interfaces_data_list = bioutils.find_interface_from_pisa(templates_dict[template], self.interfaces_path)
             template_interface_list = []
             for interface in interfaces_data_list:
                 template_interface_list.append(f'{interface["chain1"]}{interface["chain2"]}')
@@ -567,13 +600,15 @@ class OutputAir:
                                                                                     title=f'Interface: {interface.name}')
                     sys.stdout = sys.__stdout__
                     new_name = os.path.join(self.frobenius_path, f'{template}_{ranked.name}_{interface.name}.png')
-                    plot_path = os.path.join(self.run_dir, os.path.basename(plot))
+                    plot_path = os.path.join(self.tmp_dir, os.path.basename(plot))
                     interface.add_frobenius_information(
                         template = template,
                         dist_coverage = fro_distance,
                         core = fro_core,
                         dist_plot = shutil.copy2(plot_path, new_name)
                     )
+
+        os.chdir(store_old_dir)
 
 
     def write_tables(self, rmsd_dict: Dict, ranked_rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict, energies_dict: Dict):

@@ -265,13 +265,11 @@ def remove_hydrogens(pdb_in_path: str, pdb_out_path: str):
 
 def get_resseq(residue: Residue) -> int:
     # Return resseq number
-
     return residue.get_full_id()[3][1]
 
 
 def get_hetatm(residue: Residue) -> int:
     # Return hetatm
-
     return residue.get_full_id()[3][0]
 
 
@@ -354,14 +352,31 @@ def parse_pdb_line(line: str) -> Dict:
 
     return parsed_dict
 
+
 def read_bfactors_from_residues(pdb_path: str) -> Dict:
+    #Create a dictionary with each existing chain in the pdb.
+    #In each chain, create a list of N length (corresponding to the number of residues)
+    #Copy the bfactor in the corresponding residue number in the list.
     structure = get_structure(pdb_path=pdb_path)
     return_dict = {}
     for chain in structure[0]:
-        return_dict[chain] = [None]*get_resseq(list(chain.get_residues())[-1])
+        return_dict[chain.get_id()] = []
         for res in list(chain.get_residues()):
-            return_dict[chain][get_resseq(res)] = res.get_atoms[0].bfactor
+            return_dict[chain.get_id()].append(res.get_unpacked_list()[0].bfactor)
     return return_dict
+
+
+def read_residues_from_pdb(pdb_path: str) -> Dict:
+    #Create a dictionary with each existing chain in the pdb.
+    #In each chain, a list with the residue numbers
+    structure = get_structure(pdb_path=pdb_path)
+    return_dict = {}
+    for chain in structure[0]:
+        return_dict[chain.get_id()] = []
+        for res in list(chain.get_residues()):
+            return_dict[chain.get_id()].append(get_resseq(res))
+    return return_dict
+
 
 def split_chains_assembly(pdb_in_path: str,
                           pdb_out_path: str,
@@ -539,7 +554,6 @@ def run_arcimboldo_air(yml_path: str):
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     logging.info('ARCIMBOLDO_AIR cluster run finished successfully.')
-
 
 
 def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies:
