@@ -1,7 +1,6 @@
 import logging
 import os
 import shutil
-import sys
 from typing import List, Dict, Union
 from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence, structures
 from jinja2 import Environment, FileSystemLoader
@@ -447,25 +446,26 @@ class StructureAir:
                 name_job = f'cluster_{counter}'
                 new_path = os.path.join(self.cluster_path, name_job)
                 logging.info(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
-                logging.info((', ').join([utils.get_file_name(template) for template in templates]))
+                logging.info(', '.join([utils.get_file_name(template_in) for template_in in templates]))
                 counter += 1
                 yml_path = self.create_cluster(job_path=new_path, templates=templates)
                 bioutils.run_arcimboldo_air(yml_path=yml_path)
                 rankeds = output_air.read_rankeds(input_path=new_path)
                 results_path = os.path.join(new_path, os.path.basename(self.run_dir), os.path.basename(self.results_dir))
+                templates_path =  os.path.join(new_path, os.path.basename(self.output.templates_path))
+                [shutil.copy2(os.path.join(templates_path, template_in), self.output.templates_path) for template_in in os.listdir(templates_path)]
                 rankeds_path_list = []
                 for ranked in rankeds:
                     rankeds_path_list.append(ranked.path)
                     nonsplit_path = os.path.join(results_path, f'{ranked.name}.pdb')
                     new_name = f'{name_job}_{ranked.name}.pdb'
                     shutil.copy2(nonsplit_path, os.path.join(self.results_dir, new_name))
-
                 self.cluster_list.append(structures.Cluster(
                     name=name_job,
                     path=new_path,
                     relative_path=os.path.join(os.path.basename(self.output_dir), os.path.relpath(new_path, self.output_dir), os.path.basename(self.output.html_path)),
                     rankeds={utils.get_file_name(ranked_path): ranked_path for ranked_path in rankeds_path_list},
-                    templates={utils.get_file_name(template): template for template in templates}
+                    templates={utils.get_file_name(template_in): template_in for template_in in templates}
                 ))
 
 
@@ -475,11 +475,11 @@ class StructureAir:
         features_path = os.path.join(job_path, 'features.pkl')
         utils.create_dir(dir_path=job_path,delete_if_exists=False)
         new_features = features.Features(self.sequence_assembled.sequence_assembled)
-        for template in templates:
-            index = self.feature.get_index_by_name(utils.get_file_name(template))
+        for template_in in templates:
+            index = self.feature.get_index_by_name(utils.get_file_name(template_in))
             template_dict = self.feature.get_template_by_index(index)
             new_features.append_new_template_features(template_dict)
-        total_msa = self.feature.get_msa_length() if(self.cluster_templates_msa) == -1 else self.cluster_templates_msa+1
+        total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
         if self.cluster_templates_msa != 0:
             new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa, delete_positions=self.cluster_templates_msa_delete)
 

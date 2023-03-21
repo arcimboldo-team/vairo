@@ -94,10 +94,14 @@ def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List, predic
     plt.figure(figsize=(8, 8))
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
     for key, values in analysis_dict.items():
-        if key in [utils.get_file_name(clus) for clus in clusters[0]]:
-            plt.scatter(values.x, values.y, marker='*', color='blue', label='Cluster 0')
+        if key.startswith('cluster_'):
+            color = 'red'
         else:
-            plt.scatter(values.x, values.y, color='blue', label='Cluster 1')
+            color = 'blue'
+        if key in [utils.get_file_name(clus) for clus in clusters[0]]:
+            plt.scatter(values.x, values.y, marker='*', color=color, label='Cluster 0')
+        else:
+            plt.scatter(values.x, values.y, color=color, label='Cluster 1')
         plt.annotate(key, (values.x, values.y), horizontalalignment='right', verticalalignment='top',)
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
@@ -351,7 +355,7 @@ class OutputAir:
                 cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
                 clean_dict = {}
                 for key, values in cc_analysis_dict.items():
-                    if values.module > 0.1:
+                    if values.module > 0.1 or values.module < -0.1:
                         clean_dict[trans_dict[int(key) - 1]] = values
                 points = np.array([[values.x, values.y] for values in clean_dict.values()])
                 kmeans = KMeans(n_clusters=2)
@@ -359,6 +363,10 @@ class OutputAir:
                 aux_templates_cluster = [[],[]]
                 for i, label in enumerate(kmeans.labels_):
                     aux_templates_cluster[int(label)].append(paths_in[list(clean_dict.keys())[i]])
+                if self.templates_cluster[0]:
+                    first_element = self.templates_cluster[0][0]
+                    if first_element in aux_templates_cluster[1]:
+                        aux_templates_cluster.append(aux_templates_cluster.pop(0))
                 if not ranked:
                     self.templates_cluster = aux_templates_cluster
                     plot_path = self.analysis_plot_path
@@ -367,7 +375,6 @@ class OutputAir:
                     plot_path = self.analysis_ranked_plot_path
                 plot_cc_analysis(plot_path=plot_path, analysis_dict=clean_dict,
                             clusters=aux_templates_cluster, predictions=ranked)
-
 
     def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
                        experimental_pdb: str, cc_analysis_paths, cluster_templates: bool = False):
@@ -395,9 +402,11 @@ class OutputAir:
         # Split the templates with chains
         for template, template_path in templates_nonsplit_dict.items():
             new_pdb_path = os.path.join(self.templates_path, f'{template}.pdb')
-            shutil.copy2(template_path, new_pdb_path)
             templates_dict[template] = new_pdb_path
-            bioutils.split_chains_assembly(pdb_in_path=new_pdb_path,
+
+            if not cluster_templates:
+                shutil.copy2(template_path, new_pdb_path)
+                bioutils.split_chains_assembly(pdb_in_path=new_pdb_path,
                                            pdb_out_path=new_pdb_path,
                                            sequence_assembled=sequence_assembled)
 
@@ -418,7 +427,7 @@ class OutputAir:
         
         self.cc_analysis(paths_in=templates_dict, cc_analysis_paths=cc_analysis_paths)
 
-        if not self.ranked_list or cluster_templates:
+        if not self.ranked_list:
             logging.info('No ranked PDBs found')
             os.chdir(store_old_dir)
             return
@@ -437,7 +446,11 @@ class OutputAir:
         results = [items for items in combinations(self.ranked_list, r=2)]
         for result in results:
             if result[0].name == self.ranked_list[0].name:
-                rmsd, _, _ = bioutils.superpose_pdbs([result[1].path, result[0].path], result[1].split_path)
+                if not cluster_templates:
+                    rmsd, _, _ = bioutils.superpose_pdbs([result[1].path, result[0].path], result[1].split_path)
+                else:
+                    rmsd, _, _ = bioutils.superpose_pdbs([result[1].path, result[0].path])
+                    shutil.copy2(result[1].path, result[1].split_path)
             else:
                 rmsd, _, _ = bioutils.superpose_pdbs([result[1].path, result[0].path])
             result[0].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[1].name)
@@ -489,7 +502,7 @@ class OutputAir:
                 for template, template_path in templates_dict.items():
                     total_residues = len(
                         [res for res in Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
-                    if i == 0:
+                    if i == 0 and not cluster_templates:
                         rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path], template_path)
                     else:
                         rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path])

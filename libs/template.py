@@ -324,18 +324,18 @@ class Template:
                                                             code_list=new_target_code_list,
                                                             name_list=sequence_name_list)
 
-
             for i, path in enumerate(new_target_path_list):
                 if composition_path_list[i] is None:
                     composition_path_list[i] = path
 
-            if (len(new_target_code_list) != sum(x is not None for x in new_target_path_list)):
-                logging.info(f'Not all chains have been selected in the template {self.pdb_id}. Probabily there are chains with bad alignment.')
+            if len(new_target_code_list) != sum(x is not None for x in new_target_path_list):
+                logging.info(f'Not all chains have been selected in the template {self.pdb_id}. Probably there are chains with bad alignment.')
 
             if not any(new_target_path_list):
-                raise Exception(f'Not possible to meet the requistes for the template {self.pdb_id}. No chains have good alignments')
+                raise Exception(f'Not possible to meet the requisites for the template {self.pdb_id}. No chains have good alignments')
 
         return composition_path_list
+
 
     def choose_best_offset(self, reference, deleted_positions: List[int], code_list: List[str],
                         name_list: List[str]) -> List[Optional[str]]:
@@ -363,6 +363,7 @@ class Template:
                                                                 sequence_name_list=name_list)
 
         return return_offset_list
+
 
     def set_reference_templates(self, a_air):
         # Change pdb_id str to the Template reference
