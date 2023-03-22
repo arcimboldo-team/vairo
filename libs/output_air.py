@@ -346,35 +346,37 @@ class OutputAir:
             new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
             os.rename(os.path.join(cc_path, path), new_path)
             trans_dict[index] = utils.get_file_name(path)
-
-        output_pdb2cc = bioutils.run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
-        if os.path.exists(output_pdb2cc):
-            output_cc = bioutils.run_cc_analysis(input_path=output_pdb2cc,
-                                                 cc_analysis_path=cc_analysis_paths.cc_analysis_path)
-            if os.path.exists(output_cc):
-                cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
-                clean_dict = {}
-                for key, values in cc_analysis_dict.items():
-                    if values.module > 0.1 or values.module < -0.1:
-                        clean_dict[trans_dict[int(key) - 1]] = values
-                points = np.array([[values.x, values.y] for values in clean_dict.values()])
-                kmeans = KMeans(n_clusters=2)
-                kmeans.fit(points)
-                aux_templates_cluster = [[],[]]
-                for i, label in enumerate(kmeans.labels_):
-                    aux_templates_cluster[int(label)].append(paths_in[list(clean_dict.keys())[i]])
-                if self.templates_cluster[0]:
-                    first_element = self.templates_cluster[0][0]
-                    if first_element in aux_templates_cluster[1]:
-                        aux_templates_cluster.append(aux_templates_cluster.pop(0))
-                if not ranked:
-                    self.templates_cluster = aux_templates_cluster
-                    plot_path = self.analysis_plot_path
-                else:
-                    self.templates_predictions_cluster = aux_templates_cluster
-                    plot_path = self.analysis_ranked_plot_path
-                plot_cc_analysis(plot_path=plot_path, analysis_dict=clean_dict,
-                            clusters=aux_templates_cluster, predictions=ranked)
+        if trans_dict:
+            logging.info('Running pdb2cc and ccanalysis with the following templates:')
+            logging.info(' ,'.join([f'{key} = {value}' for key, value in trans_dict.items()]))
+            output_pdb2cc = bioutils.run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
+            if os.path.exists(output_pdb2cc):
+                output_cc = bioutils.run_cc_analysis(input_path=output_pdb2cc,
+                                                     cc_analysis_path=cc_analysis_paths.cc_analysis_path)
+                if os.path.exists(output_cc):
+                    cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
+                    clean_dict = {}
+                    for key, values in cc_analysis_dict.items():
+                        if values.module > 0.1 or values.module < -0.1:
+                            clean_dict[trans_dict[int(key) - 1]] = values
+                    points = np.array([[values.x, values.y] for values in clean_dict.values()])
+                    kmeans = KMeans(n_clusters=2)
+                    kmeans.fit(points)
+                    aux_templates_cluster = [[],[]]
+                    for i, label in enumerate(kmeans.labels_):
+                        aux_templates_cluster[int(label)].append(paths_in[list(clean_dict.keys())[i]])
+                    if self.templates_cluster[0]:
+                        first_element = self.templates_cluster[0][0]
+                        if first_element in aux_templates_cluster[1]:
+                            aux_templates_cluster.append(aux_templates_cluster.pop(0))
+                    if not ranked:
+                        self.templates_cluster = aux_templates_cluster
+                        plot_path = self.analysis_plot_path
+                    else:
+                        self.templates_predictions_cluster = aux_templates_cluster
+                        plot_path = self.analysis_ranked_plot_path
+                    plot_cc_analysis(plot_path=plot_path, analysis_dict=clean_dict,
+                                clusters=aux_templates_cluster, predictions=ranked)
 
     def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled, feature: features.Features,
                        experimental_pdb: str, cc_analysis_paths, cluster_templates: bool = False):

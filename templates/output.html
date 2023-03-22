@@ -655,7 +655,10 @@
             <div id="conclusions" class="section-div">
                 <h2>Conclusions</h2>
                 {% if data.bests_dict|length == 1 %}
-                    <p>The best predicted model is <span style="color:green;">{{ data.ranked_list[0].name }}</span>. The closest template is {{ data.ranked_list[0].superposition_templates[0].template }} with a {{ data.ranked_list[0].superposition_templates[0].rmsd }} RMSD</p>
+                    <p>The best predicted model is <span style="color:green;">{{ data.ranked_list[0].name }}</span>.
+                        {% if data.ranked_list[0].superposition_templates %}
+                            The closest template is {{ data.ranked_list[0].superposition_templates[0].template }} with a {{ data.ranked_list[0].superposition_templates[0].rmsd }} RMSD</p>
+                        {% endif %}
                 {% elif data.bests_dict|length > 1 %}
                     <p>There are {{ data.bests_dict|length }} equal best predicted models:
                         {% for key, value in data.bests_dict.items() %}
@@ -665,6 +668,8 @@
                             {% endif %}
                         {% endfor %}
                     </p>
+                {% else %}
+                    <p>Predictions could not be found.</p>
                 {% endif %}
                 {% if data.template_dict %}
                     <p>The closest templates to the predictions are the following ones:</p>
@@ -736,8 +741,6 @@
                         {% endif %}
                         {% endfor %}
                     {% endif %}
-                {% else %}
-                    <p>Predictions could not be found.</p>
                 {% endif %}
             </div>  
             <div id="citations" class="section-div">
