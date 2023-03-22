@@ -124,7 +124,7 @@ def get_consecutive_numbers(number_list: List[int]) -> List[Tuple[int, int]]:
         group = (map(itemgetter(1), g))
         group = list(map(int, group))
         result_list.append((group[0], group[-1]))
-    
+
     return result_list
 
 
@@ -217,15 +217,17 @@ def clean_files(input_dir: str):
 
 
 def parse_cc_analysis(file_path: str) -> Dict:
-    #Read the output of the cc analysis file
+    # Read the output of the cc analysis file
     return_dict = {}
     with open(file_path) as f_in:
         lines = f_in.readlines()
         for line in lines:
             split_text = line.split()
-            return_dict[split_text[0]] = structures.CCAnalysisOutput(float(split_text[1]), float(split_text[2]), float(split_text[3]), float(split_text[4]))
+            return_dict[split_text[0]] = structures.CCAnalysisOutput(float(split_text[1]), float(split_text[2]),
+                                                                     float(split_text[3]), float(split_text[4]))
 
     return return_dict
+
 
 def parse_aleph_annotate(file_path: str) -> Dict:
     # Read the output of aleph, return a dictionary containing:
@@ -362,6 +364,7 @@ def remove_list_layer(input_list: List[List[str]]) -> List[str]:
 
 def encode_data(input_data):
     return base64.b64encode(open(input_data, 'rb').read()).decode('utf-8')
+
 
 def create_logger():
     # Create logger: The information will be stored in a buffer instead of a file. The buffer can be dumped to

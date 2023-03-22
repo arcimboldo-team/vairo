@@ -5,8 +5,8 @@ from typing import List, Dict, Union
 from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence, structures
 from jinja2 import Environment, FileSystemLoader
 
-
 MIN_RMSD_SPLIT = 5
+
 
 class StructureAir:
 
@@ -73,26 +73,27 @@ class StructureAir:
         self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
         self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
         self.cluster_templates_msa = parameters_dict.get('cluster_templates_msa', self.cluster_templates_msa)
-        self.cluster_templates_msa_delete = utils.expand_residues(parameters_dict.get('cluster_templates_msa_delete', ''))
+        self.cluster_templates_msa_delete = utils.expand_residues(
+            parameters_dict.get('cluster_templates_msa_delete', ''))
         self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
         self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
 
         if 'features' in parameters_dict:
-           for parameters_features in parameters_dict.get('features'):
+            for parameters_features in parameters_dict.get('features'):
                 self.features_input = structures.FeaturesInput(
-                    path = utils.get_mandatory_value(input_load=parameters_features, value='path'),
-                    keep_msa = parameters_features.get('keep_msa', -1),
-                    keep_templates = parameters_features.get('keep_templates', -1),
-                    msa_delete = utils.expand_residues(parameters_features.get('msa_delete', ''))
+                    path=utils.get_mandatory_value(input_load=parameters_features, value='path'),
+                    keep_msa=parameters_features.get('keep_msa', -1),
+                    keep_templates=parameters_features.get('keep_templates', -1),
+                    msa_delete=utils.expand_residues(parameters_features.get('msa_delete', ''))
                 )
-                
+
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
         if experimental_pdb is not None:
             experimental_pdb = bioutils.check_pdb(experimental_pdb, self.input_dir)
             self.experimental_pdb = os.path.join(self.run_dir, os.path.basename(experimental_pdb))
             try:
                 bioutils.generate_multimer_from_pdb(experimental_pdb, self.experimental_pdb)
-            except:
+            except Exception as e:
                 logging.info('Not possible to generate the multimer for the experimental pdb')
 
         sequence_list = []
@@ -113,7 +114,10 @@ class StructureAir:
         elif self.mosaic_seq_partition:
             expanded = utils.expand_partition(self.mosaic_seq_partition)
             for exp in expanded:
-                self.mosaic_partition.append([self.sequence_assembled.get_starting_length(exp[0]-1)+1, self.sequence_assembled.get_starting_length(exp[1]-1)+self.sequence_assembled.get_sequence_length(exp[1]-1)])
+                self.mosaic_partition.append([self.sequence_assembled.get_starting_length(exp[0] - 1) + 1,
+                                              self.sequence_assembled.get_starting_length(
+                                                  exp[1] - 1) + self.sequence_assembled.get_sequence_length(
+                                                  exp[1] - 1)])
             self.mosaic = len(self.mosaic_partition)
 
         if not os.path.exists(self.af2_dbs_path):
@@ -131,7 +135,8 @@ class StructureAir:
                     counter += 1
                     new_name = f'{pdb_id}_{counter}'
                 new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir,
-                                                 input_dir=self.input_dir, num_of_copies=self.sequence_assembled.total_copies, new_name=new_name)
+                                                 input_dir=self.input_dir,
+                                                 num_of_copies=self.sequence_assembled.total_copies, new_name=new_name)
                 self.templates_list.append(new_template)
                 if new_template.pdb_id == reference:
                     self.reference = new_template
@@ -146,16 +151,15 @@ class StructureAir:
 
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
 
-
     def partition_mosaic(self) -> List[features.Features]:
         if not self.mosaic_partition:
-            self.chunk_list = self.sequence_assembled.partition(number_partitions=self.mosaic, overlap=self.mosaic_overlap)
+            self.chunk_list = self.sequence_assembled.partition(number_partitions=self.mosaic,
+                                                                overlap=self.mosaic_overlap)
         else:
-            [self.chunk_list.append((partition[0]-1, partition[1])) for partition in self.mosaic_partition]
+            [self.chunk_list.append((partition[0] - 1, partition[1])) for partition in self.mosaic_partition]
         if self.feature is not None:
             self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
-
 
     def generate_output(self):
         render_dict = {}
@@ -164,13 +168,17 @@ class StructureAir:
         jinja_template = Environment(loader=FileSystemLoader(f'{utils.get_main_path()}/templates/')).from_string(
             template_str)
 
-        render_dict['frobenius_equation'] = utils.encode_data(input_data=f'{utils.get_main_path()}/templates/frobenius_equation.png')
-        render_dict['frobenius_equation2'] = utils.encode_data(input_data=f'{utils.get_main_path()}/templates/frobenius_equation2.png')
+        render_dict['frobenius_equation'] = utils.encode_data(
+            input_data=f'{utils.get_main_path()}/templates/frobenius_equation.png')
+        render_dict['frobenius_equation2'] = utils.encode_data(
+            input_data=f'{utils.get_main_path()}/templates/frobenius_equation2.png')
         render_dict['custom_features'] = self.custom_features
         render_dict['mosaic'] = self.mosaic
         render_dict['total_copies'] = self.sequence_assembled.total_copies
         render_dict['number_templates'] = len(self.templates_list)
-        render_dict['number_alignments'] = len([template_path for template_list in self.template_positions_list for template_path in template_list if template_path is not None])
+        render_dict['number_alignments'] = len(
+            [template_path for template_list in self.template_positions_list for template_path in template_list if
+             template_path is not None])
 
         with open(self.input_path, 'r') as f_in:
             render_dict['bor_text'] = f_in.read()
@@ -195,7 +203,7 @@ class StructureAir:
             render_dict['clustering_ranked_plot'] = utils.encode_data(input_data=self.output.analysis_ranked_plot_path)
 
         if self.output.templates_predictions_cluster:
-            aux_list = [[],[]]
+            aux_list = [[], []]
             for i, cluster in enumerate(self.output.templates_predictions_cluster):
                 aux_list[i] = [utils.get_file_name(temp) for temp in cluster]
             render_dict['templates_predictions_cluster'] = aux_list
@@ -224,9 +232,10 @@ class StructureAir:
 
                 if ranked.superposition_templates:
                     template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
-                
+
                 plddt_dict[ranked.name] = ranked.plddt
-                secondary_dict[ranked.name] = { 'ah': ranked.ah, 'bs': ranked.bs, 'number_total_residues': ranked.total_residues }
+                secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
+                                               'number_total_residues': ranked.total_residues}
                 if ranked.energies is not None:
                     energies_dict[ranked.name] = {'kinetic': ranked.energies.kinetic,
                                                   'potential': ranked.energies.potential
@@ -251,7 +260,8 @@ class StructureAir:
                     frobenius_dict[ranked.name] = frobenius_plots_list + ordered_list
 
             render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
-            render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.filtered}
+            render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if
+                                            ranked.filtered}
 
             if self.templates_list:
                 render_dict['templates_list'] = self.templates_list
@@ -278,14 +288,14 @@ class StructureAir:
             if self.output.experimental_dict:
                 render_dict['table']['experimental_dict'] = self.output.experimental_dict
 
-            self.output.write_tables(rmsd_dict=rmsd_dict, ranked_rmsd_dict=ranked_rmsd_dict, secondary_dict=secondary_dict, plddt_dict=plddt_dict,
-                                     energies_dict=energies_dict)        
-        
+            self.output.write_tables(rmsd_dict=rmsd_dict, ranked_rmsd_dict=ranked_rmsd_dict,
+                                     secondary_dict=secondary_dict, plddt_dict=plddt_dict,
+                                     energies_dict=energies_dict)
+
         render_dict['state'] = self.get_state_text()
 
         with open(self.output.html_path, 'w') as f_out:
             f_out.write(jinja_template.render(data=render_dict))
-
 
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
         # Return the template matching the pdb_id
@@ -293,7 +303,6 @@ class StructureAir:
             if temp.pdb_id == pdb_id:
                 return temp
         return None
-
 
     def order_templates_with_restrictions(self):
         # Order the templates list in order to meet the required dependencies
@@ -318,12 +327,10 @@ class StructureAir:
                 raise Exception('The match conditions could not be applied, there is an endless loop')
         self.templates_list = new_templates_list
 
-
     def append_line_in_templates(self, new_list: List):
         # Add line to the template's matrix.
         # The list contains the position of the chains
         self.template_positions_list.append(new_list)
-
 
     def run_alphafold(self, features_list: List[features.Features]):
         # Create the script and run alphafold         
@@ -345,7 +352,6 @@ class StructureAir:
             self.afrun_list.append(afrun)
             afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
-
     def merge_results(self):
         best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')
 
@@ -363,7 +369,7 @@ class StructureAir:
             ranked_list.sort(key=lambda x: x.plddt, reverse=True)
 
             new_ranked_path = os.path.join(best_rankeds_dir,
-                                            f'ranked_{afrun.start_chunk + 1}-{afrun.end_chunk}.pdb')
+                                           f'ranked_{afrun.start_chunk + 1}-{afrun.end_chunk}.pdb')
             shutil.copy2(ranked_list[0].path, new_ranked_path)
             ranked_list[0].set_path(path=new_ranked_path)
             best_ranked_list.append(ranked_list[0])
@@ -374,7 +380,7 @@ class StructureAir:
             len_sequence = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
 
             if self.mosaic_partition:
-                self.mosaic_overlap = self.mosaic_partition[i][1] - self.mosaic_partition[i+1][0] + 1
+                self.mosaic_overlap = self.mosaic_partition[i][1] - self.mosaic_partition[i + 1][0] + 1
 
             inf_ini = len_sequence - self.mosaic_overlap + 1
             inf_end = len_sequence
@@ -396,7 +402,7 @@ class StructureAir:
             best_min = MIN_RMSD_SPLIT
             with open(delta_out, 'r') as f_in:
                 lines = f_in.readlines()
-                lines = [line.replace('CA','').split() for line in lines]
+                lines = [line.replace('CA', '').split() for line in lines]
                 for deltas in zip(lines, lines[1:], lines[2:], lines[3:]):
                     deltas_sum = sum([float(delta[0]) for delta in deltas])
                     if deltas_sum <= best_min:
@@ -408,24 +414,22 @@ class StructureAir:
 
             inf_cut = int(best_list[1][3])
             inm_cut = int(best_list[2][1])
-            delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(inf_cut + 1, len_sequence + 1, 1)]})
+            delete_residues = change_res.ChangeResidues(
+                chain_res_dict={'A': [*range(inf_cut + 1, len_sequence + 1, 1)]})
             delete_residues.delete_residues(pdb_in_path=inf_path, pdb_out_path=inf_path)
             delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
             delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
             merge_pdbs_list.append(pdb_out)
             inf_path = pdb_out
-        
-        bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
-                                            pdb_out_path=os.path.join(self.results_dir, 'ranked_0.pdb'))
 
+        bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
+                                         pdb_out_path=os.path.join(self.results_dir, 'ranked_0.pdb'))
 
     def set_feature(self, feature: features.Features):
         self.feature = feature
 
-
     def change_state(self, state: int):
         self.state = state
-
 
     def get_state_text(self):
         return {
@@ -436,12 +440,12 @@ class StructureAir:
             '3': 'Finished'
         }[str(self.state)]
 
-
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
         if self.output.templates_cluster:
-            logging.info(f'The templates obtained in alphafold2 can be grouped in { len(self.output.templates_cluster) } clusters')
+            logging.info(
+                f'The templates obtained in alphafold2 can be grouped in {len(self.output.templates_cluster)} clusters')
             for templates in self.output.templates_cluster:
                 name_job = f'cluster_{counter}'
                 new_path = os.path.join(self.cluster_path, name_job)
@@ -451,9 +455,8 @@ class StructureAir:
                 yml_path = self.create_cluster(job_path=new_path, templates=templates)
                 bioutils.run_arcimboldo_air(yml_path=yml_path)
                 rankeds = output_air.read_rankeds(input_path=new_path)
-                results_path = os.path.join(new_path, os.path.basename(self.run_dir), os.path.basename(self.results_dir))
-                templates_path =  os.path.join(new_path, os.path.basename(self.output.templates_path))
-                [shutil.copy2(os.path.join(templates_path, template_in), self.output.templates_path) for template_in in os.listdir(templates_path)]
+                results_path = os.path.join(new_path, os.path.basename(self.run_dir),
+                                            os.path.basename(self.results_dir))
                 rankeds_path_list = []
                 for ranked in rankeds:
                     rankeds_path_list.append(ranked.path)
@@ -463,17 +466,17 @@ class StructureAir:
                 self.cluster_list.append(structures.Cluster(
                     name=name_job,
                     path=new_path,
-                    relative_path=os.path.join(os.path.basename(self.output_dir), os.path.relpath(new_path, self.output_dir), os.path.basename(self.output.html_path)),
+                    relative_path=os.path.join(os.path.basename(self.output_dir),
+                                               os.path.relpath(new_path, self.output_dir),
+                                               os.path.basename(self.output.html_path)),
                     rankeds={utils.get_file_name(ranked_path): ranked_path for ranked_path in rankeds_path_list},
                     templates={utils.get_file_name(template_in): template_in for template_in in templates}
                 ))
 
-
     def create_cluster(self, job_path: str, templates: List[str]) -> str:
-
         yml_path = os.path.join(job_path, 'config.yml')
         features_path = os.path.join(job_path, 'features.pkl')
-        utils.create_dir(dir_path=job_path,delete_if_exists=False)
+        utils.create_dir(dir_path=job_path, delete_if_exists=False)
         new_features = features.Features(self.sequence_assembled.sequence_assembled)
         for template_in in templates:
             index = self.feature.get_index_by_name(utils.get_file_name(template_in))
@@ -481,7 +484,8 @@ class StructureAir:
             new_features.append_new_template_features(template_dict)
         total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
         if self.cluster_templates_msa != 0:
-            new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa, delete_positions=self.cluster_templates_msa_delete)
+            new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa,
+                                          delete_positions=self.cluster_templates_msa_delete)
 
         new_features.write_pkl(features_path)
 
@@ -500,9 +504,8 @@ class StructureAir:
             f_out.write(f'\nfeatures:\n')
             f_out.write('-')
             f_out.write(f' path: {features_path}\n')
-        
-        return yml_path
 
+        return yml_path
 
     def write_input_file(self):
         with open(self.input_path, 'w') as f_out:
@@ -529,7 +532,7 @@ class StructureAir:
             if self.cluster_templates_msa_delete:
                 f_out.write(f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
             if self.features_input:
-                f_out.write(f'\nfeatures:\n') 
+                f_out.write(f'\nfeatures:\n')
                 f_out.write('-')
                 f_out.write(f' path: {self.features_input.path}\n')
                 f_out.write(f'  keep_msa: {self.features_input.keep_msa}\n')
@@ -573,14 +576,15 @@ class StructureAir:
                         for match in template_in.match_restrict_list:
                             f_out.write('  -')
                             f_out.write(f' chain: {match.chain}\n')
-                            f_out.write(f'    position: {match.position + 1 if match.position != -1 else match.position}\n')
+                            f_out.write(
+                                f'    position: {match.position + 1 if match.position != -1 else match.position}\n')
                             if match.residues is not None:
-                                f_out.write(f'    residues: {",".join(map(str, list(match.residues.chain_res_dict.values())[0]))}\n')
+                                f_out.write(
+                                    f'    residues: {",".join(map(str, list(match.residues.chain_res_dict.values())[0]))}\n')
                             if match.reference is not None:
                                 f_out.write(f'    reference: {match.reference}\n')
                             if match.reference_chain is not None:
                                 f_out.write(f'    reference_chain: {match.reference_chain}\n')
-
 
     def __repr__(self) -> str:
         return f' \
