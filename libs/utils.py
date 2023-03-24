@@ -366,6 +366,15 @@ def encode_data(input_data):
     return base64.b64encode(open(input_data, 'rb').read()).decode('utf-8')
 
 
+def read_rankeds(input_path: str) -> List[str]:
+    ranked_paths = [path for path in os.listdir(input_path) if check_ranked(path)]
+    return [structures.Ranked(os.path.join(input_path, path)) for path in sort_by_digit(ranked_paths)]
+
+
+def check_ranked(path: str) -> bool:
+    return re.match('ranked_[0-9]+.pdb', path) or re.match('cluster_[0-9]+_ranked_[0-9]+.pdb', path)
+
+
 def create_logger():
     # Create logger: The information will be stored in a buffer instead of a file. The buffer can be dumped to
     # a file later.

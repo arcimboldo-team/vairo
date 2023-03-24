@@ -9,9 +9,11 @@ import itertools
 from typing import Any, Dict, List, Optional, Tuple, Union
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
-from libs import change_res, structures, template, utils, sequence
+from libs import change_res, structures, utils, sequence
 from scipy.spatial import distance
 from simtk import unit, openmm
+from sklearn.cluster import KMeans
+
 
 
 def download_pdb(pdb_id: str, output_dir: str):
@@ -300,18 +302,65 @@ def run_pdb2cc(templates_path: List[str], pdb2cc_path: str = None) -> str:
     return output_path
 
 
-def run_cc_analysis(input_path: str, cc_analysis_path: str = None) -> str:
+def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = None) -> str:
     output_path = 'cc_analysis.out'
     if cc_analysis_path is None:
         cc_analysis_path = 'cc_analysis'
     cwd = os.getcwd()
     os.chdir(os.path.dirname(input_path))
-    command_line = f'{cc_analysis_path} -dim 2 {os.path.basename(input_path)} {output_path}'
+    command_line = f'{cc_analysis_path} -dim {n_clusters} {os.path.basename(input_path)} {output_path}'
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     p.communicate()
     os.chdir(cwd)
     return f'{os.path.join(os.path.dirname(input_path), output_path)}'
+
+
+def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:
+    utils.create_dir(cc_path, delete_if_exists=True)
+    paths = [shutil.copy2(path, cc_path) for path in paths_in.values()]
+    trans_dict = {}
+    return_templates_cluster = [[] for _ in range(n_clusters)]
+    clean_dict = {}
+    for index, path in enumerate(paths):
+        if utils.check_ranked(os.path.basename(path)):
+            bfactors_dict = read_bfactors_from_residues(path)
+            for chain, residues in bfactors_dict.items():
+                for i in range(len(residues)):
+                    if bfactors_dict[chain][i] is not None:
+                        bfactors_dict[chain][i] = round(bfactors_dict[chain][i] - 70.0, 2)
+            residues_dict = read_residues_from_pdb(path)
+            change = change_res.ChangeResidues(chain_res_dict=residues_dict, chain_bfactors_dict=bfactors_dict)
+            change.change_bfactors(path, path)
+        new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
+        os.rename(os.path.join(cc_path, path), new_path)
+        trans_dict[index] = utils.get_file_name(path)
+    if trans_dict:
+        logging.info('Running pdb2cc and ccanalysis with the following templates:')
+        logging.info(', '.join([f'{key} = {value}' for key, value in trans_dict.items()]))
+        output_pdb2cc = run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
+        if os.path.exists(output_pdb2cc):
+            output_cc = run_cc_analysis(input_path=output_pdb2cc,
+                                        n_clusters=n_clusters,
+                                        cc_analysis_path=cc_analysis_paths.cc_analysis_path)
+            if os.path.exists(output_cc):
+                cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
+                clean_dict = {}
+                for key, values in cc_analysis_dict.items():
+                    if values.module > 0.1 or values.module < -0.1:
+                        clean_dict[trans_dict[int(key) - 1]] = values
+                points = np.array([[values.x, values.y] for values in clean_dict.values()])
+                kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(points)
+                lookup_table = {}
+                counter = 0
+                for i in kmeans.labels_:
+                    if i not in lookup_table:
+                        lookup_table[i] = counter
+                        counter += 1
+                conversion = [lookup_table[label] for label in kmeans.labels_]
+                for i, label in enumerate(conversion):
+                    return_templates_cluster[int(label)].append(paths_in[list(clean_dict.keys())[i]])
+    return return_templates_cluster, clean_dict
 
 
 def extract_cryst_card_pdb(pdb_in_path: str) -> Union[str, None]:

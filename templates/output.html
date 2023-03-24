@@ -357,7 +357,6 @@
             {% if 'clustering_plot' in data %}
                 <div id="clustering" class="section-div">
                     <h2>Clustering</h2>
-                    <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
                     {% if 'cluster_list' in data %}
                         <p>The templates have been divided in {{ data.cluster_list | length }} clusters.
                             {{ data.cluster_list | length }} ARCIMBOLDO_AIR jobs have been launched using the following templates:
@@ -366,23 +365,16 @@
                             {% if loop.first %}
                                 <ul>
                             {% endif %}
-                                <li><a href=../{{ cluster.relative_path }}>{{ cluster.name }}</a>: {{ cluster.templates | join(', ') }}</li>
+                                <li><a href=../{{ cluster.relative_path }}>{{ cluster.label }}</a>: {{ cluster.templates | join(', ') }}</li>
                             {% if loop.last %}
                                 </ul>
                             {% endif %}
                         {% endfor %}
+                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
                     {% endif %}
                     {% if 'clustering_ranked_plot' in data %}
-                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_ranked_plot }}" alt="Clustering plot">
-                        {% for cluster in data.templates_predictions_cluster %}
-                            {% if loop.first %}
-                                <ul>
-                            {% endif %}
-                                <li>Cluster {{ loop.index-1 }}: {{ cluster | join(', ') }}</li>
-                            {% if loop.last %}
-                                </ul>
-                            {% endif %}
-                        {% endfor %}                    {% endif %}
+                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_ranked_plot }}" alt="Clustering plot">                  
+                    {% endif %}
                 </div>
             {% endif %}
             {% if 'frobenius_dict' in data %}

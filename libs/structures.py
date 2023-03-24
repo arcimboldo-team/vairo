@@ -25,9 +25,11 @@ class CCAnalysis:
             self.cc_analysis_path = os.path.join(binaries_path, 'cc_analysis_linux')
             self.pd2cc_path = os.path.join(binaries_path, 'pdb2cc_linux')
 
+
 @dataclasses.dataclass(frozen=True)
 class Cluster:
     name: str
+    label: str
     path: str
     relative_path: str
     rankeds: Dict

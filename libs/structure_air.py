@@ -202,12 +202,6 @@ class StructureAir:
         if os.path.exists(self.output.analysis_ranked_plot_path):
             render_dict['clustering_ranked_plot'] = utils.encode_data(input_data=self.output.analysis_ranked_plot_path)
 
-        if self.output.templates_predictions_cluster:
-            aux_list = [[], []]
-            for i, cluster in enumerate(self.output.templates_predictions_cluster):
-                aux_list[i] = [utils.get_file_name(temp) for temp in cluster]
-            render_dict['templates_predictions_cluster'] = aux_list
-
         if self.cluster_list:
             render_dict['cluster_list'] = self.cluster_list
 
@@ -443,18 +437,22 @@ class StructureAir:
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
-        if self.output.templates_cluster:
+        templates_cluster, _ = bioutils.cc_analysis(paths_in=self.output.templates_dict,
+                                                cc_analysis_paths=self.cc_analysis_paths,
+                                                cc_path=os.path.join(self.results_dir, 'ccanalysis'))
+        if templates_cluster:
             logging.info(
-                f'The templates obtained in alphafold2 can be grouped in {len(self.output.templates_cluster)} clusters')
-            for templates in self.output.templates_cluster:
+                f'The templates obtained in alphafold2 can be grouped in {len(templates_cluster)} clusters')
+            for templates in templates_cluster:
                 name_job = f'cluster_{counter}'
+                label_job = f'Cluster {counter}'
                 new_path = os.path.join(self.cluster_path, name_job)
                 logging.info(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
                 logging.info(', '.join([utils.get_file_name(template_in) for template_in in templates]))
                 counter += 1
                 yml_path = self.create_cluster(job_path=new_path, templates=templates)
                 bioutils.run_arcimboldo_air(yml_path=yml_path)
-                rankeds = output_air.read_rankeds(input_path=new_path)
+                rankeds = utils.read_rankeds(input_path=new_path)
                 results_path = os.path.join(new_path, os.path.basename(self.run_dir),
                                             os.path.basename(self.results_dir))
                 rankeds_path_list = []
@@ -465,6 +463,7 @@ class StructureAir:
                     shutil.copy2(nonsplit_path, os.path.join(self.results_dir, new_name))
                 self.cluster_list.append(structures.Cluster(
                     name=name_job,
+                    label=label_job,
                     path=new_path,
                     relative_path=os.path.join(os.path.basename(self.output_dir),
                                                os.path.relpath(new_path, self.output_dir),
@@ -472,6 +471,7 @@ class StructureAir:
                     rankeds={utils.get_file_name(ranked_path): ranked_path for ranked_path in rankeds_path_list},
                     templates={utils.get_file_name(template_in): template_in for template_in in templates}
                 ))
+
 
     def create_cluster(self, job_path: str, templates: List[str]) -> str:
         yml_path = os.path.join(job_path, 'config.yml')
