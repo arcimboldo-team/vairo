@@ -1,3 +1,4 @@
+import copy
 import os
 import re
 import numpy as np
@@ -7,7 +8,7 @@ from typing import Dict, List, Union, Any
 from Bio.PDB import PDBParser, Selection
 from alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
 from alphafold.common import residue_constants
-from libs import bioutils, utils
+from libs import bioutils, sequence, utils
 
 three_to_one = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ILE': 'I', 'PRO': 'P',
                 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R',
@@ -118,7 +119,7 @@ class Features:
     def get_index_by_name(self, name: str) -> int:
         index = np.where(self.template_features['template_domain_names'] == name.encode())
         return index[0][0]
-
+    
     def get_msa_length(self) -> int:
         return len(self.msa_features['msa'])
 
@@ -153,16 +154,16 @@ class Features:
         }
         return template_dict
 
-    def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = None, delete_positions: List[int] = []):
-        if finish is not None:
-            coverage_msa = []
-            for i in range(start, len(new_msa['msa'])):
-                coverage_msa.append(len([residue for residue in new_msa['msa'][i] if residue != 21]))
-            arr = np.array(coverage_msa)
-            coverage_msa = arr.argsort()[-finish:][::-1]
-            coverage_msa = np.sort(coverage_msa)
-        else:
-            coverage_msa = [i for i in range(start, len(new_msa['msa']))]
+
+    def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = [], positions: List[int] = []):
+        finish = 0 if finish == -1 else finish
+        coverage_msa = []
+        for i in range(start, len(new_msa['msa'])):
+            new_msa = delete_residues_msa(msa=new_msa, position=i, delete_positions=delete_positions)
+            coverage_msa.append(len([residue for residue in new_msa['msa'][i] if residue != 21]))
+        arr = np.array(coverage_msa)
+        coverage_msa = arr.argsort()[-finish:][::-1]
+        coverage_msa = np.sort(coverage_msa)
         for i in coverage_msa:
             msa_dict = {
                 'msa': np.array([new_msa['msa'][i]]),
@@ -171,11 +172,16 @@ class Features:
                 'msa_species_identifiers': np.array([new_msa['msa_species_identifiers'][i]]),
                 'num_alignments': np.zeros(new_msa['num_alignments'].shape)
             }
-            msa_dict = delete_residues_msa(msa_dict, delete_positions=delete_positions)
+            #if positions:
+            #    msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)
             self.append_row_in_msa_from_features(msa_dict)
 
-    def set_template_features(self, new_templates: Dict, finish: int = None, sequence_in: str = None):
-        finish = len(new_templates['template_sequence']) if finish is None else finish
+            if i > 50:
+                break
+
+
+    def set_template_features(self, new_templates: Dict, finish: int = -1, positions: List[int] = [], sequence_in: str = None):
+        finish = len(new_templates['template_sequence']) if finish == -1 else finish
         for i in range(0, finish):
             template_dict = {
                 'template_all_atom_positions': np.array([new_templates['template_all_atom_positions'][i]]),
@@ -188,6 +194,32 @@ class Features:
             if sequence_in is not None:
                 template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
             self.append_new_template_features(template_dict)
+
+            #if positions:
+            #    template_dict = self.expand_template(template_dict=template_dict, expand=positions)
+
+    def expand_msa(self, msa_dict: Dict, expand: List[int]) -> Dict:
+        aux_dict = copy.deepcopy(msa_dict)
+        msa_dict['msa'] = np.full(len(self.query_sequence), 21)
+        msa_dict['msa'][expand[0]:expand[1]] = aux_dict['msa']
+        msa_dict['deletion_matrix_int'] = np.full(len(self.query_sequence), 0)
+        msa_dict['deletion_matrix_int'][expand[0]:expand[1]] = aux_dict['deletion_matrix_int']
+        msa_dict['msa_species_identifiers'] = aux_dict['msa_species_identifiers']
+        return msa_dict
+
+    def expand_template(self, template_dict: Dict, expand: List[int]) -> Dict:
+        aux_dict = copy.deepcopy(template_dict)
+        template_dict['template_all_atom_positions'] = np.zeros((len(self.query_sequence), residue_constants.atom_type_num, 3))
+        template_dict['template_all_atom_positions'][expand[0]:expand[1]] = aux_dict['template_all_atom_positions']
+
+        template_dict['templates_all_atom_masks'] = np.zeros((len(self.query_sequence), residue_constants.atom_type_num))
+        template_dict['template_all_atom_masks'][expand[0]:expand[1]] = aux_dict['template_all_atom_masks']
+        template_dict['templates_aatype'] = residue_constants.sequence_to_onehot('A'*len(self.query_sequence), residue_constants.HHBLITS_AA_TO_ID)
+        template_dict['template_aatype'][expand[0]:expand[1]] = aux_dict['template_aatype']
+        template_dict['template_sequence'][expand[0]:expand[1]] = aux_dict['template_sequence']
+        template_dict['template_domain_names'][expand[0]:expand[1]] = aux_dict['template_domain_names']
+        template_dict['template_sum_probs'][expand[0]:expand[1]] = aux_dict['template_sum_probs']
+        return template_dict
 
     def slicing_features(self, chunk_list: List) -> List:
         # This function will generate as many features
@@ -220,15 +252,15 @@ class Features:
             f'Features has been sliced in {len(features_list)} partitions with the following sizes: {chunk_list}')
         return features_list
 
-
-def delete_residues_msa(msa_dict: Dict, delete_positions: List[int]) -> Dict:
-    for position in delete_positions:
-        if position <= len(msa_dict['msa'][0]):
-            msa_dict['msa'][0, position - 1] = 21
-            msa_dict['deletion_matrix_int'][0, position - 1] = 0
+def delete_residues_msa(msa: Dict, position: int, delete_positions: List[int]) -> Dict:
+    # Delete the specifics residues in the msa.
+    for delete in delete_positions:
+        if delete <= len(msa['msa'][position][0]):
+            msa['msa'][position][0,delete-1] = 21
+            msa['deletion_matrix_int'][position][0,delete-1] = 0
         else:
-            break
-    return msa_dict
+            break            
+    return msa
 
 
 def replace_sequence_template(template_dict: Dict, sequence_in: str) -> Dict:
@@ -241,6 +273,7 @@ def replace_sequence_template(template_dict: Dict, sequence_in: str) -> Dict:
 
 
 def empty_msa_features(query_sequence):
+    # Generate an empty msa, containing one element in the msa (the sequence)
     msa = {'a3m': f'>query\n{query_sequence}'}
     custom_msa = parsers.parse_a3m(msa['a3m'])
 
@@ -358,7 +391,6 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     # WARNING: input PDB must be aligned to the MSA part in features #
 
     seq_length = len(query_sequence)
-
     parser = PDBParser(QUIET=True)
     try:
         structure = parser.get_structure(pdb_id, pdb_path)
@@ -432,7 +464,6 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
 
 def write_templates_in_features(template_features: Dict, output_dir: str, chain='A', print_number=True) -> Dict:
     templates_dict = {}
-
     for pdb_name in template_features['template_domain_names']:
         pdb = pdb_name.decode('utf-8')
         number = '1' if print_number else ''
@@ -475,17 +506,14 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
                     output_pdb.write(atom_line)
     return templates_dict
 
-
 def print_features_from_file(pkl_in_path: str):
     with open(f"{pkl_in_path}", "rb") as input_file:
         features_dict = pickle.load(input_file)
-
     for key in features_dict.keys():
         try:
             logging.info(f'{key} {features_dict[key].shape}')
         except Exception as e:
             pass
-
     logging.info('\n')
     logging.info('MSA:')
     for num, name in enumerate(features_dict['msa']):

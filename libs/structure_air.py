@@ -47,7 +47,7 @@ class StructureAir:
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
         self.state: int = 0
-        self.features_input: Union[structures.FeaturesInput, None] = None
+        self.features_input: List[structures.FeaturesInput] = []
         self.features_list: List[features.Features] = []
         self.chunk_list: List[int] = []
 
@@ -79,16 +79,6 @@ class StructureAir:
         self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
         self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
 
-        if 'features' in parameters_dict:
-            for parameters_features in parameters_dict.get('features'):
-                self.features_input = structures.FeaturesInput(
-                    path=utils.get_mandatory_value(input_load=parameters_features, value='path'),
-                    keep_msa=parameters_features.get('keep_msa', -1),
-                    keep_templates=parameters_features.get('keep_templates', -1),
-                    msa_delete=utils.expand_residues(parameters_features.get('msa_delete', '')),
-                    sequence=bioutils.check_sequence_path(parameters_features.get('sequence', None))
-                )
-
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
         if experimental_pdb is not None:
             experimental_pdb = bioutils.check_pdb(experimental_pdb, self.input_dir)
@@ -106,6 +96,17 @@ class StructureAir:
                 new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
                 sequence_list.append(new_sequence)
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
+
+        if 'features' in parameters_dict:
+            for parameters_features in parameters_dict.get('features'):
+                self.features_input.append(structures.FeaturesInput(
+                    path=utils.get_mandatory_value(input_load=parameters_features, value='path'),
+                    keep_msa=parameters_features.get('keep_msa', -1),
+                    keep_templates=parameters_features.get('keep_templates', -1),
+                    msa_delete=utils.expand_residues(parameters_features.get('msa_delete', '')),
+                    positions=utils.expand_residues(parameters_features.get('positions', f'1-{self.sequence_assembled.total_copies}')),
+                    sequence=bioutils.check_sequence_path(parameters_features.get('sequence', None))
+                ))
 
         if self.mosaic is None:
             self.mosaic = 1
@@ -346,7 +347,7 @@ class StructureAir:
                                                    end_chunk=self.chunk_list[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')
@@ -532,18 +533,18 @@ class StructureAir:
             f_out.write(f'cluster_templates_msa: {self.cluster_templates_msa}\n')
             if self.cluster_templates_msa_delete:
                 f_out.write(f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
-            if self.cluster_templates_sequence is not None:
-                f_out.write(f'  cluster_templates_sequence: {self.cluster_templates_sequence}\n')
-            if self.features_input:
-                f_out.write(f'\nfeatures:\n')
+            f_out.write(f'\nfeatures:\n')
+            for feat in self.features_input:
                 f_out.write('-')
-                f_out.write(f' path: {self.features_input.path}\n')
-                f_out.write(f'  keep_msa: {self.features_input.keep_msa}\n')
-                f_out.write(f'  keep_templates: {self.features_input.keep_templates}\n')
-                if self.features_input.msa_delete:
-                    f_out.write(f'  msa_delete: {",".join(map(str, self.features_input.msa_delete))}\n')
-                if self.features_input.sequence is not None:
-                    f_out.write(f'  sequence: {self.features_input.sequence}\n')
+                f_out.write(f' path: {feat.path}\n')
+                f_out.write(f'  keep_msa: {feat.keep_msa}\n')
+                f_out.write(f'  keep_templates: {feat.keep_templates}\n')
+                if feat.msa_delete:
+                    f_out.write(f'  msa_delete: {",".join(map(str, feat.msa_delete))}\n')
+                if feat.positions:
+                    f_out.write(f'  positions: {",".join(map(str, feat.positions))}\n')
+                if feat.sequence is not None:
+                    f_out.write(f'  sequence: {feat.sequence}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')

@@ -43,6 +43,7 @@ class FeaturesInput:
     keep_templates: int
     msa_delete: List[int]
     sequence: str
+    positions: List[int]
 
 
 @dataclasses.dataclass(frozen=True)

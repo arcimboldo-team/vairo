@@ -83,7 +83,6 @@ def check_pdb(pdb: str, output_dir: str) -> str:
 def check_sequence_path(path_in: str) -> str:
     if path_in is not None:
         if not os.path.exists(path_in):
-            Seq(path_in)
             return path_in
         else:
             return extract_sequence(path_in)
