@@ -533,18 +533,21 @@ class StructureAir:
             f_out.write(f'cluster_templates_msa: {self.cluster_templates_msa}\n')
             if self.cluster_templates_msa_delete:
                 f_out.write(f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
-            f_out.write(f'\nfeatures:\n')
-            for feat in self.features_input:
-                f_out.write('-')
-                f_out.write(f' path: {feat.path}\n')
-                f_out.write(f'  keep_msa: {feat.keep_msa}\n')
-                f_out.write(f'  keep_templates: {feat.keep_templates}\n')
-                if feat.msa_delete:
-                    f_out.write(f'  msa_delete: {",".join(map(str, feat.msa_delete))}\n')
-                if feat.positions:
-                    f_out.write(f'  positions: {",".join(map(str, feat.positions))}\n')
-                if feat.sequence is not None:
-                    f_out.write(f'  sequence: {feat.sequence}\n')
+            if self.cluster_templates_sequence is not None:
+                f_out.write(f'cluster_templates_sequence: {self.cluster_templates_sequence}\n')
+            if self.features_input:
+                f_out.write(f'\nfeatures:\n')
+                for feat in self.features_input:
+                    f_out.write('-')
+                    f_out.write(f' path: {feat.path}\n')
+                    f_out.write(f'  keep_msa: {feat.keep_msa}\n')
+                    f_out.write(f'  keep_templates: {feat.keep_templates}\n')
+                    if feat.msa_delete:
+                        f_out.write(f'  msa_delete: {",".join(map(str, feat.msa_delete))}\n')
+                    if feat.positions:
+                        f_out.write(f'  positions: {",".join(map(str, feat.positions))}\n')
+                    if feat.sequence is not None:
+                        f_out.write(f'  sequence: {feat.sequence}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
