@@ -61,19 +61,16 @@ def get_file_extension(path: str) -> str:
 
 def get_file_name(path: str) -> str:
     # Get the name of the file, without path or extension
-
     return os.path.splitext(os.path.basename(path))[0]
 
 
 def get_readme() -> str:
     # Get README.md file
-
     return os.path.join(os.path.dirname(get_parent_folder(str(Path(__file__)))), 'README.md')
 
 
 def get_main_path() -> Path:
     # Get the path of the main.py
-
     return Path(__file__).parent.parent.absolute()
 
 
@@ -102,13 +99,11 @@ def get_key_for_value(value: str, search_dict: Dict) -> Union[List[str], None]:
 def get_positions_by_chain(path_list: List[str], chain: str) -> List[int]:
     # Give a list of paths, return all the positions in the list
     # that contain the chain
-
     return [path_list.index(path) for path in get_paths_by_chain(path_list, chain)]
 
 
 def get_paths_by_chain(path_list: List[str], search_chain: str) -> List[str]:
     # Return all the paths that contain the chain
-
     return_list = []
     for path in path_list:
         if path is not None and get_chain_and_number(path)[0] == search_chain:
@@ -118,7 +113,6 @@ def get_paths_by_chain(path_list: List[str], search_chain: str) -> List[str]:
 
 def get_consecutive_numbers(number_list: List[int]) -> List[Tuple[int, int]]:
     # Given an integer list, return ranges of consecutive numbers
-
     result_list = []
     for _, g in groupby(enumerate(number_list), lambda x: x[0] - x[1]):
         group = (map(itemgetter(1), g))
@@ -201,7 +195,6 @@ def renum_residues(res_list: List[int], mapping: Dict) -> List[int]:
 
 def rmsilent(file_path: str):
     # Remove file without error if it doesn't exist
-
     for file in glob.glob(file_path):
         try:
             os.remove(file)
@@ -267,7 +260,7 @@ def parse_pisa_general_multimer(pisa_output: str) -> List:
     #   serial
     # ]]
     # It returns a list with all the interfaces found, each
-    # interface contains the requiered information.
+    # interface contains the required information.
 
     return_list = []
     match1 = [m.start() for m in re.finditer(' LIST OF INTERFACES', pisa_output)][0]

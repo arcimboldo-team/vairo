@@ -37,7 +37,7 @@ class Sequence:
                 shutil.copy2(fasta_path, self.fasta_path)
             except shutil.SameFileError:
                 pass
-            
+
             self.name = parameters_dict.get('name', utils.get_file_name(self.fasta_path))
             self.sequence = bioutils.extract_sequence(self.fasta_path)
             self.length = len(self.sequence)
@@ -79,29 +79,26 @@ class SequenceAssembled:
         self.length = len(self.sequence_assembled)
 
     def get_sequence_length(self, i: int) -> int:
-
         return len(self.sequence_list_expanded[i].sequence)
 
     def get_sequence_name(self, i: int) -> str:
-
         return self.sequence_list_expanded[i].name
 
     def get_list_name(self) -> List[str]:
-
         return [sequence.name for sequence in self.sequence_list_expanded]
 
     def get_starting_length(self, i: int) -> int:
-        #Get the starting position of the assembled sequence.
+        # Get the starting position of the assembled sequence.
         offset = 0
         for j in range(i):
             offset += len(self.sequence_list_expanded[j].sequence) + self.glycines
         return offset
 
     def get_real_residue_number(self, i: int, residue: int) -> int:
-        #Given a position (i) and a residue, get the residue number without being splitted in chains
+        # Given a position (i) and a residue, get the residue number without being splitted in chains
         init = self.get_starting_length(i)
-        if residue+init <= self.get_starting_length(i)+self.get_sequence_length(i):
-            return residue+init
+        if residue + init <= self.get_starting_length(i) + self.get_sequence_length(i):
+            return residue + init
         return None
 
     def partition(self, number_partitions: int, overlap: int) -> List[Tuple[int, int]]:
@@ -120,18 +117,18 @@ class SequenceAssembled:
             return chunk_list
         else:
             length_list = [sequence.length for sequence in self.sequence_list_expanded]
-            aprox_length = length/number_partitions
+            aprox_length = length / number_partitions
             actual_partition = 0
             partitions = collections.defaultdict(list)
             for i, element in enumerate(length_list):
-                if number_partitions-actual_partition == len(length_list)-i and not partitions[actual_partition]:
+                if number_partitions - actual_partition == len(length_list) - i and not partitions[actual_partition]:
                     partitions[actual_partition].append(element)
                     actual_partition += 1
-                elif (number_partitions-1)-actual_partition == 0:
+                elif (number_partitions - 1) - actual_partition == 0:
                     partitions[actual_partition].append(element)
                 else:
                     length_partition = sum([length for length in partitions[actual_partition]])
-                    if (length_partition+element) > aprox_length*1.2:
+                    if (length_partition + element) > aprox_length * 1.2:
                         actual_partition += 1
                     partitions[actual_partition].append(element)
 
@@ -140,16 +137,14 @@ class SequenceAssembled:
             chunk_list = []
             for i in range(0, number_partitions):
                 count += len(partitions[i])
-                starting_length = self.get_starting_length(count-1)
-                sequence_length = self.get_sequence_length(count-1)
-                end_position = starting_length + int(sequence_length/2)
+                starting_length = self.get_starting_length(count - 1)
+                sequence_length = self.get_sequence_length(count - 1)
+                end_position = starting_length + int(sequence_length / 2)
                 if i == 0:
-                    chunk_list.append((int(starting_position), int(end_position + overlap/2)))
-                elif i == number_partitions-1:
-                    chunk_list.append((int(starting_position - overlap/2), int(length)))
+                    chunk_list.append((int(starting_position), int(end_position + overlap / 2)))
+                elif i == number_partitions - 1:
+                    chunk_list.append((int(starting_position - overlap / 2), int(length)))
                 else:
-                    chunk_list.append((int(starting_position - overlap/2), int(end_position + overlap/2)))
-                starting_position =  end_position
+                    chunk_list.append((int(starting_position - overlap / 2), int(end_position + overlap / 2)))
+                starting_position = end_position
             return chunk_list
-
-            

@@ -61,14 +61,16 @@ def convert_residues(residues_list: List[List], sequence_assembled):
                     residues_list.append(result)
     return residues_list
 
+
 def get_best_ranked_by_template(cluster_list: List, ranked_list: List) -> Dict:
     return_dict = {}
     for i, cluster in enumerate(cluster_list):
         ranked = next((ranked.split_path for ranked in ranked_list if f'cluster_{i}' in ranked.name), None)
         if ranked is None:
-            ranked = ranked_list[0].split.path
+            ranked = ranked_list[0].split_path
         return_dict.update(dict.fromkeys(cluster, ranked))
     return return_dict
+
 
 def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.figure(figsize=(18, 6))
@@ -109,7 +111,7 @@ def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List, predic
             else:
                 text.append(text_cluster)
                 text_cluster = f' {name},'
-        text.append(text_cluster[:-1]+'\n')
+        text.append(text_cluster[:-1] + '\n')
 
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
@@ -351,7 +353,7 @@ class OutputAir:
         plot_sequence(plot_path=self.sequence_plot_path, a_air=a_air)
 
     def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled,
-                       feature: features.Features, experimental_pdb: str, cc_analysis_paths, 
+                       feature: features.Features, experimental_pdb: str, cc_analysis_paths,
                        cluster_templates: bool = False):
         # Read all templates and rankeds, if there are no ranked, raise an error
 
@@ -368,10 +370,10 @@ class OutputAir:
         store_old_dir = os.getcwd()
         os.chdir(self.tmp_dir)
 
-
         if feature is not None:
-            self.templates_nonsplit_dict = feature.write_all_templates_in_features(output_dir=self.templates_nonsplit_dir,
-                                                                              print_number=False)
+            self.templates_nonsplit_dict = feature.write_all_templates_in_features(
+                output_dir=self.templates_nonsplit_dir,
+                print_number=False)
         # Split the templates with chains
         for template, template_path in self.templates_nonsplit_dict.items():
             new_pdb_path = os.path.join(self.templates_path, f'{template}.pdb')
@@ -464,14 +466,18 @@ class OutputAir:
 
         # Generate CCANALYSIS plots, one without rankeds and another one with rankeds.
         templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=self.templates_dict,
-                                            cc_analysis_paths=cc_analysis_paths,
-                                            cc_path=os.path.join(self.results_dir, 'ccanalysis'))
-        plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=analysis_dict, clusters=templates_cluster_list)
+                                                                     cc_analysis_paths=cc_analysis_paths,
+                                                                     cc_path=os.path.join(self.results_dir,
+                                                                                          'ccanalysis'))
+        plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=analysis_dict,
+                         clusters=templates_cluster_list)
         aux_dict = dict({ranked.name: ranked.split_path for ranked in self.ranked_list}, **self.templates_dict)
         templates_cluster_ranked_list, analysis_dict = bioutils.cc_analysis(paths_in=aux_dict,
-                                            cc_analysis_paths=cc_analysis_paths,
-                                            cc_path=os.path.join(self.results_dir, 'ccanalysis_ranked'))
-        plot_cc_analysis(plot_path=self.analysis_ranked_plot_path, analysis_dict=analysis_dict, clusters=templates_cluster_ranked_list, predictions=True)
+                                                                            cc_analysis_paths=cc_analysis_paths,
+                                                                            cc_path=os.path.join(self.results_dir,
+                                                                                                 'ccanalysis_ranked'))
+        plot_cc_analysis(plot_path=self.analysis_ranked_plot_path, analysis_dict=analysis_dict,
+                         clusters=templates_cluster_ranked_list, predictions=True)
 
         # Superpose each template with all the rankeds.
         if self.templates_dict:
@@ -487,7 +493,12 @@ class OutputAir:
                 ranked.sort_template_rankeds()
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
-        [bioutils.superpose_pdbs([template_path, best_ranked_dict[template_path]],template_path) for template_path in self.templates_dict.values()]
+        if best_ranked_dict:
+            [bioutils.superpose_pdbs([template_path, best_ranked_dict[template_path]], template_path) for template_path in
+                self.templates_dict.values()]
+        else:
+            [bioutils.superpose_pdbs([template_path, self.ranked_list[0].split_path], template_path) for template_path in
+                self.templates_dict.values()]
 
         # Use aleph to generate domains and calculate secondary structure percentage
         for ranked in self.ranked_list:
@@ -566,7 +577,8 @@ class OutputAir:
             sys.stdout = sys.__stdout__
             ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
 
-            interfaces_data_list = bioutils.find_interface_from_pisa(self.templates_dict[template], self.interfaces_path)
+            interfaces_data_list = bioutils.find_interface_from_pisa(self.templates_dict[template],
+                                                                     self.interfaces_path)
             template_interface_list = []
             for interface in interfaces_data_list:
                 template_interface_list.append(f'{interface["chain1"]}{interface["chain2"]}')

@@ -42,6 +42,7 @@ class FeaturesInput:
     keep_msa: int
     keep_templates: int
     msa_delete: List[int]
+    sequence: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -70,6 +71,7 @@ class InterfaceTemplate:
     dist_plot: str
     encoded_dist_plot: bytes
 
+
 @dataclasses.dataclass
 class Interface:
     name: str
@@ -84,13 +86,14 @@ class Interface:
 
     def add_frobenius_information(self, template: str, dist_coverage: float, core: int, dist_plot: str):
         interface = InterfaceTemplate(
-                        template=template,
-                        dist_coverage=dist_coverage,
-                        dist_plot=dist_plot,
-                        encoded_dist_plot=utils.encode_data(dist_plot),
-                        core=core
-                        )
+            template=template,
+            dist_coverage=dist_coverage,
+            dist_plot=dist_plot,
+            encoded_dist_plot=utils.encode_data(dist_plot),
+            core=core
+        )
         self.interface_template.append(interface)
+
 
 @dataclasses.dataclass(frozen=True)
 class Frobenius:
@@ -193,17 +196,18 @@ class Ranked:
     def set_encoded(self, path: str):
         self.encoded = utils.encode_data(path)
 
-    def add_frobenius_plot(self, template: str, dist_plot: str, ang_plot: str, dist_coverage: float, ang_coverage: float, core: float):
+    def add_frobenius_plot(self, template: str, dist_plot: str, ang_plot: str, dist_coverage: float,
+                           ang_coverage: float, core: float):
         frobenius = Frobenius(
-                        template=template, 
-                        dist_plot=dist_plot, 
-                        encoded_dist_plot=utils.encode_data(dist_plot),
-                        ang_plot=ang_plot,
-                        encoded_ang_plot=utils.encode_data(ang_plot),
-                        dist_coverage=dist_coverage, 
-                        ang_coverage=ang_coverage,
-                        core=core
-                        )
+            template=template,
+            dist_plot=dist_plot,
+            encoded_dist_plot=utils.encode_data(dist_plot),
+            ang_plot=ang_plot,
+            encoded_ang_plot=utils.encode_data(ang_plot),
+            dist_coverage=dist_coverage,
+            ang_coverage=ang_coverage,
+            core=core
+        )
         self.frobenius_plots.append(frobenius)
 
     def sort_template_rankeds(self):

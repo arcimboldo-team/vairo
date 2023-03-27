@@ -23,12 +23,14 @@ parameters:
   cluster_templates (optional, bool, false): Cluster templates from preprocessed features.pkl
   cluster_templates_msa (optional, int, 0): Select a specific number of sequences to add to the new features.pkl MSA (-1 to add all the sequences) from the preprocessed features.pkl MSA
   cluster_templates_msa_delete: (optional, range, None): Delete specific residues from the MSA sequences.
+  cluster_templates_sequence: (optional, path, None): Replace templates sequence with sequence in path.
 
 features:
 - path: (mandatory, string): Path to features.pkl
   keep_msa: (optional, int, -1): Keep the msa of the features.pkl 
   keep_templates: (optional, int, -1): Keep the templates of the features.pkl
-  msa_delete:  (optional, range, None): Delete specific residues from the MSA sequences.
+  msa_delete: (optional, range, None): Delete specific residues from the MSA sequences.
+  sequence: (optional, path, None): Replace templates sequence with sequence in path.
 
 sequences:
 - fasta_path:

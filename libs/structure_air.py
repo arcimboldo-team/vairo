@@ -34,6 +34,7 @@ class StructureAir:
         self.cluster_templates: bool = False
         self.cluster_templates_msa: int = 0
         self.cluster_templates_msa_delete: List[int] = []
+        self.cluster_templates_sequence: str = None
         self.glycines: int = 50
         self.template_positions_list: List[List] = []
         self.reference: Union[template.Template, None] = None
@@ -73,8 +74,8 @@ class StructureAir:
         self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
         self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
         self.cluster_templates_msa = parameters_dict.get('cluster_templates_msa', self.cluster_templates_msa)
-        self.cluster_templates_msa_delete = utils.expand_residues(
-            parameters_dict.get('cluster_templates_msa_delete', ''))
+        self.cluster_templates_msa_delete = utils.expand_residues(parameters_dict.get('cluster_templates_msa_delete', ''))
+        self.cluster_templates_sequence = bioutils.check_sequence_path(parameters_dict.get('cluster_templates_sequence', self.cluster_templates_sequence))
         self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
         self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
 
@@ -84,7 +85,8 @@ class StructureAir:
                     path=utils.get_mandatory_value(input_load=parameters_features, value='path'),
                     keep_msa=parameters_features.get('keep_msa', -1),
                     keep_templates=parameters_features.get('keep_templates', -1),
-                    msa_delete=utils.expand_residues(parameters_features.get('msa_delete', ''))
+                    msa_delete=utils.expand_residues(parameters_features.get('msa_delete', '')),
+                    sequence=bioutils.check_sequence_path(parameters_features.get('sequence', None))
                 )
 
         experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
@@ -344,7 +346,7 @@ class StructureAir:
                                                    end_chunk=self.chunk_list[i][1],
                                                    feature=feature)
             self.afrun_list.append(afrun)
-            afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')
@@ -438,8 +440,8 @@ class StructureAir:
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
         templates_cluster, _ = bioutils.cc_analysis(paths_in=self.output.templates_dict,
-                                                cc_analysis_paths=self.cc_analysis_paths,
-                                                cc_path=os.path.join(self.results_dir, 'ccanalysis'))
+                                                    cc_analysis_paths=self.cc_analysis_paths,
+                                                    cc_path=os.path.join(self.results_dir, 'ccanalysis'))
         if templates_cluster:
             logging.info(
                 f'The templates obtained in alphafold2 can be grouped in {len(templates_cluster)} clusters')
@@ -472,7 +474,6 @@ class StructureAir:
                     templates={utils.get_file_name(template_in): template_in for template_in in templates}
                 ))
 
-
     def create_cluster(self, job_path: str, templates: List[str]) -> str:
         yml_path = os.path.join(job_path, 'config.yml')
         features_path = os.path.join(job_path, 'features.pkl')
@@ -482,10 +483,6 @@ class StructureAir:
             index = self.feature.get_index_by_name(utils.get_file_name(template_in))
             template_dict = self.feature.get_template_by_index(index)
             new_features.append_new_template_features(template_dict)
-        total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
-        if self.cluster_templates_msa != 0:
-            new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa,
-                                          delete_positions=self.cluster_templates_msa_delete)
 
         new_features.write_pkl(features_path)
 
@@ -504,7 +501,11 @@ class StructureAir:
             f_out.write(f'\nfeatures:\n')
             f_out.write('-')
             f_out.write(f' path: {features_path}\n')
-
+            f_out.write(f'  keep_templates: {self.features_input.keep_templates}\n')
+            if self.features_input.msa_delete:
+                f_out.write(f'  msa_delete: {",".join(map(str, self.features_input.msa_delete))}\n')
+            if self.features_input.sequence is not None:
+                f_out.write(f'  sequence: {self.features_input.sequence}\n')
         return yml_path
 
     def write_input_file(self):
@@ -531,6 +532,8 @@ class StructureAir:
             f_out.write(f'cluster_templates_msa: {self.cluster_templates_msa}\n')
             if self.cluster_templates_msa_delete:
                 f_out.write(f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
+            if self.cluster_templates_sequence is not None:
+                f_out.write(f'  cluster_templates_sequence: {self.cluster_templates_sequence}\n')
             if self.features_input:
                 f_out.write(f'\nfeatures:\n')
                 f_out.write('-')
@@ -539,6 +542,8 @@ class StructureAir:
                 f_out.write(f'  keep_templates: {self.features_input.keep_templates}\n')
                 if self.features_input.msa_delete:
                     f_out.write(f'  msa_delete: {",".join(map(str, self.features_input.msa_delete))}\n')
+                if self.features_input.sequence is not None:
+                    f_out.write(f'  sequence: {self.features_input.sequence}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')

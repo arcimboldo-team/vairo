@@ -7,7 +7,7 @@ import subprocess
 import numpy as np
 import itertools
 from typing import Any, Dict, List, Optional, Tuple, Union
-from Bio import SeqIO
+from Bio import SeqIO, Seq
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
 from libs import change_res, structures, utils, sequence
 from scipy.spatial import distance
@@ -79,6 +79,14 @@ def check_pdb(pdb: str, output_dir: str) -> str:
 
     return pdb
 
+
+def check_sequence_path(path_in: str) -> str:
+    if path_in is not None:
+        if not os.path.exists(path_in):
+            Seq(path_in)
+            return path_in
+        else:
+            return extract_sequence(path_in)
 
 def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
     # Add a cryst1 record to a pdb file

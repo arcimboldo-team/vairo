@@ -6,7 +6,7 @@ os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
-from libs import features, structure_air, utils
+from libs import features, structure_air, utils, bioutils
 
 
 def main():
@@ -63,10 +63,12 @@ def main():
                                                        delete_positions=a_air.features_input.msa_delete)
                 if a_air.features_input.keep_templates != 0:
                     if a_air.features_input.keep_templates == -1:
-                        a_air.feature.set_template_features(new_templates=feat_aux.template_features)
+                        a_air.feature.set_template_features(new_templates=feat_aux.template_features,
+                                                            sequence_in=a_air.features_input.sequence)
                     else:
                         a_air.feature.set_template_features(new_templates=feat_aux.template_features,
-                                                            finish=a_air.features_input.keep_templates)
+                                                            finish=a_air.features_input.keep_templates,
+                                                            sequence_in=a_air.features_input.sequence)
 
             a_air.change_state(state=1)
             a_air.generate_output()
@@ -78,7 +80,7 @@ def main():
                 for sequence in a_air.sequence_assembled.sequence_list:
                     alignment_dir = os.path.join(a_air.run_dir, sequence.name)
                     utils.create_dir(alignment_dir)
-                    template.align(output_dir=alignment_dir, sequence=sequence)
+                    template.align(output_dir=alignment_dir, sequence_in=sequence)
                 template.generate_features(
                     output_dir=a_air.run_dir,
                     global_reference=a_air.reference,

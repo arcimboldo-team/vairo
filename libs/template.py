@@ -178,7 +178,7 @@ class Template:
         #   - Convert pdb to cif, this is necessary to run hhsearch.
         #   - Create a fake hhsearch database with just our .cif in it. 
         #   - Run hhsearch, align the .cif with the given sequence.
-        #   - For each chain, extract the features from the alignment result, create the
+        #   - For each chain, extract the features from the alignment result, create
         #       the templates for each chain, each template has the chain 'A'.
         #   - Change the specified residues in the input in all the templates.
 
