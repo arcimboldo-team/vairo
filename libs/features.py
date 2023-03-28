@@ -154,7 +154,6 @@ class Features:
         }
         return template_dict
 
-
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = [], positions: List[int] = []):
         finish = 0 if finish == -1 else finish
         coverage_msa = []
@@ -172,8 +171,8 @@ class Features:
                 'msa_species_identifiers': np.array([new_msa['msa_species_identifiers'][i]]),
                 'num_alignments': np.zeros(new_msa['num_alignments'].shape)
             }
-            #if positions:
-            #    msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)
+            if positions:
+                msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)
             self.append_row_in_msa_from_features(msa_dict)
 
             if i > 50:
@@ -193,10 +192,9 @@ class Features:
             }
             if sequence_in is not None:
                 template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
+            if positions:
+                template_dict = self.expand_template(template_dict=template_dict, expand=positions)            
             self.append_new_template_features(template_dict)
-
-            #if positions:
-            #    template_dict = self.expand_template(template_dict=template_dict, expand=positions)
 
     def expand_msa(self, msa_dict: Dict, expand: List[int]) -> Dict:
         aux_dict = copy.deepcopy(msa_dict)
