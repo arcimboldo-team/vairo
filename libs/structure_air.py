@@ -483,8 +483,14 @@ class StructureAir:
         for template_in in templates:
             index = self.feature.get_index_by_name(utils.get_file_name(template_in))
             template_dict = self.feature.get_template_by_index(index)
+            if self.cluster_templates_sequence is not None:
+                template_dict = features.replace_sequence_template(template_dict=template_dict, sequence_in=self.cluster_templates_sequence)
             new_features.append_new_template_features(template_dict)
 
+        total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
+        if self.cluster_templates_msa != 0:
+            new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa,
+                                          delete_positions=self.cluster_templates_msa_delete)
         new_features.write_pkl(features_path)
 
         with open(yml_path, 'w') as f_out:
@@ -502,11 +508,8 @@ class StructureAir:
             f_out.write(f'\nfeatures:\n')
             f_out.write('-')
             f_out.write(f' path: {features_path}\n')
-            f_out.write(f'  keep_templates: {self.features_input.keep_templates}\n')
-            if self.features_input.msa_delete:
-                f_out.write(f'  msa_delete: {",".join(map(str, self.features_input.msa_delete))}\n')
-            if self.features_input.sequence is not None:
-                f_out.write(f'  sequence: {self.features_input.sequence}\n')
+            f_out.write(f'  keep_msa: -1\n')
+            f_out.write(f'  keep_templates: -1\n')
         return yml_path
 
     def write_input_file(self):
