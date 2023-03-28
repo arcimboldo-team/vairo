@@ -146,21 +146,21 @@ def plot_sequence(plot_path: str, a_air):
 
     ax_secondary = ax.secondary_xaxis('top')
     ax_secondary.set_xticks(
-        [a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
         rotation=45)
-    ax_secondary.set_xticks(list(ax_secondary.get_xticks()) + [
-        a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in
-        range(a_air.sequence_assembled.total_copies)], rotation=45)
+    ax_secondary.set_xticks(
+        ticks=list(ax_secondary.get_xticks()) + [a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        rotation=45)
     ax_secondary.set_xticklabels(
-        [1] * a_air.sequence_assembled.total_copies + [a_air.sequence_assembled.get_sequence_length(i) + 1 for i in
-                                                       range(a_air.sequence_assembled.total_copies)], rotation=45)
-    ax.set_xticks(
-        [a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        labels=[1] * a_air.sequence_assembled.total_copies + [a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
         rotation=45)
-    ax.set_xticks(list(ax.get_xticks()) + [
-        a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in
-        range(a_air.sequence_assembled.total_copies)], rotation=45)
-    ax.set_xticklabels(ax.get_xticks(), rotation=45)
+    ax.set_xticks(
+        ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        rotation=45)
+    ax.set_xticks(
+        ticks=list(ax.get_xticks()) + [a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        rotation=45)
+    ax.set_xticklabels(labels=ax.get_xticks(), rotation=45)
     ax.set_xlim(0, len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines)
     ax.set_yticks([])
     fig.tight_layout()
@@ -199,18 +199,18 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     names = [name for name in names if name != '']
     if len(names) > 30:
         number_of_templates += 1
-        aligned_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
+        add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
         for name in names:
             if plot_type == 'msa':
                 features_search = a_air.feature.get_msa_by_name(name)
             else:
                 features_search = a_air.feature.get_sequence_by_name(name)
             aligned_sequence = compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
-            new_array = [0 if align == '0' else 1 for align in aligned_sequence]
-            aligned_sequences = np.add(new_array, aligned_sequences)
-        aligned_sequences = [aligned / len(names) for aligned in aligned_sequences]
-        for i in range(1, len(aligned_sequences)):
-            ax.barh('Percentage', 1, left=i, height=0.5, color=str(aligned_sequences[i - 1]))
+            aligned_sequence = [1 if align == '-' else float(align) for align in aligned_sequence]
+            add_sequences = np.add(aligned_sequence, add_sequences)
+        add_sequences = [aligned / len(names) for aligned in add_sequences]
+        for i in range(1, len(add_sequences)):
+            ax.barh('Percentage', 1, left=i, height=0.5, color=str(add_sequences[i - 1]))
     else:
         pdb_hits_path = os.path.join(a_air.results_dir, 'msas/pdb_hits.hhr')
         hhr_text = ''
