@@ -352,7 +352,6 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
                                         cc_analysis_path=cc_analysis_paths.cc_analysis_path)
             if os.path.exists(output_cc):
                 cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
-                clean_dict = {}
                 for key, values in cc_analysis_dict.items():
                     if values.module > 0.1 or values.module < -0.1:
                         clean_dict[trans_dict[int(key) - 1]] = values

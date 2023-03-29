@@ -469,15 +469,17 @@ class OutputAir:
                                                                      cc_analysis_paths=cc_analysis_paths,
                                                                      cc_path=os.path.join(self.results_dir,
                                                                                           'ccanalysis'))
-        plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=analysis_dict,
-                         clusters=templates_cluster_list)
+        if analysis_dict:
+            plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=analysis_dict,
+                             clusters=templates_cluster_list)
         aux_dict = dict({ranked.name: ranked.split_path for ranked in self.ranked_list}, **self.templates_dict)
-        templates_cluster_ranked_list, analysis_dict = bioutils.cc_analysis(paths_in=aux_dict,
+        templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_analysis(paths_in=aux_dict,
                                                                             cc_analysis_paths=cc_analysis_paths,
                                                                             cc_path=os.path.join(self.results_dir,
                                                                                                  'ccanalysis_ranked'))
-        plot_cc_analysis(plot_path=self.analysis_ranked_plot_path, analysis_dict=analysis_dict,
-                         clusters=templates_cluster_ranked_list, predictions=True)
+        if analysis_dict_ranked:
+            plot_cc_analysis(plot_path=self.analysis_ranked_plot_path, analysis_dict=analysis_dict_ranked,
+                             clusters=templates_cluster_ranked_list, predictions=True)
 
         # Superpose each template with all the rankeds.
         if self.templates_dict:
