@@ -184,22 +184,20 @@ class Features:
         finish = len(new_templates['template_sequence']) if finish == -1 else finish
         for i in range(0, finish):
             index = self.get_index_by_name(name=new_templates['template_domain_names'][i].decode())
-            if index is not None:
-                new_name = f'{new_templates["template_domain_names"][i].decode()}_{i}'
-                new_templates['template_domain_names'][i] = new_name.encode()
-            template_dict = {
-                'template_all_atom_positions': np.array([new_templates['template_all_atom_positions'][i]]),
-                'template_all_atom_masks': np.array([new_templates['template_all_atom_masks'][i]]),
-                'template_aatype': np.array([new_templates['template_aatype'][i]]),
-                'template_sequence': np.array([new_templates['template_sequence'][i]]),
-                'template_domain_names': np.array([new_templates['template_domain_names'][i]]),
-                'template_sum_probs': np.array([new_templates['template_sum_probs'][i]])
-            }
-            if sequence_in is not None:
-                template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
-            if positions:
-                template_dict = self.expand_template(template_dict=template_dict, expand=positions)
-            self.append_new_template_features(template_dict)
+            if index is None:
+                template_dict = {
+                    'template_all_atom_positions': np.array([new_templates['template_all_atom_positions'][i]]),
+                    'template_all_atom_masks': np.array([new_templates['template_all_atom_masks'][i]]),
+                    'template_aatype': np.array([new_templates['template_aatype'][i]]),
+                    'template_sequence': np.array([new_templates['template_sequence'][i]]),
+                    'template_domain_names': np.array([new_templates['template_domain_names'][i]]),
+                    'template_sum_probs': np.array([new_templates['template_sum_probs'][i]])
+                }
+                if sequence_in is not None:
+                    template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
+                if positions:
+                    template_dict = self.expand_template(template_dict=template_dict, expand=positions)
+                self.append_new_template_features(template_dict)
 
     def expand_msa(self, msa_dict: Dict, expand: List[int]) -> Dict:
         aux_dict = copy.deepcopy(msa_dict)
