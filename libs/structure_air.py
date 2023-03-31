@@ -39,7 +39,7 @@ class StructureAir:
         self.template_positions_list: List[List] = []
         self.reference: Union[template.Template, None] = None
         self.custom_features: bool = True
-        self.experimental_pdb: Union[str, None] = None
+        self.experimental_pdbs: List[str] = []
         self.mosaic: Union[int, None] = None
         self.mosaic_overlap: int = 150
         self.mosaic_partition: List[int] = []
@@ -79,14 +79,16 @@ class StructureAir:
         self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
         self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
 
-        experimental_pdb = parameters_dict.get('experimental_pdb', self.experimental_pdb)
-        if experimental_pdb is not None:
-            experimental_pdb = bioutils.check_pdb(experimental_pdb, self.input_dir)
-            self.experimental_pdb = os.path.join(self.run_dir, os.path.basename(experimental_pdb))
-            try:
-                bioutils.generate_multimer_from_pdb(experimental_pdb, self.experimental_pdb)
-            except Exception as e:
-                logging.info('Not possible to generate the multimer for the experimental pdb')
+        experimental_string = parameters_dict.get('experimental_pdbs', self.experimental_pdbs)
+        if experimental_string:
+            experimental_list = experimental_string.replace(' ', '').split(',')
+            for pdb in experimental_list:
+                pdb_path = bioutils.check_pdb(pdb, self.input_dir)
+                self.experimental_pdbs.append(os.path.join(self.input_dir, os.path.basename(pdb_path)))
+                try:
+                    bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
+                except Exception as e:
+                    logging.info('Not possible to generate the multimer for the experimental pdb')
 
         sequence_list = []
         if 'sequences' not in parameters_dict:
@@ -522,8 +524,8 @@ class StructureAir:
             f_out.write(f'run_af2: {self.run_af2}\n')
             if self.reference is not None:
                 f_out.write(f'reference: {self.reference.pdb_path}\n')
-            if self.experimental_pdb is not None:
-                f_out.write(f'experimental_pdb: {self.experimental_pdb}\n')
+            if self.experimental_pdbs:
+                f_out.write(f'experimental_pdbs: {",".join(map(str, self.experimental_pdbs))}\n')
             f_out.write(f'custom_features: {self.custom_features}\n')
             f_out.write(f'small_bfd: {self.small_bfd}\n')
             f_out.write(f'mosaic: {self.mosaic}\n')

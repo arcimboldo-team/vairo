@@ -146,19 +146,26 @@ def plot_sequence(plot_path: str, a_air):
 
     ax_secondary = ax.secondary_xaxis('top')
     ax_secondary.set_xticks(
-        ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in
+               range(a_air.sequence_assembled.total_copies)],
         rotation=45)
     ax_secondary.set_xticks(
-        ticks=list(ax_secondary.get_xticks()) + [a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        ticks=list(ax_secondary.get_xticks()) + [
+            a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i
+            in range(a_air.sequence_assembled.total_copies)],
         rotation=45)
     ax_secondary.set_xticklabels(
-        labels=[1] * a_air.sequence_assembled.total_copies + [a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        labels=[1] * a_air.sequence_assembled.total_copies + [a_air.sequence_assembled.get_sequence_length(i) + 1 for i
+                                                              in range(a_air.sequence_assembled.total_copies)],
         rotation=45)
     ax.set_xticks(
-        ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in
+               range(a_air.sequence_assembled.total_copies)],
         rotation=45)
     ax.set_xticks(
-        ticks=list(ax.get_xticks()) + [a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)],
+        ticks=list(ax.get_xticks()) + [
+            a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i
+            in range(a_air.sequence_assembled.total_copies)],
         rotation=45)
     ax.set_xticklabels(labels=ax.get_xticks(), rotation=45)
     ax.set_xlim(0, len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines)
@@ -353,7 +360,7 @@ class OutputAir:
         plot_sequence(plot_path=self.sequence_plot_path, a_air=a_air)
 
     def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled,
-                       feature: features.Features, experimental_pdb: str, cc_analysis_paths,
+                       feature: features.Features, experimental_pdbs: List[str], cc_analysis_paths,
                        cluster_templates: bool = False):
         # Read all templates and rankeds, if there are no ranked, raise an error
 
@@ -474,9 +481,10 @@ class OutputAir:
                              clusters=templates_cluster_list)
         aux_dict = dict({ranked.name: ranked.split_path for ranked in self.ranked_list}, **self.templates_dict)
         templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_analysis(paths_in=aux_dict,
-                                                                            cc_analysis_paths=cc_analysis_paths,
-                                                                            cc_path=os.path.join(self.results_dir,
-                                                                                                 'ccanalysis_ranked'))
+                                                                                   cc_analysis_paths=cc_analysis_paths,
+                                                                                   cc_path=os.path.join(
+                                                                                       self.results_dir,
+                                                                                       'ccanalysis_ranked'))
         if analysis_dict_ranked:
             plot_cc_analysis(plot_path=self.analysis_ranked_plot_path, analysis_dict=analysis_dict_ranked,
                              clusters=templates_cluster_ranked_list, predictions=True)
@@ -496,11 +504,13 @@ class OutputAir:
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
         if best_ranked_dict:
-            [bioutils.superpose_pdbs([template_path, best_ranked_dict[template_path]], template_path) for template_path in
-                self.templates_dict.values()]
+            [bioutils.superpose_pdbs([template_path, best_ranked_dict[template_path]], template_path) for template_path
+             in
+             self.templates_dict.values()]
         else:
-            [bioutils.superpose_pdbs([template_path, self.ranked_list[0].split_path], template_path) for template_path in
-                self.templates_dict.values()]
+            [bioutils.superpose_pdbs([template_path, self.ranked_list[0].split_path], template_path) for template_path
+             in
+             self.templates_dict.values()]
 
         # Use aleph to generate domains and calculate secondary structure percentage
         for ranked in self.ranked_list:
@@ -556,15 +566,15 @@ class OutputAir:
                                                                   ))
 
         # Superpose the experimental pdb with all the rankeds and templates
-        if experimental_pdb is not None:
-            for ranked in self.ranked_list:
-                rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, ranked.split_path])
-                self.experimental_dict[ranked.name] = round(rmsd, 2)
-            for template, template_path in self.templates_dict.items():
-                rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental_pdb, template_path])
-                self.experimental_dict[template] = round(rmsd, 2)
-            output_pdb = os.path.join(self.output_dir, os.path.basename(experimental_pdb))
-            bioutils.superpose_pdbs([experimental_pdb, reference_superpose], output_pdb)
+
+        for experimental in experimental_pdbs:
+            aux_dict = {}
+            for pdb in [ranked.split_path for ranked in self.ranked_list] + list(self.templates_dict.values()):
+                rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental, pdb])
+                aux_dict[utils.get_file_name(pdb)] = round(rmsd, 2) if rmsd is not None else str(rmsd)
+            output_pdb = os.path.join(self.output_dir, os.path.basename(experimental))
+            bioutils.superpose_pdbs([experimental, reference_superpose], output_pdb)
+            self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
 
         for template, template_path in self.templates_nonsplit_dict.items():
             frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{template}.txt')
@@ -678,10 +688,11 @@ class OutputAir:
 
             if bool(self.experimental_dict):
                 f_in.write('\n\n')
-                f_in.write(f'Superposition with experimental structure\n')
-                data = {'pdb': self.experimental_dict.keys(),
-                        'rmsd': self.experimental_dict.values()
-                        }
+                f_in.write(f'Superposition with experimental structures\n')
+                data = {'experimental': self.experimental_dict.keys()}
+                for keys_pdbs in self.experimental_dict.values():
+                    for key, value in keys_pdbs.items():
+                        data.setdefault(key, []).append(value)
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())
 

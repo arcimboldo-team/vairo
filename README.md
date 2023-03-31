@@ -15,7 +15,7 @@ parameters:
   run_af2 (optional, bool, true): Run AlphaFold2, it can be used to generate a features.pkl without going further.
   stop_after_msa (optional, bool, false): Run AlphaFold2 and stop it after generating the msa.
   reference (optional, string, ''): Existing pdbid or path to a pdb
-  experimental_pdb (optional, string, ''): Existing pdbid or path to a pdb
+  experimental_pdbs (optional, List, []): List of existing pdbid or path to a pdb
   custom_features (optional, bool, true): Run AlphaFold2 without any modification and with AlphaFold2 generated features.pkl
   mosaic (optional, integer, None): Split the sequence in X partitions.
   mosaic_partition (optional, range, None): Split the sequence by the number of residues.
