@@ -205,7 +205,7 @@
                 {% if 'plddt' in data %}
                     <li name="plddt" onclick="move_to(event)" class="sub-menu">PLDDT for predictions</li>
                 {% endif %}
-                {% if 'template_dendogram' in data %}
+                {% if 'clustering_plot' in data %}
                     <li name="clustering" onclick="move_to(event)" class="sub-menu">Clustering</li>                
                 {% endif %}
                 {% if 'frobenius_dict' in data %}
@@ -357,20 +357,23 @@
             {% if 'clustering_plot' in data %}
                 <div id="clustering" class="section-div">
                     <h2>Clustering</h2>
-                    <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
-                    {% if 'clustering_dict' in data %}
-                        <p>The templates have been divided in {{ data.clustering_dict | length }} clusters.
-                            {{ data.clustering_dict | length }} ARCIMBOLDO_AIR jobs have been launched using the following templates:
+                    {% if 'cluster_list' in data %}
+                        <p>The templates have been divided in {{ data.cluster_list | length }} clusters.
+                            {{ data.cluster_list | length }} ARCIMBOLDO_AIR jobs have been launched using the following templates:
                         </p>
-                        {% for key, value in data.clustering_dict.items() %}
+                        {% for cluster in data.cluster_list %}
                             {% if loop.first %}
                                 <ul>
                             {% endif %}
-                                <li><a href={{ value.path }}/output.html>{{ key }}</a>: {{ value.name_templates|join(', ') }}</li>
+                                <li><a href=../{{ cluster.relative_path }}>{{ cluster.label }}</a>: {{ cluster.templates | join(', ') }}</li>
                             {% if loop.last %}
                                 </ul>
                             {% endif %}
                         {% endfor %}
+                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
+                    {% endif %}
+                    {% if 'clustering_ranked_plot' in data %}
+                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_ranked_plot }}" alt="Clustering plot">                  
                     {% endif %}
                 </div>
             {% endif %}
@@ -613,23 +616,23 @@
                     </table>
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
-                    <h3>Experimental pdb</h3>
+                    <h3>Experimental pdbs with predictions and templates</h3>
                     <table>
                         <tr>
-                            <th>pdb</th>
-                            <th>rmsd</th>
+                            <th>experimental pdb</th>
+                            {% for value in data.table.experimental_dict.values() %}
+                                {% for key in value.keys() if loop.first%}
+                                    <th>{{ key }}</th>
+                                {% endfor %}
+                            {% endfor %}
                         </tr>
                         {% for key, value in data.table.experimental_dict.items() %}
-                            {% if key in data.bests_dict %}
-                                <tr style="background-color:{{ data.bests_dict[key].color }};">
-                            {% elif key in data.filtered_dict %}
-                                <tr class="blue-row">
-                            {% else %}
-                                <tr>
-                            {% endif %}
-                                    <td>{{ key }}</td>
-                                    <td>{{ value }}</td>
-                                </tr>
+                            <tr>
+                                <td>{{ key }}</td>
+                                {% for value2 in value.values() %}
+                                    <td>{{ value2 }}</td>
+                                {% endfor %}
+                            </tr>
                         {% endfor %}
                     </table>
                 {% endif %}
@@ -644,7 +647,10 @@
             <div id="conclusions" class="section-div">
                 <h2>Conclusions</h2>
                 {% if data.bests_dict|length == 1 %}
-                    <p>The best predicted model is <span style="color:green;">{{ data.ranked_list[0].name }}</span>. The closest template is {{ data.ranked_list[0].superposition_templates[0].template }} with a {{ data.ranked_list[0].superposition_templates[0].rmsd }} RMSD</p>
+                    <p>The best predicted model is <span style="color:green;">{{ data.ranked_list[0].name }}</span>.
+                        {% if data.ranked_list[0].superposition_templates %}
+                            The closest template is {{ data.ranked_list[0].superposition_templates[0].template }} with a {{ data.ranked_list[0].superposition_templates[0].rmsd }} RMSD</p>
+                        {% endif %}
                 {% elif data.bests_dict|length > 1 %}
                     <p>There are {{ data.bests_dict|length }} equal best predicted models:
                         {% for key, value in data.bests_dict.items() %}
@@ -654,6 +660,8 @@
                             {% endif %}
                         {% endfor %}
                     </p>
+                {% else %}
+                    <p>Predictions could not be found.</p>
                 {% endif %}
                 {% if data.template_dict %}
                     <p>The closest templates to the predictions are the following ones:</p>
@@ -725,8 +733,6 @@
                         {% endif %}
                         {% endfor %}
                     {% endif %}
-                {% else %}
-                    <p>Predictions could not be found.</p>
                 {% endif %}
             </div>  
             <div id="citations" class="section-div">

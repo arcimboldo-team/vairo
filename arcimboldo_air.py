@@ -1,11 +1,13 @@
 #! /usr/bin/env python3
 
 import os
+
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
-from libs import features, structure_air, utils
+from libs import features, structure_air, utils, bioutils
+
 
 def main():
     try:
@@ -48,21 +50,25 @@ def main():
         features_list = []
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
-            a_air.set_feature(feature = features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
 
-            if a_air.features_input:
-                feat_aux = features.create_features_from_file(pkl_in_path=a_air.features_input.path)
-                if a_air.features_input.keep_msa != 0:
-                    if a_air.features_input.keep_msa == -1:
-                        a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=0, delete_positions=a_air.features_input.msa_delete)
-                    else:
-                        a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=0, finish=a_air.features_input.keep_msa, delete_positions=a_air.features_input.msa_delete)
-                if a_air.features_input.keep_templates != 0:
-                    if a_air.features_input.keep_templates == -1:
-                        a_air.feature.set_template_features(new_templates=feat_aux.template_features)
-                    else:
-                        a_air.feature.set_template_features(new_templates=feat_aux.template_features, finish=a_air.features_input.keep_templates)
-                        
+            a_air.set_feature(feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
+            for feat in a_air.features_input:
+                feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
+                if feat.keep_msa != 0:
+                    positions = [a_air.sequence_assembled.get_starting_length(feat.positions[0] - 1),
+                                 a_air.sequence_assembled.get_starting_length(
+                                     feat.positions[-1] - 1) + a_air.sequence_assembled.get_sequence_length(
+                                     feat.positions[-1] - 1)]
+                    a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
+                                                   finish=feat.keep_msa,
+                                                   delete_positions=feat.msa_delete,
+                                                   positions=positions)
+                if feat.keep_templates != 0:
+                    a_air.feature.set_template_features(new_templates=feat_aux.template_features,
+                                                        finish=feat.keep_templates,
+                                                        positions=positions,
+                                                        sequence_in=feat.sequence)
+
             a_air.change_state(state=1)
             a_air.generate_output()
             for template in a_air.templates_list:
@@ -73,7 +79,7 @@ def main():
                 for sequence in a_air.sequence_assembled.sequence_list:
                     alignment_dir = os.path.join(a_air.run_dir, sequence.name)
                     utils.create_dir(alignment_dir)
-                    template.align(output_dir=alignment_dir, sequence=sequence)
+                    template.align(output_dir=alignment_dir, sequence_in=sequence)
                 template.generate_features(
                     output_dir=a_air.run_dir,
                     global_reference=a_air.reference,
@@ -82,15 +88,15 @@ def main():
                 if template.add_to_msa:
                     sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
                     a_air.feature.append_row_in_msa(sequence=sequence_from_template,
-                                            sequence_id=template.pdb_id)
+                                                    sequence_id=template.pdb_id)
                     logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
                 if template.add_to_templates:
                     a_air.feature.append_new_template_features(new_template_features=template.template_features,
-                                                        custom_sum_prob=template.sum_prob)
+                                                               custom_sum_prob=template.sum_prob)
                     logging.info(f'Template {template.pdb_id} was added to templates')
             a_air.feature.write_pkl(os.path.join(a_air.run_dir, 'features.pkl'))
             features_list = a_air.partition_mosaic()
-        
+
         else:
             features_list = [None] * a_air.mosaic
             a_air.partition_mosaic()
@@ -101,25 +107,31 @@ def main():
         if a_air.run_af2:
             logging.info('Start running AlphaFold2')
             a_air.run_alphafold(features_list=features_list)
-            a_air.merge_results()
-            features_path = os.path.join(a_air.run_dir, 'features.pkl')
+            if len(features_list) > 1:
+                a_air.merge_results()
+            features_path = os.path.join(a_air.results_dir, 'features.pkl')
             if a_air.feature is None and os.path.exists(features_path):
                 new_features = features.create_features_from_file(features_path)
                 a_air.set_feature(new_features)
-            os.chdir(a_air.run_dir)
-            a_air.output.set_run_dir(run_dir=a_air.run_dir)
-            a_air.output.analyse_output(sequence_assembled=a_air.sequence_assembled, 
-                                        feature=a_air.feature, 
-                                        experimental_pdb=a_air.experimental_pdb, 
-                                        custom_features=a_air.custom_features,
-                                        cc_analysis_paths=a_air.cc_analysis_paths)
+
+            a_air.output.analyse_output(results_dir=a_air.results_dir,
+                                        sequence_assembled=a_air.sequence_assembled,
+                                        feature=a_air.feature,
+                                        experimental_pdbs=a_air.experimental_pdbs,
+                                        cc_analysis_paths=a_air.cc_analysis_paths,
+                                        cluster_templates=a_air.cluster_templates)
+
             if a_air.cluster_templates:
                 a_air.templates_clustering()
-
+                a_air.output.analyse_output(results_dir=a_air.results_dir,
+                                            sequence_assembled=a_air.sequence_assembled,
+                                            feature=a_air.feature,
+                                            experimental_pdbs=a_air.experimental_pdbs,
+                                            cc_analysis_paths=a_air.cc_analysis_paths)
         a_air.change_state(state=3)
         a_air.generate_output()
         logging.info('ARCIMBOLDO_AIR has finished successfully')
-        
+
     except SystemExit as e:
         sys.exit(e)
     except Exception as e:
@@ -127,6 +139,6 @@ def main():
         a_air.generate_output()
         logging.error('ERROR:', exc_info=True)
 
+
 if __name__ == "__main__":
     main()
-

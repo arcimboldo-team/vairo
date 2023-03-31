@@ -7,11 +7,12 @@ import subprocess
 import numpy as np
 import itertools
 from typing import Any, Dict, List, Optional, Tuple, Union
-from Bio import SeqIO
+from Bio import SeqIO, Seq
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
-from libs import change_res, structures, template, utils, sequence
+from libs import change_res, structures, utils, sequence
 from scipy.spatial import distance
 from simtk import unit, openmm
+from sklearn.cluster import KMeans
 
 
 def download_pdb(pdb_id: str, output_dir: str):
@@ -34,10 +35,11 @@ def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
     return cif_out_path
 
 
-def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int, match_ini: int, match_end: int, pdb_out: str, delta_out: str):
-    #Run the program lsqkab. Write the superposed pdb in pdbout and the deltas in delta_out.
-    #LSQKAB will match the CA atoms from the pdb_inf to fit in the pdb_inm.
-    
+def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int, match_ini: int, match_end: int,
+               pdb_out: str, delta_out: str):
+    # Run the program lsqkab. Write the superposed pdb in pdbout and the deltas in delta_out.
+    # LSQKAB will match the CA atoms from the pdb_inf to fit in the pdb_inm.
+
     script_path = os.path.join(os.path.dirname(pdb_out), f'{utils.get_file_name(pdb_out)}_lsqkab.sh')
     with open(script_path, 'w') as f_in:
         f_in.write('lsqkab ')
@@ -52,7 +54,8 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int,
         f_in.write(f'MATCH RESIDU {fit_ini} TO {fit_end} CHAIN A \n')
         f_in.write(f'end \n')
         f_in.write(f'END-lsqkab')
-    subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=os.path.dirname(pdb_out)).communicate()
+    subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                     cwd=os.path.dirname(pdb_out)).communicate()
 
 
 def check_pdb(pdb: str, output_dir: str) -> str:
@@ -76,6 +79,14 @@ def check_pdb(pdb: str, output_dir: str) -> str:
     return pdb
 
 
+def check_sequence_path(path_in: str) -> str:
+    if path_in is not None:
+        if not os.path.exists(path_in):
+            return path_in
+        else:
+            return extract_sequence(path_in)
+
+
 def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
     # Add a cryst1 record to a pdb file
     try:
@@ -97,6 +108,7 @@ def extract_sequence(fasta_path: str) -> str:
     except Exception as e:
         raise Exception(f'Not possible to extract the sequence from {fasta_path}')
     return str(record.seq)
+
 
 def extract_sequences(fasta_path: str) -> Dict:
     logging.info(f'Extracting sequences from {fasta_path}')
@@ -188,6 +200,7 @@ def erase_pisa(name: str) -> str:
     subprocess.Popen(['pisa', name, '-erase'], stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE).communicate()
 
+
 def read_remark_350(pdb_path: str) -> Tuple[List[str], List[List[List[Any]]]]:
     pdb_text = open(pdb_path, 'r').read()
     match_biomolecules = [m.start() for m in
@@ -264,52 +277,101 @@ def remove_hydrogens(pdb_in_path: str, pdb_out_path: str):
 
 def get_resseq(residue: Residue) -> int:
     # Return resseq number
-
     return residue.get_full_id()[3][1]
 
 
 def get_hetatm(residue: Residue) -> int:
     # Return hetatm
-
     return residue.get_full_id()[3][0]
 
 
 def get_chains(pdb_path: str) -> List[str]:
     # Return all chains from a PDB structure
-
     structure = get_structure(pdb_path)
     return [chain.get_id() for chain in structure.get_chains()]
 
 
 def get_structure(pdb_path: str) -> Structure:
     # Get PDB structure
-
     pdb_id = utils.get_file_name(pdb_path)
     parser = PDBParser(QUIET=True)
     return parser.get_structure(pdb_id, pdb_path)
 
 
-def run_pdb2cc(templates_path: List[str], pdb2cc_path: str = None) -> str:
-    output_path = f'{templates_path}/cc_analysis.in'
+def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
+    cwd = os.getcwd()
+    os.chdir(templates_path)
+    output_path = 'cc_analysis.in'
     if pdb2cc_path is None:
         pdb2cc_path = 'pdb2cc'
-    command_line = f'{pdb2cc_path} -m -i 10 -y 0.5 "{templates_path}/orig.*.pdb" 0 {output_path}'
-    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    command_line = f'{pdb2cc_path} -m -i 10 -y 0.5 "orig.*.pdb" 0 {output_path}'
+    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
     p.communicate()
-    return output_path
+    os.chdir(cwd)
+    return os.path.join(templates_path, output_path)
 
 
-def run_cc_analysis(input_path: str, cc_analysis_path: str = None) -> str:
+def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = None) -> str:
     output_path = 'cc_analysis.out'
     if cc_analysis_path is None:
         cc_analysis_path = 'cc_analysis'
     cwd = os.getcwd()
     os.chdir(os.path.dirname(input_path))
-    command_line = f'{cc_analysis_path} -dim 2 {os.path.basename(input_path)} {output_path}'
-    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    command_line = f'{cc_analysis_path} -dim {n_clusters} {os.path.basename(input_path)} {output_path}'
+    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
     p.communicate()
     os.chdir(cwd)
     return f'{os.path.join(os.path.dirname(input_path), output_path)}'
+
+
+def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:
+    utils.create_dir(cc_path, delete_if_exists=True)
+    paths = [shutil.copy2(path, cc_path) for path in paths_in.values()]
+    trans_dict = {}
+    return_templates_cluster = [[] for _ in range(n_clusters)]
+    clean_dict = {}
+
+    for index, path in enumerate(paths):
+        if utils.check_ranked(os.path.basename(path)):
+            bfactors_dict = read_bfactors_from_residues(path)
+            for chain, residues in bfactors_dict.items():
+                for i in range(len(residues)):
+                    if bfactors_dict[chain][i] is not None:
+                        bfactors_dict[chain][i] = round(bfactors_dict[chain][i] - 70.0, 2)
+            residues_dict = read_residues_from_pdb(path)
+            change = change_res.ChangeResidues(chain_res_dict=residues_dict, chain_bfactors_dict=bfactors_dict)
+            change.change_bfactors(path, path)
+        new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
+        os.rename(os.path.join(cc_path, path), new_path)
+        trans_dict[index] = utils.get_file_name(path)
+    if trans_dict:
+        logging.info('Running pdb2cc and ccanalysis with the following templates:')
+        logging.info(', '.join([f'{key} = {value}' for key, value in trans_dict.items()]))
+        output_pdb2cc = run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
+        if os.path.exists(output_pdb2cc):
+            output_cc = run_cc_analysis(input_path=output_pdb2cc,
+                                        n_clusters=n_clusters,
+                                        cc_analysis_path=cc_analysis_paths.cc_analysis_path)
+            if os.path.exists(output_cc):
+                cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
+                for key, values in cc_analysis_dict.items():
+                    if values.module > 0.1 or values.module < -0.1:
+                        clean_dict[trans_dict[int(key) - 1]] = values
+                points = np.array([[values.x, values.y] for values in clean_dict.values()])
+                kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(points)
+                lookup_table = {}
+                counter = 0
+                for i in kmeans.labels_:
+                    if i not in lookup_table:
+                        lookup_table[i] = counter
+                        counter += 1
+                conversion = [lookup_table[label] for label in kmeans.labels_]
+                for i, label in enumerate(conversion):
+                    return_templates_cluster[int(label)].append(paths_in[list(clean_dict.keys())[i]])
+
+    return return_templates_cluster, clean_dict
 
 
 def extract_cryst_card_pdb(pdb_in_path: str) -> Union[str, None]:
@@ -354,6 +416,31 @@ def parse_pdb_line(line: str) -> Dict:
         parsed_dict[key] = value.replace(' ', '')
 
     return parsed_dict
+
+
+def read_bfactors_from_residues(pdb_path: str) -> Dict:
+    # Create a dictionary with each existing chain in the pdb.
+    # In each chain, create a list of N length (corresponding to the number of residues)
+    # Copy the bfactor in the corresponding residue number in the list.
+    structure = get_structure(pdb_path=pdb_path)
+    return_dict = {}
+    for chain in structure[0]:
+        return_dict[chain.get_id()] = []
+        for res in list(chain.get_residues()):
+            return_dict[chain.get_id()].append(res.get_unpacked_list()[0].bfactor)
+    return return_dict
+
+
+def read_residues_from_pdb(pdb_path: str) -> Dict:
+    # Create a dictionary with each existing chain in the pdb.
+    # In each chain, a list with the residue numbers
+    structure = get_structure(pdb_path=pdb_path)
+    return_dict = {}
+    for chain in structure[0]:
+        return_dict[chain.get_id()] = []
+        for res in list(chain.get_residues()):
+            return_dict[chain.get_id()].append(get_resseq(res))
+    return return_dict
 
 
 def split_chains_assembly(pdb_in_path: str,
@@ -411,7 +498,6 @@ def chain_splitter(pdb_path: str, chain: str = None) -> Dict:
     # It will return a dictionary with the chain and the corresponding pdb
 
     return_chain_dict = {}
-
     structure = get_structure(pdb_path=pdb_path)
     chains = [chain.get_id() for chain in structure.get_chains()] if chain is None else [chain]
 
@@ -485,7 +571,7 @@ def generate_multimer_chains(pdb_path: str, template_dict: Dict) -> Dict:
             pdb_path = template_dict[chain]
         multimer_new_chains = []
         for i, transformation in enumerate(transformations_list):
-            new_pdb_path = utils.replace_last_number(text=pdb_path, value=i+1)
+            new_pdb_path = utils.replace_last_number(text=pdb_path, value=i + 1)
             change_chain(pdb_in_path=pdb_path,
                          pdb_out_path=new_pdb_path,
                          rot_tra_matrix=transformation)
@@ -523,17 +609,18 @@ def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
 def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
     command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all ' \
                    f'--keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0 '
-    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
     p.communicate()
 
 
 def run_arcimboldo_air(yml_path: str):
     arcimboldo_air_path = os.path.join(utils.get_main_path(), 'arcimboldo_air.py')
     command_line = f'{arcimboldo_air_path} {yml_path}'
-    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     logging.info('ARCIMBOLDO_AIR cluster run finished successfully.')
-
 
 
 def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies:
@@ -541,7 +628,7 @@ def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies
     protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)
     forcefield = openmm.app.ForceField('amber99sb.xml')
     system = forcefield.createSystem(protein_pdb.topology, constraints=openmm.app.HBonds)
-    integrator = openmm.openmm.LangevinIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds)
+    integrator = openmm.openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.002 * unit.picoseconds)
     simulation = openmm.app.simulation.Simulation(protein_pdb.topology, system, integrator)
     simulation.context.setPositions(protein_pdb.positions)
     simulation.minimizeEnergy()
@@ -549,7 +636,8 @@ def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies
     state = simulation.context.getState(getPositions=True, getEnergy=True)
     with open(pdb_out_path, 'w') as f_out:
         openmm.app.pdbfile.PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_out, keepIds=True)
-    return structures.OpenmmEnergies(round(state.getKineticEnergy()._value, 2), round(state.getPotentialEnergy()._value, 2))
+    return structures.OpenmmEnergies(round(state.getKineticEnergy()._value, 2),
+                                     round(state.getPotentialEnergy()._value, 2))
 
 
 def superpose_pdbs(pdb_list: List, output_pdb=None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
@@ -604,11 +692,10 @@ def calculate_distance_pdist(res_list: List) -> List:
 
 
 def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Union[Dict, None]]:
-
     interface_data_list = []
     pisa_text = subprocess.Popen(['pisa', 'temp', '-analyse', pdb_in_path],
-                     stdout=subprocess.PIPE,
-                     stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
 
     pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
@@ -639,8 +726,8 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
     return interface_data_list
 
 
-def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict) -> Dict[
-    Any, List[Any]]:
+def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict) \
+        -> Dict[Any, List[Any]]:
     add_domains_dict = {}
     bfactors_dict = {}
     for chain, residue in zip([interface['chain1'], interface['chain2']],
@@ -684,7 +771,7 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
     score_list = []
     for element in trimmed_list:
         score_list.append(sum(z for _, _, z, _ in element))
-    
+
     if score_list:
         min_value = min(score_list)
         min_index = score_list.index(min_value)
