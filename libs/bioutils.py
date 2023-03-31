@@ -15,7 +15,6 @@ from simtk import unit, openmm
 from sklearn.cluster import KMeans
 
 
-
 def download_pdb(pdb_id: str, output_dir: str):
     pdbl = PDBList()
     result_ent = pdbl.retrieve_pdb_file(pdb_id, pdir=output_dir, file_format='pdb', obsolete=False)
@@ -86,6 +85,7 @@ def check_sequence_path(path_in: str) -> str:
             return path_in
         else:
             return extract_sequence(path_in)
+
 
 def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
     # Add a cryst1 record to a pdb file
@@ -298,15 +298,18 @@ def get_structure(pdb_path: str) -> Structure:
     return parser.get_structure(pdb_id, pdb_path)
 
 
-def run_pdb2cc(templates_path: List[str], pdb2cc_path: str = None) -> str:
-    output_path = f'{templates_path}/cc_analysis.in'
+def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
+    cwd = os.getcwd()
+    os.chdir(templates_path)
+    output_path = 'cc_analysis.in'
     if pdb2cc_path is None:
         pdb2cc_path = 'pdb2cc'
-    command_line = f'{pdb2cc_path} -m -i 10 -y 0.5 "{templates_path}/orig.*.pdb" 0 {output_path}'
+    command_line = f'{pdb2cc_path} -m -i 10 -y 0.5 "orig.*.pdb" 0 {output_path}'
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     p.communicate()
-    return output_path
+    os.chdir(cwd)
+    return os.path.join(templates_path, output_path)
 
 
 def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = None) -> str:
@@ -329,6 +332,7 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
     trans_dict = {}
     return_templates_cluster = [[] for _ in range(n_clusters)]
     clean_dict = {}
+
     for index, path in enumerate(paths):
         if utils.check_ranked(os.path.basename(path)):
             bfactors_dict = read_bfactors_from_residues(path)
@@ -366,6 +370,7 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
                 conversion = [lookup_table[label] for label in kmeans.labels_]
                 for i, label in enumerate(conversion):
                     return_templates_cluster[int(label)].append(paths_in[list(clean_dict.keys())[i]])
+
     return return_templates_cluster, clean_dict
 
 
