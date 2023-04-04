@@ -38,7 +38,7 @@ def ccanalysis(template_path: str):
     templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=templates_dict, cc_analysis_paths=cc_analysis,
                                                                  cc_path=output_path)
     if analysis_dict:
-        output_air.plot_cc_analysis(plot_path=os.path.join(template_path, 'plot.png'), analysis_dict=analysis_dict,
+        output_air.plot_cc_analysis(plot_path=os.path.join(output_path, 'plot.png'), analysis_dict=analysis_dict,
                                     clusters=templates_cluster_list)
 
 
