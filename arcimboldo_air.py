@@ -46,8 +46,6 @@ def main():
         os.chdir(a_air.run_dir)
         a_air.write_input_file()
         a_air.generate_output()
-
-        features_list = []
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
 
@@ -135,8 +133,11 @@ def main():
     except SystemExit as e:
         sys.exit(e)
     except Exception as e:
-        a_air.change_state(-1)
-        a_air.generate_output()
+        try:
+            a_air.change_state(-1)
+            a_air.generate_output()
+        except Exception as e2:
+            pass
         logging.error('ERROR:', exc_info=True)
 
 

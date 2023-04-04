@@ -16,8 +16,8 @@ from sklearn.cluster import KMeans
 
 
 def download_pdb(pdb_id: str, output_dir: str):
-    pdbl = PDBList()
-    result_ent = pdbl.retrieve_pdb_file(pdb_id, pdir=output_dir, file_format='pdb', obsolete=False)
+    pdbl = PDBList(server='https://files.wwpdb.org')
+    result_ent = pdbl.retrieve_pdb_file(pdb_code=pdb_id, pdir=output_dir, file_format='pdb', obsolete=False)
     if not os.path.exists(result_ent):
         raise Exception(f'{pdb_id} could not be downloaded.')
     shutil.copy2(result_ent, os.path.join(output_dir, f'{pdb_id}.pdb'))
