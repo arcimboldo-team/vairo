@@ -3,7 +3,7 @@
 import pickle
 import os
 import sys
-from libs import features, bioutils, utils, structures
+from libs import features, bioutils, utils, structures, output_air
 import logging
 
 
@@ -32,9 +32,14 @@ def generate_features(query_path: str, fasta_path: str):
 def ccanalysis(template_path: str):
     output_path = os.path.join(template_path, 'ccanalysis')
     os.listdir(template_path)
-    templates_dict = {utils.get_file_name(path):os.path.join(template_path, path) for path in os.listdir(template_path) if path.endswith('.pdb')}
+    templates_dict = {utils.get_file_name(path): os.path.join(template_path, path) for path in os.listdir(template_path)
+                      if path.endswith('.pdb')}
     cc_analysis = structures.CCAnalysis(os.path.join(utils.get_main_path(), 'binaries'))
-    bioutils.cc_analysis(paths_in=templates_dict, cc_analysis_paths=cc_analysis, cc_path=output_path)
+    templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=templates_dict, cc_analysis_paths=cc_analysis,
+                                                                 cc_path=output_path)
+    if analysis_dict:
+        output_air.plot_cc_analysis(plot_path=os.path.join(template_path, 'plot.png'), analysis_dict=analysis_dict,
+                                    clusters=templates_cluster_list)
 
 
 if __name__ == "__main__":

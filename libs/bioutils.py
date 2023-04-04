@@ -349,8 +349,9 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
         os.rename(os.path.join(cc_path, path), new_path)
         trans_dict[index] = utils.get_file_name(path)
     if trans_dict:
-        logging.info('Running pdb2cc and ccanalysis with the following templates:')
-        logging.info(', '.join([f'{key} = {value}' for key, value in trans_dict.items()]))
+        with open(os.path.join(cc_path, 'labels.txt'), 'w+') as f:
+            for key, value in trans_dict.items():
+                f.write('%s:%s\n' % (key, value))
         output_pdb2cc = run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
         if os.path.exists(output_pdb2cc):
             output_cc = run_cc_analysis(input_path=output_pdb2cc,
