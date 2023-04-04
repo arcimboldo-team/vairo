@@ -3,7 +3,7 @@
 import pickle
 import os
 import sys
-from libs import features, bioutils
+from libs import features, bioutils, utils, structures
 import logging
 
 
@@ -27,6 +27,14 @@ def generate_features(query_path: str, fasta_path: str):
     feature = features.Features(query)
     [feature.append_row_in_msa(sequence=seq, sequence_id=seq_id) for seq_id, seq in sequences.items()]
     write_features(path)
+
+
+def ccanalysis(template_path: str):
+    output_path = os.path.join(template_path, 'ccanalysis')
+    os.listdir(template_path)
+    templates_dict = {utils.get_file_name(path):os.path.join(template_path, path) for path in os.listdir(template_path) if path.endswith('.pdb')}
+    cc_analysis = structures.CCAnalysis(os.path.join(utils.get_main_path(), 'binaries'))
+    bioutils.cc_analysis(paths_in=templates_dict, cc_analysis_paths=cc_analysis, cc_path=output_path)
 
 
 if __name__ == "__main__":
