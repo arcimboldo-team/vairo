@@ -1,8 +1,7 @@
 import os
 import shutil
 import subprocess
-import os
-from alphafold.common import residue_constants
+
 from libs import utils
 
 

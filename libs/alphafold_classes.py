@@ -1,13 +1,15 @@
 import glob
-import os
 import logging
+import os
+from typing import Union
+
 import run_alphafold
-from typing import Any, Union
 from libs import bioutils, features, utils
 
 
 class AlphaFoldRun:
-    def __init__(self, results_dir: str, sequence: str, custom_features: bool, cluster_templates: bool, small_bfd: bool, start_chunk: int,
+    def __init__(self, results_dir: str, sequence: str, custom_features: bool, cluster_templates: bool, small_bfd: bool,
+                 start_chunk: int,
                  end_chunk: int, feature: features.Features = None):
         self.run_alphafold_bash: str
         self.results_dir: str

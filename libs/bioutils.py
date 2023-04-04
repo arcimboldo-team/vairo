@@ -1,18 +1,20 @@
 import copy
+import itertools
 import logging
 import os
 import re
 import shutil
 import subprocess
-import numpy as np
-import itertools
 from typing import Any, Dict, List, Optional, Tuple, Union
-from Bio import SeqIO, Seq
+
+import numpy as np
+from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
-from libs import change_res, structures, utils, sequence
 from scipy.spatial import distance
 from simtk import unit, openmm
 from sklearn.cluster import KMeans
+
+from libs import change_res, structures, utils, sequence
 
 
 def download_pdb(pdb_id: str, output_dir: str):

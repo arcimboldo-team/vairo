@@ -2,18 +2,19 @@ import base64
 import copy
 import errno
 import glob
-import json
-import os
-import logging
 import io
+import json
+import logging
+import os
 import re
 import shutil
 import sys
-from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union
-from sklearn import preprocessing
 from itertools import groupby
 from operator import itemgetter
+from pathlib import Path
+from typing import Any, Dict, List, Tuple, Union
+
+from sklearn import preprocessing
 
 from libs import structures
 

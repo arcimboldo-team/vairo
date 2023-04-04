@@ -2,16 +2,18 @@ import logging
 import os
 import re
 import shutil
-import sys
 import statistics
+import sys
+from itertools import combinations
+from typing import Dict, List
+
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 import numpy as np
 import pandas as pd
-from typing import Dict, List
 from Bio.PDB import PDBParser, Selection
+from matplotlib.patches import Patch
+
 from ALEPH.aleph.core import ALEPH
-from itertools import combinations
 from libs import bioutils, features, utils, sequence, structures
 
 PERCENTAGE_FILTER = 0.8

@@ -1,7 +1,8 @@
+import collections
 import os
 import shutil
-import collections
 from typing import Dict, List, Tuple
+
 from libs import bioutils, utils
 
 

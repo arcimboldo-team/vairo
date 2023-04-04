@@ -74,8 +74,10 @@ class StructureAir:
         self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
         self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
         self.cluster_templates_msa = parameters_dict.get('cluster_templates_msa', self.cluster_templates_msa)
-        self.cluster_templates_msa_delete = utils.expand_residues(parameters_dict.get('cluster_templates_msa_delete', ''))
-        self.cluster_templates_sequence = bioutils.check_sequence_path(parameters_dict.get('cluster_templates_sequence', self.cluster_templates_sequence))
+        self.cluster_templates_msa_delete = utils.expand_residues(
+            parameters_dict.get('cluster_templates_msa_delete', ''))
+        self.cluster_templates_sequence = bioutils.check_sequence_path(
+            parameters_dict.get('cluster_templates_sequence', self.cluster_templates_sequence))
         self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
         self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
 
@@ -106,7 +108,8 @@ class StructureAir:
                     keep_msa=parameters_features.get('keep_msa', -1),
                     keep_templates=parameters_features.get('keep_templates', -1),
                     msa_delete=utils.expand_residues(parameters_features.get('msa_delete', '')),
-                    positions=utils.expand_residues(parameters_features.get('positions', f'1-{self.sequence_assembled.total_copies}')),
+                    positions=utils.expand_residues(
+                        parameters_features.get('positions', f'1-{self.sequence_assembled.total_copies}')),
                     sequence=bioutils.check_sequence_path(parameters_features.get('sequence', None))
                 ))
 
@@ -352,6 +355,7 @@ class StructureAir:
             afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
+
         best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')
 
         utils.create_dir(self.results_dir, delete_if_exists=True)
@@ -486,7 +490,8 @@ class StructureAir:
             index = self.feature.get_index_by_name(utils.get_file_name(template_in))
             template_dict = self.feature.get_template_by_index(index)
             if self.cluster_templates_sequence is not None:
-                template_dict = features.replace_sequence_template(template_dict=template_dict, sequence_in=self.cluster_templates_sequence)
+                template_dict = features.replace_sequence_template(template_dict=template_dict,
+                                                                   sequence_in=self.cluster_templates_sequence)
             new_features.append_new_template_features(template_dict)
 
         total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
@@ -538,7 +543,8 @@ class StructureAir:
             if self.cluster_templates:
                 f_out.write(f'cluster_templates_msa: {self.cluster_templates_msa}\n')
                 if self.cluster_templates_msa_delete:
-                    f_out.write(f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
+                    f_out.write(
+                        f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
                 if self.cluster_templates_sequence is not None:
                     f_out.write(f'cluster_templates_sequence: {self.cluster_templates_sequence}\n')
             if self.features_input:

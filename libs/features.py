@@ -1,14 +1,16 @@
 import copy
-import os
-import re
-import numpy as np
-import pickle
 import logging
+import os
+import pickle
+import re
 from typing import Dict, List, Union, Any
+
+import numpy as np
 from Bio.PDB import PDBParser, Selection
-from alphafold.data import parsers, pipeline, templates, mmcif_parsing, pipeline, msa_identifiers
 from alphafold.common import residue_constants
-from libs import bioutils, sequence, utils
+from alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_identifiers
+
+from libs import bioutils, utils
 
 three_to_one = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ILE': 'I', 'PRO': 'P',
                 'THR': 'T', 'PHE': 'F', 'ASN': 'N', 'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R',

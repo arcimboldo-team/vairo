@@ -6,7 +6,7 @@ os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
-from libs import features, structure_air, utils, bioutils
+from libs import features, structure_air, utils
 
 
 def main():

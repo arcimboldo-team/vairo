@@ -1,13 +1,15 @@
-import logging
-from typing import Dict, List, Union
-from libs import bioutils, features, utils
+from typing import Dict, Union
+
 from Bio.PDB import Select, PDBIO
 from alphafold.common import residue_constants
+
+from libs import bioutils, features, utils
 
 
 class ChangeResidues:
 
-    def __init__(self, chain_res_dict: Dict, resname: str = None, chain_bfactors_dict: Dict = None, fasta_path: str = None, when: str = 'after_alignment'):
+    def __init__(self, chain_res_dict: Dict, resname: str = None, chain_bfactors_dict: Dict = None,
+                 fasta_path: str = None, when: str = 'after_alignment'):
         # Read parameters and create ChangeResidues class
         # The change is a mandatory value, can be a dict, a list or an int
         # If change is a list, the specific residues will be changed from
@@ -39,13 +41,13 @@ class ChangeResidues:
             self.chain_res_dict[chain] = [x for x in results if x is not None]
         self.group_change_res()
 
-
     def group_change_res(self):
         self.chain_group_res_dict = {}
         for key, value in self.chain_res_dict.items():
             grouped_list = utils.get_consecutive_numbers(value)
             for i, group_range in enumerate(grouped_list):
-                grouped_list[i] = f'{group_range[0]}-{group_range[1]}' if group_range[0] != group_range[1] else str(group_range[0])
+                grouped_list[i] = f'{group_range[0]}-{group_range[1]}' if group_range[0] != group_range[1] else str(
+                    group_range[0])
             self.chain_group_res_dict[key] = grouped_list
 
     def delete_residues(self, pdb_in_path: str, pdb_out_path: str):
@@ -84,7 +86,8 @@ class ChangeResidues:
                         if self.resname is not None:
                             name = self.resname
                         elif self.sequence is not None:
-                            name = utils.get_key_for_value(value=self.sequence[bioutils.get_resseq(res)-1], search_dict=features.three_to_one)
+                            name = utils.get_key_for_value(value=self.sequence[bioutils.get_resseq(res) - 1],
+                                                           search_dict=features.three_to_one)
                         for atom in res:
                             res.resname = name
                             if not atom.name in residue_constants.residue_atoms[res.resname]:
