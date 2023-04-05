@@ -427,15 +427,15 @@ class OutputAir:
         results = [items for items in combinations(self.ranked_list, r=2)]
         for result in results:
             if result[0].name == self.ranked_list[0].name:
-                rmsd, _, _ = bioutils.superpose_pdbs([result[1].path, result[0].path], result[1].split_path)
+                rmsd, _, _ = bioutils.gesamt_pdbs([result[1].path, result[0].path], result[1].split_path)
 
             else:
-                rmsd, _, _ = bioutils.superpose_pdbs([result[1].path, result[0].path])
+                rmsd, _, _ = bioutils.gesamt_pdbs([result[1].path, result[0].path])
             result[0].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[1].name)
             result[1].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[0].name)
 
         reference_superpose = self.ranked_list[0].path
-        green_color = 40
+        green_color = 55
 
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
@@ -462,7 +462,7 @@ class OutputAir:
                         if self.ranked_list[0].name == ranked2.name:
                             ranked.set_green_color(green_color)
                             ranked.set_best(True)
-                            green_color += 10
+                            green_color -= 5
                         break
 
                 if not found:
@@ -471,7 +471,7 @@ class OutputAir:
                     if self.ranked_list[0].name == ranked.name:
                         ranked.set_green_color(green_color)
                         ranked.set_best(True)
-                        green_color += 10
+                        green_color -= 5
 
         # Generate CCANALYSIS plots, one without rankeds and another one with rankeds.
         templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=self.templates_dict,
@@ -498,7 +498,7 @@ class OutputAir:
                     total_residues = len(
                         [res for res in
                          Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
-                    rmsd, aligned_residues, quality_q = bioutils.superpose_pdbs([template_path, ranked.split_path])
+                    rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([template_path, ranked.split_path])
                     if rmsd is not None:
                         rmsd = round(rmsd, 2)
                     ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
@@ -506,11 +506,11 @@ class OutputAir:
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
         if best_ranked_dict:
-            [bioutils.superpose_pdbs([template_path, best_ranked_dict[template_path]], template_path) for template_path
+            [bioutils.gesamt_pdbs([template_path, best_ranked_dict[template_path]], template_path) for template_path
              in
              self.templates_dict.values()]
         else:
-            [bioutils.superpose_pdbs([template_path, self.ranked_list[0].split_path], template_path) for template_path
+            [bioutils.gesamt_pdbs([template_path, self.ranked_list[0].split_path], template_path) for template_path
              in
              self.templates_dict.values()]
 
@@ -572,10 +572,10 @@ class OutputAir:
         for experimental in experimental_pdbs:
             aux_dict = {}
             for pdb in [ranked.split_path for ranked in self.ranked_list] + list(self.templates_dict.values()):
-                rmsd, nalign, quality_q = bioutils.superpose_pdbs([experimental, pdb])
+                rmsd, nalign, quality_q = bioutils.gesamt_pdbs([experimental, pdb])
                 aux_dict[utils.get_file_name(pdb)] = round(rmsd, 2) if rmsd is not None else str(rmsd)
             output_pdb = os.path.join(self.output_dir, os.path.basename(experimental))
-            bioutils.superpose_pdbs([experimental, reference_superpose], output_pdb)
+            bioutils.gesamt_pdbs([experimental, reference_superpose], output_pdb)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
 
         for template, template_path in self.templates_nonsplit_dict.items():

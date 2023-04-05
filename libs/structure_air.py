@@ -67,7 +67,7 @@ class StructureAir:
         utils.create_dir(self.input_dir)
 
         self.af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
-        self.run_af2 = parameters_dict.get('run_alphafold', self.run_af2)
+        self.run_af2 = parameters_dict.get('run_af2', self.run_af2)
         self.verbose = parameters_dict.get('verbose', self.verbose)
         self.custom_features = parameters_dict.get('custom_features', self.custom_features)
         self.mosaic = parameters_dict.get('mosaic', self.mosaic)
@@ -350,12 +350,13 @@ class StructureAir:
                                                    small_bfd=self.small_bfd,
                                                    start_chunk=self.chunk_list[i][0],
                                                    end_chunk=self.chunk_list[i][1],
-                                                   feature=feature)
+                                                   run=self.run_af2,
+                                                   feature=feature
+                                                   )
             self.afrun_list.append(afrun)
             afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
-
         best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')
 
         utils.create_dir(self.results_dir, delete_if_exists=True)
@@ -363,7 +364,7 @@ class StructureAir:
 
         best_ranked_list = []
         for afrun in self.afrun_list:
-            ranked_list = output_air.read_rankeds(input_path=afrun.results_dir)
+            ranked_list = utils.read_rankeds(input_path=afrun.results_dir)
             if not ranked_list:
                 logging.info('No ranked PDBs found')
                 return

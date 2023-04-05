@@ -643,12 +643,12 @@ def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies
                                      round(state.getPotentialEnergy()._value, 2))
 
 
-def superpose_pdbs(pdb_list: List, output_pdb=None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
+def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
     superpose_input_list = ['superpose']
     for pdb in pdb_list:
         superpose_input_list.extend([pdb, '-s', '-all'])
-    if output_pdb is not None:
-        superpose_input_list.extend(['-o', output_pdb])
+    if output_path is not None:
+        superpose_input_list.extend(['-o', output_path])
 
     superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
     rmsd, quality_q, nalign = None, None, None
@@ -658,6 +658,25 @@ def superpose_pdbs(pdb_list: List, output_pdb=None) -> Tuple[Optional[float], Op
         if 'quality Q:' in line:
             quality_q = line.split()[2]
         if 'Nalign:' in line:
+            nalign = line.split()[1]
+    return rmsd, nalign, quality_q
+
+
+def gesamt_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
+    superpose_input_list = ['gesamt']
+    for pdb in pdb_list:
+        superpose_input_list.extend([pdb, '-s', '-all'])
+    if output_path is not None:
+        superpose_input_list.extend(['-o', output_path])
+
+    superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
+    rmsd, quality_q, nalign = None, None, None
+    for line in superpose_output.split('\n'):
+        if 'RMSD             :' in line:
+            rmsd = float(line.split()[1])
+        if 'Q-score          :' in line:
+            quality_q = line.split()[2]
+        if 'Aligned residues :' in line:
             nalign = line.split()[1]
     return rmsd, nalign, quality_q
 

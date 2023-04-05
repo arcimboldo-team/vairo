@@ -85,16 +85,14 @@ def main():
                 a_air.append_line_in_templates(template.results_path_position)
                 if template.add_to_msa:
                     sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
-                    a_air.feature.append_row_in_msa(sequence=sequence_from_template,
+                    a_air.feature.append_row_in_msa(sequence_in=sequence_from_template,
                                                     sequence_id=template.pdb_id)
                     logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
                 if template.add_to_templates:
                     a_air.feature.append_new_template_features(new_template_features=template.template_features,
                                                                custom_sum_prob=template.sum_prob)
                     logging.info(f'Template {template.pdb_id} was added to templates')
-            a_air.feature.write_pkl(os.path.join(a_air.run_dir, 'features.pkl'))
             features_list = a_air.partition_mosaic()
-
         else:
             features_list = [None] * a_air.mosaic
             a_air.partition_mosaic()
@@ -102,30 +100,28 @@ def main():
 
         a_air.change_state(state=2)
         a_air.generate_output()
-        if a_air.run_af2:
-            logging.info('Start running AlphaFold2')
-            a_air.run_alphafold(features_list=features_list)
-            if len(features_list) > 1:
-                a_air.merge_results()
-            features_path = os.path.join(a_air.results_dir, 'features.pkl')
-            if a_air.feature is None and os.path.exists(features_path):
-                new_features = features.create_features_from_file(features_path)
-                a_air.set_feature(new_features)
 
+        logging.info('Start running AlphaFold2')
+        a_air.run_alphafold(features_list=features_list)
+        if len(features_list) > 1:
+            a_air.merge_results()
+        features_path = os.path.join(a_air.results_dir, 'features.pkl')
+        if a_air.feature is None and os.path.exists(features_path):
+            new_features = features.create_features_from_file(features_path)
+            a_air.set_feature(new_features)
+        a_air.output.analyse_output(results_dir=a_air.results_dir,
+                                    sequence_assembled=a_air.sequence_assembled,
+                                    feature=a_air.feature,
+                                    experimental_pdbs=a_air.experimental_pdbs,
+                                    cc_analysis_paths=a_air.cc_analysis_paths,
+                                    cluster_templates=a_air.cluster_templates)
+        if a_air.cluster_templates:
+            a_air.templates_clustering()
             a_air.output.analyse_output(results_dir=a_air.results_dir,
                                         sequence_assembled=a_air.sequence_assembled,
                                         feature=a_air.feature,
                                         experimental_pdbs=a_air.experimental_pdbs,
-                                        cc_analysis_paths=a_air.cc_analysis_paths,
-                                        cluster_templates=a_air.cluster_templates)
-
-            if a_air.cluster_templates:
-                a_air.templates_clustering()
-                a_air.output.analyse_output(results_dir=a_air.results_dir,
-                                            sequence_assembled=a_air.sequence_assembled,
-                                            feature=a_air.feature,
-                                            experimental_pdbs=a_air.experimental_pdbs,
-                                            cc_analysis_paths=a_air.cc_analysis_paths)
+                                        cc_analysis_paths=a_air.cc_analysis_paths)
         a_air.change_state(state=3)
         a_air.generate_output()
         logging.info('ARCIMBOLDO_AIR has finished successfully')

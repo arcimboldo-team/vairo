@@ -10,7 +10,7 @@ from libs import bioutils, features, utils
 class AlphaFoldRun:
     def __init__(self, results_dir: str, sequence: str, custom_features: bool, cluster_templates: bool, small_bfd: bool,
                  start_chunk: int,
-                 end_chunk: int, feature: features.Features = None):
+                 end_chunk: int, run: bool, feature: features.Features = None):
         self.run_alphafold_bash: str
         self.results_dir: str
         self.fasta_path: str
@@ -20,6 +20,7 @@ class AlphaFoldRun:
         self.feature: Union[features.Features, None] = None
         self.start_chunk: int
         self.end_chunk: int
+        self.run: bool
 
         self.feature = feature
         self.custom_features = custom_features
@@ -28,6 +29,8 @@ class AlphaFoldRun:
         self.results_dir = results_dir
         self.start_chunk = start_chunk
         self.end_chunk = end_chunk
+        self.run = run
+
         utils.create_dir(self.results_dir, delete_if_exists=False)
         self.fasta_path = os.path.join(self.results_dir, f'{os.path.basename(results_dir)}.fasta')
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.fasta_path), sequence_amino=sequence,
@@ -41,31 +44,34 @@ class AlphaFoldRun:
         previous_path = utils.get_parent_folder(dir_path=self.results_dir)
         if self.custom_features:
             self.feature.write_pkl(os.path.join(self.results_dir, 'features.pkl'))
-        try:
-            run_alphafold.launch_alphafold2(
-                fasta_path=[self.fasta_path],
-                output_dir=previous_path,
-                data_dir=alphafold_paths.af2_dbs_path,
-                max_template_date='2022-10-10',
-                model_preset='monomer',
-                uniref90_database_path=alphafold_paths.uniref90_db_path,
-                mgnify_database_path=alphafold_paths.mgnify_db_path,
-                template_mmcif_dir=alphafold_paths.mmcif_db_path,
-                obsolete_pdbs_path=alphafold_paths.obsolete_mmcif_db_path,
-                bfd_database_path=alphafold_paths.bfd_db_path,
-                uniclust30_database_path=alphafold_paths.uniclust30_db_path,
-                pdb70_database_path=alphafold_paths.pdb70_db_path,
-                small_bfd_database_path=alphafold_paths.small_bfd_path,
-                small_bfd=self.small_bfd,
-                read_features_pkl=self.custom_features,
-                stop_after_msa=self.cluster_templates)
 
-        except SystemExit as e:
-            pass
-        except:
-            raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
+        if self.run:
+            try:
+                run_alphafold.launch_alphafold2(
+                    fasta_path=[self.fasta_path],
+                    output_dir=previous_path,
+                    data_dir=alphafold_paths.af2_dbs_path,
+                    max_template_date='2022-10-10',
+                    model_preset='monomer',
+                    uniref90_database_path=alphafold_paths.uniref90_db_path,
+                    mgnify_database_path=alphafold_paths.mgnify_db_path,
+                    template_mmcif_dir=alphafold_paths.mmcif_db_path,
+                    obsolete_pdbs_path=alphafold_paths.obsolete_mmcif_db_path,
+                    bfd_database_path=alphafold_paths.bfd_db_path,
+                    uniclust30_database_path=alphafold_paths.uniclust30_db_path,
+                    pdb70_database_path=alphafold_paths.pdb70_db_path,
+                    small_bfd_database_path=alphafold_paths.small_bfd_path,
+                    small_bfd=self.small_bfd,
+                    read_features_pkl=self.custom_features,
+                    stop_after_msa=self.cluster_templates)
 
-        logging.info('AlphaFold2 has finished successfully. Proceeding to analyse the results')
+            except SystemExit as e:
+                pass
+            except:
+                raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
+            logging.info('AlphaFold2 has finished successfully. Proceeding to analyse the results')
+        else:
+            logging.info('AlphaFold2 run skipped. Proceeding to analyse the results')
 
 
 class AlphaFoldPaths:

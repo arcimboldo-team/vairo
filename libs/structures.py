@@ -155,10 +155,10 @@ class Ranked:
         self.plddt = round(plddt)
 
     def set_rmsd(self, rmsd: float):
-        self.rmsd = round(rmsd, 2)
+        self.rmsd = round(rmsd, 2) if rmsd is not None else rmsd
 
     def set_ranked_to_rmsd_dict(self, rmsd: float, ranked_name: str):
-        self.rmsd_dict[ranked_name] = round(rmsd, 2)
+        self.rmsd_dict[ranked_name] = round(rmsd, 2) if rmsd is not None else rmsd
 
     def set_filtered(self, filtered: bool):
         self.filtered = filtered

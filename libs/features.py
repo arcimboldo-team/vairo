@@ -172,7 +172,7 @@ class Features:
         for i in coverage_msa:
             msa_dict = {
                 'msa': np.array([new_msa['msa'][i]]),
-                'accession_ids': np.array(str(self.get_msa_length()).encode()),
+                'accession_ids': np.array(str(i).encode()),
                 'deletion_matrix_int': np.array([new_msa['deletion_matrix_int'][i]]),
                 'msa_species_identifiers': np.array([new_msa['msa_species_identifiers'][i]]),
                 'num_alignments': np.zeros(new_msa['num_alignments'].shape)
@@ -239,10 +239,15 @@ class Features:
         for start_min, start_max in chunk_list:
             new_features = Features(query_sequence=sequence_in[start_min:start_max])
             for i in range(1, self.get_msa_length()):
-                sequence_aux = (
-                    ''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][i].tolist()]))
-                new_features.append_row_in_msa(sequence_in=sequence_aux[start_min:start_max],
-                                               sequence_id=self.msa_features['accession_ids'][i].decode("utf-8"))
+                msa_dict = {
+                    'msa': np.array([self.msa_features['msa'][i][start_min:start_max]]),
+                    'accession_ids': np.array(str(i).encode()),
+                    'deletion_matrix_int': np.array([self.msa_features['deletion_matrix_int'][i][start_min:start_max]]),
+                    'msa_species_identifiers': np.array([self.msa_features['msa_species_identifiers'][i]]),
+                    'num_alignments': np.zeros(self.msa_features['num_alignments'].shape)
+                }
+                new_features.append_row_in_msa_from_features(msa_dict)
+
             for i in range(0, self.get_templates_length()):
                 template_dict = {
                     'template_all_atom_positions': np.array(
