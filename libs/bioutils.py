@@ -460,7 +460,10 @@ def split_chains_assembly(pdb_in_path: str,
 
     if len(chains) > 1:
         logging.info(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
-        shutil.copy2(pdb_in_path, pdb_out_path)
+        try:
+            shutil.copy2(pdb_in_path, pdb_out_path)
+        except shutil.SameFileError:
+            pass
     else:
         new_structure = Structure.Structure(structure.get_id)
         new_model = Model.Model(structure[0].id)
@@ -627,20 +630,25 @@ def run_arcimboldo_air(yml_path: str):
 
 
 def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies:
-    run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
-    protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)
-    forcefield = openmm.app.ForceField('amber99sb.xml')
-    system = forcefield.createSystem(protein_pdb.topology, constraints=openmm.app.HBonds)
-    integrator = openmm.openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.002 * unit.picoseconds)
-    simulation = openmm.app.simulation.Simulation(protein_pdb.topology, system, integrator)
-    simulation.context.setPositions(protein_pdb.positions)
-    simulation.minimizeEnergy()
-    simulation.step(1000)
-    state = simulation.context.getState(getPositions=True, getEnergy=True)
-    with open(pdb_out_path, 'w') as f_out:
-        openmm.app.pdbfile.PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_out, keepIds=True)
-    return structures.OpenmmEnergies(round(state.getKineticEnergy()._value, 2),
-                                     round(state.getPotentialEnergy()._value, 2))
+    try:
+        run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
+        protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)
+        forcefield = openmm.app.ForceField('amber99sb.xml')
+        system = forcefield.createSystem(protein_pdb.topology, constraints=openmm.app.HBonds)
+        integrator = openmm.openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.002 * unit.picoseconds)
+        simulation = openmm.app.simulation.Simulation(protein_pdb.topology, system, integrator)
+        simulation.context.setPositions(protein_pdb.positions)
+        simulation.minimizeEnergy()
+        simulation.step(1000)
+        state = simulation.context.getState(getPositions=True, getEnergy=True)
+        with open(pdb_out_path, 'w') as f_out:
+            openmm.app.pdbfile.PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_out, keepIds=True)
+        return structures.OpenmmEnergies(round(state.getKineticEnergy()._value, 2),
+                                        round(state.getPotentialEnergy()._value, 2))
+    except:
+        logging.info(f'Not possible to calculate energies for {utils.get_file_name(pdb_in_path)}')
+        return structures.OpenmmEnergies(None, None)    
+
 
 
 def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
@@ -673,11 +681,11 @@ def gesamt_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[float
     rmsd, quality_q, nalign = None, None, None
     for line in superpose_output.split('\n'):
         if 'RMSD             :' in line:
-            rmsd = float(line.split()[1])
+            rmsd = float(line.split()[2].strip())
         if 'Q-score          :' in line:
-            quality_q = line.split()[2]
+            quality_q = line.split()[2].strip()
         if 'Aligned residues :' in line:
-            nalign = line.split()[1]
+            nalign = line.split()[3].strip()    
     return rmsd, nalign, quality_q
 
 

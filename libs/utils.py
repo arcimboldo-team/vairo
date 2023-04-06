@@ -365,8 +365,12 @@ def read_rankeds(input_path: str) -> List[str]:
     return [structures.Ranked(os.path.join(input_path, path)) for path in sort_by_digit(ranked_paths)]
 
 
-def check_ranked(path: str) -> bool:
-    return re.match('ranked_[0-9]+.pdb', path) or re.match('cluster_[0-9]+_ranked_[0-9]+.pdb', path)
+def check_ranked(input_path: str) -> bool:
+    return re.match('ranked_[0-9]+.pdb', input_path) or re.match('cluster_[0-9]+_ranked_[0-9]+.pdb', input_path)
+
+
+def delete_old_rankeds(input_path: str):
+    [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if check_ranked(path)]
 
 
 def create_logger():

@@ -181,6 +181,7 @@ class Features:
                 msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)
             self.append_row_in_msa_from_features(msa_dict)
 
+
     def set_template_features(self, new_templates: Dict, finish: int = -1, positions: List[int] = [],
                               sequence_in: str = None):
         finish = len(new_templates['template_sequence']) if finish == -1 else finish
