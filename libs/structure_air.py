@@ -64,7 +64,7 @@ class StructureAir:
 
         utils.create_dir(self.output_dir)
         utils.create_dir(self.run_dir)
-        utils.create_dir(self.input_dir, delete_if_exists=True)
+        utils.create_dir(self.input_dir)
         utils.delete_old_rankeds(self.output_dir)
 
         self.af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
