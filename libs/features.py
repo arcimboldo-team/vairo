@@ -164,7 +164,8 @@ class Features:
         finish = 0 if finish == -1 else finish
         coverage_msa = []
         for i in range(start, len(new_msa['msa'])):
-            new_msa = delete_residues_msa(msa=new_msa, position=i, delete_positions=delete_positions)
+            if delete_positions:
+                new_msa = delete_residues_msa(msa=new_msa, position=i, delete_positions=delete_positions)
             coverage_msa.append(len([residue for residue in new_msa['msa'][i] if residue != 21]))
         arr = np.array(coverage_msa)
         coverage_msa = arr.argsort()[-finish:][::-1]
@@ -271,9 +272,9 @@ class Features:
 def delete_residues_msa(msa: Dict, position: int, delete_positions: List[int]) -> Dict:
     # Delete the specifics residues in the msa.
     for delete in delete_positions:
-        if delete <= len(msa['msa'][position][0]):
-            msa['msa'][position][0, delete - 1] = 21
-            msa['deletion_matrix_int'][position][0, delete - 1] = 0
+        if delete <= msa['msa'][position].size:
+            msa['msa'][position][delete-1] = 21
+            msa['deletion_matrix_int'][position][delete - 1] = 0
         else:
             break
     return msa

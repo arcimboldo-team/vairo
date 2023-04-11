@@ -456,6 +456,7 @@ def split_chains_assembly(pdb_in_path: str,
 
     structure = get_structure(pdb_path=pdb_in_path)
     chains_return = {}
+    
     chains = list(set([chain.get_id() for chain in structure.get_chains()]))
     if len(chains) > 1:
         logging.info(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
