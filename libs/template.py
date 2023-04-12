@@ -222,7 +222,11 @@ class Template:
             return extracted_chain_dict
 
         if self.generate_multimer:
-            extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
+            try:
+                extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
+            except Exception as e:
+                logging.info(f'Not possible to generate multimer for {self.pdb_path}')
+
 
         self.apply_changes(chain_dict=extracted_chain_dict, when='after_alignment')
         self.alignment_dict[sequence_in.name] = extracted_chain_dict

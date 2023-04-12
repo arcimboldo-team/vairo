@@ -116,7 +116,8 @@ def main():
                                     cc_analysis_paths=a_air.cc_analysis_paths,
                                     cluster_templates=a_air.cluster_templates)
         if a_air.cluster_templates:
-            a_air.templates_clustering()
+            if a_air.run_af2:
+                a_air.templates_clustering()
             a_air.output.analyse_output(results_dir=a_air.results_dir,
                                         sequence_assembled=a_air.sequence_assembled,
                                         feature=a_air.feature,
