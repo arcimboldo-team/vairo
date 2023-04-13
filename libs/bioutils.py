@@ -458,6 +458,7 @@ def split_chains_assembly(pdb_in_path: str,
     chains_return = {}
     
     chains = list(set([chain.get_id() for chain in structure.get_chains()]))
+
     if len(chains) > 1:
         logging.info(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
         try:
@@ -670,14 +671,18 @@ def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[fl
     return rmsd, nalign, quality_q
 
 
-def gesamt_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
-    superpose_input_list = ['gesamt']
-    for pdb in pdb_list:
-        superpose_input_list.extend([pdb, '-s', '-all'])
+def gesamt_pdbs(pdb_list: List[str], output_path: str = None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
+    
+    name_folder = 'tmp_gesamt'
+    utils.create_dir(name_folder, delete_if_exists=True)
+    superpose_input_list = ['gesamt']+pdb_list
     if output_path is not None:
-        superpose_input_list.extend(['-o', output_path])
-
+        superpose_input_list.extend(['-o', name_folder, '-o-d'])
     superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
+    new_path = [file for file in os.listdir(name_folder) if file.startswith(utils.get_file_name(pdb_list[-1]))]
+    if new_path:
+        shutil.copy2(os.path.join(name_folder, new_path[0]), output_path)
+    shutil.rmtree(name_folder)
     rmsd, quality_q, nalign = None, None, None
     for line in superpose_output.split('\n'):
         if 'RMSD             :' in line:
@@ -685,7 +690,7 @@ def gesamt_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[float
         if 'Q-score          :' in line:
             quality_q = line.split()[2].strip()
         if 'Aligned residues :' in line:
-            nalign = line.split()[3].strip()    
+            nalign = line.split()[3].strip()
     return rmsd, nalign, quality_q
 
 
