@@ -315,6 +315,11 @@ def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
 
 
 def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = None) -> str:
+    # Run cc_analysis from cc_analysis_path and store the results in output_path
+    # The number cluster to obtain is determinated by n_clusters.
+    # It will read all the pdb files from input_path and store the results inside the output_path
+    # I change the directory so everything is stored inside the input_path
+
     output_path = 'cc_analysis.out'
     if cc_analysis_path is None:
         cc_analysis_path = 'cc_analysis'
@@ -328,7 +333,72 @@ def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = No
     return f'{os.path.join(os.path.dirname(input_path), output_path)}'
 
 
+def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_path: str = None) -> int:
+    # Run hinges from hinges_path.
+    # It needs two pdbs. Return the rmsd obtained.
+    command_line = f'{hinges_path} {pdb1_path} {pdb2_path}'
+    output = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+    if output_path is not None:
+        with open(output_path, 'w+') as f:
+            f.write(output)
+    return utils.parse_hinges(output)
+
+def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: str = None):
+    # Check if there are at least five pdbs that has more than 60% of the sequence length
+    # If there are at least 5, continue normally cc_analysis
+    # If there are less than 5, create groups using hinges
+    threshold_rmsd = 5
+    threshold_completeness = 0.6 * size_sequence
+    utils.create_dir(output_path, delete_if_exists=True)
+
+    logging.info('Starting hinges analysis')
+    complete_pdbs = {}
+    uncompleted_pdbs = {}
+    for key, value in paths_in.items():
+        num_residues = sum(1 for _ in get_structure(value)[0].get_residues())
+        if threshold_completeness < num_residues:
+            complete_pdbs[key] = value
+        else:
+            uncompleted_pdbs[key] = value
+
+    if len(complete_pdbs) >= 5:
+        logging.info(f'There are {len(complete_pdbs)} complete pdbs. Skipping hinges.')
+        return
+    else:
+        logging.info(f'There are {len(complete_pdbs)} complete pdbs. Not enough to run cc_analysis. '
+                     f'Using hinges to create groups.')
+        processed_pairs = set()
+        group_rmsd = {}
+        results_rmsd = {}
+        for key1, value1 in complete_pdbs.items():
+            if not utils.get_key_by_value(value=key1, search_dict=group_rmsd):
+                group_rmsd.setdefault(key1, []).append(key1)
+            for key2, value2 in complete_pdbs.items():
+                if key1 != key2 and (key1, key2) not in processed_pairs and (key2, key1) not in processed_pairs:
+                    rmsd = run_hinges(pdb1_path=value1, pdb2_path=value2, hinges_path=hinges_path,
+                                      output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
+                    results_rmsd[f'{key1}-{key2}'] = rmsd
+                    processed_pairs.add((key1, key2))
+                    if rmsd is not None:
+                        if rmsd > threshold_rmsd:
+                            if utils.get_key_by_value(value=key2, search_dict=group_rmsd):
+                                group_rmsd.setdefault(key2, []).append(key2)
+                        else:
+                            res = utils.get_key_by_value(value=key2, search_dict=group_rmsd)
+                            if not res:
+                                group_rmsd[key1].append(key2)
+                            elif len(group_rmsd[res[0]]) == 1:
+                                del group_rmsd[key2]
+                                group_rmsd[key1.append(key2)]
+
+        print(group_rmsd)
+        print(results_rmsd)
+
 def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:
+    # CC_analysis. It is mandatory to have the paths of the programs in order to run pdb2cc and ccanalysis.
+    # A dictionary with the different pdbs that are going to be analysed.
+
     utils.create_dir(cc_path, delete_if_exists=True)
     paths = [shutil.copy2(path, cc_path) for path in paths_in.values()]
     trans_dict = {}
@@ -336,6 +406,9 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
     clean_dict = {}
 
     for index, path in enumerate(paths):
+        # If it is a ranked, it is mandatory to change the bfactors to VALUE-70.
+        # We want to evaluate the residues that have a good PLLDT
+        # PDB2CC ignore the residues with bfactors below 0
         if utils.check_ranked(os.path.basename(path)):
             bfactors_dict = read_bfactors_from_residues(path)
             for chain, residues in bfactors_dict.items():
@@ -347,33 +420,47 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
             change.change_bfactors(path, path)
         new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
         os.rename(os.path.join(cc_path, path), new_path)
+        # Create a translation dictionary, with and index and the pdb name
         trans_dict[index] = utils.get_file_name(path)
     if trans_dict:
+        # Write the trans dict in order to be able to trace the pdbs in the output
         with open(os.path.join(cc_path, 'labels.txt'), 'w+') as f:
             for key, value in trans_dict.items():
                 f.write('%s:%s\n' % (key, value))
+        # run pdb2cc
         output_pdb2cc = run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
         if os.path.exists(output_pdb2cc):
+            # If pdb2cc has worked, launch cc analysis.
             output_cc = run_cc_analysis(input_path=output_pdb2cc,
                                         n_clusters=n_clusters,
                                         cc_analysis_path=cc_analysis_paths.cc_analysis_path)
             if os.path.exists(output_cc):
+                # Parse the results of cc_analysis, we will have for each pdb, all the values given in ccanalysis
                 cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
                 for key, values in cc_analysis_dict.items():
+                    # If the modules are are higher than 0.1, keep the pdb, otherwise discard it
                     if values.module > 0.1 or values.module < -0.1:
                         clean_dict[trans_dict[int(key) - 1]] = values
+                # Get the positions given by ccanalysis
                 points = np.array([[values.x, values.y] for values in clean_dict.values()])
+                # Generate n clusters groups with KMEANS
                 kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(points)
                 lookup_table = {}
                 counter = 0
+                # The kmeans results has a list with all the positions belonging to the corresponding pdb.
+                # Translate the labels into groups, so they appear in sequentially (group 0 first, 1...)
+                # Otherwise they are choosen randomly.
                 for i in kmeans.labels_:
                     if i not in lookup_table:
                         lookup_table[i] = counter
                         counter += 1
+                # Replace the values for the ordered ones.
                 conversion = [lookup_table[label] for label in kmeans.labels_]
+                # Translate the kmeans, which only has the position of the pdbs for the real pdbs.
                 for i, label in enumerate(conversion):
                     return_templates_cluster[int(label)].append(paths_in[list(clean_dict.keys())[i]])
-
+    # Return the clusters, a list, where each position has a group of pdbs.
+    # Also, clean_dict has the cc_analysis vectors, so is useful to create the plots.
     return return_templates_cluster, clean_dict
 
 
@@ -393,14 +480,12 @@ def extract_cryst_card_pdb(pdb_in_path: str) -> Union[str, None]:
 def get_atom_line(remark: str, num: int, name: str, res: int, chain: str, resseq, x: float, y: float, z: float,
                   occ: str, bfact: str, atype: str) -> str:
     # Given all elements of an atom, parse them in PDB format
-
     result = f'{remark:<6}{num:>5}  {name:<3}{res:>4} {chain}{resseq:>4}    {float(x):8.3f}{float(y):8.3f}{float(z):8.3f}{float(occ):6.2f}{float(bfact):6.2f}{atype:>12}\n'
     return result
 
 
 def parse_pdb_line(line: str) -> Dict:
     # Parse all elements of an atom of a PDB line
-
     parsed_dict = {
         'remark': line[:6],
         'num': line[6:11],
@@ -417,7 +502,6 @@ def parse_pdb_line(line: str) -> Dict:
     }
     for key, value in parsed_dict.items():
         parsed_dict[key] = value.replace(' ', '')
-
     return parsed_dict
 
 
@@ -456,7 +540,7 @@ def split_chains_assembly(pdb_in_path: str,
 
     structure = get_structure(pdb_path=pdb_in_path)
     chains_return = {}
-    
+
     chains = list(set([chain.get_id() for chain in structure.get_chains()]))
 
     if len(chains) > 1:
@@ -645,11 +729,10 @@ def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies
         with open(pdb_out_path, 'w') as f_out:
             openmm.app.pdbfile.PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_out, keepIds=True)
         return structures.OpenmmEnergies(round(state.getKineticEnergy()._value, 2),
-                                        round(state.getPotentialEnergy()._value, 2))
+                                         round(state.getPotentialEnergy()._value, 2))
     except:
         logging.info(f'Not possible to calculate energies for {utils.get_file_name(pdb_in_path)}')
-        return structures.OpenmmEnergies(None, None)    
-
+        return structures.OpenmmEnergies(None, None)
 
 
 def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
@@ -672,10 +755,9 @@ def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[fl
 
 
 def gesamt_pdbs(pdb_list: List[str], output_path: str = None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
-    
     name_folder = 'tmp_gesamt'
     utils.create_dir(name_folder, delete_if_exists=True)
-    superpose_input_list = ['gesamt']+pdb_list
+    superpose_input_list = ['gesamt'] + pdb_list
     if output_path is not None:
         superpose_input_list.extend(['-o', name_folder, '-o-d'])
     superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')

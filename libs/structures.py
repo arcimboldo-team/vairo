@@ -18,13 +18,16 @@ class CCAnalysis:
     def __init__(self, binaries_path):
         pd2cc_path: str
         cc_analysis_path: str
+        hinges_path: str
 
         if sys.platform == "darwin":
             self.cc_analysis_path = os.path.join(binaries_path, 'cc_analysis_mac')
             self.pd2cc_path = os.path.join(binaries_path, 'pdb2cc_mac')
+            self.hinges_path = os.path.join(binaries_path, 'hinges_mac')
         else:
             self.cc_analysis_path = os.path.join(binaries_path, 'cc_analysis_linux')
             self.pd2cc_path = os.path.join(binaries_path, 'pdb2cc_linux')
+            self.hinges_path = os.path.join(binaries_path, 'hinges_linux')
 
 
 @dataclasses.dataclass(frozen=True)
