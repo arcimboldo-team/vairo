@@ -89,12 +89,18 @@ def dict_values_to_list(input_dict: Dict):
     return [value for value in input_dict.values()]
 
 
-def get_key_for_value(value: str, search_dict: Dict) -> Union[List[str], None]:
+def get_key_by_value(value: str, search_dict: Dict) -> List[str]:
     # Given a value, get the list of all keys that contains that value
-    try:
-        return list(search_dict.keys())[list(search_dict.values()).index(value)]
-    except Exception as e:
-        return None
+    matching_keys = []
+    for key, element in search_dict.items():
+        if isinstance(element, str):
+            if element == value:
+                matching_keys.append(key)
+        else:
+            if value in element:
+                matching_keys.append(key)
+
+    return matching_keys
 
 
 def get_positions_by_chain(path_list: List[str], chain: str) -> List[int]:
@@ -221,6 +227,14 @@ def parse_cc_analysis(file_path: str) -> Dict:
                                                                      float(split_text[3]), float(split_text[4]))
 
     return return_dict
+
+def parse_hinges(output: str) -> float:
+    # Read the output of hinges and return minimum rmsd
+    regex = r"RMStot=\s*(\d+\.\d+)"
+    matches = re.findall(regex, output)
+    if matches:
+        return float(min(matches))
+    return None
 
 
 def parse_aleph_annotate(file_path: str) -> Dict:
