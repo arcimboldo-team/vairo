@@ -45,25 +45,27 @@ class Features:
     def append_new_template_features(self, new_template_features: Dict, custom_sum_prob: int = None) -> Dict:
         self.template_features['template_all_atom_positions'] = np.vstack(
             [self.template_features['template_all_atom_positions'],
-             new_template_features['template_all_atom_positions']])
+             np.array(new_template_features['template_all_atom_positions'])])
         self.template_features['template_all_atom_masks'] = np.vstack(
-            [self.template_features['template_all_atom_masks'], new_template_features['template_all_atom_masks']])
+            [self.template_features['template_all_atom_masks'],
+             np.array(new_template_features['template_all_atom_masks'])])
         self.template_features['template_aatype'] = np.vstack(
-            [self.template_features['template_aatype'], new_template_features['template_aatype']])
+            [self.template_features['template_aatype'], np.array(new_template_features['template_aatype'])])
         self.template_features['template_sequence'] = np.hstack(
-            [self.template_features['template_sequence'], new_template_features['template_sequence']])
+            [self.template_features['template_sequence'], np.array(new_template_features['template_sequence'])])
         self.template_features['template_domain_names'] = np.hstack(
-            [self.template_features['template_domain_names'], new_template_features['template_domain_names']])
+            [self.template_features['template_domain_names'], np.array(new_template_features['template_domain_names'])])
         if not custom_sum_prob:
             self.template_features['template_sum_probs'] = np.vstack(
-                [self.template_features['template_sum_probs'], new_template_features['template_sum_probs']])
+                [self.template_features['template_sum_probs'], np.array(new_template_features['template_sum_probs'])])
         else:
             self.template_features['template_sum_probs'] = np.vstack(
-                [self.template_features['template_sum_probs'], custom_sum_prob])
+                [self.template_features['template_sum_probs'], np.array(custom_sum_prob)])
         return self.template_features
 
     def append_row_in_msa_from_features(self, new_msa_features: Dict):
-        self.msa_features['msa'] = np.vstack([self.msa_features['msa'], new_msa_features['msa']])
+
+        self.msa_features['msa'] = np.vstack([self.msa_features['msa'], np.array(new_msa_features['msa'])])
         self.msa_features['accession_ids'] = np.hstack(
             [self.msa_features['accession_ids'], new_msa_features['accession_ids']])
         self.msa_features['deletion_matrix_int'] = np.vstack(
@@ -76,24 +78,12 @@ class Features:
     def append_row_in_msa(self, sequence_in: str, sequence_id: str):
         sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence_in])
         self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
-        self.msa_features['accession_ids'] = np.hstack(
-            [self.msa_features['accession_ids'], sequence_id.encode()])
+        self.msa_features['accession_ids'] = np.hstack([self.msa_features['accession_ids'], sequence_id.encode()])
         self.msa_features['deletion_matrix_int'] = np.vstack(
             [self.msa_features['deletion_matrix_int'], np.zeros(self.msa_features['msa'].shape[1])])
         self.msa_features['msa_species_identifiers'] = np.hstack([self.msa_features['msa_species_identifiers'], ''])
         self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape,
                                                       len(self.msa_features['msa']))
-
-    def complete_msa_from_template_features(self, template_features):
-        msa_from_templates_list = [
-            (''.join(residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0]), 'Query')]
-        for num, seq in enumerate(template_features['template_sequence']):
-            msa = ''.join([f'>{seq[1]}\n{seq[0]}\n' for seq in msa_from_templates_list])
-            if seq.decode('utf-8') not in msa:
-                msa_from_templates_list.append(
-                    (seq.decode('utf-8'), template_features['template_domain_names'][num].decode('utf-8')))
-        for seq in msa_from_templates_list[1:]:
-            self.append_row_in_msa(sequence_in=seq[0], sequence_id=seq[1])
 
     def write_all_templates_in_features(self, output_dir: str, chain='A', print_number=True) -> Dict:
         return write_templates_in_features(self.template_features, output_dir, chain, print_number)
@@ -139,15 +129,6 @@ class Features:
         logging.info(f'Merging sequence, msa and template features!')
         return {**self.sequence_features, **self.msa_features, **self.template_features}
 
-    def get_msa_by_index(self, index: int) -> Dict:
-        template_dict = {
-            'msa': np.array([self.msa_features['msa'][index]]),
-            'deletion_matrix_int': np.array([self.msa_features['deletion_matrix_int'][index]]),
-            'msa_species_identifiers': np.array([self.msa_features['msa_species_identifiers'][index]]),
-            'num_alignments': np.array([self.msa_features['num_alignments'][index]]),
-        }
-        return template_dict
-
     def get_template_by_index(self, index: int) -> Dict:
         template_dict = {
             'template_all_atom_positions': np.array([self.template_features['template_all_atom_positions'][index]]),
@@ -170,65 +151,68 @@ class Features:
         arr = np.array(coverage_msa)
         coverage_msa = arr.argsort()[-finish:][::-1]
         coverage_msa = np.sort(coverage_msa)
-        for i in coverage_msa:
-            msa_dict = {
-                'msa': np.array([new_msa['msa'][i]]),
-                'accession_ids': np.array(str(i).encode()),
-                'deletion_matrix_int': np.array([new_msa['deletion_matrix_int'][i]]),
-                'msa_species_identifiers': np.array([new_msa['msa_species_identifiers'][i]]),
-                'num_alignments': np.zeros(new_msa['num_alignments'].shape)
-            }
-            if positions:
-                msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)
+        msa_dict = self.create_empty_msa_list(len(coverage_msa))
+        for num, i in enumerate(coverage_msa):
+            msa_dict['msa'][num] = new_msa['msa'][i]
+            msa_dict['accession_ids'][num] = str(i).encode()
+            msa_dict['deletion_matrix_int'][num] = new_msa['deletion_matrix_int'][i]
+            msa_dict['msa_species_identifiers'][num] = new_msa['msa_species_identifiers'][i]
+            msa_dict['num_alignments'][num] = np.zeros(new_msa['num_alignments'].shape)
+        if positions:
+            msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)
+        if len(msa_dict['msa'][i]) > 0:
             self.append_row_in_msa_from_features(msa_dict)
-
 
     def set_template_features(self, new_templates: Dict, finish: int = -1, positions: List[int] = [],
                               sequence_in: str = None):
         finish = len(new_templates['template_sequence']) if finish == -1 else finish
+
+        template_dict = self.create_empty_template_list(finish)
         for i in range(0, finish):
             index = self.get_index_by_name(name=new_templates['template_domain_names'][i].decode())
             if index is None:
-                template_dict = {
-                    'template_all_atom_positions': np.array([new_templates['template_all_atom_positions'][i]]),
-                    'template_all_atom_masks': np.array([new_templates['template_all_atom_masks'][i]]),
-                    'template_aatype': np.array([new_templates['template_aatype'][i]]),
-                    'template_sequence': np.array([new_templates['template_sequence'][i]]),
-                    'template_domain_names': np.array([new_templates['template_domain_names'][i]]),
-                    'template_sum_probs': np.array([new_templates['template_sum_probs'][i]])
-                }
-                if sequence_in is not None:
-                    template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
-                if positions:
-                    template_dict = self.expand_template(template_dict=template_dict, expand=positions)
-                self.append_new_template_features(template_dict)
+                template_dict['template_all_atom_positions'][i] = new_templates['template_all_atom_positions'][i]
+                template_dict['template_all_atom_masks'][i] = new_templates['template_all_atom_masks'][i]
+                template_dict['template_aatype'][i] = new_templates['template_aatype'][i]
+                template_dict['template_sequence'][i] = new_templates['template_sequence'][i]
+                template_dict['template_domain_names'][i] = new_templates['template_domain_names'][i]
+                template_dict['template_sum_probs'][i] = new_templates['template_sum_probs'][i]
+
+        if sequence_in is not None:
+            template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
+        if positions:
+            template_dict = self.expand_template(template_dict=template_dict, expand=positions)
+        self.append_new_template_features(template_dict)
 
     def expand_msa(self, msa_dict: Dict, expand: List[int]) -> Dict:
         aux_dict = copy.deepcopy(msa_dict)
-        msa_dict['msa'] = np.full(len(self.query_sequence), 21)
-        msa_dict['msa'][expand[0]:expand[1]] = aux_dict['msa']
-        msa_dict['deletion_matrix_int'] = np.full(len(self.query_sequence), 0)
-        msa_dict['deletion_matrix_int'][expand[0]:expand[1]] = aux_dict['deletion_matrix_int']
-        msa_dict['msa_species_identifiers'] = aux_dict['msa_species_identifiers']
+        for i in range(len(msa_dict['msa'])):
+            msa_dict['msa'][i] = np.full(len(self.query_sequence), 21)
+            msa_dict['msa'][i][expand[0]:expand[1]] = aux_dict['msa'][i]
+            msa_dict['deletion_matrix_int'][i] = np.full(len(self.query_sequence), 0)
+            msa_dict['deletion_matrix_int'][i][expand[0]:expand[1]] = aux_dict['deletion_matrix_int'][i]
+            msa_dict['msa_species_identifiers'][i] = aux_dict['msa_species_identifiers'][i]
         return msa_dict
 
     def expand_template(self, template_dict: Dict, expand: List[int]) -> Dict:
         aux_dict = copy.deepcopy(template_dict)
-        template_dict['template_all_atom_positions'] = np.array(
-            [np.zeros((len(self.query_sequence), residue_constants.atom_type_num, 3))])
-        template_dict['template_all_atom_positions'][0][expand[0]:expand[1]] = aux_dict['template_all_atom_positions']
-        template_dict['template_all_atom_masks'] = np.array(
-            [np.zeros((len(self.query_sequence), residue_constants.atom_type_num))])
-        template_dict['template_all_atom_masks'][0][expand[0]:expand[1]] = aux_dict['template_all_atom_masks']
-        template_dict['template_aatype'] = np.array(
-            [residue_constants.sequence_to_onehot('A' * len(self.query_sequence),
-                                                  residue_constants.HHBLITS_AA_TO_ID)])
-        template_dict['template_aatype'][0][expand[0]:expand[1]] = aux_dict['template_aatype']
-        seq_aux = list(('-' * len(self.query_sequence)))
-        seq_aux[expand[0]:expand[1]] = aux_dict['template_sequence'][0].decode()
-        template_dict['template_sequence'] = [''.join(seq_aux).encode()]
-        template_dict['template_domain_names'][expand[0]:expand[1]] = aux_dict['template_domain_names']
-        template_dict['template_sum_probs'][expand[0]:expand[1]] = aux_dict['template_sum_probs']
+        for i in range(len(template_dict['template_all_atom_positions'])):
+            template_dict['template_all_atom_positions'][i] = np.zeros(
+                (len(self.query_sequence), residue_constants.atom_type_num, 3))
+            template_dict['template_all_atom_positions'][i][expand[0]:expand[1]] = \
+                aux_dict['template_all_atom_positions'][i]
+            template_dict['template_all_atom_masks'][i] = np.zeros(
+                (len(self.query_sequence), residue_constants.atom_type_num))
+            template_dict['template_all_atom_masks'][i][expand[0]:expand[1]] = aux_dict['template_all_atom_masks'][i]
+            template_dict['template_aatype'][i] = residue_constants.sequence_to_onehot('A' * len(self.query_sequence),
+                                                                                       residue_constants.HHBLITS_AA_TO_ID)
+            template_dict['template_aatype'][i][expand[0]:expand[1]] = aux_dict['template_aatype'][i]
+            seq_aux = list(('-' * len(self.query_sequence)))
+            seq_aux[expand[0]:expand[1]] = aux_dict['template_sequence'][i].decode()
+            template_dict['template_sequence'][i] = ''.join(seq_aux).encode()
+
+            template_dict['template_domain_names'][i] = aux_dict['template_domain_names'][i]
+            template_dict['template_sum_probs'][i][expand[0]:expand[1]] = aux_dict['template_sum_probs'][i]
         return template_dict
 
     def slicing_features(self, chunk_list: List) -> List:
@@ -240,40 +224,61 @@ class Features:
         features_list = []
         for start_min, start_max in chunk_list:
             new_features = Features(query_sequence=sequence_in[start_min:start_max])
+            msa_dict = self.create_empty_msa_list(len(sequence_in[start_min:start_max]))
             for i in range(1, self.get_msa_length()):
-                msa_dict = {
-                    'msa': np.array([self.msa_features['msa'][i][start_min:start_max]]),
-                    'accession_ids': np.array(str(i).encode()),
-                    'deletion_matrix_int': np.array([self.msa_features['deletion_matrix_int'][i][start_min:start_max]]),
-                    'msa_species_identifiers': np.array([self.msa_features['msa_species_identifiers'][i]]),
-                    'num_alignments': np.zeros(self.msa_features['num_alignments'].shape)
-                }
-                new_features.append_row_in_msa_from_features(msa_dict)
-
+                print(self.msa_features['msa'][i])
+                msa_dict['msa'][i] = self.msa_features['msa'][i][start_min:start_max]
+                msa_dict['accession_ids'][i] = str(i).encode()
+                msa_dict['deletion_matrix_int'][i] = self.msa_features['deletion_matrix_int'][i][start_min:start_max]
+                msa_dict['msa_species_identifiers'][i] = self.msa_features['msa_species_identifiers'][i]
+                msa_dict['num_alignments'][i] = np.zeros(self.msa_features['num_alignments'].shape)
+            new_features.append_row_in_msa_from_features(msa_dict)
+            template_dict = self.create_empty_template_list((self.get_templates_length()))
             for i in range(0, self.get_templates_length()):
-                template_dict = {
-                    'template_all_atom_positions': np.array(
-                        [self.template_features['template_all_atom_positions'][i][start_min:start_max]]),
-                    'template_all_atom_masks': np.array(
-                        [self.template_features['template_all_atom_masks'][i][start_min:start_max]]),
-                    'template_aatype': np.array([self.template_features['template_aatype'][i][start_min:start_max]]),
-                    'template_sequence': np.array(
-                        [self.template_features['template_sequence'][i][start_min:start_max]]),
-                    'template_domain_names': np.array([self.template_features['template_domain_names'][i]]),
-                    'template_sum_probs': np.array([self.template_features['template_sum_probs'][i]])
-                }
-                new_features.append_new_template_features(template_dict)
+                template_dict['template_all_atom_positions'][i] = self.template_features['template_all_atom_positions'][
+                                                                      i][start_min:start_max]
+                template_dict['template_all_atom_masks'][i] = self.template_features['template_all_atom_masks'][i][
+                                                              start_min:start_max]
+                template_dict['template_aatype'][i] = self.template_features['template_aatype'][i][start_min:start_max]
+                template_dict['template_sequence'][i] = self.template_features['template_sequence'][i][
+                                                        start_min:start_max]
+                template_dict['template_domain_names'][i] = self.template_features['template_domain_names'][i]
+                template_dict['template_sum_probs'][i] = self.template_features['template_sum_probs'][i][
+                                                         start_min:start_max]
+
+            new_features.append_new_template_features(template_dict)
             features_list.append(new_features)
         logging.info(
             f'Features has been sliced in {len(features_list)} partitions with the following sizes: {chunk_list}')
         return features_list
+
+    def create_empty_msa_list(self, length: int) -> Dict:
+        msa_dict = {
+            'msa': [None] * length,
+            'accession_ids': [None] * length,
+            'deletion_matrix_int': [None] * length,
+            'msa_species_identifiers': [None] * length,
+            'num_alignments': [None] * length
+        }
+        return msa_dict
+
+    def create_empty_template_list(self, length: int) -> Dict:
+        template_dict = {
+            'template_all_atom_positions': [None] * length,
+            'template_all_atom_masks': [None] * length,
+            'template_aatype': [None] * length,
+            'template_sequence': [None] * length,
+            'template_domain_names': [None] * length,
+            'template_sum_probs': [None] * length
+        }
+        return template_dict
 
 
 def delete_residues_msa(msa: Dict, position: int, delete_positions: List[int]) -> Dict:
     # Delete the specifics residues in the msa.
     for delete in delete_positions:
         if delete <= msa['msa'][position].size:
-            msa['msa'][position][delete-1] = 21
+            msa['msa'][position][delete - 1] = 21
             msa['deletion_matrix_int'][position][delete - 1] = 0
         else:
             break
@@ -281,11 +286,12 @@ def delete_residues_msa(msa: Dict, position: int, delete_positions: List[int]) -
 
 
 def replace_sequence_template(template_dict: Dict, sequence_in: str) -> Dict:
-    template_dict['template_sequence'] = sequence_in.encode()
-    for index, atoms_mask in enumerate(template_dict['template_all_atom_masks'][0][:]):
-        aa_container = [0] * 22
-        aa_container[AA_TO_ID_TO_HHBLITS[sequence_in[index]]] = 1
-        template_dict['template_aatype'][0][index] = aa_container
+    for i in range(len(template_dict)):
+        template_dict['template_sequence'][i] = sequence_in.encode()
+        for index, atoms_mask in enumerate(template_dict['template_all_atom_masks'][i][0][:]):
+            aa_container = [0] * 22
+            aa_container[AA_TO_ID_TO_HHBLITS[sequence_in[index]]] = 1
+            template_dict['template_aatype'][i][0][index] = aa_container
     return template_dict
 
 
