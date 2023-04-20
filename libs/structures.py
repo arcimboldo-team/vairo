@@ -8,8 +8,7 @@ from libs import utils
 
 @dataclasses.dataclass(frozen=True)
 class CCAnalysisOutput:
-    x: float
-    y: float
+    coord: List[float]
     module: float
     angle: float
 

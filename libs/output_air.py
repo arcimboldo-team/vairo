@@ -106,8 +106,10 @@ def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List, predic
                 color = 'red'
             else:
                 color = 'blue'
-            plt.scatter(params.x, params.y, marker=markers[i], color=color, label=f'Cluster {i}')
-            plt.annotate(name, (params.x, params.y), horizontalalignment='right', verticalalignment='top')
+            plt.scatter(params.coord[0], params.coord[1], marker=markers[i], color=color, label=f'Cluster {i}')
+            plt.annotate(name, (params.coord[0], params.coord[1]), horizontalalignment='right',
+                         verticalalignment='top')
+
             if len(text_cluster) < 60:
                 text_cluster += f' {name},'
             else:
@@ -118,8 +120,8 @@ def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List, predic
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys())
-    plt.xlim(-1, 1)
-    plt.ylim(-1, 1)
+    plt.xlim([-1, 1])
+    plt.ylim([-1, 1])
     if predictions:
         plt.title('TEMPLATES AND PREDICTIONS CLUSTERING')
     else:
@@ -503,7 +505,6 @@ class OutputAir:
                         rmsd = round(rmsd, 2)
                     ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
                 ranked.sort_template_rankeds()
-
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
         if best_ranked_dict:

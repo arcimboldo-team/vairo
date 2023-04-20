@@ -448,13 +448,16 @@ class StructureAir:
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
-        bioutils.hinges(paths_in=self.output.templates_dict, hinges_path=self.cc_analysis_paths.hinges_path,
-                        size_sequence=self.sequence_assembled.length,
-                        output_path=os.path.join(self.results_dir, 'hinges'))
+        #templates_cluster = bioutils.hinges(paths_in=self.output.templates_dict,
+        #                                    hinges_path=self.cc_analysis_paths.hinges_path,
+        #                                    size_sequence=self.sequence_assembled.length,
+        #                                    output_path=os.path.join(self.results_dir, 'hinges'))
 
+        #if not templates_cluster:
         templates_cluster, _ = bioutils.cc_analysis(paths_in=self.output.templates_dict,
                                                     cc_analysis_paths=self.cc_analysis_paths,
                                                     cc_path=os.path.join(self.results_dir, 'ccanalysis'))
+
         if templates_cluster:
             logging.info(
                 f'The templates obtained in alphafold2 can be grouped in {len(templates_cluster)} clusters')

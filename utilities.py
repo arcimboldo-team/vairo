@@ -36,7 +36,7 @@ def ccanalysis(template_path: str):
                       if path.endswith('.pdb')}
     cc_analysis = structures.CCAnalysis(os.path.join(utils.get_main_path(), 'binaries'))
     templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=templates_dict, cc_analysis_paths=cc_analysis,
-                                                                 cc_path=output_path)
+                                                                 cc_path=output_path, n_clusters=4)
     if analysis_dict:
         output_air.plot_cc_analysis(plot_path=os.path.join(output_path, 'plot.png'), analysis_dict=analysis_dict,
                                     clusters=templates_cluster_list)

@@ -306,7 +306,7 @@ def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
     output_path = 'cc_analysis.in'
     if pdb2cc_path is None:
         pdb2cc_path = 'pdb2cc'
-    command_line = f'{pdb2cc_path} -m -i 10 -y 0.5 "orig.*.pdb" 0 {output_path}'
+    command_line = f'{pdb2cc_path} -m -i 10 -y 0.15 "orig.*.pdb" 0 {output_path}'
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     p.communicate()
@@ -338,11 +338,12 @@ def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_p
     # It needs two pdbs. Return the rmsd obtained.
     command_line = f'{hinges_path} {pdb1_path} {pdb2_path}'
     output = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+                              stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
     if output_path is not None:
         with open(output_path, 'w+') as f:
             f.write(output)
     return utils.parse_hinges(output)
+
 
 def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: str = None):
     # Check if there are at least five pdbs that has more than 60% of the sequence length
@@ -355,6 +356,7 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     logging.info('Starting hinges analysis')
     complete_pdbs = {}
     uncompleted_pdbs = {}
+    group_rmsd = {}
     for key, value in paths_in.items():
         num_residues = sum(1 for _ in get_structure(value)[0].get_residues())
         if threshold_completeness < num_residues:
@@ -364,12 +366,10 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
 
     if len(complete_pdbs) >= 5:
         logging.info(f'There are {len(complete_pdbs)} complete pdbs. Skipping hinges.')
-        return
     else:
-        logging.info(f'There are {len(complete_pdbs)} complete pdbs. Not enough to run cc_analysis. '
+        logging.info(f'There are {len(complete_pdbs)} complete pdbs. Not enough pdbs to run cc_analysis. '
                      f'Using hinges to create groups.')
         processed_pairs = set()
-        group_rmsd = {}
         results_rmsd = {}
         for key1, value1 in complete_pdbs.items():
             if not utils.get_key_by_value(value=key1, search_dict=group_rmsd):
@@ -391,9 +391,15 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
                             elif len(group_rmsd[res[0]]) == 1:
                                 del group_rmsd[key2]
                                 group_rmsd[key1.append(key2)]
+        for key1, value1 in complete_pdbs.items():
+            for key2, value2 in complete_pdbs.items():
+                rmsd = run_hinges(pdb1_path=value1, pdb2_path=value2, hinges_path=hinges_path,
+                                  output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
 
-        print(group_rmsd)
-        print(results_rmsd)
+    logging.info(f'The complete pdbs are grouped in the following way:')
+    utils.print_dict(group_rmsd)
+    return group_rmsd
+
 
 def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:
     # CC_analysis. It is mandatory to have the paths of the programs in order to run pdb2cc and ccanalysis.
@@ -407,7 +413,7 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
 
     for index, path in enumerate(paths):
         # If it is a ranked, it is mandatory to change the bfactors to VALUE-70.
-        # We want to evaluate the residues that have a good PLLDT
+        # We want to evaluate the residues that have a good PLDDT
         # PDB2CC ignore the residues with bfactors below 0
         if utils.check_ranked(os.path.basename(path)):
             bfactors_dict = read_bfactors_from_residues(path)
@@ -438,18 +444,18 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
                 # Parse the results of cc_analysis, we will have for each pdb, all the values given in ccanalysis
                 cc_analysis_dict = utils.parse_cc_analysis(file_path=output_cc)
                 for key, values in cc_analysis_dict.items():
-                    # If the modules are are higher than 0.1, keep the pdb, otherwise discard it
-                    if values.module > 0.1 or values.module < -0.1:
+                    # If the modules are higher than 0.1, keep the pdb, otherwise discard it
+                    if values.module is None or values.module > 0.1 or values.module < -0.1:
                         clean_dict[trans_dict[int(key) - 1]] = values
                 # Get the positions given by ccanalysis
-                points = np.array([[values.x, values.y] for values in clean_dict.values()])
+                points = np.array([values.coord for values in clean_dict.values()])
                 # Generate n clusters groups with KMEANS
                 kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(points)
                 lookup_table = {}
                 counter = 0
                 # The kmeans results has a list with all the positions belonging to the corresponding pdb.
                 # Translate the labels into groups, so they appear in sequentially (group 0 first, 1...)
-                # Otherwise they are choosen randomly.
+                # Otherwise they are chosen randomly.
                 for i in kmeans.labels_:
                     if i not in lookup_table:
                         lookup_table[i] = counter
@@ -466,7 +472,6 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
 
 def extract_cryst_card_pdb(pdb_in_path: str) -> Union[str, None]:
     # Extract the crystal card from a pdb
-
     if os.path.isfile(pdb_in_path):
         with open(pdb_in_path, 'r') as f_in:
             pdb_lines = f_in.readlines()
