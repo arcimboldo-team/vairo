@@ -223,10 +223,15 @@ def parse_cc_analysis(file_path: str) -> Dict:
         lines = f_in.readlines()
         for line in lines:
             split_text = line.split()
-            return_dict[split_text[0]] = structures.CCAnalysisOutput(float(split_text[1]), float(split_text[2]),
-                                                                     float(split_text[3]), float(split_text[4]))
-
+            coordinates = []
+            if len(split_text) > 3:
+                for pos in range(1, len(split_text)-2):
+                    coordinates.append(float(split_text[pos]))
+                return_dict[split_text[0]] = structures.CCAnalysisOutput(coordinates, float(split_text[-2]), float(split_text[-1]))
+            else:
+                return_dict[split_text[0]] = structures.CCAnalysisOutput([split_text[1], 0], None, float(split_text[2]))
     return return_dict
+
 
 def parse_hinges(output: str) -> float:
     # Read the output of hinges and return minimum rmsd
@@ -385,6 +390,14 @@ def check_ranked(input_path: str) -> bool:
 
 def delete_old_rankeds(input_path: str):
     [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if check_ranked(path)]
+
+
+def print_dict(input_dict: Dict):
+    for key, value in input_dict.items():
+        if isinstance(value, list):
+            logging.info(f'{key}: {" ".join(value)}')
+        else:
+            logging.info(f'{key}: {value}')
 
 
 def create_logger():
