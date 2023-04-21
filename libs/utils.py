@@ -12,7 +12,7 @@ import sys
 from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union, Optional
 
 from sklearn import preprocessing
 
@@ -233,13 +233,35 @@ def parse_cc_analysis(file_path: str) -> Dict:
     return return_dict
 
 
-def parse_hinges(output: str) -> float:
-    # Read the output of hinges and return minimum rmsd
-    regex = r"RMStot=\s*(\d+\.\d+)"
-    matches = re.findall(regex, output)
-    if matches:
-        return float(min(matches))
-    return None
+def parse_hinges(output: str) -> Optional[tuple[float, float]]:
+    # Read the output of hinges
+    # Parse all the output of hinges with the following structure:
+    # decreasing_rmsd: float
+    # min_rmsd: str
+    # groups: List[(int, int)]
+    # }
+
+    rmsd_list = []
+    residues_list = []
+    # split the data by ngroups
+    groups = re.split(r'ngroups=\s+\d+\s+', output)[1:]
+    # loop over each group and extract the data
+    for i, group in enumerate(groups, start=1):
+        ngroup_match = re.search(r"SUMSQ=\s+[\d\.]+\s+RMStot=\s+([\d\.]+)", group)
+        if ngroup_match:
+            rmsd_list.append(float(ngroup_match.group(1)))
+            ngroup_data = []
+            pairs = re.findall(r'A(\d+)\s+A(\d+)', group)
+            for pair in pairs:
+                ngroup_data.append((int(pair[0]), int(pair[1])))
+            residues_list.append(ngroup_data)
+
+    if not rmsd_list:
+        return None
+    hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0]-rmsd_list[-1])/rmsd_list[0]*100,
+                                      min_rmsd=min(rmsd_list),
+                                      groups=residues_list)
+    return hinges_result
 
 
 def parse_aleph_annotate(file_path: str) -> Dict:

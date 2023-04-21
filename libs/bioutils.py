@@ -5,16 +5,18 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from Bio import SeqIO
-from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model
+from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
 from scipy.spatial import distance
 from simtk import unit, openmm
 from sklearn.cluster import KMeans
 
-from libs import change_res, structures, utils, sequence
+from ALEPH.aleph.core import ALEPH
+from libs import change_res, structures, utils, sequence, plots
 
 
 def download_pdb(pdb_id: str, output_dir: str):
@@ -345,61 +347,117 @@ def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_p
     return utils.parse_hinges(output)
 
 
-def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: str = None):
+def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
+    # Ramachandran analysis, it generates the angles in degrees, and it generates the plot.
+    valid_residues = ["MET", "SER", "ASN", "LEU", "GLU", "LYS", "GLN", "ILE", "ALA", "ARG",
+                      "HIS", "CYS", "ASP", "THR", "GLY", "TRP", "PHE", "TYR", "PRO", "VAL"]
+
+    # Create ramachandran plot and return analysis
+    structure = get_structure(pdb_path)
+    phi_angles = np.empty(0)
+    psi_angles = np.empty(0)
+
+    # Iterate over each polypeptide in the structure
+    for pp in PPBuilder().build_peptides(structure):
+        phi_psi = pp.get_phi_psi_list()
+        for i, residue in enumerate(pp):
+            if residue.resname not in valid_residues:
+                continue
+            # Get the phi and psi angles for the residue
+            phi, psi = phi_psi[i]
+            if phi and psi:
+                phi_angles = np.append(phi_angles, np.degrees(phi))
+                psi_angles = np.append(psi_angles, np.degrees(psi))
+
+    if output_path is not None:
+        plots.plot_ramachandran(plot_path=os.path.join(output_path, f'{utils.get_file_name(pdb_path)}.png'),
+                                phi_angles=phi_angles, psi_angles=psi_angles)
+    return True
+
+
+def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
+    # Run aleph annotate. Given a path, it generates the annotation of the pdb (coil, bs and ah).
+    # Also, it generates the domains.
+    store_old_dir = os.getcwd()
+    os.chdir(output_path)
+    aleph_output_txt = os.path.join(output_path, f'aleph_{utils.get_file_name(pdb_path)}.txt')
+    output_json = os.path.join(output_path, 'output.json')
+    with open(aleph_output_txt, 'w') as sys.stdout:
+        try:
+            ALEPH.annotate_pdb_model(reference=pdb_path, strictness_ah=0.45, strictness_bs=0.2,
+                                     peptide_length=3, width_pic=1, height_pic=1, write_graphml=False,
+                                     write_pdb=True)
+        except Exception as e:
+            pass
+    sys.stdout = sys.__stdout__
+    if os.path.exists(output_json):
+        return utils.parse_aleph_annotate(output_json), utils.parse_aleph_ss(aleph_output_txt)
+    else:
+        return None, None
+    os.chdir(store_old_dir)
+
+
+def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: str):
     # Check if there are at least five pdbs that has more than 60% of the sequence length
     # If there are at least 5, continue normally cc_analysis
     # If there are less than 5, create groups using hinges
     threshold_rmsd = 5
+    threshold_decreasing = 80
     threshold_completeness = 0.6 * size_sequence
     utils.create_dir(output_path, delete_if_exists=True)
 
     logging.info('Starting hinges analysis')
-    complete_pdbs = {}
+    accepted_pdbs = {}
+    cluster_pdbs = {}
     uncompleted_pdbs = {}
     group_rmsd = {}
+    domains_dict = {}
+
+    # Do the analysis of the different templates. We are going to check:
+    # Completeness respect the query size sequence
+    # Ramachandran plot
+    # And the compactness
     for key, value in paths_in.items():
         num_residues = sum(1 for _ in get_structure(value)[0].get_residues())
-        if threshold_completeness < num_residues:
-            complete_pdbs[key] = value
+        validate_geometry = generate_ramachandran(pdb_path=value, output_path=output_path)
+        if threshold_completeness < num_residues and validate_geometry:
+            accepted_pdbs[key] = value
+            _, domains_dict = aleph_annotate(output_path=output_path, pdb_path=value)
         else:
             uncompleted_pdbs[key] = value
 
-    if len(complete_pdbs) >= 5:
-        logging.info(f'There are {len(complete_pdbs)} complete pdbs. Skipping hinges.')
-    else:
-        logging.info(f'There are {len(complete_pdbs)} complete pdbs. Not enough pdbs to run cc_analysis. '
-                     f'Using hinges to create groups.')
-        processed_pairs = set()
-        results_rmsd = {}
-        for key1, value1 in complete_pdbs.items():
-            if not utils.get_key_by_value(value=key1, search_dict=group_rmsd):
-                group_rmsd.setdefault(key1, []).append(key1)
-            for key2, value2 in complete_pdbs.items():
-                if key1 != key2 and (key1, key2) not in processed_pairs and (key2, key1) not in processed_pairs:
-                    rmsd = run_hinges(pdb1_path=value1, pdb2_path=value2, hinges_path=hinges_path,
-                                      output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
-                    results_rmsd[f'{key1}-{key2}'] = rmsd
-                    processed_pairs.add((key1, key2))
-                    if rmsd is not None:
-                        if rmsd > threshold_rmsd:
-                            if utils.get_key_by_value(value=key2, search_dict=group_rmsd):
-                                group_rmsd.setdefault(key2, []).append(key2)
-                        else:
-                            res = utils.get_key_by_value(value=key2, search_dict=group_rmsd)
-                            if not res:
-                                group_rmsd[key1].append(key2)
-                            elif len(group_rmsd[res[0]]) == 1:
-                                del group_rmsd[key2]
-                                group_rmsd[key1.append(key2)]
-        for key1, value1 in complete_pdbs.items():
-            for key2, value2 in complete_pdbs.items():
-                rmsd = run_hinges(pdb1_path=value1, pdb2_path=value2, hinges_path=hinges_path,
-                                  output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
+    logging.info(f'There are {len(accepted_pdbs)} complete pdbs. Not enough pdbs to run cc_analysis. '
+                 f'Using hinges to create groups.')
 
-    logging.info(f'The complete pdbs are grouped in the following way:')
-    utils.print_dict(group_rmsd)
-    return group_rmsd
+    results_rmsd = {}
+    for key1, value1 in accepted_pdbs.items():
+        results_rmsd[key1] = {}
+        for key2, value2 in accepted_pdbs.items():
+            if key1 != key2:
+                result_hinges = run_hinges(pdb1_path=value1, pdb2_path=value2, hinges_path=hinges_path,
+                                           output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
+            else:
+                result_hinges = None
+            results_rmsd[key1][key2] = result_hinges
 
+    for key, value in results_rmsd.items():
+        #sorted_dict = dict(sorted(value.items(), key=lambda x: x[1].min_rmsd if x[1] is not None else 100))
+        decreasing_bool = False
+        for key2, result in value.items():
+            if result is not None:
+                groups = utils.get_key_by_value(value=key, search_dict=cluster_pdbs)
+                if result.decreasing_rmsd > threshold_decreasing and not groups:
+                    decreasing_bool = True
+                elif result.min_rmsd <= threshold_rmsd:
+                    decreasing_bool = False
+                    if key2 in cluster_pdbs:
+                        cluster_pdbs[key2].append(key)
+                    elif key not in cluster_pdbs:
+                        cluster_pdbs.setdefault(key, []).append(key)
+        if decreasing_bool:
+            cluster_pdbs.setdefault(key, []).append(key)
+
+    print(cluster_pdbs)
 
 def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:
     # CC_analysis. It is mandatory to have the paths of the programs in order to run pdb2cc and ccanalysis.
@@ -508,6 +566,52 @@ def parse_pdb_line(line: str) -> Dict:
     for key, value in parsed_dict.items():
         parsed_dict[key] = value.replace(' ', '')
     return parsed_dict
+
+
+def convert_residues(residues_list: List[List], sequence_assembled):
+    # Given a list of list, which each one corresponding a position in the query sequence
+    # Return the real position of that residue before splitting, as the residues of the chain
+    # are already separated by chains
+    for i in range(0, len(residues_list)):
+        if residues_list[i] is not None:
+            for residue in residues_list[i]:
+                result = sequence_assembled.get_real_residue_number(i, residue)
+                if result is not None:
+                    residues_list.append(result)
+    return residues_list
+
+
+def get_group(res: str) -> str:
+    # Given a residue letter, return if that letter belongs to any group.
+    groups = ['GAVLI', 'FYW', 'CM', 'ST', 'KRH', 'DENQ', 'P']
+    group = [s for s in groups if res in s]
+    if group:
+        return group[0]
+    return res
+
+
+def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
+    # Given two sequences with same length, return a list showing
+    # if there is a match, a group match, they are different, or
+    # they are not aligned
+    return_list = []
+
+    for i in range(0, len(sequence1)):
+        if i < len(sequence2):
+            res1 = sequence1[i]
+            res2 = sequence2[i]
+            if res1 == res2:
+                return_list.append('0')
+            elif res2 == '-':
+                return_list.append('-')
+            elif get_group(res1) == get_group(res2):
+                return_list.append('0.4')
+            else:
+                return_list.append('0.7')
+        else:
+            return_list.append('-')
+
+    return return_list
 
 
 def read_bfactors_from_residues(pdb_path: str) -> Dict:

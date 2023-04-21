@@ -381,7 +381,6 @@ class Template:
     def get_changes(self):
         # Get the changes that have been done to the templates.
         # Return all those residues that has been changed.
-
         chains_changed = [None] * len(self.results_path_position)
         fasta_changed = [None] * len(self.results_path_position)
         chains_deleted = [None] * len(self.results_path_position)

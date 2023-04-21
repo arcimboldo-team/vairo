@@ -38,6 +38,11 @@ class Cluster:
     rankeds: Dict
     templates: Dict
 
+@dataclasses.dataclass(frozen=True)
+class Hinges:
+    decreasing_rmsd: float
+    min_rmsd: str
+    groups: List
 
 @dataclasses.dataclass(frozen=True)
 class FeaturesInput:
