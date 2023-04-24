@@ -12,10 +12,7 @@ from alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_iden
 
 from libs import bioutils, utils
 
-three_to_one = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K', 'ILE': 'I', 'PRO': 'P',
-                'THR': 'T', 'PHE': 'F', 'ASN': 'N', 'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R',
-                'TRP': 'W', 'ALA': 'A', 'VAL': 'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
-AA_TO_ID_TO_HHBLITS = {v: k for k, v in residue_constants.ID_TO_HHBLITS_AA.items()}
+
 ID_TO_HHBLITS_AA_3LETTER_CODE = {0: 'ALA', 1: 'CYS', 2: 'ASP', 3: 'GLU', 4: 'PHE', 5: 'GLY', 6: 'HIS',
                                  7: 'ILE', 8: 'LYS', 9: 'LEU', 10: 'MET', 11: 'ASN', 12: 'PRO', 13: 'GLN',
                                  14: 'ARG', 15: 'SER', 16: 'THR', 17: 'VAL', 18: 'TRP', 19: 'TYR', 20: 'X',
@@ -75,7 +72,7 @@ class Features:
                                                       len(self.msa_features['msa']))
 
     def append_row_in_msa(self, sequence_in: str, sequence_id: str):
-        sequence_array = np.array([AA_TO_ID_TO_HHBLITS[res] for res in sequence_in])
+        sequence_array = np.array([residue_constants.HHBLITS_AA_TO_ID[res] for res in sequence_in])
         self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
         self.msa_features['accession_ids'] = np.hstack([self.msa_features['accession_ids'], sequence_id.encode()])
         self.msa_features['deletion_matrix_int'] = np.vstack(
@@ -276,12 +273,20 @@ def delete_residues_msa(msa: Dict, position: int, delete_positions: List[int]) -
 
 
 def replace_sequence_template(template_dict: Dict, sequence_in: str) -> Dict:
+<<<<<<< HEAD
     for i in range(len(template_dict)):
         template_dict['template_sequence'][i] = sequence_in.encode()
         for index, atoms_mask in enumerate(template_dict['template_all_atom_masks'][i][:]):
             aa_container = [0] * 22
             aa_container[AA_TO_ID_TO_HHBLITS[sequence_in[index]]] = 1
             template_dict['template_aatype'][i][index] = aa_container
+=======
+    template_dict['template_sequence'] = sequence_in.encode()
+    for index, atoms_mask in enumerate(template_dict['template_all_atom_masks'][0][:]):
+        aa_container = [0] * 22
+        aa_container[residue_constants.HHBLITS_AA_TO_ID[sequence_in[index]]] = 1
+        template_dict['template_aatype'][0][index] = aa_container
+>>>>>>> d248cb5 (fix hydrogens)
     return template_dict
 
 
@@ -415,7 +420,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
 
     for res in template_res_list:
         if res.resname != 'X' and res.resname != '-':
-            template_sequence = template_sequence[:res.id[1]] + three_to_one[res.resname] + template_sequence[
+            template_sequence = template_sequence[:res.id[1]] + residue_constants.restype_3to1[res.resname] + template_sequence[
                                                                                             res.id[1]:]
     template_sequence = np.array([template_sequence[:seq_length + 1]])[0]
 
@@ -451,7 +456,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     template_aatype_container = []
     for res in template_sequence[1:]:
         aa_container = [0] * 22
-        aa_container[AA_TO_ID_TO_HHBLITS[res]] = 1
+        aa_container[residue_constants.HHBLITS_AA_TO_ID[res]] = 1
         template_aatype_container.append(aa_container)
     template_aatype = np.array([template_aatype_container])
 

@@ -3,6 +3,8 @@
 import pickle
 import os
 import sys
+
+import alphafold.relax.cleanup
 from libs import features, bioutils, utils, structures, output_air
 import logging
 
@@ -42,6 +44,8 @@ def hinges(template_path: str, sequence_length: int):
                                         output_path=output_path)
 
     print(templates_cluster)
+
+
 
 def ccanalysis(template_path: str):
     output_path = os.path.join(template_path, 'ccanalysis')

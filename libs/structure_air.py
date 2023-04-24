@@ -131,6 +131,7 @@ class StructureAir:
 
         if not os.path.exists(self.af2_dbs_path):
             raise Exception('af2_dbs_path does not exist')
+
         if 'templates' not in parameters_dict:
             logging.info('No templates detected')
         else:

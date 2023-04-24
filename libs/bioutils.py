@@ -16,7 +16,7 @@ from simtk import unit, openmm
 from sklearn.cluster import KMeans
 
 from ALEPH.aleph.core import ALEPH
-from libs import change_res, structures, utils, sequence, plots
+from libs import change_res, structures, utils, sequence, plots, features
 
 
 def download_pdb(pdb_id: str, output_dir: str):
@@ -269,15 +269,6 @@ def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: List[List]
     utils.rmsilent(f'/tmp/pdbset.sh')
 
 
-def remove_hydrogens(pdb_in_path: str, pdb_out_path: str):
-    counter = 0
-    with open(pdb_out_path, 'w') as f_out:
-        with open(pdb_in_path, 'r') as f_in:
-            for line in f_in.readlines():
-                if line.split()[-1] in ['N', 'C', 'O', 'S']:
-                    counter = counter + 1
-                    f_out.write(line[:6] + str(counter).rjust(5) + line[11:])
-
 
 def get_resseq(residue: Residue) -> int:
     # Return resseq number
@@ -441,7 +432,7 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
             results_rmsd[key1][key2] = result_hinges
 
     for key, value in results_rmsd.items():
-        #sorted_dict = dict(sorted(value.items(), key=lambda x: x[1].min_rmsd if x[1] is not None else 100))
+        # sorted_dict = dict(sorted(value.items(), key=lambda x: x[1].min_rmsd if x[1] is not None else 100))
         decreasing_bool = False
         for key2, result in value.items():
             if result is not None:
@@ -457,7 +448,8 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
         if decreasing_bool:
             cluster_pdbs.setdefault(key, []).append(key)
 
-    print(cluster_pdbs)
+    return cluster_pdbs
+
 
 def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:
     # CC_analysis. It is mandatory to have the paths of the programs in order to run pdb2cc and ccanalysis.
@@ -790,20 +782,35 @@ def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
             return 1 if residue.id[0] == " " else 0
 
     structure = get_structure(pdb_path=pdb_in_path)
-    for chain in structure[0]:
-        for res in list(chain.get_residues()):
-            if get_hetatm(res) == 'H_MSE':
-                res.id = (' ', get_resseq(res), ' ')
-                res.resname = 'MET'
-                for atom in res:
-                    if atom.element == 'SE':
-                        atom.id = 'SD'
-                        atom.fullname = 'SD'
-                        atom.name = 'SD'
+    for res in structure[0].get_residues():
+        if get_hetatm(res) == 'H_MSE':
+            res.id = (' ', get_resseq(res), ' ')
+            res.resname = 'MET'
+            for atom in res:
+                if atom.element == 'SE':
+                    atom.id = 'SD'
+                    atom.fullname = 'SD'
+                    atom.name = 'SD'
 
     io = PDBIO()
     io.set_structure(structure)
     io.save(pdb_out_path, NonHetSelect())
+
+
+def remove_atoms_types(pdb_in_path: str, pdb_out_path: str):
+    # Remove the atoms that don't belong to the list atom_types
+    structure = get_structure(pdb_path=pdb_in_path)
+
+    # Remove hydrogen atoms from the structure
+    for residue in structure[0].get_residues():
+        for atom in residue:
+            if atom.element not in features.atom_types:
+                residue.detach_child(atom.get_id())
+
+    # Save the edited structure to a new PDB file
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(pdb_out_path)
 
 
 def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):

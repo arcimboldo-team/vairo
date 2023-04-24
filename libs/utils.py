@@ -233,7 +233,7 @@ def parse_cc_analysis(file_path: str) -> Dict:
     return return_dict
 
 
-def parse_hinges(output: str) -> Optional[tuple[float, float]]:
+def parse_hinges(output: str) -> structures.Hinges:
     # Read the output of hinges
     # Parse all the output of hinges with the following structure:
     # decreasing_rmsd: float
