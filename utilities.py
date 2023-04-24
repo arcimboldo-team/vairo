@@ -4,7 +4,6 @@ import pickle
 import os
 import sys
 
-import alphafold.relax.cleanup
 from libs import features, bioutils, utils, structures, output_air
 import logging
 
@@ -31,6 +30,9 @@ def generate_features(query_path: str, fasta_path: str):
     write_features(path)
 
 
+def remove(pdb_path: str):
+    bioutils.remove_hydrogens(pdb_path, pdb_path)
+
 def hinges(template_path: str, sequence_length: int):
     output_path = os.path.join(template_path, 'hinges')
     os.listdir(template_path)
@@ -44,7 +46,6 @@ def hinges(template_path: str, sequence_length: int):
                                         output_path=output_path)
 
     print(templates_cluster)
-
 
 
 def ccanalysis(template_path: str):

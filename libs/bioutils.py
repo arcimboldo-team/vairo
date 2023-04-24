@@ -17,7 +17,7 @@ from sklearn.cluster import KMeans
 
 from ALEPH.aleph.core import ALEPH
 from libs import change_res, structures, utils, sequence, plots, features
-
+from alphafold.relax import cleanup
 
 def download_pdb(pdb_id: str, output_dir: str):
     pdbl = PDBList(server='https://files.wwpdb.org')
@@ -401,7 +401,7 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     accepted_pdbs = {}
     cluster_pdbs = {}
     uncompleted_pdbs = {}
-    group_rmsd = {}
+
     domains_dict = {}
 
     # Do the analysis of the different templates. We are going to check:
@@ -432,21 +432,23 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
             results_rmsd[key1][key2] = result_hinges
 
     for key, value in results_rmsd.items():
-        # sorted_dict = dict(sorted(value.items(), key=lambda x: x[1].min_rmsd if x[1] is not None else 100))
+        sorted_dict = dict(sorted(value.items(), key=lambda x: x[1].min_rmsd if x[1] is not None else 100))
         decreasing_bool = False
-        for key2, result in value.items():
+        for key2, result in sorted_dict.items():
             if result is not None:
                 groups = utils.get_key_by_value(value=key, search_dict=cluster_pdbs)
                 if result.decreasing_rmsd > threshold_decreasing and not groups:
                     decreasing_bool = True
                 elif result.min_rmsd <= threshold_rmsd:
-                    decreasing_bool = False
                     if key2 in cluster_pdbs:
                         cluster_pdbs[key2].append(key)
                     elif key not in cluster_pdbs:
                         cluster_pdbs.setdefault(key, []).append(key)
+                    break
         if decreasing_bool:
             cluster_pdbs.setdefault(key, []).append(key)
+
+    print(results_rmsd)
 
     return cluster_pdbs
 
@@ -797,14 +799,14 @@ def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
     io.save(pdb_out_path, NonHetSelect())
 
 
-def remove_atoms_types(pdb_in_path: str, pdb_out_path: str):
+def remove_hydrogens(pdb_in_path: str, pdb_out_path: str):
     # Remove the atoms that don't belong to the list atom_types
     structure = get_structure(pdb_path=pdb_in_path)
 
     # Remove hydrogen atoms from the structure
     for residue in structure[0].get_residues():
         for atom in residue:
-            if atom.element not in features.atom_types:
+            if atom.element not in ['N', 'C', 'O', 'S']:
                 residue.detach_child(atom.get_id())
 
     # Save the edited structure to a new PDB file
@@ -814,11 +816,10 @@ def remove_atoms_types(pdb_in_path: str, pdb_out_path: str):
 
 
 def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
-    command_line = f'pdbfixer {os.path.abspath(pdb_in_path)} --output={pdb_out_path} --add-atoms=all ' \
-                   f'--keep-heterogens=none --replace-nonstandard --add-residues --ph=7.0 '
-    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
-    p.communicate()
+    pdb_text = open(pdb_in_path, 'r').read()
+    pdb_output = cleanup.fix_pdb(pdb_text, {})
+    with open(pdb_out_path, 'w') as f_out:
+        f_out.write(pdb_output)
 
 
 def run_arcimboldo_air(yml_path: str):
