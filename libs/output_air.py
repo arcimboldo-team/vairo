@@ -150,6 +150,7 @@ class OutputAir:
                                                      sequence_assembled=sequence_assembled)
             ranked.set_mapping(mapping)
             ranked.set_encoded(ranked.split_path)
+            bioutils.remove_hydrogens(ranked.split_path, ranked.split_path)
 
         for ranked in self.ranked_list:
             if ranked.filtered:
