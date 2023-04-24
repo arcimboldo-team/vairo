@@ -401,7 +401,6 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     accepted_pdbs = {}
     cluster_pdbs = {}
     uncompleted_pdbs = {}
-
     domains_dict = {}
 
     # Do the analysis of the different templates. We are going to check:
@@ -442,13 +441,15 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
                 elif result.min_rmsd <= threshold_rmsd:
                     if key2 in cluster_pdbs:
                         cluster_pdbs[key2].append(key)
+                        print('add' + key)
                     elif key not in cluster_pdbs:
+                        print('new' + key)
                         cluster_pdbs.setdefault(key, []).append(key)
                     break
         if decreasing_bool:
+            print('decreasing'+key)
             cluster_pdbs.setdefault(key, []).append(key)
 
-    print(results_rmsd)
 
     return cluster_pdbs
 
