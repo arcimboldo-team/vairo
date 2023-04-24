@@ -16,6 +16,7 @@ from simtk import unit, openmm
 from sklearn.cluster import KMeans
 
 from ALEPH.aleph.core import ALEPH
+from alphafold.common import residue_constants
 from libs import change_res, structures, utils, sequence, plots, features
 from alphafold.relax import cleanup
 
@@ -75,11 +76,6 @@ def check_pdb(pdb: str, output_dir: str) -> str:
             shutil.copy2(pdb, pdb_aux)
             pdb = pdb_aux
 
-    cryst_card = extract_cryst_card_pdb(pdb_in_path=pdb)
-    remove_hetatm(pdb, pdb)
-    if cryst_card is not None:
-        add_cryst_card_pdb(pdb_in_path=pdb, cryst_card=cryst_card)
-
     return pdb
 
 
@@ -120,24 +116,44 @@ def extract_sequences(fasta_path: str) -> Dict:
     return dict([(rec.id, str(rec.seq)) for rec in records])
 
 
+def read_seqres(pdb_path: str) -> str:
+    sequences = {}
+    results_list = []
+    with open(pdb_path) as f:
+        for line in f:
+            if line.startswith('SEQRES'):
+                fields = line.split()
+                chain_id = fields[2]
+                sequence_ext = [residue_constants.restype_3to1[code] if code != 'MSE' else 'M' for code in fields[4:]]
+                if chain_id in sequences:
+                    sequences[chain_id] += ''.join(sequence_ext)
+                else:
+                    sequences[chain_id] = ''.join(sequence_ext)
+    for chain, sequence_ext in sequences.items():
+        results = f'>{utils.get_file_name(pdb_path)[:8].upper()}:{chain}\n'
+        results += sequence_ext
+        results_list.append(results)
+    return results_list
+
+
 def extract_sequence_from_file(file_path: str) -> List[str]:
     results_list = []
     extension = utils.get_file_extension(file_path)
     if extension == '.pdb':
         extraction = 'pdb-atom'
+        seq = read_seqres(pdb_path=file_path)
     else:
         extraction = 'cif-atom'
-
-    try:
-        with open(file_path, 'r') as f_in:
-            for record in SeqIO.parse(f_in, extraction):
-                results = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}\n'
-                results += str(record.seq.replace("X", ""))
-                results_list.append(results)
-        return results_list
-    except Exception as e:
-        logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
-        pass
+    if not results_list:
+        try:
+            with open(file_path, 'r') as f_in:
+                for record in SeqIO.parse(f_in, extraction):
+                    results = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}\n'
+                    results += str(record.seq.replace("X", ""))
+                    results_list.append(results)
+        except Exception as e:
+            logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
+            pass
     return results_list
 
 
@@ -445,6 +461,7 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
                     break
         if decreasing_bool:
             cluster_pdbs.setdefault(key, []).append(key)
+
     return cluster_pdbs
 
 
