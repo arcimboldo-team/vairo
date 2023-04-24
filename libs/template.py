@@ -11,7 +11,7 @@ from libs import structures, sequence
 
 class Template:
 
-    def __init__(self, parameters_dict: Dict, output_dir: str, input_dir: str, num_of_copies: int, new_name=''):
+    def __init__(self, parameters_dict: Dict, output_dir: str, input_dir: str, num_of_copies: int, new_name=None):
         self.pdb_path: str
         self.pdb_id: str
         self.cif_path: str
@@ -35,8 +35,9 @@ class Template:
 
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         if new_name is not None:
-            self.pdb_path = shutil.copy2(self.pdb_path, os.path.join(os.path.dirname(self.pdb_path), f'{new_name}.pdb'))
+            self.pdb_path = shutil.move(self.pdb_path, os.path.join(os.path.dirname(self.pdb_path), f'{new_name}.pdb'))
         self.pdb_id = utils.get_file_name(self.pdb_path)
+        bioutils.remove_atoms_types(self.pdb_path, self.pdb_path)
 
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
