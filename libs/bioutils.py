@@ -392,7 +392,7 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     # Check if there are at least five pdbs that has more than 60% of the sequence length
     # If there are at least 5, continue normally cc_analysis
     # If there are less than 5, create groups using hinges
-    threshold_rmsd = 5
+    threshold_rmsd = 1
     threshold_decreasing = 80
     threshold_completeness = 0.6 * size_sequence
     utils.create_dir(output_path, delete_if_exists=True)
@@ -418,7 +418,6 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
 
     logging.info(f'There are {len(accepted_pdbs)} complete pdbs. Not enough pdbs to run cc_analysis. '
                  f'Using hinges to create groups.')
-
     results_rmsd = {}
     for key1, value1 in accepted_pdbs.items():
         results_rmsd[key1] = {}
@@ -429,7 +428,6 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
             else:
                 result_hinges = None
             results_rmsd[key1][key2] = result_hinges
-
     for key, value in results_rmsd.items():
         sorted_dict = dict(sorted(value.items(), key=lambda x: x[1].min_rmsd if x[1] is not None else 100))
         decreasing_bool = False
@@ -439,18 +437,14 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
                 if result.decreasing_rmsd > threshold_decreasing and not groups:
                     decreasing_bool = True
                 elif result.min_rmsd <= threshold_rmsd:
+                    decreasing_bool = False
                     if key2 in cluster_pdbs:
                         cluster_pdbs[key2].append(key)
-                        print('add' + key)
                     elif key not in cluster_pdbs:
-                        print('new' + key)
                         cluster_pdbs.setdefault(key, []).append(key)
                     break
         if decreasing_bool:
-            print('decreasing'+key)
             cluster_pdbs.setdefault(key, []).append(key)
-
-
     return cluster_pdbs
 
 
@@ -803,10 +797,10 @@ def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
 def remove_hydrogens(pdb_in_path: str, pdb_out_path: str):
     # Remove the atoms that don't belong to the list atom_types
     structure = get_structure(pdb_path=pdb_in_path)
-
     # Remove hydrogen atoms from the structure
     for residue in structure[0].get_residues():
-        for atom in residue:
+        atoms = residue.get_unpacked_list()
+        for atom in atoms:
             if atom.element not in ['N', 'C', 'O', 'S']:
                 residue.detach_child(atom.get_id())
 
