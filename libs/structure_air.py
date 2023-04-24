@@ -2,7 +2,8 @@ import logging
 import os
 import shutil
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence, structures
+from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence, structures, \
+    plots
 from jinja2 import Environment, FileSystemLoader
 
 MIN_RMSD_SPLIT = 5
@@ -371,7 +372,7 @@ class StructureAir:
                 logging.info('No ranked PDBs found')
                 return
             plot_path = os.path.join(afrun.results_dir, 'plddt.png')
-            output_air.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
+            plots.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
             ranked_list.sort(key=lambda x: x.plddt, reverse=True)
 
             new_ranked_path = os.path.join(best_rankeds_dir,
