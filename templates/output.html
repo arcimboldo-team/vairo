@@ -697,13 +697,15 @@
                                         {% endif %}
                                             <li>{{ interface }}
                                                 {% set interfaces_list = [] %}
-                                                {% for ranked, interfaces in data.interfaces_dict.items() %}
-                                                    {% for interface2 in interfaces if interface2.name == interface %}
-                                                        {% for interfaces_template in interface2.interface_template if interfaces_template.template == key and interfaces_template.core == 0 %}
-                                                            {{ interfaces_list.append(ranked) or "" }}
+                                                {% if 'interfaces_dict' in data %}
+                                                    {% for ranked, interfaces in data.interfaces_dict.items() %}
+                                                        {% for interface2 in interfaces if interface2.name == interface %}
+                                                            {% for interfaces_template in interface2.interface_template if interfaces_template.template == key and interfaces_template.core == 0 %}
+                                                                {{ interfaces_list.append(ranked) or "" }}
+                                                            {% endfor %}
                                                         {% endfor %}
                                                     {% endfor %}
-                                                {% endfor %}
+                                                {%endif %}
                                                 {% if interfaces_list %}
                                                     {% for not_interface in interfaces_list %}
                                                         {% if loop.first %}
