@@ -37,7 +37,7 @@ class Template:
         if new_name is not None:
             self.pdb_path = shutil.move(self.pdb_path, os.path.join(os.path.dirname(self.pdb_path), f'{new_name}.pdb'))
         self.pdb_id = utils.get_file_name(self.pdb_path)
-        bioutils.remove_atoms_types(self.pdb_path, self.pdb_path)
+        bioutils.remove_hydrogens(self.pdb_path, self.pdb_path)
 
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
