@@ -16,6 +16,7 @@ class Template:
         self.pdb_id: str
         self.cif_path: str
         self.template_path: str
+        self.template_sequence: str
         self.generate_multimer: bool = True if num_of_copies > 1 else False
         self.change_res_list: List[change_res.ChangeResidues] = []
         self.add_to_msa: bool = False
@@ -37,8 +38,6 @@ class Template:
         if new_name is not None:
             self.pdb_path = shutil.move(self.pdb_path, os.path.join(os.path.dirname(self.pdb_path), f'{new_name}.pdb'))
         self.pdb_id = utils.get_file_name(self.pdb_path)
-        bioutils.remove_hydrogens(self.pdb_path, self.pdb_path)
-
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
         self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
@@ -78,9 +77,11 @@ class Template:
                 change_res.ChangeResidues(chain_res_dict=change_res_dict, resname=resname, fasta_path=fasta_path,
                                           when=when))
 
+        cryst_card = bioutils.extract_cryst_card_pdb(pdb_in_path=self.pdb_path)
+        bioutils.remove_hetatm(self.pdb_path, self.pdb_path)
+        bioutils.remove_hydrogens(self.pdb_path, self.pdb_path)
         tmp_dir = os.path.join(output_dir, 'tmp')
         utils.create_dir(tmp_dir)
-        cryst_card = bioutils.extract_cryst_card_pdb(pdb_in_path=self.pdb_path)
         aux_chain_dict = bioutils.split_pdb_in_chains(output_dir=tmp_dir, pdb_in_path=self.pdb_path)
         self.apply_changes(chain_dict=aux_chain_dict, when='before_alignment')
         aux_list = utils.dict_values_to_list(aux_chain_dict)
@@ -88,10 +89,9 @@ class Template:
         bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
         if cryst_card is not None:
             bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
-
         self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path,
                                            cif_out_path=os.path.join(output_dir, f'{self.pdb_id}.cif'))
-
+        self.template_sequence = bioutils.extract_sequence_from_file(file_path=self.cif_path)
         for parameters_match_dict in parameters_dict.get('match', self.match_restrict_list):
             self.match_restrict_list.append(match_restrictions.MatchRestrictions(parameters_match_dict))
 
@@ -159,8 +159,7 @@ class Template:
                             change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
 
     def generate_database(self, output_dir: str, database_path: str):
-        template_sequence = bioutils.extract_sequence_from_file(self.cif_path)
-        for extracted_sequence in template_sequence:
+        for extracted_sequence in self.template_sequence:
             sequence_chain = extracted_sequence[extracted_sequence.find(':') + 1:extracted_sequence.find('\n')]
             sequence_name = extracted_sequence.splitlines()[0].replace('>', '')
             spit_sequence = extracted_sequence.splitlines()[1]
@@ -178,20 +177,16 @@ class Template:
         # If aligned, skip to the end, it is just necessary to extract the features
         # If not aligned:
         #   - Convert pdb to cif, this is necessary to run hhsearch.
-        #   - Create a fake hhsearch database with just our .cif in it. 
         #   - Run hhsearch, align the .cif with the given sequence.
         #   - For each chain, extract the features from the alignment result, create
         #       the templates for each chain, each template has the chain 'A'.
         #   - Change the specified residues in the input in all the templates.
 
         query_sequence = bioutils.extract_sequence(sequence_in.fasta_path)
-
         extracted_chain_dict = {}
-
         if not self.aligned:
             for database in self.alignment_database:
                 hhr_path = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}.hhr')
-
                 hhsearch.run_hhsearch(fasta_path=sequence_in.fasta_path,
                                       database_path=database.database_path,
                                       output_path=hhr_path)
@@ -227,7 +222,6 @@ class Template:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
             except Exception as e:
                 logging.info(f'Not possible to generate multimer for {self.pdb_path}')
-
 
         self.apply_changes(chain_dict=extracted_chain_dict, when='after_alignment')
         self.alignment_dict[sequence_in.name] = extracted_chain_dict

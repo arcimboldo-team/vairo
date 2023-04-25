@@ -12,7 +12,6 @@ from alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_iden
 
 from libs import bioutils, utils
 
-
 ID_TO_HHBLITS_AA_3LETTER_CODE = {0: 'ALA', 1: 'CYS', 2: 'ASP', 3: 'GLU', 4: 'PHE', 5: 'GLY', 6: 'HIS',
                                  7: 'ILE', 8: 'LYS', 9: 'LEU', 10: 'MET', 11: 'ASN', 12: 'PRO', 13: 'GLN',
                                  14: 'ARG', 15: 'SER', 16: 'THR', 17: 'VAL', 18: 'TRP', 19: 'TYR', 20: 'X',
@@ -347,11 +346,11 @@ def empty_template_features(query_sequence):
 def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain_id) -> List[str]:
     pdb_id = utils.get_file_name(cif_path)
     hhr_text = open(hhr_path, 'r').read()
-
     matches = re.finditer(r'No\s+\d+', hhr_text)
     matches_positions = [match.start() for match in matches] + [len(hhr_text)]
 
     detailed_lines_list = []
+    print(pdb_id[:10] + ':' + chain_id)
     for i in range(len(matches_positions) - 1):
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
@@ -360,18 +359,15 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
 
     if not hits_list:
         logging.info(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
-        return None, None
+        return None, None, None, None, None, None
     detailed_lines = hits_list[0]
 
     file_id = f'{pdb_id.lower()}'
     hit = parsers._parse_hhr_hit(detailed_lines)
-
     template_sequence = hit.hit_sequence.replace('-', '')
-
     mapping = templates._build_query_to_hit_index_mapping(
         hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
         query_sequence)
-
     mmcif_string = open(cif_path).read()
     parsing_result = mmcif_parsing.parse(file_id=file_id, mmcif_string=mmcif_string)
     template_features, _ = templates._extract_template_features(
@@ -420,8 +416,9 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
 
     for res in template_res_list:
         if res.resname != 'X' and res.resname != '-':
-            template_sequence = template_sequence[:res.id[1]] + residue_constants.restype_3to1[res.resname] + template_sequence[
-                                                                                            res.id[1]:]
+            template_sequence = template_sequence[:res.id[1]] + residue_constants.restype_3to1[
+                res.resname] + template_sequence[
+                               res.id[1]:]
     template_sequence = np.array([template_sequence[:seq_length + 1]])[0]
 
     atom_masks = []
