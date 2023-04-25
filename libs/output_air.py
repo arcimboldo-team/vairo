@@ -218,8 +218,10 @@ class OutputAir:
 
         for ranked in self.ranked_list:
             results_dict, domains_dict = bioutils.aleph_annotate(output_path=self.tmp_dir, pdb_path=ranked.split_path)
-            if domains_dict or results_dict is None:
+            if domains_dict is None or results_dict is None:
                 break
+            ranked.set_secondary_structure(ah=results_dict['ah'], bs=results_dict['bs'],
+                                           total_residues=results_dict['number_total_residues'])
             if ranked.filtered:
                 ranked.set_minimized_path(os.path.join(self.tmp_dir, f'{ranked.name}_minimized.pdb'))
                 ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
