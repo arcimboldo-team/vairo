@@ -130,7 +130,7 @@ def read_seqres(pdb_path: str) -> str:
                 else:
                     sequences[chain_id] = ''.join(sequence_ext)
     for chain, sequence_ext in sequences.items():
-        results = f'>{utils.get_file_name(pdb_path)[:8].upper()}:{chain}\n'
+        results = f'>{utils.get_file_name(pdb_path)[:10]}:{chain}\n'
         results += sequence_ext
         results_list.append(results)
     return results_list
@@ -141,19 +141,17 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
     extension = utils.get_file_extension(file_path)
     if extension == '.pdb':
         extraction = 'pdb-atom'
-        seq = read_seqres(pdb_path=file_path)
     else:
         extraction = 'cif-atom'
-    if not results_list:
-        try:
-            with open(file_path, 'r') as f_in:
-                for record in SeqIO.parse(f_in, extraction):
-                    results = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}\n'
-                    results += str(record.seq.replace("X", ""))
-                    results_list.append(results)
-        except Exception as e:
-            logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
-            pass
+    try:
+        with open(file_path, 'r') as f_in:
+            for record in SeqIO.parse(f_in, extraction):
+                results = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}\n'
+                results += str(record.seq.replace("X", ""))
+                results_list.append(results)
+    except Exception as e:
+        logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
+        pass
     return results_list
 
 

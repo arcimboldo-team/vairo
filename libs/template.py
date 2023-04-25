@@ -37,7 +37,6 @@ class Template:
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         if new_name is not None:
             self.pdb_path = shutil.move(self.pdb_path, os.path.join(os.path.dirname(self.pdb_path), f'{new_name}.pdb'))
-        self.template_sequence = bioutils.extract_sequence_from_file(file_path=self.pdb_path)
         self.pdb_id = utils.get_file_name(self.pdb_path)
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
@@ -81,9 +80,6 @@ class Template:
         cryst_card = bioutils.extract_cryst_card_pdb(pdb_in_path=self.pdb_path)
         bioutils.remove_hetatm(self.pdb_path, self.pdb_path)
         bioutils.remove_hydrogens(self.pdb_path, self.pdb_path)
-        if cryst_card is not None:
-            bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
-
         tmp_dir = os.path.join(output_dir, 'tmp')
         utils.create_dir(tmp_dir)
         aux_chain_dict = bioutils.split_pdb_in_chains(output_dir=tmp_dir, pdb_in_path=self.pdb_path)
@@ -91,9 +87,11 @@ class Template:
         aux_list = utils.dict_values_to_list(aux_chain_dict)
         aux_list = utils.remove_list_layer(input_list=aux_list)
         bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
+        if cryst_card is not None:
+            bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
         self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path,
                                            cif_out_path=os.path.join(output_dir, f'{self.pdb_id}.cif'))
-
+        self.template_sequence = bioutils.extract_sequence_from_file(file_path=self.cif_path)
         for parameters_match_dict in parameters_dict.get('match', self.match_restrict_list):
             self.match_restrict_list.append(match_restrictions.MatchRestrictions(parameters_match_dict))
 
@@ -224,7 +222,6 @@ class Template:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
             except Exception as e:
                 logging.info(f'Not possible to generate multimer for {self.pdb_path}')
-
 
         self.apply_changes(chain_dict=extracted_chain_dict, when='after_alignment')
         self.alignment_dict[sequence_in.name] = extracted_chain_dict
