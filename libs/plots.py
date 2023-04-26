@@ -12,9 +12,11 @@ MATPLOTLIB_FONT = 14
 plt.set_loglevel('WARNING')
 
 
-def plot_ramachandran(plot_path: str, phi_angles: List[float], psi_angles: List[float]):
+def plot_ramachandran(plot_path: str, phi_psi_angles: List[List[float]]):
     fig, ax = plt.subplots(figsize=(8, 8))
-    ax.plot(phi_angles, psi_angles, 'o', markersize=3, alpha=0.5)
+    phi = [x[0] for x in phi_psi_angles]
+    psi = [x[1] for x in phi_psi_angles]
+    ax.plot(phi, psi, 'o', markersize=3, alpha=0.5)
     ax.set_xlim(-180, 180)
     ax.set_ylim(-180, 180)
     ax.set_xlabel(r'$\phi$')
