@@ -4,23 +4,12 @@ import os
 import pickle
 import re
 from typing import Dict, List, Union, Any
-
 import numpy as np
 from Bio.PDB import PDBParser, Selection
 from alphafold.common import residue_constants
 from alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_identifiers
-
 from libs import bioutils, utils
-
-ID_TO_HHBLITS_AA_3LETTER_CODE = {0: 'ALA', 1: 'CYS', 2: 'ASP', 3: 'GLU', 4: 'PHE', 5: 'GLY', 6: 'HIS',
-                                 7: 'ILE', 8: 'LYS', 9: 'LEU', 10: 'MET', 11: 'ASN', 12: 'PRO', 13: 'GLN',
-                                 14: 'ARG', 15: 'SER', 16: 'THR', 17: 'VAL', 18: 'TRP', 19: 'TYR', 20: 'X',
-                                 21: '-'}
-atom_types = ['N', 'CA', 'C', 'CB', 'O', 'CG', 'CG1', 'CG2', 'OG', 'OG1', 'SG', 'CD', 'CD1', 'CD2',
-              'ND1', 'ND2', 'OD1', 'OD2', 'SD', 'CE', 'CE1', 'CE2', 'CE3', 'NE', 'NE1', 'NE2', 'OE1',
-              'OE2', 'CH2', 'NH1', 'NH2', 'OH', 'CZ', 'CZ2', 'CZ3', 'NZ', 'OXT']
-atom_order = {atom_type: i for i, atom_type in enumerate(atom_types)}
-order_atom = {v: k for k, v in atom_order.items()}
+from libs.global_variables import ATOM_TYPES, ID_TO_HHBLITS_AA_3LETTER_CODE, ORDER_ATOM
 
 
 class Features:
@@ -425,7 +414,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
             a37_in_res = [0] * 37
             list_of_atoms_in_res = [atom.id for atom in [resi for resi in template_res_list if resi.id[1] == i][0]]
             for atom in list_of_atoms_in_res:
-                index = atom_types.index(atom)
+                index = ATOM_TYPES.index(atom)
                 a37_in_res[index] = 1.
             atom_masks.append(a37_in_res)
     template_all_atom_masks = np.array([atom_masks[1:]])
@@ -437,7 +426,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
             if atom == 1.:
                 resi = [res for res in Selection.unfold_entities(structure, "R")
                         if res.get_parent().id == chain_id and res.id[0] != 'W' and res.id[1] == (i + 1)][0]
-                res_container.append(resi[atom_types[j]].coord)
+                res_container.append(resi[ATOM_TYPES[j]].coord)
             else:
                 res_container.append(np.array([0.] * 3))
         template_container.append(res_container)
@@ -485,7 +474,7 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
                 template_residue_masks = template_features['template_aatype'][template_domain_index][index]
                 template_residue_masks_index = np.where(template_residue_masks == 1)[0][0]
                 res_type = ID_TO_HHBLITS_AA_3LETTER_CODE[template_residue_masks_index]
-                list_of_atoms_in_residue = [order_atom[i] for i, atom in enumerate(atoms_mask) if atom == 1]
+                list_of_atoms_in_residue = [ORDER_ATOM[i] for i, atom in enumerate(atoms_mask) if atom == 1]
                 for atom in list_of_atoms_in_residue:
                     atom_num_int = atom_num_int + 1
                     atom_remark = 'ATOM'
@@ -495,15 +484,15 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
                     res_num = str(index + 1)
                     x_coord = str('%8.3f' % (float(str(
                         template_features['template_all_atom_positions'][template_domain_index][index][
-                            atom_types.index(atom)][
+                            ATOM_TYPES.index(atom)][
                             0]))))
                     y_coord = str('%8.3f' % (float(str(
                         template_features['template_all_atom_positions'][template_domain_index][index][
-                            atom_types.index(atom)][
+                            ATOM_TYPES.index(atom)][
                             1]))))
                     z_coord = str('%8.3f' % (float(str(
                         template_features['template_all_atom_positions'][template_domain_index][index][
-                            atom_types.index(atom)][
+                            ATOM_TYPES.index(atom)][
                             2]))))
                     occ = '1.0'
                     bfact = '25.0'

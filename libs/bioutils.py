@@ -17,8 +17,9 @@ from sklearn.cluster import KMeans
 
 from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
-from libs import change_res, structures, utils, sequence, plots, features
+from libs import change_res, structures, utils, sequence, plots, features, global_variables
 from alphafold.relax import cleanup
+
 
 def download_pdb(pdb_id: str, output_dir: str):
     pdbl = PDBList(server='https://files.wwpdb.org')
@@ -283,7 +284,6 @@ def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: List[List]
     utils.rmsilent(f'/tmp/pdbset.sh')
 
 
-
 def get_resseq(residue: Residue) -> int:
     # Return resseq number
     return residue.get_full_id()[3][1]
@@ -374,10 +374,36 @@ def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
                 phi_angles = np.append(phi_angles, np.degrees(phi))
                 psi_angles = np.append(psi_angles, np.degrees(psi))
 
+    phi_psi_angles = np.column_stack((phi_angles, psi_angles))
+
     if output_path is not None:
         plots.plot_ramachandran(plot_path=os.path.join(output_path, f'{utils.get_file_name(pdb_path)}.png'),
-                                phi_angles=phi_angles, psi_angles=psi_angles)
+                                phi_psi_angles=phi_psi_angles)
+
+    analysis = ramachandran_analysis(phi_psi_angles=phi_psi_angles)
+    percentage = len(analysis)/len(phi_psi_angles)*100
+    if percentage > 5:
+        logging.info(f'A {percentage}% angles of the {utils.get_file_name(pdb_path)} are outliers.')
+        return False
     return True
+
+
+def ramachandran_analysis(phi_psi_angles: List[List[int]]) -> List[int]:
+    # Do the ramachandran analysis. Given a matrix of PHI and PSI (X,Y), calculate the outliers given
+    # a table from global_variables. If the value is different from 0, consider it not an outlier.
+    outliers_list = []
+    minimum_value = 5
+    for phi, psi in phi_psi_angles:
+        print(round(phi/10), round(psi/10))
+        value = global_variables.RAMACHANDRAN_TABLE[round(phi/10)][round(psi/10)]
+        print(value)
+        if value > minimum_value:
+            outliers_list.append(value)
+    return outliers_list
+
+
+
+
 
 
 def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
@@ -415,7 +441,6 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     accepted_pdbs = {}
     cluster_pdbs = {}
     uncompleted_pdbs = {}
-    domains_dict = {}
 
     # Do the analysis of the different templates. We are going to check:
     # Completeness respect the query size sequence
@@ -426,7 +451,6 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
         validate_geometry = generate_ramachandran(pdb_path=value, output_path=output_path)
         if threshold_completeness < num_residues and validate_geometry:
             accepted_pdbs[key] = value
-            _, domains_dict = aleph_annotate(output_path=output_path, pdb_path=value)
         else:
             uncompleted_pdbs[key] = value
 
@@ -972,6 +996,12 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
 
 def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict) \
         -> Dict[Any, List[Any]]:
+    # For a PDB and an interface (contains the chains and the residues involved in the interface).
+    # Iterate the interface, selecting all those residues that belong to a domain (we have previously calculated
+    # all the domains in the PDB).
+    # We create a dictionary with all the residues of the interface, extending them to their whole domain.
+    # Split the pdb into the chains of the interface and delete all the others residues.
+    # Return the dictionary with the chains and the interface residues extended.
     add_domains_dict = {}
     bfactors_dict = {}
     for chain, residue in zip([interface['chain1'], interface['chain2']],
@@ -984,14 +1014,16 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
 
     split_dimers_in_pdb(pdb_in_path=pdb_in_path,
                         pdb_out_path=pdb_out_path,
-                        chain1=interface['chain1'],
-                        chain2=interface['chain2'])
+                        chain_list=[interface['chain1'], interface['chain2']])
 
     change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
     change.delete_residues_inverse(pdb_out_path, pdb_out_path)
     change.change_bfactors(pdb_out_path, pdb_out_path)
 
     return add_domains_dict
+
+
+
 
 
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
@@ -1024,11 +1056,16 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
         return []
 
 
-def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain1: List, chain2: List):
-    with open(pdb_in_path, 'r') as f_in:
-        input_lines = f_in.readlines()
-
-    with open(pdb_out_path, 'w') as f_out:
-        for line in input_lines:
-            if line[21:22] in [chain1, chain2]:
-                f_out.write(line)
+def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain_list: List[str]):
+    # Given a PDB, keep those chains that are in the list.
+    # The other chains are going to be deleted.
+    class ChainSelector(Select):
+        def accept_chain(self, chain):
+            if chain.get_id() in chain_list:
+                return True
+            else:
+                return False
+    structure = get_structure(pdb_in_path)
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(pdb_out_path, ChainSelector())
