@@ -33,6 +33,7 @@ def generate_features(query_path: str, fasta_path: str):
 def remove(pdb_path: str):
     bioutils.remove_hydrogens(pdb_path, pdb_path)
 
+
 def hinges(template_path: str, sequence_length: int):
     output_path = os.path.join(template_path, 'hinges')
     os.listdir(template_path)
@@ -45,7 +46,8 @@ def hinges(template_path: str, sequence_length: int):
                                         size_sequence=int(sequence_length),
                                         output_path=output_path)
 
-    print(templates_cluster)
+    for key, values in templates_cluster.items():
+        print(key, values)
 
 
 def ccanalysis(template_path: str):

@@ -17,8 +17,10 @@ from sklearn.cluster import KMeans
 
 from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
-from libs import change_res, structures, utils, sequence, plots, features, global_variables
+from libs import change_res, structures, utils, sequence, plots, global_variables
 from alphafold.relax import cleanup
+
+from libs.structures import Hinges
 
 
 def download_pdb(pdb_id: str, output_dir: str):
@@ -340,7 +342,7 @@ def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = No
     return f'{os.path.join(os.path.dirname(input_path), output_path)}'
 
 
-def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_path: str = None) -> int:
+def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_path: str = None) -> Hinges:
     # Run hinges from hinges_path.
     # It needs two pdbs. Return the rmsd obtained.
     command_line = f'{hinges_path} {pdb1_path} {pdb2_path}'
@@ -381,9 +383,9 @@ def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
                                 phi_psi_angles=phi_psi_angles)
 
     analysis = ramachandran_analysis(phi_psi_angles=phi_psi_angles)
-    percentage = len(analysis)/len(phi_psi_angles)*100
-    if percentage > 5:
-        logging.info(f'A {percentage}% angles of the {utils.get_file_name(pdb_path)} are outliers.')
+    percentage = len(analysis) / len(phi_psi_angles) * 100
+    logging.info(f'A {percentage}% angles of the {utils.get_file_name(pdb_path)} are outliers.')
+    if percentage > 20:
         return False
     return True
 
@@ -392,18 +394,12 @@ def ramachandran_analysis(phi_psi_angles: List[List[int]]) -> List[int]:
     # Do the ramachandran analysis. Given a matrix of PHI and PSI (X,Y), calculate the outliers given
     # a table from global_variables. If the value is different from 0, consider it not an outlier.
     outliers_list = []
-    minimum_value = 5
+    minimum_value = 1
     for phi, psi in phi_psi_angles:
-        print(round(phi/10), round(psi/10))
-        value = global_variables.RAMACHANDRAN_TABLE[round(phi/10)][round(psi/10)]
-        print(value)
-        if value > minimum_value:
+        value = global_variables.RAMACHANDRAN_TABLE[int((phi + 180) / 10)][int((psi + 180) / 10)]
+        if value < minimum_value:
             outliers_list.append(value)
     return outliers_list
-
-
-
-
 
 
 def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
@@ -432,8 +428,8 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     # Check if there are at least five pdbs that has more than 60% of the sequence length
     # If there are at least 5, continue normally cc_analysis
     # If there are less than 5, create groups using hinges
-    threshold_rmsd = 1
-    threshold_decreasing = 80
+    threshold_rmsd = 1.5
+    threshold_decreasing = 70
     threshold_completeness = 0.6 * size_sequence
     utils.create_dir(output_path, delete_if_exists=True)
 
@@ -448,7 +444,10 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     # And the compactness
     for key, value in paths_in.items():
         num_residues = sum(1 for _ in get_structure(value)[0].get_residues())
+        # Validate using ramachandran, check the outliers
         validate_geometry = generate_ramachandran(pdb_path=value, output_path=output_path)
+
+        # Check the query sequence vs the number of residues of the pdb
         if threshold_completeness < num_residues and validate_geometry:
             accepted_pdbs[key] = value
         else:
@@ -456,6 +455,8 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
 
     logging.info(f'There are {len(accepted_pdbs)} complete pdbs. Not enough pdbs to run cc_analysis. '
                  f'Using hinges to create groups.')
+
+    # Run hinges all-against-all, store the results in a dict.
     results_rmsd = {}
     for key1, value1 in accepted_pdbs.items():
         results_rmsd[key1] = {}
@@ -466,23 +467,27 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
             else:
                 result_hinges = None
             results_rmsd[key1][key2] = result_hinges
+
+    # Analyse all the output
     for key, value in results_rmsd.items():
+        # Sort by rmsd, from low to high.
         sorted_dict = dict(sorted(value.items(), key=lambda x: x[1].min_rmsd if x[1] is not None else 100))
-        decreasing_bool = False
         for key2, result in sorted_dict.items():
-            if result is not None:
-                groups = utils.get_key_by_value(value=key, search_dict=cluster_pdbs)
-                if result.decreasing_rmsd > threshold_decreasing and not groups:
-                    decreasing_bool = True
-                elif result.min_rmsd <= threshold_rmsd:
-                    decreasing_bool = False
-                    if key2 in cluster_pdbs:
-                        cluster_pdbs[key2].append(key)
-                    elif key not in cluster_pdbs:
-                        cluster_pdbs.setdefault(key, []).append(key)
-                    break
-        if decreasing_bool:
-            cluster_pdbs.setdefault(key, []).append(key)
+            if result is None:
+                continue
+            append_key = False
+            groups = utils.get_key_by_value(value=key2, search_dict=cluster_pdbs)
+            if result.decreasing_rmsd > threshold_decreasing:
+                append_key = result.groups == results_rmsd[key2][key].groups
+            if (result.min_rmsd <= threshold_rmsd) or append_key:
+                if not groups:
+                    cluster_pdbs.setdefault(key, []).append(key)
+                    cluster_pdbs[key].append(key2)
+                else:
+                    for group in groups:
+                        if key not in cluster_pdbs[group]:
+                            cluster_pdbs[group].append(key)
+                break
 
     return cluster_pdbs
 
@@ -1023,9 +1028,6 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     return add_domains_dict
 
 
-
-
-
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
     if length <= 0:
         return []
@@ -1065,6 +1067,7 @@ def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain_list: List[st
                 return True
             else:
                 return False
+
     structure = get_structure(pdb_in_path)
     io = PDBIO()
     io.set_structure(structure)
