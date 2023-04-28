@@ -5,7 +5,7 @@ import os
 import shutil
 from typing import Dict, List, Optional, Tuple, Union
 
-from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res
+from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res, alphafold_classes
 from libs import structures, sequence
 
 
@@ -158,7 +158,7 @@ class Template:
                         for path in paths_list:
                             change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
 
-    def generate_database(self, output_dir: str, database_path: str):
+    def generate_database(self, output_dir: str, databases: alphafold_classes.AlphaFoldPaths):
         for extracted_sequence in self.template_sequence:
             sequence_chain = extracted_sequence[extracted_sequence.find(':') + 1:extracted_sequence.find('\n')]
             sequence_name = extracted_sequence.splitlines()[0].replace('>', '')
@@ -166,14 +166,14 @@ class Template:
             fasta_path = os.path.join(output_dir, f'{self.pdb_id}_{sequence_chain}.fasta')
             bioutils.write_sequence(sequence_name=sequence_name, sequence_amino=spit_sequence, sequence_path=fasta_path)
             new_database = hhsearch.create_database_from_pdb(fasta_path=fasta_path,
-                                                             database_path=database_path,
+                                                             databases=databases,
                                                              output_dir=output_dir)
 
             database = structures.AlignmentDatabase(fasta_path=fasta_path, chain=sequence_chain,
                                                     database_path=new_database)
             self.alignment_database.append(database)
 
-    def align(self, output_dir: str, sequence_in: sequence.Sequence):
+    def align(self, output_dir: str, sequence_in: sequence.Sequence, databases: alphafold_classes.AlphaFoldPaths):
         # If aligned, skip to the end, it is just necessary to extract the features
         # If not aligned:
         #   - Convert pdb to cif, this is necessary to run hhsearch.
@@ -188,6 +188,7 @@ class Template:
             for database in self.alignment_database:
                 hhr_path = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}.hhr')
                 hhsearch.run_hhsearch(fasta_path=sequence_in.fasta_path,
+                                      databases=databases,
                                       database_path=database.database_path,
                                       output_path=hhr_path)
                 template_features, mapping, identities, aligned_columns, total_columns, evalue = \

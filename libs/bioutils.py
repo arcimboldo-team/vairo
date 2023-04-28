@@ -363,6 +363,7 @@ def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
     structure = get_structure(pdb_path)
     phi_angles = np.empty(0)
     psi_angles = np.empty(0)
+    percentage_minimum = 5
 
     # Iterate over each polypeptide in the structure
     for pp in PPBuilder().build_peptides(structure):
@@ -384,8 +385,8 @@ def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
 
     analysis = ramachandran_analysis(phi_psi_angles=phi_psi_angles)
     percentage = len(analysis) / len(phi_psi_angles) * 100
-    logging.info(f'A {percentage}% angles of the {utils.get_file_name(pdb_path)} are outliers.')
-    if percentage > 20:
+    logging.info(f'{round(percentage, 2)}% of outliers in the ramachandran analysis of {utils.get_file_name(pdb_path)}.')
+    if percentage > percentage_minimum:
         return False
     return True
 
@@ -396,7 +397,7 @@ def ramachandran_analysis(phi_psi_angles: List[List[int]]) -> List[int]:
     outliers_list = []
     minimum_value = 1
     for phi, psi in phi_psi_angles:
-        value = global_variables.RAMACHANDRAN_TABLE[int((phi + 180) / 10)][int((psi + 180) / 10)]
+        value = global_variables.RAMACHANDRAN_TABLE[int((psi + 180) / 10)][int((phi + 180) / 10)]
         if value < minimum_value:
             outliers_list.append(value)
     return outliers_list
@@ -446,7 +447,6 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
         num_residues = sum(1 for _ in get_structure(value)[0].get_residues())
         # Validate using ramachandran, check the outliers
         validate_geometry = generate_ramachandran(pdb_path=value, output_path=output_path)
-
         # Check the query sequence vs the number of residues of the pdb
         if threshold_completeness < num_residues and validate_geometry:
             accepted_pdbs[key] = value
@@ -476,13 +476,19 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
             if result is None:
                 continue
             append_key = False
+            # Check if pdb2 has already been inserted in other lists
             groups = utils.get_key_by_value(value=key2, search_dict=cluster_pdbs)
+            # Check if it has a huge decrease in rmsd when using hinges
             if result.decreasing_rmsd > threshold_decreasing:
                 append_key = result.groups == results_rmsd[key2][key].groups
+            # Check if the minimum rmsd below the threshold
             if (result.min_rmsd <= threshold_rmsd) or append_key:
+                # If one of those cases happen, insert it in the groups of pdb2
+                # If pdb2 not in a group, create list and append pdb1 and pdb2
                 if not groups:
                     cluster_pdbs.setdefault(key, []).append(key)
                     cluster_pdbs[key].append(key2)
+                # If pdb2 already in groups, append it to their groups
                 else:
                     for group in groups:
                         if key not in cluster_pdbs[group]:

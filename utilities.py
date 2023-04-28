@@ -3,9 +3,8 @@
 import pickle
 import os
 import sys
-
-from libs import features, bioutils, utils, structures, output_air
 import logging
+from libs import features, bioutils, utils, structures, output_air
 
 
 def write_features(features_path: str, output_dir: str = None):
@@ -28,10 +27,6 @@ def generate_features(query_path: str, fasta_path: str):
     feature = features.Features(query)
     [feature.append_row_in_msa(sequence=seq, sequence_id=seq_id) for seq_id, seq in sequences.items()]
     write_features(path)
-
-
-def remove(pdb_path: str):
-    bioutils.remove_hydrogens(pdb_path, pdb_path)
 
 
 def hinges(template_path: str, sequence_length: int):
@@ -66,5 +61,6 @@ def ccanalysis(template_path: str):
 if __name__ == "__main__":
     print('Usage: utilities.py function input')
     print('Functions: write_features, print_features')
+    logging.info = print
     args = sys.argv
     globals()[args[1]](*args[2:])
