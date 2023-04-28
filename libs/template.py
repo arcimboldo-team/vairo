@@ -186,6 +186,7 @@ class Template:
         extracted_chain_dict = {}
         if not self.aligned:
             a3m_path = hhsearch.create_a3m(fasta_path=sequence_in.fasta_path,
+                                           databases=databases,
                                            output_dir=output_dir)
             for database in self.alignment_database:
                 hhr_path = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}.hhr')
