@@ -20,7 +20,7 @@ def create_database_from_pdb(fasta_path: str, databases: alphafold_classes.Alpha
     data_name = os.path.join(database_dir, name)
     utils.create_dir(database_dir, delete_if_exists=True)
     a3m_path = create_a3m(fasta_path, databases, database_dir)
-    subprocess.call(['ffindex_build', '-as', f'{data_name}_a3m.ffdata', f'{data_name}_a3m.index', a3m_path])
+    subprocess.call(['ffindex_build', '-as', f'{data_name}_a3m.ffdata', f'{data_name}_a3m.ffindex', a3m_path])
     subprocess.call(['ffindex_apply', f'{data_name}_a3m.ffdata', f'{data_name}_a3m.ffindex', '-i',
                      f'{data_name}_hhm.ffindex', '-d', f'{data_name}_hhm.ffdata', '--', 'hhmake',
                      '-i', 'stdin', '-o', 'stdout', '-v', '0'])
