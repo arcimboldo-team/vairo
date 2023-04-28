@@ -73,11 +73,11 @@ def main():
                 if not template.aligned:
                     database_dir = os.path.join(a_air.run_dir, template.pdb_id)
                     utils.create_dir(database_dir)
-                    template.generate_database(output_dir=database_dir, database_path=a_air.alphafold_paths.uniclust30_db_path)
+                    template.generate_database(output_dir=database_dir, databases=a_air.alphafold_paths)
                 for sequence in a_air.sequence_assembled.sequence_list:
                     alignment_dir = os.path.join(a_air.run_dir, sequence.name)
                     utils.create_dir(alignment_dir)
-                    template.align(output_dir=alignment_dir, sequence_in=sequence)
+                    template.align(output_dir=alignment_dir, sequence_in=sequence, databases=a_air.alphafold_paths)
                 template.generate_features(
                     output_dir=a_air.run_dir,
                     global_reference=a_air.reference,
