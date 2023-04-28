@@ -185,10 +185,11 @@ class Template:
         query_sequence = bioutils.extract_sequence(sequence_in.fasta_path)
         extracted_chain_dict = {}
         if not self.aligned:
+            a3m_path = hhsearch.create_a3m(fasta_path=sequence_in.fasta_path,
+                                           output_dir=output_dir)
             for database in self.alignment_database:
                 hhr_path = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}.hhr')
-                hhsearch.run_hhsearch(fasta_path=sequence_in.fasta_path,
-                                      databases=databases,
+                hhsearch.run_hhsearch(a3m_path=a3m_path,
                                       database_path=database.database_path,
                                       output_path=hhr_path)
                 template_features, mapping, identities, aligned_columns, total_columns, evalue = \
