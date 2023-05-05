@@ -7,6 +7,8 @@ import shutil
 import subprocess
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
+from statistics import mean
+from collections import defaultdict
 
 import numpy as np
 from Bio import SeqIO
@@ -385,7 +387,8 @@ def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
 
     analysis = ramachandran_analysis(phi_psi_angles=phi_psi_angles)
     percentage = len(analysis) / len(phi_psi_angles) * 100
-    logging.info(f'{round(percentage, 2)}% of outliers in the ramachandran analysis of {utils.get_file_name(pdb_path)}.')
+    logging.info(
+        f'{round(percentage, 2)}% of outliers in the ramachandran analysis of {utils.get_file_name(pdb_path)}.')
     if percentage > percentage_minimum:
         return False
     return True
@@ -429,14 +432,12 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     # Check if there are at least five pdbs that has more than 60% of the sequence length
     # If there are at least 5, continue normally cc_analysis
     # If there are less than 5, create groups using hinges
-    threshold_rmsd = 1.5
-    threshold_decreasing = 70
+    threshold_rmsd = 1
     threshold_completeness = 0.6 * size_sequence
     utils.create_dir(output_path, delete_if_exists=True)
 
     logging.info('Starting hinges analysis')
     accepted_pdbs = {}
-    cluster_pdbs = {}
     uncompleted_pdbs = {}
 
     # Do the analysis of the different templates. We are going to check:
@@ -453,49 +454,42 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
         else:
             uncompleted_pdbs[key] = value
 
-    logging.info(f'There are {len(accepted_pdbs)} complete pdbs. Not enough pdbs to run cc_analysis. '
-                 f'Using hinges to create groups.')
+    logging.info(f'There are {len(accepted_pdbs)} complete pdbs. Using hinges to create groups.')
 
     # Run hinges all-against-all, store the results in a dict.
-    results_rmsd = {}
+    results_rmsd = {key: {} for key in accepted_pdbs}
     for key1, value1 in accepted_pdbs.items():
-        results_rmsd[key1] = {}
         for key2, value2 in accepted_pdbs.items():
-            if key1 != key2:
+            if key2 not in results_rmsd[key1] and key1 != key2:
                 result_hinges = run_hinges(pdb1_path=value1, pdb2_path=value2, hinges_path=hinges_path,
                                            output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
-            else:
-                result_hinges = None
-            results_rmsd[key1][key2] = result_hinges
+                results_rmsd[key1][key2] = result_hinges
+                results_rmsd[key2][key1] = result_hinges
 
-    # Analyse all the output
-    for key, value in results_rmsd.items():
-        # Sort by rmsd, from low to high.
-        sorted_dict = dict(sorted(value.items(), key=lambda x: x[1].min_rmsd if x[1] is not None else 100))
-        for key2, result in sorted_dict.items():
+    groups_rmsd = {key: [] for key in accepted_pdbs}
+    average_group_rmsd = {key: mean([value.one_rmsd for value in results_rmsd[key].values()]) for key in accepted_pdbs}
+    sorted_results = dict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
+    for key1, value in sorted_results.items():
+        sorted_one_dict = dict(sorted(value.items(), key=lambda x: x[1].one_rmsd if x[1] is not None else 100))
+        selected_group = key1
+        for key2, result in sorted_one_dict.items():
             if result is None:
                 continue
-            append_key = False
-            # Check if pdb2 has already been inserted in other lists
-            groups = utils.get_key_by_value(value=key2, search_dict=cluster_pdbs)
-            # Check if it has a huge decrease in rmsd when using hinges
-            if result.decreasing_rmsd > threshold_decreasing:
-                append_key = result.groups == results_rmsd[key2][key].groups
-            # Check if the minimum rmsd below the threshold
-            if (result.min_rmsd <= threshold_rmsd) or append_key:
-                # If one of those cases happen, insert it in the groups of pdb2
-                # If pdb2 not in a group, create list and append pdb1 and pdb2
-                if not groups:
-                    cluster_pdbs.setdefault(key, []).append(key)
-                    cluster_pdbs[key].append(key2)
-                # If pdb2 already in groups, append it to their groups
-                else:
-                    for group in groups:
-                        if key not in cluster_pdbs[group]:
-                            cluster_pdbs[group].append(key)
-                break
-
-    return cluster_pdbs
+            group = utils.get_key_by_value(key2, groups_rmsd)
+            if group:
+                group_values = groups_rmsd[group[0]]
+                average = mean([results_rmsd[key1][value].one_rmsd for value in group_values])
+                if (result.min_rmsd < threshold_rmsd) or (result.one_rmsd < average_group_rmsd[key2]
+                                                          and (average < result.one_rmsd*1.3 or average > result.one_rmsd)):
+                    print(key1, key2)
+                    print(average)
+                    print(result.min_rmsd < threshold_rmsd)
+                    print(result.one_rmsd < average_group_rmsd[key2])
+                    print(average < result.one_rmsd * 1.3 or average > result.one_rmsd)
+                    if (selected_group in groups_rmsd and len(group_values) > len(groups_rmsd[selected_group])) or selected_group not in groups_rmsd:
+                        selected_group = group[0]
+        groups_rmsd[selected_group].append(key1)
+    return groups_rmsd
 
 
 def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:

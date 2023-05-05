@@ -42,7 +42,8 @@ class Cluster:
 @dataclasses.dataclass(frozen=True)
 class Hinges:
     decreasing_rmsd: float
-    min_rmsd: str
+    one_rmsd: float
+    min_rmsd: float
     groups: List
 
 

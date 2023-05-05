@@ -259,6 +259,7 @@ def parse_hinges(output: str) -> structures.Hinges:
     if not rmsd_list:
         return None
     hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0]-rmsd_list[-1])/rmsd_list[0]*100,
+                                      one_rmsd=rmsd_list[0],
                                       min_rmsd=min(rmsd_list),
                                       groups=residues_list)
     return hinges_result
