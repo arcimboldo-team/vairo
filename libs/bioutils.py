@@ -312,16 +312,18 @@ def get_structure(pdb_path: str) -> Structure:
 
 
 def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
-    cwd = os.getcwd()
-    os.chdir(templates_path)
-    output_path = 'cc_analysis.in'
-    if pdb2cc_path is None:
-        pdb2cc_path = 'pdb2cc'
-    command_line = f'{pdb2cc_path} -m -i 10 -y 0.15 "orig.*.pdb" 0 {output_path}'
-    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
-    p.communicate()
-    os.chdir(cwd)
+    try:
+        cwd = os.getcwd()
+        os.chdir(templates_path)
+        output_path = 'cc_analysis.in'
+        if pdb2cc_path is None:
+            pdb2cc_path = 'pdb2cc'
+        command_line = f'{pdb2cc_path} -m -i 10 -y 0.15 "orig.*.pdb" 0 {output_path}'
+        p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        p.communicate()
+    finally:
+        os.chdir(cwd)
     return os.path.join(templates_path, output_path)
 
 
@@ -334,13 +336,15 @@ def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = No
     output_path = 'cc_analysis.out'
     if cc_analysis_path is None:
         cc_analysis_path = 'cc_analysis'
-    cwd = os.getcwd()
-    os.chdir(os.path.dirname(input_path))
-    command_line = f'{cc_analysis_path} -dim {n_clusters} {os.path.basename(input_path)} {output_path}'
-    p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
-    p.communicate()
-    os.chdir(cwd)
+    try:
+        cwd = os.getcwd()
+        os.chdir(os.path.dirname(input_path))
+        command_line = f'{cc_analysis_path} -dim {n_clusters} {os.path.basename(input_path)} {output_path}'
+        p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE)
+        p.communicate()
+    finally:
+        os.chdir(cwd)
     return f'{os.path.join(os.path.dirname(input_path), output_path)}'
 
 
@@ -409,24 +413,25 @@ def ramachandran_analysis(phi_psi_angles: List[List[int]]) -> List[int]:
 def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
     # Run aleph annotate. Given a path, it generates the annotation of the pdb (coil, bs and ah).
     # Also, it generates the domains.
-    store_old_dir = os.getcwd()
-    os.chdir(output_path)
-    aleph_output_txt = os.path.join(output_path, f'aleph_{utils.get_file_name(pdb_path)}.txt')
-    output_json = os.path.join(output_path, 'output.json')
-    with open(aleph_output_txt, 'w') as sys.stdout:
-        try:
-            ALEPH.annotate_pdb_model(reference=pdb_path, strictness_ah=0.45, strictness_bs=0.2,
-                                     peptide_length=3, width_pic=1, height_pic=1, write_graphml=False,
-                                     write_pdb=True)
-        except Exception as e:
-            pass
-    sys.stdout = sys.__stdout__
-    if os.path.exists(output_json):
-        return utils.parse_aleph_annotate(output_json), utils.parse_aleph_ss(aleph_output_txt)
-    else:
-        return None, None
-    os.chdir(store_old_dir)
-
+    try:
+        store_old_dir = os.getcwd()
+        os.chdir(output_path)
+        aleph_output_txt = os.path.join(output_path, f'aleph_{utils.get_file_name(pdb_path)}.txt')
+        output_json = os.path.join(output_path, 'output.json')
+        with open(aleph_output_txt, 'w') as sys.stdout:
+            try:
+                ALEPH.annotate_pdb_model(reference=pdb_path, strictness_ah=0.45, strictness_bs=0.2,
+                                         peptide_length=3, width_pic=1, height_pic=1, write_graphml=False,
+                                         write_pdb=True)
+            except Exception as e:
+                pass
+        sys.stdout = sys.__stdout__
+        if os.path.exists(output_json):
+            return utils.parse_aleph_annotate(output_json), utils.parse_aleph_ss(aleph_output_txt)
+        else:
+            return None, None
+    finally:
+        os.chdir(store_old_dir)
 
 def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: str):
     # Check if there are at least five pdbs that has more than 60% of the sequence length
@@ -466,30 +471,37 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
                 results_rmsd[key1][key2] = result_hinges
                 results_rmsd[key2][key1] = result_hinges
 
+    groups_names = {key: [] for key in accepted_pdbs}
     groups_rmsd = {key: [] for key in accepted_pdbs}
     average_group_rmsd = {key: mean([value.one_rmsd for value in results_rmsd[key].values()]) for key in accepted_pdbs}
     sorted_results = dict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
+    for key, value in sorted_results.items():
+        print('*********************************+')
+        print(f'**{key}**')
+        for key2, value2 in value.items():
+            print(key2, value2.one_rmsd)
+        print('*********************************+')
     for key1, value in sorted_results.items():
         sorted_one_dict = dict(sorted(value.items(), key=lambda x: x[1].one_rmsd if x[1] is not None else 100))
         selected_group = key1
         for key2, result in sorted_one_dict.items():
             if result is None:
                 continue
-            group = utils.get_key_by_value(key2, groups_rmsd)
+            group = utils.get_key_by_value(key2, groups_names)
             if group:
-                group_values = groups_rmsd[group[0]]
-                average = mean([results_rmsd[key1][value].one_rmsd for value in group_values])
+                average = mean(groups_rmsd[group[0]]) if groups_rmsd[group[0]] else result.one_rmsd
+                condition_average = average*3 if average*3 < (average+8) else average+8
+                print(key1, key2)
+                print(condition_average, result.one_rmsd)
                 if (result.min_rmsd < threshold_rmsd) or (result.one_rmsd < average_group_rmsd[key2]
-                                                          and (average < result.one_rmsd*1.3 or average > result.one_rmsd)):
-                    print(key1, key2)
-                    print(average)
-                    print(result.min_rmsd < threshold_rmsd)
-                    print(result.one_rmsd < average_group_rmsd[key2])
-                    print(average < result.one_rmsd * 1.3 or average > result.one_rmsd)
-                    if (selected_group in groups_rmsd and len(group_values) > len(groups_rmsd[selected_group])) or selected_group not in groups_rmsd:
+                                                          and (condition_average > result.one_rmsd)):
+                    if (selected_group in groups_names and len(groups_names[group[0]]) > len(groups_names[selected_group])) or selected_group not in groups_names:
                         selected_group = group[0]
-        groups_rmsd[selected_group].append(key1)
-    return groups_rmsd
+        groups_names[selected_group].append(key1)
+        if key1 != selected_group:
+            min_rmsd = results_rmsd[key1][selected_group].min_rmsd if results_rmsd[key1][selected_group].min_rmsd < threshold_rmsd else results_rmsd[key1][selected_group].one_rmsd
+            groups_rmsd[selected_group].append(min_rmsd)
+    return groups_names
 
 
 def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:
