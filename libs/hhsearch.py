@@ -23,7 +23,7 @@ def create_database_from_pdb(fasta_path: str, databases: alphafold_classes.Alpha
     try:
         store_old_dir = os.getcwd()
         os.chdir(database_dir)
-        subprocess.call(['ffindex_build', '-as', f'{name}_a3m.ffdata', f'{name}_a3m.ffindex', a3m_path])
+        subprocess.call(['ffindex_build', '-as', f'{name}_a3m.ffdata', f'{name}_a3m.ffindex', os.path.basename(a3m_path)])
         subprocess.call(['ffindex_apply', f'{name}_a3m.ffdata', f'{name}_a3m.ffindex', '-i',
                          f'{name}_hhm.ffindex', '-d', f'{name}_hhm.ffdata', '--', 'hhmake',
                          '-i', 'stdin', '-o', 'stdout', '-v', '0'])
