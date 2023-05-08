@@ -31,7 +31,7 @@ def create_database_from_pdb(fasta_path: str, databases: alphafold_classes.Alpha
                          f'{name}_cs219'])
     finally:
         os.chdir(store_old_dir)
-    if not os.path.exists(f'{data_name}_cs219.index'):
+    if not os.path.exists(f'{data_name}_cs219.ffindex'):
         raise Exception(f'Could not create alignment for chain {utils.get_file_name(fasta_path)}.')
     return data_name
 
