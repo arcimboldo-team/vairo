@@ -1043,7 +1043,6 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
     if length <= 0:
         return []
-
     combinated_list = list(itertools.product(*input_list))
     trimmed_list = []
     for element in combinated_list:
@@ -1057,6 +1056,9 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
         target_list = [target for _, target, _, _ in sorted_list]
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(sorted_list)
+
+    max_length = max(len(lst) for lst in trimmed_list)
+    trimmed_list = [lst for lst in trimmed_list if len(lst) == max_length]
 
     score_list = []
     for element in trimmed_list:
