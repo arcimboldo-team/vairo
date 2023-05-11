@@ -486,6 +486,7 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
 
     groups_names = {key: [] for key in accepted_pdbs}
     groups_rmsd = {key: [] for key in accepted_pdbs}
+    average_group_rmsd = {key: mean([value.one_rmsd for value in results_rmsd[key].values()]) for key in accepted_pdbs}
     sorted_results = dict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
     for key1, value in sorted_results.items():
         sorted_one_dict = dict(sorted(value.items(), key=lambda x: x[1].one_rmsd if x[1] is not None else 100))
@@ -497,11 +498,12 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
             if group:
                 average = mean(groups_rmsd[group[0]]) if groups_rmsd[group[0]] else result.one_rmsd
                 condition_average = average * 1.3
-                if result.min_rmsd < threshold_rmsd and condition_average > result.one_rmsd:
+                if (result.min_rmsd < threshold_rmsd) or (
+                        result.one_rmsd < average_group_rmsd[key2] and (condition_average > result.one_rmsd)):
                     if (selected_group in groups_names and len(groups_names[group[0]]) > len(
                             groups_names[selected_group])) or selected_group not in groups_names:
                         for pdb in groups_names[group[0]]:
-                            if results_rmsd[key1][pdb].one_rmsd > average * 1.5:
+                            if results_rmsd[key1][pdb].one_rmsd > condition_average * 1.5:
                                 break
                         else:
                             selected_group = group[0]
