@@ -225,12 +225,28 @@ def parse_cc_analysis(file_path: str) -> Dict:
             split_text = line.split()
             coordinates = []
             if len(split_text) > 3:
-                for pos in range(1, len(split_text)-2):
+                for pos in range(1, len(split_text) - 2):
                     coordinates.append(float(split_text[pos]))
-                return_dict[split_text[0]] = structures.CCAnalysisOutput(coordinates, float(split_text[-2]), float(split_text[-1]))
+                return_dict[split_text[0]] = structures.CCAnalysisOutput(coordinates, float(split_text[-2]),
+                                                                         float(split_text[-1]))
             else:
                 return_dict[split_text[0]] = structures.CCAnalysisOutput([split_text[1], 0], None, float(split_text[2]))
     return return_dict
+
+
+def parse_hinges_chains(output: str) -> str:
+    # Read the output of hines when using -p chains
+    # Return the bets chain combination
+    lines = output.strip().split('\n')[8:]
+    lowest_rmstot = float('inf')
+    lowest_perm = ''
+    for line in lines:
+        split_line = line.split()
+        rmstot = float(split_line[3])
+        if rmstot < lowest_rmstot:
+            lowest_rmstot = rmstot
+            lowest_perm = split_line[1]
+    return lowest_perm
 
 
 def parse_hinges(output: str) -> structures.Hinges:
@@ -239,15 +255,13 @@ def parse_hinges(output: str) -> structures.Hinges:
     # decreasing_rmsd: float
     # min_rmsd: str
     # groups: List[(int, int)]
-    # }
-
     rmsd_list = []
     residues_list = []
     # split the data by ngroups
-    groups = re.split(r'ngroups=\s+\d+\s+', output)[1:]
+    groups = re.split(r'ngroups,\s*Ntot,\s*SUMSQ,\s*RMStot', output)[1:]
     # loop over each group and extract the data
     for i, group in enumerate(groups, start=1):
-        ngroup_match = re.search(r"SUMSQ=\s+[\d\.]+\s+RMStot=\s+([\d\.]+)", group)
+        ngroup_match = re.search(r"=\s*\d+\s+\d+\s+[\d.]+\s+([\d.]+)", group)
         if ngroup_match:
             rmsd_list.append(float(ngroup_match.group(1)))
             ngroup_data = []
@@ -258,7 +272,7 @@ def parse_hinges(output: str) -> structures.Hinges:
 
     if not rmsd_list:
         return None
-    hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0]-rmsd_list[-1])/rmsd_list[0]*100,
+    hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100,
                                       one_rmsd=rmsd_list[0],
                                       min_rmsd=min(rmsd_list),
                                       groups=residues_list)

@@ -351,7 +351,19 @@ def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = No
 def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_path: str = None) -> Hinges:
     # Run hinges from hinges_path.
     # It needs two pdbs. Return the rmsd obtained.
-    command_line = f'{hinges_path} {pdb1_path} {pdb2_path}'
+    chains1_list = [chain.id for chain in get_structure(pdb1_path).get_chains()]
+    chains2_list = [chain.id for chain in get_structure(pdb2_path).get_chains()]
+    command_line = f'{hinges_path} {pdb1_path} {pdb2_path} -p {"".join(chains2_list)}'
+    output = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+    best_chain_combination = utils.parse_hinges_chains(output)
+    append = ''
+    if best_chain_combination != '':
+        append = ''
+        for i, chain in enumerate(chains2_list):
+            append += f'{chain}:{best_chain_combination[i]} '
+        append = f'-r "{append}"'
+    command_line = f'{hinges_path} {pdb1_path} {pdb2_path} {append} -p'
     output = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
     if output_path is not None:
@@ -433,6 +445,7 @@ def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
     finally:
         os.chdir(store_old_dir)
 
+
 def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: str):
     # Check if there are at least five pdbs that has more than 60% of the sequence length
     # If there are at least 5, continue normally cc_analysis
@@ -473,14 +486,7 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
 
     groups_names = {key: [] for key in accepted_pdbs}
     groups_rmsd = {key: [] for key in accepted_pdbs}
-    average_group_rmsd = {key: mean([value.one_rmsd for value in results_rmsd[key].values()]) for key in accepted_pdbs}
     sorted_results = dict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
-    for key, value in sorted_results.items():
-        print('*********************************+')
-        print(f'**{key}**')
-        for key2, value2 in value.items():
-            print(key2, value2.one_rmsd)
-        print('*********************************+')
     for key1, value in sorted_results.items():
         sorted_one_dict = dict(sorted(value.items(), key=lambda x: x[1].one_rmsd if x[1] is not None else 100))
         selected_group = key1
@@ -490,17 +496,23 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
             group = utils.get_key_by_value(key2, groups_names)
             if group:
                 average = mean(groups_rmsd[group[0]]) if groups_rmsd[group[0]] else result.one_rmsd
-                condition_average = average*3 if average*3 < (average+8) else average+8
-                print(key1, key2)
-                print(condition_average, result.one_rmsd)
-                if (result.min_rmsd < threshold_rmsd) or (result.one_rmsd < average_group_rmsd[key2]
-                                                          and (condition_average > result.one_rmsd)):
-                    if (selected_group in groups_names and len(groups_names[group[0]]) > len(groups_names[selected_group])) or selected_group not in groups_names:
-                        selected_group = group[0]
+                condition_average = average * 1.3
+                if result.min_rmsd < threshold_rmsd and condition_average > result.one_rmsd:
+                    if (selected_group in groups_names and len(groups_names[group[0]]) > len(
+                            groups_names[selected_group])) or selected_group not in groups_names:
+                        for pdb in groups_names[group[0]]:
+                            if results_rmsd[key1][pdb].one_rmsd > average * 1.5:
+                                break
+                        else:
+                            selected_group = group[0]
         groups_names[selected_group].append(key1)
         if key1 != selected_group:
-            min_rmsd = results_rmsd[key1][selected_group].min_rmsd if results_rmsd[key1][selected_group].min_rmsd < threshold_rmsd else results_rmsd[key1][selected_group].one_rmsd
+            min_rmsd = results_rmsd[key1][selected_group].min_rmsd if results_rmsd[key1][
+                                                                          selected_group].min_rmsd < threshold_rmsd else \
+                results_rmsd[key1][selected_group].one_rmsd
             groups_rmsd[selected_group].append(min_rmsd)
+
+    groups_names = {key: value for key, value in groups_names.items() if value}
     return groups_names
 
 
