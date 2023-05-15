@@ -453,12 +453,12 @@ class StructureAir:
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
-        #templates_cluster = bioutils.hinges(paths_in=self.output.templates_dict,
+        # templates_cluster = bioutils.hinges(paths_in=self.output.templates_dict,
         #                                    hinges_path=self.cc_analysis_paths.hinges_path,
         #                                    size_sequence=self.sequence_assembled.length,
         #                                    output_path=os.path.join(self.results_dir, 'hinges'))
 
-        #if not templates_cluster:
+        # if not templates_cluster:
         templates_cluster, _ = bioutils.cc_analysis(paths_in=self.output.templates_dict,
                                                     cc_analysis_paths=self.cc_analysis_paths,
                                                     cc_path=os.path.join(self.results_dir, 'ccanalysis'))
@@ -500,7 +500,8 @@ class StructureAir:
         features_path = os.path.join(job_path, 'features.pkl')
         utils.create_dir(dir_path=job_path, delete_if_exists=False)
         new_features = features.Features(self.sequence_assembled.sequence_assembled)
-        new_features.set_template_features(new_templates=self.features.template_features, sequence_in=self.cluster_templates_sequence)
+        new_features.set_template_features(new_templates=self.features.template_features,
+                                           sequence_in=self.cluster_templates_sequence)
         total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
         if self.cluster_templates_msa != 0:
             new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa,

@@ -126,21 +126,23 @@ class Features:
 
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = [],
                          positions: List[int] = []):
-        finish = 0 if finish == -1 else finish
         coverage_msa = []
         for i in range(start, len(new_msa['msa'])):
             if delete_positions:
                 new_msa = delete_residues_msa(msa=new_msa, position=i, delete_positions=delete_positions)
             coverage_msa.append(len([residue for residue in new_msa['msa'][i] if residue != 21]))
-        arr = np.array(coverage_msa)
-        coverage_msa = arr.argsort()[-finish:][::-1]
-        coverage_msa = np.sort(coverage_msa)
+        if finish == -1:
+            coverage_msa = list(range(0, len(new_msa['msa'])-start))
+        else:
+            arr = np.array(coverage_msa)
+            coverage_msa = arr.argsort()[-finish:][::-1]
+            coverage_msa = np.sort(coverage_msa)
         msa_dict = self.create_empty_msa_list(len(coverage_msa))
         for i, num in enumerate(coverage_msa):
-            msa_dict['msa'][i] = new_msa['msa'][num]
+            msa_dict['msa'][i] = new_msa['msa'][num+start]
             msa_dict['accession_ids'][i] = str(i).encode()
-            msa_dict['deletion_matrix_int'][i] = new_msa['deletion_matrix_int'][num]
-            msa_dict['msa_species_identifiers'][i] = new_msa['msa_species_identifiers'][num]
+            msa_dict['deletion_matrix_int'][i] = new_msa['deletion_matrix_int'][num+start]
+            msa_dict['msa_species_identifiers'][i] = new_msa['msa_species_identifiers'][num+start]
             msa_dict['num_alignments'][i] = np.zeros(new_msa['num_alignments'].shape)
         if positions:
             msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)

@@ -52,11 +52,11 @@ def main():
             a_air.set_feature(feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
             for feat in a_air.features_input:
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
+                positions = [a_air.sequence_assembled.get_starting_length(feat.positions[0] - 1),
+                             a_air.sequence_assembled.get_starting_length(
+                                 feat.positions[-1] - 1) + a_air.sequence_assembled.get_sequence_length(
+                                 feat.positions[-1] - 1)]
                 if feat.keep_msa != 0:
-                    positions = [a_air.sequence_assembled.get_starting_length(feat.positions[0] - 1),
-                                 a_air.sequence_assembled.get_starting_length(
-                                     feat.positions[-1] - 1) + a_air.sequence_assembled.get_sequence_length(
-                                     feat.positions[-1] - 1)]
                     a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
                                                    finish=feat.keep_msa,
                                                    delete_positions=feat.msa_delete,
