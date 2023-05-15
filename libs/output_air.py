@@ -132,6 +132,8 @@ class OutputAir:
 
             else:
                 rmsd, _, _ = bioutils.gesamt_pdbs([result[0].path, result[1].path])
+            if not os.path.exists(result[1].split_path):
+                shutil.copy2(result[1].path, result[1].split_path)
             result[0].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[1].name)
             result[1].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[0].name)
 
@@ -156,8 +158,8 @@ class OutputAir:
             if ranked.filtered:
                 found = False
                 for ranked2 in self.ranked_list:
-                    if ranked2.filtered and ranked2.name != ranked.name and ranked2.name in self.group_ranked_by_rmsd_dict and \
-                            ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
+                    if ranked2.filtered and ranked2.name != ranked.name and ranked2.name in self.group_ranked_by_rmsd_dict \
+                            and ranked.rmsd_dict[ranked2.name] is not None and ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
                         self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
                         found = True
                         ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
