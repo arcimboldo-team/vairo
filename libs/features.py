@@ -150,7 +150,6 @@ class Features:
     def set_template_features(self, new_templates: Dict, finish: int = -1, positions: List[int] = [],
                               sequence_in: str = None):
         finish = len(new_templates['template_sequence']) if finish == -1 else finish
-
         template_dict = self.create_empty_template_list(finish)
         for i in range(0, finish):
             index = self.get_index_by_name(name=new_templates['template_domain_names'][i].decode())
@@ -162,11 +161,12 @@ class Features:
                 template_dict['template_domain_names'][i] = new_templates['template_domain_names'][i]
                 template_dict['template_sum_probs'][i] = new_templates['template_sum_probs'][i]
 
-        if sequence_in is not None:
-            template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
-        if positions:
-            template_dict = self.expand_template(template_dict=template_dict, expand=positions)
-        self.append_new_template_features(template_dict)
+        if len(template_dict['template_all_atom_positions']) > 0:
+            if sequence_in is not None:
+                template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
+            if positions:
+                template_dict = self.expand_template(template_dict=template_dict, expand=positions)
+            self.append_new_template_features(template_dict)
 
     def expand_msa(self, msa_dict: Dict, expand: List[int]) -> Dict:
         aux_dict = copy.deepcopy(msa_dict)
@@ -229,8 +229,8 @@ class Features:
                 template_dict['template_domain_names'][i] = self.template_features['template_domain_names'][i]
                 template_dict['template_sum_probs'][i] = self.template_features['template_sum_probs'][i][
                                                          start_min:start_max]
-
-            new_features.append_new_template_features(template_dict)
+            if len(template_dict['template_all_atom_positions']) > 0:
+                new_features.append_new_template_features(template_dict)
             features_list.append(new_features)
         logging.info(
             f'Features has been sliced in {len(features_list)} partitions with the following sizes: {chunk_list}')

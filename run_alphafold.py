@@ -195,8 +195,7 @@ def predict_structure(
 
     # Run the models.
     num_models = len(model_runners)
-    for model_index, (model_name, model_runner) in enumerate(
-            model_runners.items()):
+    for model_index, (model_name, model_runner) in enumerate(model_runners.items()):
         logging.info('Running model %s on %s', model_name, fasta_name)
         t_0 = time.time()
         model_random_seed = model_index + random_seed * num_models
@@ -224,6 +223,7 @@ def predict_structure(
                 model_name, fasta_name, t_diff)
 
         plddt = prediction_result['plddt']
+        logging.info(f'PLDDT IS {plddt}')
         ranking_confidences[model_name] = prediction_result['ranking_confidence']
 
         # Save the model outputs.

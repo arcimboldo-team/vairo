@@ -484,8 +484,7 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
                 results_rmsd[key1][key2] = result_hinges
                 results_rmsd[key2][key1] = result_hinges
 
-    groups_names = {key: [] for key in accepted_pdbs}
-    groups_rmsd = {key: [] for key in accepted_pdbs}
+    groups_names = groups_rmsd = {key: [] for key in accepted_pdbs}
     average_group_rmsd = {key: mean([value.one_rmsd for value in results_rmsd[key].values()]) for key in accepted_pdbs}
     sorted_results = dict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
     for key1, value in sorted_results.items():
