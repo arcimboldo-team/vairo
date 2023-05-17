@@ -6,6 +6,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from typing import Any, Dict, List, Optional, Tuple, Union
 from statistics import mean
 from collections import defaultdict
@@ -171,12 +172,11 @@ def split_pdb_in_chains(output_dir: str, pdb_in_path: str) -> Dict:
     aux_path = os.path.join(output_dir, os.path.basename(pdb_in_path))
     shutil.copy2(pdb_in_path, aux_path)
     chain_dict = chain_splitter(aux_path)
-    extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
-    return extracted_chain_dict
+    return chain_dict
 
 
 def merge_pdbs(list_of_paths_of_pdbs_to_merge: List[str], merged_pdb_path: str):
-    with open(merged_pdb_path, 'w') as f:
+    with open(merged_pdb_path, 'w+') as f:
         counter = 0
         for pdb_path in list_of_paths_of_pdbs_to_merge:
             for line in open(pdb_path, 'r').readlines():
@@ -269,23 +269,27 @@ def read_remark_350(pdb_path: str) -> Tuple[List[str], List[List[List[Any]]]]:
 
 def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: List[List] = None, offset: Optional[int] = 0,
                  chain: Optional[str] = None):
-    with open('/tmp/pdbset.sh', 'w') as f:
-        f.write(f'pdbset xyzin {pdb_in_path} xyzout {pdb_out_path} << eof\n')
-        if rot_tra_matrix is not None:
-            r11, r12, r13 = rot_tra_matrix[0]
-            r21, r22, r23 = rot_tra_matrix[1]
-            r31, r32, r33 = rot_tra_matrix[2]
-            t1, t2, t3 = rot_tra_matrix[3]
-            f.write(
-                f'rotate {float(r11)} {float(r12)} {float(r13)} {float(r21)} {float(r22)} {float(r23)} {float(r31)} {float(r32)} {float(r33)}\n')
-            f.write(f'shift {float(t1)} {float(t2)} {float(t3)}\n')
-        f.write(f'renumber increment {offset}\n')
-        if chain:
-            f.write(f'chain {chain}\n')
-        f.write('end\n')
-        f.write('eof')
-    subprocess.Popen(['bash', '/tmp/pdbset.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
-    utils.rmsilent(f'/tmp/pdbset.sh')
+    try:
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        with open(tmp_file.name, 'w+') as f:
+            f.write(f'pdbset xyzin {pdb_in_path} xyzout {pdb_out_path} << eof\n')
+            if rot_tra_matrix is not None:
+                r11, r12, r13 = rot_tra_matrix[0]
+                r21, r22, r23 = rot_tra_matrix[1]
+                r31, r32, r33 = rot_tra_matrix[2]
+                t1, t2, t3 = rot_tra_matrix[3]
+                f.write(
+                    f'rotate {float(r11)} {float(r12)} {float(r13)} {float(r21)} {float(r22)} {float(r23)} {float(r31)} {float(r32)} {float(r33)}\n')
+                f.write(f'shift {float(t1)} {float(t2)} {float(t3)}\n')
+            f.write(f'renumber increment {offset}\n')
+            if chain:
+                f.write(f'chain {chain}\n')
+            f.write('end\n')
+            f.write('eof')
+        subprocess.Popen(['bash', tmp_file.name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
+    finally:
+        tmp_file.close()
+        os.unlink(tmp_file.name)
 
 
 def get_resseq(residue: Residue) -> int:
@@ -800,7 +804,6 @@ def change_chains(chain_dict: Dict):
     # The Dict has to be: {A: path}
     # It will rename the chains of the path to the
     # chain indicated in the key
-
     for key, value in chain_dict.items():
         change_chain(pdb_in_path=value,
                      pdb_out_path=value,

@@ -2,7 +2,6 @@ import dataclasses
 import os
 import sys
 from typing import Dict, List
-
 from libs import utils
 
 
@@ -71,8 +70,8 @@ class Alignment:
     evalue: str
     identities: int
     hhr_path: str
-    extracted_path: str
     database: AlignmentDatabase
+    mapping: Dict
 
 
 @dataclasses.dataclass(frozen=True)
@@ -134,7 +133,7 @@ class TemplateRanked:
 
 
 class Ranked:
-    def __init__(self, ranked_path):
+    def __init__(self, ranked_path: str):
         self.path: str
         self.name: str
         self.split_path: str
@@ -224,3 +223,6 @@ class Ranked:
 
     def sort_template_rankeds(self):
         self.superposition_templates.sort(key=lambda x: (x.rmsd is None, x.rmsd))
+
+
+

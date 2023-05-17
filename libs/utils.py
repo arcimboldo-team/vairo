@@ -407,7 +407,6 @@ def create_dir(dir_path: str, delete_if_exists: bool = False):
         shutil.rmtree(dir_path)
         os.makedirs(dir_path)
 
-
 def remove_list_layer(input_list: List[List[str]]) -> List[str]:
     return [j for x in input_list for j in x]
 

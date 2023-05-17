@@ -326,7 +326,7 @@ class StructureAir:
         while old_templates_list:
             deleted_items = []
             for temp in old_templates_list:
-                reference_list = temp.get_reference_list()
+                reference_list = temp.get_templates_references()
                 if set(reference_list).issubset(new_templates_list):
                     new_templates_list.append(temp)
                     deleted_items.append(temp)
@@ -360,7 +360,7 @@ class StructureAir:
                                                    feature=feature
                                                    )
             self.afrun_list.append(afrun)
-            afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')
@@ -588,9 +588,9 @@ class StructureAir:
                     f_out.write(f'  strict: {template_in.strict}\n')
                     if template_in.reference is not None:
                         f_out.write(f'  reference: {self.reference}\n')
-                    if template_in.change_res_list:
+                    if template_in.change_res_struct.change_residues_list:
                         f_out.write(f'  change_res:\n')
-                        for change in template_in.change_res_list:
+                        for change in template_in.change_res_struct.change_residues_list:
                             f_out.write('  -')
                             if change.resname is not None:
                                 f_out.write(f' resname: {change.resname}\n')
@@ -600,9 +600,9 @@ class StructureAir:
                             for key, value in change.chain_group_res_dict.items():
                                 f_out.write(f'    {key}: {", ".join(map(str, value))}\n')
 
-                    if template_in.match_restrict_list:
+                    if template_in.match_restrict_struct.match_restrict_list:
                         f_out.write(f'  match:\n')
-                        for match in template_in.match_restrict_list:
+                        for match in template_in.match_restrict_struct.match_restrict_list:
                             f_out.write('  -')
                             f_out.write(f' chain: {match.chain}\n')
                             f_out.write(

@@ -1,8 +1,6 @@
-from typing import Dict, Union
-
+from typing import Dict, Union, List
 from Bio.PDB import Select, PDBIO
 from alphafold.common import residue_constants
-
 from libs import bioutils, features, utils
 
 
@@ -35,11 +33,10 @@ class ChangeResidues:
 
     def apply_mapping(self, chain: str, mapping: Dict):
         # Change residues numbering by the ones in mapping
-        if chain in self.chain_res_dict:
-            residues = self.chain_res_dict[chain]
+        residues = self.chain_res_dict.get(chain)
+        if residues:
             results = [utils.get_key_by_value(res, mapping) for res in residues]
             self.chain_res_dict[chain] = [x[0] for x in results if x]
-        self.group_change_res()
 
     def group_change_res(self):
         self.chain_group_res_dict = {}
@@ -87,7 +84,7 @@ class ChangeResidues:
                             name = self.resname
                         elif self.sequence is not None:
                             name = utils.get_key_by_value(value=self.sequence[bioutils.get_resseq(res) - 1],
-                                                           search_dict=features.three_to_one)[0]
+                                                          search_dict=features.three_to_one)[0]
                         for atom in res:
                             res.resname = name
                             if not atom.name in residue_constants.residue_atoms[res.resname]:
@@ -108,3 +105,30 @@ class ChangeResidues:
         io = PDBIO()
         io.set_structure(structure)
         io.save(pdb_out_path, select=AtomSelect())
+
+
+class ChangeResiduesList:
+    def __init__(self):
+        self.change_residues_list: List[ChangeResidues] = []
+
+    def get_residues_changed_by_chain(self, chain: str) -> Dict:
+        # Return all the changes for a specific chain.
+        # In the dict, there will be the residue name as key
+        # and all the residues to change in a list
+        return_dict = {}
+        for change in self.change_residues_list:
+            residues = change.chain_res_dict.get(chain)
+            if residues:
+                name = change.fasta_path if change.fasta_path is not None else change.resname
+                return_dict.setdefault(name, set()).update(residues)
+        return return_dict
+
+    def get_changes_by_chain(self, chain: str, when: str = '') -> List[ChangeResidues]:
+        return [change for change in self.change_residues_list if
+                change.chain_res_dict.get(chain) and (when == '' or change.when == when)]
+
+    def append_change(self, chain_res_dict: Dict, resname: str, fasta_path: str, when: str):
+        self.change_residues_list.append(ChangeResidues(chain_res_dict=chain_res_dict,
+                                                        resname=resname,
+                                                        fasta_path=fasta_path,
+                                                        when=when))

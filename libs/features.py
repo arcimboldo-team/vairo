@@ -393,7 +393,6 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
 def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str, pdb_path: str, pdb_id: str,
                                                             chain_id: str):
     # WARNING: input PDB must be aligned to the MSA part in features #
-
     seq_length = len(query_sequence)
     parser = PDBParser(QUIET=True)
     try:
