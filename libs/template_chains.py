@@ -29,6 +29,7 @@ class TemplateChain:
         self.sequence_before_changes = sequence_before_changes
 
     def check_alignment(self, stop: bool):
+        # Check if it has been a good alignment. If stop, then throw an error.
         if self.alignment:
             if float(self.alignment.evalue) > 0.01:
                 if not stop:
@@ -46,37 +47,34 @@ class TemplateChainsList:
 
     def get_alignment_by_path(self, pdb_path: str) -> Alignment:
         # Search for the alignment that has the same name as the pdb_path
+        chain1, _ = utils.get_chain_and_number(pdb_path)
+        pdb_dirname = os.path.dirname(pdb_path)
         for template_chain in self.template_chains_list:
-            if template_chain.alignment:
-                for alignment in self.alignments:
-                    if os.path.dirname(pdb_path) == os.path.dirname(alignment.extracted_path):
-                        chain1, _ = utils.get_chain_and_number(alignment.extracted_path)
-                        chain2, _ = utils.get_chain_and_number(pdb_path)
-                        if chain1 == chain2:
-                            return alignment
+            if template_chain.alignment and pdb_dirname == os.path.dirname(template_chain.path) and chain1 == template_chain.chain:
+                return template_chain.alignment
         return None
 
     def get_chains_not_in_list(self, input_list: List[str]) -> List[TemplateChain]:
-        return_list = [
-            template_chain
-            for template_chain in self.template_chains_list
-            if all(
-                utils.get_chain_and_number(path)[0] == template_chain.chain
-                and utils.get_chain_and_number(path)[1] == template_chain.code
-                for path in input_list
-                if path is not None
-            )
-        ]
-        return return_list
+        # It will create a List of TemplateChains where the chain and the code is not in the input list.
+        # This can be used to eliminate duplicates in case there is more than one database.
+        input_chains = [(utils.get_chain_and_number(path)[0], utils.get_chain_and_number(path)[1]) for path in
+                        input_list if path is not None]
+        return [template_chain for template_chain in self.template_chains_list if (template_chain.chain, template_chain.code) not in input_chains]
 
     def get_chains_with_matches_ref(self) -> List[TemplateChain]:
-        return [template_chain for template_chain in self.template_chains_list if template_chain.match is not None and template_chain.match.check_references()]
+        # Get all the chains that has a match with references
+        return [template_chain for template_chain in self.template_chains_list if
+                template_chain.match is not None and template_chain.match.check_references()]
 
     def get_chains_with_matches_pos(self) -> List[TemplateChain]:
-        return [template_chain for template_chain in self.template_chains_list if template_chain.match is not None and template_chain.match.check_position()]
+        # Get all the chains that has a match with a determinate position.
+        return [template_chain for template_chain in self.template_chains_list if
+                template_chain.match is not None and template_chain.match.check_position()]
 
     def from_dict_to_struct(self, chain_dict: Dict, alignment_dict: Dict, sequence: str, change_res_list,
                             match_restrict_list: match_restrictions.MatchRestrictionsList):
+        # Given a dict, with all the information of a Chain (there can be more than one chain in case of multimer)
+        # Read all the information, and create as many TemplateChains as paths and append them to the list.
         for chain, paths in chain_dict.items():
             path_list = []
             if isinstance(paths, list):
@@ -90,10 +88,12 @@ class TemplateChainsList:
             alignment = alignment_dict.get(chain)
 
             for path in path_list:
-                sequence_before_changes = bioutils.extract_sequence_from_file(path)
                 change_res_copy = copy.deepcopy(change_res_list)
                 change_list = change_res_copy.get_changes_by_chain(chain=chain, when='after_alignment')
                 match = None
+                # If there is an alignment, there might be a mapping. It is necessary to apply that mapping
+                # to change_res (match can have a change_res too) because the residues numbering has changed during
+                # the alignment
                 if alignment:
                     structure = bioutils.get_structure(path)
                     residues_list = list(structure[0][chain].get_residues())
@@ -108,23 +108,29 @@ class TemplateChainsList:
                         for res in change_list:
                             res.apply_mapping(chain, mapping)
 
-                for change in change_list:
-                    change.change_residues(path, path)
+                # We just use one match per chain. As that chain just can be in one position. All the delete residues
+                # has to be in a one line sentence also.
                 for match in match_list:
                     if match.residues:
                         match.residues.delete_residues_inverse(path, path)
                     match = match_list.pop(0)
                     break
+                # Store the sequence before changing the residues, as if we want to add it in the MSA, it would not
+                # make sense
+                sequence_before_changes = bioutils.extract_sequence_from_file(path)
+
+                for change in change_list:
+                    change.change_residues(path, path)
 
                 deleted_residues = match_restrict_copy.get_residues_deleted_by_chain(chain)
                 changed_residues = change_res_copy.get_residues_changed_by_chain(chain)
                 chain, number = utils.get_chain_and_number(path)
                 self.template_chains_list.append(TemplateChain(chain=chain,
-                                                 path=path,
-                                                 code=number,
-                                                 sequence=sequence,
-                                                 match=match,
-                                                 alignment=alignment,
-                                                 deleted_residues=deleted_residues,
-                                                 changed_residues=changed_residues,
-                                                 sequence_before_changes=sequence_before_changes))
+                                                               path=path,
+                                                               code=number,
+                                                               sequence=sequence,
+                                                               match=match,
+                                                               alignment=alignment,
+                                                               deleted_residues=deleted_residues,
+                                                               changed_residues=changed_residues,
+                                                               sequence_before_changes=sequence_before_changes))

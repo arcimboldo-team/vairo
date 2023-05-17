@@ -33,7 +33,7 @@ class Template:
 
         self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
         if new_name is not None:
-            self.pdb_path = shutil.move(self.pdb_path, os.path.join(os.path.dirname(self.pdb_path), f'{new_name}.pdb'))
+            self.pdb_path = shutil.copy2(self.pdb_path, os.path.join(os.path.dirname(self.pdb_path), f'{new_name}.pdb'))
         self.pdb_id = utils.get_file_name(self.pdb_path)
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
@@ -271,6 +271,7 @@ class Template:
         reference = global_reference if reference is None else reference
 
         new_targets_list = self.template_chains_struct.get_chains_not_in_list(composition_path_list)
+        print(new_targets_list)
         if new_targets_list:
             results_targets_list = self.choose_best_offset(reference=reference,
                                                            deleted_positions=deleted_positions,

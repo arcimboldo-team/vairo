@@ -1,3 +1,16 @@
+{% macro color_plddt(plddt) %}
+    <span style="color:
+            {% if plddt > 85 %}
+                green
+            {% elif plddt < 70 %}
+                red
+            {% else %}
+                orange
+            {% endif %}
+         ">{{ plddt }} average pLDDT</span>
+{% endmacro %}
+
+
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -126,7 +139,7 @@
                 background: #767B7D;
                 color: #fff;
                 display: block;
-            }
+            }color_plddt
 
             .section-div{
                 padding-top: 35px;
@@ -251,7 +264,7 @@
                 {% if data.ranked_by_rmsd %}
                     {% for key, values in data.ranked_by_rmsd.items() %}
                         {% if loop.first %}
-                            <p>Best result is <span style="color:green;">{{ values[0].name }}</span> with a {{ values[0].plddt }} average pLDDT.
+                            <p>Best result is <span style="color:green;">{{ values[0].name }}</span> with a {{ color_plddt(values[0].plddt ) }}.
                                 Can be found in the following path: <a download="{{ values[0].name }}.pdb" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
                             </p>
                             {% for ranked in values if ranked.name != values[0].name %}
@@ -274,9 +287,9 @@
                                         {% if loop.first %}
                                             <ul>
                                                 {% if ranked.name in data.filtered_dict %}
-                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.plddt }} average pLDDT)</li>
+                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
                                                 {% else %}
-                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.plddt }} average pLDDT)</li>
+                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
                                                 {% endif %}
                                         {% else %}
                                                 {% if ranked.name in data.filtered_dict %}

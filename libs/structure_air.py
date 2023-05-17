@@ -138,13 +138,13 @@ class StructureAir:
         else:
             counter = 0
             reference = parameters_dict.get('reference')
-            new_name = None
             for parameters_template in parameters_dict.get('templates'):
-                pdb_id = utils.get_mandatory_value(parameters_template, 'pdb')
-                result = self.get_template_by_id(utils.get_file_name(pdb_id))
+                new_name = None
+                pdb = utils.get_mandatory_value(parameters_template, 'pdb')
+                result = self.get_template_by_id(utils.get_file_name(pdb))
                 if result is not None:
                     counter += 1
-                    new_name = f'{pdb_id}_{counter}'
+                    new_name = f'{result.pdb_id}_{counter}'
                 new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir,
                                                  input_dir=self.input_dir,
                                                  num_of_copies=self.sequence_assembled.total_copies, new_name=new_name)

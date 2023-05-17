@@ -1,15 +1,6 @@
-import copy
-import itertools
-import logging
-import os
-import re
-import shutil
-import subprocess
-import sys
-import tempfile
+import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
 from typing import Any, Dict, List, Optional, Tuple, Union
 from statistics import mean
-
 import numpy as np
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
@@ -70,7 +61,6 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int,
 def check_pdb(pdb: str, output_dir: str) -> str:
     # Check if pdb is a path, and if it doesn't exist, download it.
     # If the pdb is a path, copy it to our input folder
-
     if not os.path.exists(pdb):
         download_pdb(pdb_id=pdb, output_dir=output_dir)
         pdb = os.path.join(output_dir, f'{pdb}.pdb')
@@ -79,7 +69,6 @@ def check_pdb(pdb: str, output_dir: str) -> str:
         if pdb != pdb_aux:
             shutil.copy2(pdb, pdb_aux)
             pdb = pdb_aux
-
     return pdb
 
 
