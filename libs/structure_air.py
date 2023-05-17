@@ -458,7 +458,6 @@ class StructureAir:
         #                                    size_sequence=self.sequence_assembled.length,
         #                                    output_path=os.path.join(self.results_dir, 'hinges'))
 
-        # if not templates_cluster:
         templates_cluster, _ = bioutils.cc_analysis(paths_in=self.output.templates_dict,
                                                     cc_analysis_paths=self.cc_analysis_paths,
                                                     cc_path=os.path.join(self.results_dir, 'ccanalysis'))

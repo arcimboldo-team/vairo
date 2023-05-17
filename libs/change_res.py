@@ -38,6 +38,8 @@ class ChangeResidues:
             results = [utils.get_key_by_value(res, mapping) for res in residues]
             self.chain_res_dict[chain] = [x[0] for x in results if x]
 
+
+
     def group_change_res(self):
         self.chain_group_res_dict = {}
         for key, value in self.chain_res_dict.items():
@@ -85,6 +87,7 @@ class ChangeResidues:
                         elif self.sequence is not None:
                             name = utils.get_key_by_value(value=self.sequence[bioutils.get_resseq(res) - 1],
                                                           search_dict=features.three_to_one)[0]
+
                         for atom in res:
                             res.resname = name
                             if not atom.name in residue_constants.residue_atoms[res.resname]:

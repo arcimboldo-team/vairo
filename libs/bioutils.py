@@ -9,7 +9,6 @@ import sys
 import tempfile
 from typing import Any, Dict, List, Optional, Tuple, Union
 from statistics import mean
-from collections import defaultdict
 
 import numpy as np
 from Bio import SeqIO
@@ -20,9 +19,8 @@ from sklearn.cluster import KMeans
 
 from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
-from libs import change_res, structures, utils, sequence, plots, global_variables
+from libs import change_res, structures, utils, plots, global_variables, sequence
 from alphafold.relax import cleanup
-
 from libs.structures import Hinges
 
 
@@ -290,6 +288,7 @@ def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: List[List]
     finally:
         tmp_file.close()
         os.unlink(tmp_file.name)
+
 
 
 def get_resseq(residue: Residue) -> int:
@@ -883,10 +882,15 @@ def remove_hydrogens(pdb_in_path: str, pdb_out_path: str):
 
 
 def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
-    pdb_text = open(pdb_in_path, 'r').read()
-    pdb_output = cleanup.fix_pdb(pdb_text, {})
-    with open(pdb_out_path, 'w') as f_out:
-        f_out.write(pdb_output)
+    try:
+        pdb_text = open(pdb_in_path, 'r').read()
+        pdb_output = cleanup.fix_pdb(pdb_text, {})
+        with open(pdb_out_path, 'w') as f_out:
+            f_out.write(pdb_output)
+    except:
+        logging.info(f'PDBFixer did not finish correctly for {utils.get_file_name(pdb_in_path)}. Skipping.')
+        shutil.copy2(pdb_in_path, pdb_out_path)
+        pass
 
 
 def run_arcimboldo_air(yml_path: str):

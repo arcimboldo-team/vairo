@@ -272,7 +272,7 @@ def delete_residues_msa(msa: Dict, position: int, delete_positions: List[int]) -
 
 
 def replace_sequence_template(template_dict: Dict, sequence_in: str) -> Dict:
-    for i in range(len(template_dict)):
+    for i in range(len(template_dict['template_sequence'])):
         template_dict['template_sequence'][i] = sequence_in.encode()
         for index, atoms_mask in enumerate(template_dict['template_all_atom_masks'][i][0][:]):
             aa_container = [0] * 22
@@ -342,6 +342,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     matches_positions = [match.start() for match in matches] + [len(hhr_text)]
 
     detailed_lines_list = []
+    print(pdb_id[:10] + ':' + chain_id)
     for i in range(len(matches_positions) - 1):
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 

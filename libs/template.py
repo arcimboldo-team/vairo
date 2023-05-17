@@ -4,7 +4,6 @@ import logging
 import os
 import shutil
 from typing import Dict, List, Optional, Tuple, Union
-
 from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res, alphafold_classes, template_chains
 from libs import structures, sequence
 
