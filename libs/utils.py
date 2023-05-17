@@ -1,21 +1,9 @@
-import base64
-import copy
-import errno
-import glob
-import io
-import json
-import logging
-import os
-import re
-import shutil
-import sys
+import base64, copy, errno, glob, io, json, logging, os, re, shutil, sys
 from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union, Optional
-
+from typing import Any, Dict, List, Tuple
 from sklearn import preprocessing
-
 from libs import structures
 
 
@@ -135,30 +123,6 @@ def get_chain_and_number(path_pdb: str) -> Tuple[str, int]:
     name = get_file_name(path_pdb)
     code = name.split('_')[-1]
     return code[0], int(code[1:])
-
-
-def select_paths_in_dict(chain_dict: Dict, code: str) -> str:
-    # Search for the files in all the dict that
-    # finish with code
-    for _, paths in chain_dict.items():
-        for path in paths:
-            split_code = get_chain_and_number(path)
-            if f'{split_code[0]}{split_code[1]}' == code:
-                return path
-
-
-def get_paths_in_alignment(align_dict: Dict, code: str) -> List[str]:
-    # Search for the files in all to align dict that
-    # finish with code
-    return_list = []
-    for _, chain_dict in align_dict.items():
-        return_list.append(select_paths_in_dict(chain_dict=chain_dict, code=code))
-    return return_list
-
-
-def select_path_from_code(align_dict: Dict, code: str, position: int, sequence_name_list: List[str]) -> str:
-    sequence_name = sequence_name_list[position]
-    return select_paths_in_dict(chain_dict=align_dict[sequence_name], code=code)
 
 
 def replace_last_number(text: str, value: int) -> str:
@@ -406,6 +370,7 @@ def create_dir(dir_path: str, delete_if_exists: bool = False):
     elif delete_if_exists:
         shutil.rmtree(dir_path)
         os.makedirs(dir_path)
+
 
 def remove_list_layer(input_list: List[List[str]]) -> List[str]:
     return [j for x in input_list for j in x]

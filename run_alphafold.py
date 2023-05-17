@@ -223,7 +223,6 @@ def predict_structure(
                 model_name, fasta_name, t_diff)
 
         plddt = prediction_result['plddt']
-        logging.info(f'PLDDT IS {plddt}')
         ranking_confidences[model_name] = prediction_result['ranking_confidence']
 
         # Save the model outputs.
