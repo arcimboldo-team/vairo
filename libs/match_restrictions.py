@@ -26,6 +26,9 @@ class MatchRestrictions:
     def check_position(self) -> bool:
         return self.position != -1
 
+    def get_deleted_residues(self, chain: str) -> List[int]:
+        return self.residues.chain_res_dict[chain]
+
 
 class MatchRestrictionsList:
     def __init__(self):
@@ -45,13 +48,3 @@ class MatchRestrictionsList:
     def get_matches_by_chain(self, chain: str) -> List[MatchRestrictions]:
         # Return all the matches for a specific chain
         return [match for match in self.match_restrict_list if match.chain == chain]
-
-    def get_residues_deleted_by_chain(self, chain: str) -> List[int]:
-        # Return all the changes for a specific chain.
-        # In the dict, there will be the residue name as key
-        # and all the residues to change in a list
-        return_list = {}
-        for match in self.match_restrict_list:
-            if match.residues and chain in match.residues.chain_res_dict:
-                return_list.extend(match.residues.chain_res_dict[chain])
-        return return_list

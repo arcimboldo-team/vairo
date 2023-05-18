@@ -82,7 +82,7 @@ class Template:
             residues = None
             if residues_match_list is not None:
                 change_list = utils.expand_residues(residues_match_list)
-                new_dict = {self.chain: change_list}
+                new_dict = {chain_match: change_list}
                 residues = change_res.ChangeResidues(chain_res_dict=new_dict)
             position = parameters_match_dict.get('position', -1)
             if position != -1:
@@ -271,25 +271,26 @@ class Template:
         reference = global_reference if reference is None else reference
 
         new_targets_list = self.template_chains_struct.get_chains_not_in_list(composition_path_list)
-        print(new_targets_list)
         if new_targets_list:
             results_targets_list = self.choose_best_offset(reference=reference,
                                                            deleted_positions=deleted_positions,
                                                            template_chains=new_targets_list,
                                                            name_list=sequence_name_list)
-
-            for i, element in enumerate(results_targets_list):
-                if composition_path_list[i] is None:
-                    composition_path_list[i] = element
-
-            if len(results_targets_list) != sum(x is not None for x in results_targets_list):
-                logging.info(
-                    f'Not all chains have been selected in the template {self.pdb_id}. Probably there are chains with '
-                    f'bad alignment.')
+            if self.template_chains_struct.get_number_chains() != (sum(x is not None for x in results_targets_list)+sum(x is not None for x in composition_path_list)):
+                text = f'Not all chains have been selected in the template {self.pdb_id}. Probably there are chains ' \
+                       f'with bad alignment.'
+                if self.strict:
+                    raise Exception(text)
+                else:
+                    logging.info(text)
 
             if not any(results_targets_list):
                 raise Exception(
                     f'Not possible to meet the requisites for the template {self.pdb_id}. No chains have good alignments')
+
+            for i, element in enumerate(results_targets_list):
+                if composition_path_list[i] is None:
+                    composition_path_list[i] = element
 
         return composition_path_list
 
@@ -301,9 +302,11 @@ class Template:
             reference_algorithm = []
             for y, target_pdb in enumerate(reference.results_path_position):
                 if y not in deleted_positions and name_list[y] == template_chain.sequence:
-                    alignment = template_chain.check_alignment(stop=self.strict) if self.strict else True
-                    reference_algorithm.append(
-                        (x, y, bioutils.pdist(query_pdb=template_chain.path, target_pdb=target_pdb), alignment))
+                    alignment = template_chain.check_alignment(stop=False)
+                    if not self.strict or (self.strict and alignment):
+                        reference_algorithm.append(
+                            (x, y, bioutils.pdist(query_pdb=template_chain.path, target_pdb=target_pdb), alignment))
+
             if reference_algorithm:
                 results_algorithm.append(reference_algorithm)
 
@@ -324,42 +327,40 @@ class Template:
                 new_reference = a_air.get_template_by_id(match.reference)
                 match.set_reference(new_reference)
 
-    def get_changes(self):
-        # Get the changes that have been done to the templates.
-        # Return all those residues that has been changed.
-        chains_changed = [None] * len(self.results_path_position)
-        fasta_changed = [None] * len(self.results_path_position)
-        chains_deleted = [None] * len(self.results_path_position)
+    def get_old_sequence(self, sequence_list: List[sequence.Sequence], glycines: int) -> str:
+        old_sequence = []
         for i, path in enumerate(self.results_path_position):
             if path is not None:
-                chain, _ = utils.get_chain_and_number(path)
-                changed_residues = []
-                changed_fasta = []
-                for change in self.change_res_struct.change_residues_list:
-                    if chain in change.chain_res_dict:
-                        if change.resname is not None:
-                            changed_residues.extend(change.chain_res_dict[chain])
-                        elif change.fasta_path is not None:
-                            changed_fasta.extend(change.chain_res_dict[chain])
-                if changed_residues:
-                    chains_changed[i] = changed_residues
-                if changed_fasta:
-                    fasta_changed[i] = changed_fasta
-                for match in self.match_restrict_struct.match_restrict_list:
-                    if match.residues is not None and chain in match.residues.chain_res_dict:
-                        chains_deleted.extend(match.residues.chain_res_dict[chain])
+                seq = self.template_chains_struct.get_old_sequence(path)
+            else:
+                seq = ''
+            while len(seq) < sequence_list[i].length:
+                seq += '-'
+            if i != len(sequence_list)-1:
+                seq += '-'*glycines
+            old_sequence.append(seq)
+        return ''.join(old_sequence)
 
+    def get_changes(self) -> List:
+        # Get the changes that have been done to the templates.
+        # Return all those residues that has been changed.
+        chains_changed = []
+        fasta_changed = []
+        chains_deleted = []
+        for path in self.results_path_position:
+            if path is not None:
+                changed, fasta, deleted = self.template_chains_struct.get_changes(path)
+            else:
+                changed, fasta, deleted = None, None, None
+            chains_changed.append(changed)
+            fasta_changed.append(fasta)
+            chains_deleted.append(deleted)
         return chains_changed, fasta_changed, chains_deleted
 
     def get_results_alignment(self) -> List[Union[None, structures.Alignment]]:
         # Return the alignments corresponding to the positions.
-        return_alignments = []
-        for path in self.results_path_position:
-            alignment = None
-            if path is not None:
-                alignment = self.template_chains_struct.get_alignment_by_path(path)
-            return_alignments.append(alignment)
-        return return_alignments
+        return [self.template_chains_struct.get_alignment_by_path(path) if path is not None else None for path
+                in self.results_path_position]
 
     def __repr__(self):
         # Print class

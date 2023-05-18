@@ -94,6 +94,32 @@ def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
         return False
 
 
+def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
+    structure = get_structure(pdb_path)
+    model = structure[0]
+    sequences = {}
+    for chain in model:
+        residue_numbers = set()
+        for residue in chain:
+            residue_numbers.add(residue.get_id()[1])
+
+        sequence_ext = ""
+        prev_residue_number = 0
+        for residue in chain:
+            residue_number = residue.get_id()[1]
+
+            if residue_number - prev_residue_number > 1:
+                for missing_number in range(prev_residue_number + 1, residue_number):
+                    sequence_ext += "-"
+
+            sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
+            prev_residue_number = residue_number
+
+        sequences[chain.id] = sequence_ext
+
+    return sequences
+
+
 def extract_sequence(fasta_path: str) -> str:
     logging.info(f'Extracting sequence from {fasta_path}')
     try:
@@ -1044,7 +1070,7 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
 
     change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
     change.delete_residues_inverse(pdb_out_path, pdb_out_path)
-    change.change_bfactors(pdb_out_path, pdb_out_path)
+    #change.change_bfactors(pdb_out_path, pdb_out_path)
 
     return add_domains_dict
 

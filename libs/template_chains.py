@@ -11,12 +11,13 @@ class TemplateChain:
                  chain: str,
                  path: str,
                  code: str,
-                 sequence_before_changes: str,
                  sequence: str,
                  match: match_restrictions.MatchRestrictions = None,
                  alignment: Union[None, Alignment] = None,
                  deleted_residues: List[int] = [],
-                 changed_residues: List[int] = []
+                 changed_residues: List[int] = [],
+                 fasta_residues: List[int] = [],
+                 sequence_before_changes: str = ''
                  ):
         self.chain = chain
         self.path = path
@@ -26,6 +27,7 @@ class TemplateChain:
         self.alignment = alignment
         self.deleted_residues = deleted_residues
         self.changed_residues = changed_residues
+        self.fasta_residues = fasta_residues
         self.sequence_before_changes = sequence_before_changes
 
     def check_alignment(self, stop: bool):
@@ -36,7 +38,8 @@ class TemplateChain:
                     return False
                 else:
                     raise Exception(
-                        f'Match could not be done. Poor alignment in the template {self.pdb_id}. Stopping the run.')
+                        f'Match could not be done. Poor alignment in the template {utils.get_file_name(self.path)}. '
+                        f'Stopping the run.')
             return True
         return True
 
@@ -45,13 +48,31 @@ class TemplateChainsList:
     def __init__(self):
         self.template_chains_list: List[TemplateChain] = []
 
-    def get_alignment_by_path(self, pdb_path: str) -> Alignment:
-        # Search for the alignment that has the same name as the pdb_path
-        chain1, _ = utils.get_chain_and_number(pdb_path)
+    def get_template_chain(self, pdb_path: str) -> TemplateChain:
+        chain1, code1 = utils.get_chain_and_number(pdb_path)
         pdb_dirname = os.path.dirname(pdb_path)
         for template_chain in self.template_chains_list:
-            if template_chain.alignment and pdb_dirname == os.path.dirname(template_chain.path) and chain1 == template_chain.chain:
-                return template_chain.alignment
+            if pdb_dirname == os.path.dirname(
+                    template_chain.path) and chain1 == template_chain.chain and code1 == template_chain.code:
+                return template_chain
+        return None
+
+    def get_old_sequence(self, pdb_path: str) -> str:
+        template_chain = self.get_template_chain(pdb_path)
+        return template_chain.sequence_before_changes
+
+    def get_changes(self, pdb_path: str) -> List:
+        template_chain = self.get_template_chain(pdb_path)
+        return template_chain.changed_residues, template_chain.fasta_residues, template_chain.deleted_residues
+
+    def get_number_chains(self) -> int:
+        return len({(chain_template.chain, chain_template.code) for chain_template in self.template_chains_list})
+
+    def get_alignment_by_path(self, pdb_path: str) -> Alignment:
+        # Search for the alignment that has the same name as the pdb_path
+        template_chain = self.get_template_chain(pdb_path)
+        if template_chain is not None and template_chain.alignment:
+            return template_chain.alignment
         return None
 
     def get_chains_not_in_list(self, input_list: List[str]) -> List[TemplateChain]:
@@ -59,7 +80,8 @@ class TemplateChainsList:
         # This can be used to eliminate duplicates in case there is more than one database.
         input_chains = [(utils.get_chain_and_number(path)[0], utils.get_chain_and_number(path)[1]) for path in
                         input_list if path is not None]
-        return [template_chain for template_chain in self.template_chains_list if (template_chain.chain, template_chain.code) not in input_chains]
+        return [template_chain for template_chain in self.template_chains_list if
+                (template_chain.chain, template_chain.code) not in input_chains]
 
     def get_chains_with_matches_ref(self) -> List[TemplateChain]:
         # Get all the chains that has a match with references
@@ -117,13 +139,13 @@ class TemplateChainsList:
                     break
                 # Store the sequence before changing the residues, as if we want to add it in the MSA, it would not
                 # make sense
-                sequence_before_changes = bioutils.extract_sequence_from_file(path)
-
+                sequence_before_changes = list(bioutils.extract_sequence_msa_from_pdb(path).values())[0]
                 for change in change_list:
                     change.change_residues(path, path)
 
-                deleted_residues = match_restrict_copy.get_residues_deleted_by_chain(chain)
-                changed_residues = change_res_copy.get_residues_changed_by_chain(chain)
+                if match:
+                    deleted_residues = match.get_deleted_residues(chain=chain)
+                changed_residues, fasta_residues = change_res_copy.get_residues_changed_by_chain(chain)
                 chain, number = utils.get_chain_and_number(path)
                 self.template_chains_list.append(TemplateChain(chain=chain,
                                                                path=path,
@@ -133,4 +155,5 @@ class TemplateChainsList:
                                                                alignment=alignment,
                                                                deleted_residues=deleted_residues,
                                                                changed_residues=changed_residues,
+                                                               fasta_residues=fasta_residues,
                                                                sequence_before_changes=sequence_before_changes))

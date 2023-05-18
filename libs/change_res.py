@@ -1,7 +1,7 @@
 from typing import Dict, Union, List
 from Bio.PDB import Select, PDBIO
 from alphafold.common import residue_constants
-from libs import bioutils, features, utils
+from libs import bioutils, utils
 
 
 class ChangeResidues:
@@ -37,8 +37,6 @@ class ChangeResidues:
         if residues:
             results = [utils.get_key_by_value(res, mapping) for res in residues]
             self.chain_res_dict[chain] = [x[0] for x in results if x]
-
-
 
     def group_change_res(self):
         self.chain_group_res_dict = {}
@@ -86,7 +84,7 @@ class ChangeResidues:
                             name = self.resname
                         elif self.sequence is not None:
                             name = utils.get_key_by_value(value=self.sequence[bioutils.get_resseq(res) - 1],
-                                                          search_dict=features.three_to_one)[0]
+                                                          search_dict=residue_constants.restype_3to1)[0]
 
                         for atom in res:
                             res.resname = name
@@ -114,17 +112,20 @@ class ChangeResiduesList:
     def __init__(self):
         self.change_residues_list: List[ChangeResidues] = []
 
-    def get_residues_changed_by_chain(self, chain: str) -> Dict:
+    def get_residues_changed_by_chain(self, chain: str) -> List:
         # Return all the changes for a specific chain.
         # In the dict, there will be the residue name as key
         # and all the residues to change in a list
-        return_dict = {}
+        fasta = set()
+        resname = set()
         for change in self.change_residues_list:
             residues = change.chain_res_dict.get(chain)
             if residues:
-                name = change.fasta_path if change.fasta_path is not None else change.resname
-                return_dict.setdefault(name, set()).update(residues)
-        return return_dict
+                if change.fasta_path:
+                    fasta.update(residues)
+                elif change.resname:
+                    resname.update(residues)
+        return list(resname), list(fasta)
 
     def get_changes_by_chain(self, chain: str, when: str = '') -> List[ChangeResidues]:
         return [change for change in self.change_residues_list if

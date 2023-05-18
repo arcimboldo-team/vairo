@@ -229,8 +229,7 @@ class Features:
                 template_dict['template_sequence'][i] = self.template_features['template_sequence'][i][
                                                         start_min:start_max]
                 template_dict['template_domain_names'][i] = self.template_features['template_domain_names'][i]
-                template_dict['template_sum_probs'][i] = self.template_features['template_sum_probs'][i][
-                                                         start_min:start_max]
+                template_dict['template_sum_probs'][i] = self.template_features['template_sum_probs'][i]
             if len(template_dict['template_all_atom_positions']) > 0:
                 new_features.append_new_template_features(template_dict)
             features_list.append(new_features)
@@ -342,7 +341,6 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     matches_positions = [match.start() for match in matches] + [len(hhr_text)]
 
     detailed_lines_list = []
-    print(pdb_id[:10] + ':' + chain_id)
     for i in range(len(matches_positions) - 1):
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 

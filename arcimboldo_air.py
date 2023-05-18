@@ -84,7 +84,8 @@ def main():
                     sequence_assembled=a_air.sequence_assembled)
                 a_air.append_line_in_templates(template.results_path_position)
                 if template.add_to_msa:
-                    sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
+                    sequence_from_template = template.get_old_sequence(sequence_list=a_air.sequence_assembled.sequence_list_expanded,
+                                                                       glycines=a_air.glycines)
                     a_air.feature.append_row_in_msa(sequence_in=sequence_from_template,
                                                     sequence_id=template.pdb_id)
                     logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
