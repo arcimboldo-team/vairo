@@ -143,6 +143,7 @@ class TemplateChainsList:
                 for change in change_list:
                     change.change_residues(path, path)
 
+                deleted_residues = []
                 if match:
                     deleted_residues = match.get_deleted_residues(chain=chain)
                 changed_residues, fasta_residues = change_res_copy.get_residues_changed_by_chain(chain)

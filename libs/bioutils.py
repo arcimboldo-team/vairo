@@ -98,25 +98,25 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
     structure = get_structure(pdb_path)
     model = structure[0]
     sequences = {}
+    print(pdb_path)
     for chain in model:
         residue_numbers = set()
         for residue in chain:
             residue_numbers.add(residue.get_id()[1])
-
         sequence_ext = ""
         prev_residue_number = 0
         for residue in chain:
             residue_number = residue.get_id()[1]
-
             if residue_number - prev_residue_number > 1:
                 for missing_number in range(prev_residue_number + 1, residue_number):
+                    print(missing_number)
                     sequence_ext += "-"
 
             sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
             prev_residue_number = residue_number
 
         sequences[chain.id] = sequence_ext
-
+    print(sequences)
     return sequences
 
 

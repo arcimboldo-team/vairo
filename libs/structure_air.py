@@ -360,7 +360,7 @@ class StructureAir:
                                                    feature=feature
                                                    )
             self.afrun_list.append(afrun)
-            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')

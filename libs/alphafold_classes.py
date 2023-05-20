@@ -47,6 +47,7 @@ class AlphaFoldRun:
 
         if self.run:
             try:
+                return
                 run_alphafold.launch_alphafold2(
                     fasta_path=[self.fasta_path],
                     output_dir=previous_path,

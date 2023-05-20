@@ -27,7 +27,8 @@ class MatchRestrictions:
         return self.position != -1
 
     def get_deleted_residues(self, chain: str) -> List[int]:
-        return self.residues.chain_res_dict[chain]
+        if self.residues:
+            return self.residues.chain_res_dict[chain]
 
 
 class MatchRestrictionsList:
