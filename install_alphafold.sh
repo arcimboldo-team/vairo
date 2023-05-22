@@ -5,7 +5,7 @@ conda create -y -n af2 python=3.8
 conda activate af2
 conda install -y -c conda-forge openmm==7.5.1 cudatoolkit==11.2 cudnn==8.2.1.32 pdbfixer==1.7
 conda install -y -c bioconda hmmer==3.3.2 hhsuite==3.3.0 kalign2==2.04
-if conda install -y -c conda-forge cudatoolkit-dev; then
+if conda install -y -c conda-forge "cudatoolkit-dev=11.2"; then
     echo 'Cudatoolkit-dev installed'
 else
     echo 'ERROR: Conda installation of cudatoolkit failed. Please, install cudatoolkit afterwards.'
