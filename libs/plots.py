@@ -192,10 +192,10 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
                 changed_fasta = bioutils.convert_residues(changed_fasta, a_air.sequence_assembled)
                 if len(name) > 4:
                     template_name = f'T{j + 1}'
-                    text = f'\n{template_name} ({name}):'
+                    text = f'{template_name} ({name}):'
                 else:
                     template_name = name
-                    text = f'\n{template_name}:'
+                    text = f'{template_name}:'
                 for alignment in template.get_results_alignment():
                     if alignment is not None:
                         text += f'\n   Chain {alignment.database.chain}: Aligned={alignment.aligned_columns}({alignment.total_columns}) Evalue={alignment.evalue} Identities={alignment.identities}'
@@ -236,19 +236,9 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(0, total_length)
     ax.set_ylim(0, number_of_templates)
-    if number_of_templates == 1:
-        fig.set_size_inches(16, 2)
-    elif number_of_templates == 2:
-        fig.set_size_inches(16, 2.5)
-    elif number_of_templates == 3:
-        fig.set_size_inches(16, 3.2)
-    elif number_of_templates == 4:
-        fig.set_size_inches(16, 3.8)
-    else:
-        fig.set_size_inches(16, number_of_templates*0.9)
     legend_elements.append(
         'The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n'
-        'The darker parts indicate that the residues are the same or belong to the same group.\n')
+        'The darker parts indicate that the residues are the same or belong to the same group.')
     legend_elements.append('Yellow shows which residues have been changed to another specific residue\n'
                            'whereas the red shows which residues have been changed from another query sequence.\n'
                            'No information (white) implies that no modifications have been done.')
@@ -274,7 +264,11 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     ax.spines['top'].set_visible(False)
     ax.spines['bottom'].set_color('k')
 
-    ax.legend(handles=legend_seq[::-1], loc='upper right', framealpha=0.5, fancybox=True, ncol=2)
+    number_of_lines = len('\n'.join(legend_elements).split('\n'))
+    linewidth = (number_of_lines*0.168+number_of_templates*0.3)
+    fig.set_size_inches(16, linewidth)
+
+    ax.legend(handles=legend_seq[::-1], loc='best', framealpha=0.5, fancybox=True, ncol=2)
     fig.tight_layout()
     fig.subplots_adjust(top=.95)
     plt.title(title)
