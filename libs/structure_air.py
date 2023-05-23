@@ -186,7 +186,7 @@ class StructureAir:
         render_dict['custom_features'] = self.custom_features
         render_dict['mosaic'] = self.mosaic
         render_dict['total_copies'] = self.sequence_assembled.total_copies
-        render_dict['number_templates'] = len(self.templates_list)
+        render_dict['number_templates'] = len(self.template_positions_list)
         render_dict['number_alignments'] = len(
             [template_path for template_list in self.template_positions_list for template_path in template_list if
              template_path is not None])
@@ -360,7 +360,7 @@ class StructureAir:
                                                    feature=feature
                                                    )
             self.afrun_list.append(afrun)
-            afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')

@@ -236,8 +236,7 @@ class Template:
                                                         change_res_list=self.change_res_struct,
                                                         match_restrict_list=self.match_restrict_struct)
 
-    def sort_chains_into_positions(self, sequence_name_list: List[str], global_reference) \
-            -> List[Tuple[str, None]]:
+    def sort_chains_into_positions(self, sequence_name_list: List[str], global_reference) -> List[str]:
         # Given the sequences list and if there is any global reference:
         # Sort all template chains in the corresponding positions.
         # If the user has set up any match, only the chains specified in the match will be set.
@@ -271,19 +270,11 @@ class Template:
         reference = global_reference if reference is None else reference
 
         new_targets_list = self.template_chains_struct.get_chains_not_in_list(composition_path_list)
-        if new_targets_list:
+        if new_targets_list and len(deleted_positions) < len(sequence_name_list):
             results_targets_list = self.choose_best_offset(reference=reference,
                                                            deleted_positions=deleted_positions,
                                                            template_chains=new_targets_list,
                                                            name_list=sequence_name_list)
-            if self.template_chains_struct.get_number_chains() != (sum(x is not None for x in results_targets_list)+sum(x is not None for x in composition_path_list)):
-                text = f'Not all chains have been selected in the template {self.pdb_id}. Probably there are chains ' \
-                       f'with bad alignment.'
-                if self.strict:
-                    raise Exception(text)
-                else:
-                    logging.info(text)
-
             if not any(results_targets_list):
                 raise Exception(
                     f'Not possible to meet the requisites for the template {self.pdb_id}. No chains have good alignments')
@@ -292,11 +283,21 @@ class Template:
                 if composition_path_list[i] is None:
                     composition_path_list[i] = element
 
+            if self.template_chains_struct.get_number_chains() != sum(x is not None for x in composition_path_list) \
+                    and not all(composition_path_list):
+                text = f'Not all chains have been selected in the template {self.pdb_id}. Probably there are chains ' \
+                       f'with bad alignment.'
+                if self.strict:
+                    raise Exception(text)
+                else:
+                    logging.info(text)
+
         return composition_path_list
 
     def choose_best_offset(self, reference, deleted_positions: List[int],
                            template_chains: List[template_chains.TemplateChain],
                            name_list: List[str]) -> List[Optional[str]]:
+
         results_algorithm = []
         for x, template_chain in enumerate(template_chains):
             reference_algorithm = []

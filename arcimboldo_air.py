@@ -70,28 +70,29 @@ def main():
             a_air.change_state(state=1)
             a_air.generate_output()
             for template in a_air.templates_list:
-                if not template.aligned:
-                    database_dir = os.path.join(a_air.run_dir, template.pdb_id)
-                    utils.create_dir(database_dir)
-                    template.generate_database(output_dir=database_dir, databases=a_air.alphafold_paths)
-                for sequence in a_air.sequence_assembled.sequence_list:
-                    alignment_dir = os.path.join(a_air.run_dir, sequence.name)
-                    utils.create_dir(alignment_dir)
-                    template.align(output_dir=alignment_dir, sequence_in=sequence, databases=a_air.alphafold_paths)
-                template.generate_features(
-                    output_dir=a_air.run_dir,
-                    global_reference=a_air.reference,
-                    sequence_assembled=a_air.sequence_assembled)
-                a_air.append_line_in_templates(template.results_path_position)
-                if template.add_to_msa:
-                    sequence_from_template = template.get_old_sequence(sequence_list=a_air.sequence_assembled.sequence_list_expanded,
-                                                                       glycines=a_air.glycines)
-                    a_air.feature.append_row_in_msa(sequence_in=sequence_from_template,
-                                                    sequence_id=template.pdb_id)
-                    logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
-                if template.add_to_templates:
-                    a_air.feature.append_new_template_features(new_template_features=template.template_features,
-                                                               custom_sum_prob=template.sum_prob)
+                if template.add_to_templates or template.add_to_msa:
+                    if not template.aligned:
+                        database_dir = os.path.join(a_air.run_dir, template.pdb_id)
+                        utils.create_dir(database_dir)
+                        template.generate_database(output_dir=database_dir, databases=a_air.alphafold_paths)
+                    for sequence in a_air.sequence_assembled.sequence_list:
+                        alignment_dir = os.path.join(a_air.run_dir, sequence.name)
+                        utils.create_dir(alignment_dir)
+                        template.align(output_dir=alignment_dir, sequence_in=sequence, databases=a_air.alphafold_paths)
+                    template.generate_features(
+                        output_dir=a_air.run_dir,
+                        global_reference=a_air.reference,
+                        sequence_assembled=a_air.sequence_assembled)
+                    a_air.append_line_in_templates(template.results_path_position)
+                    if template.add_to_msa:
+                        sequence_from_template = template.get_old_sequence(sequence_list=a_air.sequence_assembled.sequence_list_expanded,
+                                                                           glycines=a_air.glycines)
+                        a_air.feature.append_row_in_msa(sequence_in=sequence_from_template,
+                                                        sequence_id=template.pdb_id)
+                        logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
+                    if template.add_to_templates:
+                        a_air.feature.append_new_template_features(new_template_features=template.template_features,
+                                                                   custom_sum_prob=template.sum_prob)
                     logging.info(f'Template {template.pdb_id} was added to templates')
             features_list = a_air.partition_mosaic()
         else:

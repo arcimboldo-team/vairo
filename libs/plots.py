@@ -92,9 +92,10 @@ def plot_sequence(plot_path: str, a_air):
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
                 left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
-        ax.barh('sequence', a_air.sequence_assembled.glycines,
-                left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
-                    i) + 1, color='tab:blue')
+        if i < a_air.sequence_assembled.total_copies-1:
+            ax.barh('sequence', a_air.sequence_assembled.glycines,
+                    left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
+                        i) + 1, color='tab:blue')
 
         xcenters = (a_air.sequence_assembled.get_starting_length(i) + 1) + a_air.sequence_assembled.get_sequence_length(
             i) / 2
@@ -103,7 +104,7 @@ def plot_sequence(plot_path: str, a_air):
     ax_secondary = ax.secondary_xaxis('top')
     ax_secondary.set_xticks(
         ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in
-               range(a_air.sequence_assembled.total_copies)],
+               range(a_air.sequence_assembled.total_copies-1)],
         rotation=45)
     ax_secondary.set_xticks(
         ticks=list(ax_secondary.get_xticks()) + [
@@ -112,7 +113,7 @@ def plot_sequence(plot_path: str, a_air):
         rotation=45)
     ax_secondary.set_xticklabels(
         labels=[1] * a_air.sequence_assembled.total_copies + [a_air.sequence_assembled.get_sequence_length(i) + 1 for i
-                                                              in range(a_air.sequence_assembled.total_copies)],
+                                                              in range(a_air.sequence_assembled.total_copies-1)],
         rotation=45)
     ax.set_xticks(
         ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in
@@ -121,10 +122,10 @@ def plot_sequence(plot_path: str, a_air):
     ax.set_xticks(
         ticks=list(ax.get_xticks()) + [
             a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i
-            in range(a_air.sequence_assembled.total_copies)],
+            in range(a_air.sequence_assembled.total_copies-1)],
         rotation=45)
     ax.set_xticklabels(labels=ax.get_xticks(), rotation=45)
-    ax.set_xlim(0, len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines)
+    ax.set_xlim(0, len(a_air.sequence_assembled.sequence_assembled))
     ax.set_yticks([])
     fig.tight_layout()
     fig.subplots_adjust(top=.95)
@@ -139,13 +140,14 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     legend_seq = [Patch(label='Sequence', color='tab:cyan'), Patch(label='Linker', color='tab:blue')]
     number_of_templates = 1
 
-    total_length = len(a_air.sequence_assembled.sequence_assembled) + a_air.sequence_assembled.glycines
+    total_length = len(a_air.sequence_assembled.sequence_assembled)
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
                 left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
-        ax.barh('sequence', a_air.sequence_assembled.glycines,
-                left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
-                    i) + 1, color='tab:blue')
+        if i < a_air.sequence_assembled.total_copies-1:
+            ax.barh('sequence', a_air.sequence_assembled.glycines,
+                    left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
+                        i) + 1, color='tab:blue')
 
     if plot_type == 'msa':
         title = 'MSA'
@@ -234,10 +236,16 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(0, total_length)
     ax.set_ylim(0, number_of_templates)
-    if number_of_templates > 10:
-        fig.set_size_inches(16, number_of_templates * 0.7)
+    if number_of_templates == 1:
+        fig.set_size_inches(16, 2)
+    elif number_of_templates == 2:
+        fig.set_size_inches(16, 2.5)
+    elif number_of_templates == 3:
+        fig.set_size_inches(16, 3.2)
+    elif number_of_templates == 4:
+        fig.set_size_inches(16, 3.8)
     else:
-        fig.set_size_inches(16, number_of_templates)
+        fig.set_size_inches(16, number_of_templates*0.9)
     legend_elements.append(
         'The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n'
         'The darker parts indicate that the residues are the same or belong to the same group.\n')
@@ -251,7 +259,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         [a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xticks(list(ax.get_xticks()) + [
         a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(i) + 1 for i in
-        range(a_air.sequence_assembled.total_copies)])
+        range(a_air.sequence_assembled.total_copies-1)])
 
     cut_chunk = [list(tup) for tup in a_air.chunk_list]
     cut_chunk = utils.remove_list_layer(cut_chunk)

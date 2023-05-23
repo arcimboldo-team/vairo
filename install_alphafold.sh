@@ -1,5 +1,4 @@
 #!/bin/bash -i
-
 eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
 conda create -y -n af2 python=3.8
 conda activate af2
@@ -14,9 +13,9 @@ pip install absl-py==1.0.0 biopython==1.79 chex==0.0.7 dm-haiku==0.0.9 dm-tree==
 pip install jax==0.3.25 jaxlib==0.3.25+cuda11.cudnn805 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 pip install git+https://github.com/deepmind/alphafold.git@v2.2.4
 path=$(python -c 'import site; print(site.getsitepackages()[0])')
-cd $path
+cd "$path" || exit
 tmpfile=$(mktemp /tmp/openmm.XXXXXX)
-curl https://raw.githubusercontent.com/deepmind/alphafold/v2.2.4/docker/openmm.patch -o $tmpfile
-patch -p0 < $tmpfile
-rm $tmpfile
-wget -q -P ${path}/alphafold/common/ https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
+curl https://raw.githubusercontent.com/deepmind/alphafold/v2.2.4/docker/openmm.patch -o "$tmpfile"
+patch -p0 < "$tmpfile"
+rm "$tmpfile"
+wget -q -P "${path}"/alphafold/common/ https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
