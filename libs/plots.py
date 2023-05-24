@@ -190,7 +190,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
                 changed_residues, changed_fasta, _ = template.get_changes()
                 changed_residues = bioutils.convert_residues(changed_residues, a_air.sequence_assembled)
                 changed_fasta = bioutils.convert_residues(changed_fasta, a_air.sequence_assembled)
-                if len(name) > 4:
+                if len(name) > 6:
                     template_name = f'T{j + 1}'
                     text = f'{template_name} ({name}):'
                 else:

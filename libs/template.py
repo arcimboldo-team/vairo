@@ -1,9 +1,7 @@
-import collections
-import copy
 import logging
 import os
 import shutil
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Union
 from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res, alphafold_classes, template_chains
 from libs import structures, sequence
 
@@ -31,9 +29,14 @@ class Template:
         self.template_chains_struct: template_chains.TemplateChainsList = template_chains.TemplateChainsList()
         self.alignment_database: List[structures.AlignmentDatabase] = []
 
-        self.pdb_path = bioutils.check_pdb(utils.get_mandatory_value(parameters_dict, 'pdb'), input_dir)
+        pdb_path = utils.get_mandatory_value(parameters_dict, 'pdb')
         if new_name is not None:
-            self.pdb_path = shutil.copy2(self.pdb_path, os.path.join(os.path.dirname(self.pdb_path), f'{new_name}.pdb'))
+            pdb_out_path = os.path.join(output_dir, f'{new_name}.pdb')
+        else:
+            pdb_out_path = os.path.join(output_dir, f'{utils.get_file_name(pdb_path)}.pdb')
+        self.pdb_path = bioutils.check_pdb(pdb_path, pdb_out_path)
+        print(self.pdb_path)
+
         self.pdb_id = utils.get_file_name(self.pdb_path)
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
@@ -103,7 +106,7 @@ class Template:
         bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
         if cryst_card is not None:
             bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
-        self.cif_path = bioutils.pdb2mmcif(output_dir=output_dir, pdb_in_path=self.pdb_path,
+        self.cif_path = bioutils.pdb2mmcif(pdb_in_path=self.pdb_path,
                                            cif_out_path=os.path.join(output_dir, f'{self.pdb_id}.cif'))
         self.template_sequence = bioutils.extract_sequence_from_file(file_path=self.cif_path)
 
@@ -337,8 +340,8 @@ class Template:
                 seq = ''
             while len(seq) < sequence_list[i].length:
                 seq += '-'
-            if i != len(sequence_list)-1:
-                seq += '-'*glycines
+            if i != len(sequence_list) - 1:
+                seq += '-' * glycines
             old_sequence.append(seq)
         return ''.join(old_sequence)
 

@@ -4,6 +4,7 @@ from statistics import mean
 import numpy as np
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
+from Bio.PDB.mmcifio import MMCIFIO
 from scipy.spatial import distance
 from simtk import unit, openmm
 from sklearn.cluster import KMeans
@@ -15,23 +16,22 @@ from alphafold.relax import cleanup
 from libs.structures import Hinges
 
 
-def download_pdb(pdb_id: str, output_dir: str):
+def download_pdb(pdb_id: str, pdb_path: str) -> str:
     pdbl = PDBList(server='https://files.wwpdb.org')
-    result_ent = pdbl.retrieve_pdb_file(pdb_code=pdb_id, pdir=output_dir, file_format='pdb', obsolete=False)
+    result_ent = pdbl.retrieve_pdb_file(pdb_code=pdb_id, file_format='pdb', obsolete=False)
     if not os.path.exists(result_ent):
         raise Exception(f'{pdb_id} could not be downloaded.')
-    shutil.copy2(result_ent, os.path.join(output_dir, f'{pdb_id}.pdb'))
+    shutil.copy2(result_ent, pdb_path)
     os.remove(result_ent)
     shutil.rmtree('obsolete')
+    return pdb_path
 
 
-def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
-    maxit_dir = os.path.join(output_dir, 'maxit')
-    if not os.path.exists(maxit_dir):
-        os.mkdir(maxit_dir)
-    subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], cwd=maxit_dir,
-                     stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-    shutil.rmtree(maxit_dir)
+def pdb2mmcif(pdb_in_path: str, cif_out_path: str):
+    structure = get_structure(pdb_in_path)
+    mmcif_io = MMCIFIO()
+    mmcif_io.set_structure(structure)
+    mmcif_io.save(cif_out_path)
     return cif_out_path
 
 
@@ -58,18 +58,14 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int,
                      cwd=os.path.dirname(pdb_out)).communicate()
 
 
-def check_pdb(pdb: str, output_dir: str) -> str:
+def check_pdb(pdb: str, pdb_out_path: str) -> str:
     # Check if pdb is a path, and if it doesn't exist, download it.
     # If the pdb is a path, copy it to our input folder
     if not os.path.exists(pdb):
-        download_pdb(pdb_id=pdb, output_dir=output_dir)
-        pdb = os.path.join(output_dir, f'{pdb}.pdb')
+        pdb_path = download_pdb(pdb_id=pdb, pdb_path=pdb_out_path)
     else:
-        pdb_aux = os.path.join(output_dir, os.path.basename(pdb))
-        if pdb != pdb_aux:
-            shutil.copy2(pdb, pdb_aux)
-            pdb = pdb_aux
-    return pdb
+        pdb_path = shutil.copy2(pdb, pdb_out_path)
+    return pdb_path
 
 
 def check_sequence_path(path_in: str) -> str:
@@ -112,7 +108,6 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
 
             sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
             prev_residue_number = residue_number
-
         sequences[chain.id] = sequence_ext
     return sequences
 
@@ -300,7 +295,6 @@ def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: List[List]
     finally:
         tmp_file.close()
         os.unlink(tmp_file.name)
-
 
 
 def get_resseq(residue: Residue) -> int:
@@ -1067,7 +1061,7 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
 
     change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
     change.delete_residues_inverse(pdb_out_path, pdb_out_path)
-    #change.change_bfactors(pdb_out_path, pdb_out_path)
+    # change.change_bfactors(pdb_out_path, pdb_out_path)
 
     return add_domains_dict
 

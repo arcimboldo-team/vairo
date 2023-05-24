@@ -1,4 +1,4 @@
-Requires HHsearch, maxit, pisa and superpose installation.
+Requires HH-suite and CCP4 suite installation.
 Using AlphaFold2 and ALEPH.
 
 Usage: arcimboldo_air.py configuration.bor
