@@ -75,6 +75,16 @@ class Alignment:
 
 
 @dataclasses.dataclass(frozen=True)
+class GanttPlot:
+    plot_both: bytes
+    legend_both: str
+    plot_template: bytes
+    legend_template: str
+    plot_msa: bytes
+    legend_msa: str
+
+
+@dataclasses.dataclass(frozen=True)
 class InterfaceTemplate:
     template: str
     dist_coverage: float
@@ -223,6 +233,3 @@ class Ranked:
 
     def sort_template_rankeds(self):
         self.superposition_templates.sort(key=lambda x: (x.rmsd is None, x.rmsd))
-
-
-

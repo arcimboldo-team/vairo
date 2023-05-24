@@ -4,7 +4,6 @@ from statistics import mean
 import numpy as np
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
-from Bio.PDB.mmcifio import MMCIFIO
 from scipy.spatial import distance
 from simtk import unit, openmm
 from sklearn.cluster import KMeans
@@ -27,11 +26,13 @@ def download_pdb(pdb_id: str, pdb_path: str) -> str:
     return pdb_path
 
 
-def pdb2mmcif(pdb_in_path: str, cif_out_path: str):
-    structure = get_structure(pdb_in_path)
-    mmcif_io = MMCIFIO()
-    mmcif_io.set_structure(structure)
-    mmcif_io.save(cif_out_path)
+def pdb2mmcif(pdb_in_path: str, cif_out_path: str) -> str:
+    maxit_dir = os.path.join(os.path.dirname(cif_out_path), 'maxit')
+    if not os.path.exists(maxit_dir):
+        os.mkdir(maxit_dir)
+    subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], cwd=maxit_dir,
+                     stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+    shutil.rmtree(maxit_dir)
     return cif_out_path
 
 

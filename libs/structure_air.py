@@ -199,7 +199,8 @@ class StructureAir:
 
         if self.feature is not None:
             self.output.create_plot_gantt(self)
-            render_dict['gantt'] = [utils.encode_data(plot) for plot in self.output.gantt_plots_path]
+            if self.output.gantt_plots is not None:
+                render_dict['gantt'] = self.output.gantt_plots
 
         if os.path.exists(self.output.plddt_plot_path):
             render_dict['plddt'] = utils.encode_data(self.output.plddt_plot_path)

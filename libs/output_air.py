@@ -38,7 +38,7 @@ class OutputAir:
         self.analysis_plot_path: str = f'{self.plots_path}/cc_analysis_plot.png'
         self.analysis_ranked_plot_path: str = f'{self.plots_path}/cc_analysis_ranked_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
-        self.gantt_plots_path: List[str] = []
+        self.gantt_plots: structures.GanttPlot = None
         self.ranked_list: List[structures.Ranked] = []
         self.output_dir: str = output_dir
         self.experimental_dict = {}
@@ -58,8 +58,17 @@ class OutputAir:
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
     def create_plot_gantt(self, a_air):
-        self.gantt_plots_path = [plots.plot_gantt(plot_type='template', plot_path=self.plots_path, a_air=a_air)]
-        self.gantt_plots_path.append(plots.plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air))
+        gantt_plots_both, legend_both = plots.plot_gantt(plot_type='both', plot_path=self.plots_path,
+                                                                 a_air=a_air)
+        gantt_plots_template, legend_template = plots.plot_gantt(plot_type='templates', plot_path=self.plots_path,
+                                                                 a_air=a_air)
+        gantt_plots_msa, legend_msa = plots.plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air)
+        self.gantt_plots = structures.GanttPlot(plot_both=utils.encode_data(gantt_plots_both),
+                                                legend_both=legend_both,
+                                                plot_template=utils.encode_data(gantt_plots_template),
+                                                legend_template=legend_template,
+                                                plot_msa=utils.encode_data(gantt_plots_msa),
+                                                legend_msa=legend_msa)
         plots.plot_sequence(plot_path=self.sequence_plot_path, a_air=a_air)
 
     def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled,
@@ -158,7 +167,8 @@ class OutputAir:
                 found = False
                 for ranked2 in self.ranked_list:
                     if ranked2.filtered and ranked2.name != ranked.name and ranked2.name in self.group_ranked_by_rmsd_dict \
-                            and ranked.rmsd_dict[ranked2.name] is not None and ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
+                            and ranked.rmsd_dict[ranked2.name] is not None and ranked.rmsd_dict[
+                        ranked2.name] <= PERCENTAGE_MAX_RMSD:
                         self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
                         found = True
                         ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])

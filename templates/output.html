@@ -356,10 +356,26 @@
             {% if 'gantt' in data %}
                 <div id="alignment" class="section-div">
                     <h2>Alignment</h2>
-                    {% for gantt_graph in data.gantt %}
-                        <img style="width: 100%" src="data:image/png;base64,{{ gantt_graph }}" alt="Gantt diagram with alignments">
-                    {% endfor %}
-                </div>            
+                        <img style="width: 100%" src="data:image/png;base64,{{ data.gantt.plot_both }}" alt="Gantt diagram with msa and templates">
+                        <p style="white-space: pre-wrap;">{{ data.gantt.legend_both }}</p>
+
+                        <ul style="margin: 0px 0px; padding-left: 0px">
+                            <li style="list-style: none;">
+                                <details>
+                                <summary><h4 style="display:inline">Templates plot</h4></summary>
+                                    <img style="width: 100%" src="data:image/png;base64,{{ data.gantt.plot_template }}" alt="Gantt diagram with templates">
+                                    <p style="white-space: pre-wrap;">{{ data.gantt.legend_template }}</p>
+                                </details>
+                            </li>
+                            <li style="list-style: none;">
+                            <details>
+                            <summary><h4 style="display:inline">MSA plot</h4></summary>
+                                    <img style="width: 100%" src="data:image/png;base64,{{ data.gantt.plot_msa }}" alt="Gantt diagram with msa">
+                                    <p style="white-space: pre-wrap;">{{ data.gantt.legend_msa }}</p>
+                            </details>
+                            </li>
+                        </ul>
+                </div>
             {% endif %}
             {% if 'plddt' in data %}
                 <div id="plddt" class="section-div">

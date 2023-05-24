@@ -35,8 +35,6 @@ class Template:
         else:
             pdb_out_path = os.path.join(output_dir, f'{utils.get_file_name(pdb_path)}.pdb')
         self.pdb_path = bioutils.check_pdb(pdb_path, pdb_out_path)
-        print(self.pdb_path)
-
         self.pdb_id = utils.get_file_name(self.pdb_path)
         self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
         self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
@@ -108,7 +106,7 @@ class Template:
             bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
         self.cif_path = bioutils.pdb2mmcif(pdb_in_path=self.pdb_path,
                                            cif_out_path=os.path.join(output_dir, f'{self.pdb_id}.cif'))
-        self.template_sequence = bioutils.extract_sequence_from_file(file_path=self.cif_path)
+        self.template_sequence = bioutils.extract_sequence_from_file(file_path=self.pdb_path)
 
     def get_templates_references(self) -> List:
         # Get all the references from another template
