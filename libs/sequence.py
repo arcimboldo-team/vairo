@@ -12,13 +12,13 @@ class Sequence:
         self.sequence: str
         self.name: str
         self.length: int
-        self.num_of_copies: int = 1
-        self.positions: List[int] = []
+        self.num_of_copies: int
+        self.positions: List[int]
 
-        fasta_path = utils.get_mandatory_value(input_load=parameters_dict, value='fasta_path')
-        positions = parameters_dict.get('positions', '')
-        if positions == '':
-            self.num_of_copies = parameters_dict.get('num_of_copies', self.num_of_copies)
+        fasta_path = utils.get_input_value(name='fasta_path', section='sequence', input_dict=parameters_dict)
+        positions = utils.get_input_value(name='positions', section='sequence', input_dict=parameters_dict)
+        if positions is None:
+            self.num_of_copies = utils.get_input_value(name='num_of_copies', section='sequence', input_dict=parameters_dict)
             self.positions = [-1] * self.num_of_copies
         else:
             positions_list = str(positions).replace(' ', '').split(',')
@@ -39,7 +39,9 @@ class Sequence:
             except shutil.SameFileError:
                 pass
 
-            self.name = parameters_dict.get('name', utils.get_file_name(self.fasta_path))
+            self.name = utils.get_input_value(name='name', section='sequence', input_dict=parameters_dict)
+            if self.name is None:
+                self.name = utils.get_file_name(self.fasta_path)
             self.sequence = bioutils.extract_sequence(self.fasta_path)
             self.length = len(self.sequence)
 

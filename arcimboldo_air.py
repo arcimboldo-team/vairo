@@ -40,6 +40,7 @@ def main():
         except Exception as e:
             raise Exception('It has not been possible to read the input file')
 
+        utils.check_input(input_load)
         a_air = structure_air.StructureAir(parameters_dict=input_load)
 
         utils.create_logger_dir(a_air.log_path)

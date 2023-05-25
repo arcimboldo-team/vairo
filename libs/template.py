@@ -8,88 +8,75 @@ from libs import structures, sequence
 
 class Template:
 
-    def __init__(self, parameters_dict: Dict, output_dir: str, input_dir: str, num_of_copies: int, new_name=None):
+    def __init__(self, parameters_dict: Dict, output_dir: str, num_of_copies: int, new_name=None):
         self.pdb_path: str
         self.pdb_id: str
         self.cif_path: str
         self.template_path: str
         self.template_sequence: str
-        self.generate_multimer: bool = True if num_of_copies > 1 else False
+        self.generate_multimer: bool
         self.change_res_struct: change_res.ChangeResiduesList = change_res.ChangeResiduesList()
         self.match_restrict_struct: match_restrictions.MatchRestrictionsList = match_restrictions.MatchRestrictionsList()
-        self.add_to_msa: bool = False
-        self.add_to_templates: bool = True
-        self.sum_prob: bool = False
-        self.aligned: bool = False
-        self.legacy: bool = False
-        self.strict: bool = True
+        self.add_to_msa: bool
+        self.add_to_templates: bool
+        self.sum_prob: bool
+        self.aligned: bool
+        self.legacy: bool
+        self.strict: bool
         self.template_features: Optional[features.Features] = None
         self.results_path_position: List = [None] * num_of_copies
         self.reference: Optional[str] = None
         self.template_chains_struct: template_chains.TemplateChainsList = template_chains.TemplateChainsList()
         self.alignment_database: List[structures.AlignmentDatabase] = []
 
-        pdb_path = utils.get_mandatory_value(parameters_dict, 'pdb')
+        pdb_path = utils.get_input_value(name='pdb', section='template', input_dict=parameters_dict)
         if new_name is not None:
             pdb_out_path = os.path.join(output_dir, f'{new_name}.pdb')
         else:
             pdb_out_path = os.path.join(output_dir, f'{utils.get_file_name(pdb_path)}.pdb')
         self.pdb_path = bioutils.check_pdb(pdb_path, pdb_out_path)
         self.pdb_id = utils.get_file_name(self.pdb_path)
-        self.add_to_msa = parameters_dict.get('add_to_msa', self.add_to_msa)
-        self.add_to_templates = parameters_dict.get('add_to_templates', self.add_to_templates)
-        self.sum_prob = parameters_dict.get('sum_prob', self.sum_prob)
-        self.legacy = parameters_dict.get('legacy', self.legacy)
-        self.strict = parameters_dict.get('strict', self.strict)
+        self.add_to_msa = utils.get_input_value(name='add_to_msa', section='template', input_dict=parameters_dict)
+        self.add_to_templates = utils.get_input_value(name='add_to_templates', section='template', input_dict=parameters_dict)
+        self.sum_prob = utils.get_input_value(name='sum_prob', section='template', input_dict=parameters_dict)
+        self.legacy = utils.get_input_value(name='legacy', section='template', input_dict=parameters_dict)
+        self.strict = utils.get_input_value(name='strict', section='template', input_dict=parameters_dict)
         self.aligned = self.legacy
-        self.aligned = parameters_dict.get('aligned', self.aligned)
-        self.template_path = f'{output_dir}/{self.pdb_id}_template.pdb'
-        self.reference = parameters_dict.get('reference', self.reference)
-        self.generate_multimer = parameters_dict.get('generate_multimer', self.generate_multimer)
+        self.aligned = utils.get_input_value(name='aligned', section='template', input_dict=parameters_dict)
+        self.template_path = f'{os.path.join(output_dir, self.pdb_id)}_template.pdb'
+        self.reference = utils.get_input_value(name='reference', section='template', input_dict=parameters_dict)
+        self.generate_multimer = utils.get_input_value(name='pdb', section='template', input_dict=parameters_dict)
         self.generate_multimer = False if self.legacy else self.generate_multimer
 
-        for paramaters_change_res in parameters_dict.get('change_res', []):
+        for paramaters_change_res in utils.get_input_value(name='change_res', section='template', input_dict=parameters_dict):
             change_res_dict = {}
-            resname = paramaters_change_res.get('resname', None)
-            fasta_path = paramaters_change_res.get('fasta_path', None)
-            when = paramaters_change_res.get('when', 'after_alignment')
-            try:
-                del paramaters_change_res['resname']
-            except:
-                pass
-            try:
-                del paramaters_change_res['fasta_path']
-            except:
-                pass
-            try:
-                del paramaters_change_res['when']
-            except:
-                pass
-            for values in paramaters_change_res.items():
-                if len(values) != 2:
-                    raise Exception('Wrong change residues format')
-                chain, change = values
-                change_list = utils.expand_residues(change)
-                change_chain_list = bioutils.get_chains(self.pdb_path) if chain.lower() == 'all' else [chain]
-                change_res_dict.update({key: list(set(change_list)) for key in change_chain_list})
+            resname = utils.get_input_value(name='resname', section='change_res', input_dict=paramaters_change_res)
+            fasta_path = utils.get_input_value(name='fasta_path', section='change_res', input_dict=paramaters_change_res)
+            when = utils.get_input_value(name='when', section='change_res', input_dict=paramaters_change_res)
+            for chain, change in paramaters_change_res.items():
+                if chain.lower() == 'all' or len(chain) == 1:
+                    change_list = utils.expand_residues(change)
+                    change_chain_list = bioutils.get_chains(self.pdb_path) if chain.lower() == 'all' else [chain]
+                    change_res_dict.update({key: list(set(change_list)) for key in change_chain_list})
+
             self.change_res_struct.append_change(chain_res_dict=change_res_dict,
                                                  resname=resname,
                                                  fasta_path=fasta_path,
                                                  when=when)
 
-        for parameters_match_dict in parameters_dict.get('match', []):
-            chain_match = utils.get_mandatory_value(parameters_match_dict, 'chain')
-            residues_match_list = parameters_match_dict.get('residues', None)
+        for parameters_match_dict in utils.get_input_value(name='match', section='templates', input_dict=parameters_dict):
+            chain_match = utils.get_input_value(name='chain', section='match', input_dict=parameters_match_dict)
+            residues_match_list = utils.get_input_value(name='residues', section='match', input_dict=parameters_match_dict)
             residues = None
             if residues_match_list is not None:
                 change_list = utils.expand_residues(residues_match_list)
                 new_dict = {chain_match: change_list}
                 residues = change_res.ChangeResidues(chain_res_dict=new_dict)
-            position = parameters_match_dict.get('position', -1)
+            position = utils.get_input_value(name='position', section='match', input_dict=parameters_match_dict)
             if position != -1:
                 position = position - 1
-            reference = parameters_match_dict.get('reference', None)
-            reference_chain = parameters_match_dict.get('reference_chain', None)
+            reference = utils.get_input_value(name='reference', section='match', input_dict=parameters_match_dict)
+            reference_chain = utils.get_input_value(name='reference_chain', section='match', input_dict=parameters_match_dict)
             self.match_restrict_struct.append_match(chain=chain_match, position=position, residues=residues,
                                                     reference=reference, reference_chain=reference_chain)
 
@@ -274,7 +261,7 @@ class Template:
         if new_targets_list and len(deleted_positions) < len(sequence_name_list):
             results_targets_list = self.choose_best_offset(reference=reference,
                                                            deleted_positions=deleted_positions,
-                                                           template_chains=new_targets_list,
+                                                           template_chains_list=new_targets_list,
                                                            name_list=sequence_name_list)
             if not any(results_targets_list):
                 raise Exception(
@@ -296,11 +283,11 @@ class Template:
         return composition_path_list
 
     def choose_best_offset(self, reference, deleted_positions: List[int],
-                           template_chains: List[template_chains.TemplateChain],
+                           template_chains_list: List[template_chains.TemplateChain],
                            name_list: List[str]) -> List[Optional[str]]:
 
         results_algorithm = []
-        for x, template_chain in enumerate(template_chains):
+        for x, template_chain in enumerate(template_chains_list):
             reference_algorithm = []
             for y, target_pdb in enumerate(reference.results_path_position):
                 if y not in deleted_positions and name_list[y] == template_chain.sequence:
@@ -316,7 +303,7 @@ class Template:
         best_offset_list = bioutils.calculate_auto_offset(results_algorithm,
                                                           len(return_offset_list) - len(deleted_positions))
         for x, y, _, _ in best_offset_list:
-            return_offset_list[y] = template_chains[x].path
+            return_offset_list[y] = template_chains_list[x].path
 
         return return_offset_list
 

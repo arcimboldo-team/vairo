@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 from sklearn import preprocessing
 from libs import structures
+from libs.global_variables import INPUT_PARAMETERS
 
 
 def print_msg_box(msg, indent=1, title=None):
@@ -29,17 +30,7 @@ def print_matrix(matrix: List):
 
 def normalize_list(input_list: List):
     # Normalize list of values
-
     return preprocessing.normalize(input_list)[0]
-
-
-def get_mandatory_value(input_load: dict, value: str) -> str:
-    # Read value, Raise exception if value could not be found
-
-    read_value = input_load.get(value)
-    if read_value is None:
-        raise Exception(f'{value} is mandatory')
-    return read_value
 
 
 def get_file_extension(path: str) -> str:
@@ -391,6 +382,49 @@ def check_ranked(input_path: str) -> bool:
 
 def delete_old_rankeds(input_path: str):
     [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if check_ranked(path)]
+
+
+def check_input(global_dict: Dict):
+    all_keys = []
+    [all_keys.extend(list(value.keys())) for key, value in INPUT_PARAMETERS.items()]
+
+    def check_keys(data: Dict) -> str:
+        if isinstance(data, dict):
+            for key in data.keys():
+                if isinstance(data[key], list):
+                    check_keys(data[key])
+                else:
+                    if key not in all_keys and (not key.lower() == 'all' or len(key) == 1):
+                        raise Exception(f'Parameter {key} does not exist. Check the input file.')
+
+        if isinstance(data, list):
+            for aux_dict in data:
+                check_keys(aux_dict)
+
+    check_keys(global_dict)
+
+
+def get_input_value(name: str, section: str, input_dict: Dict):
+    if section == 'global':
+        chosen_dict = INPUT_PARAMETERS['global_input']
+    elif section == 'sequence':
+        chosen_dict = INPUT_PARAMETERS['sequence_input']
+    elif section == 'template':
+        chosen_dict = INPUT_PARAMETERS['template_input']
+    elif section == 'change_res':
+        chosen_dict = INPUT_PARAMETERS['change_res_input']
+    elif section == 'match':
+        chosen_dict = INPUT_PARAMETERS['match_input']
+    else:
+        chosen_dict = INPUT_PARAMETERS['features_input']
+
+    value_dict = chosen_dict.get(name)
+    value = input_dict.get(name)
+    if value is None and value_dict['required']:
+        raise Exception(f'{name} does not exist and it is a mandatory input parameter. Check the input file.')
+    elif value is None:
+        value = value_dict['default']
+    return value
 
 
 def print_dict(input_dict: Dict):

@@ -59,7 +59,7 @@ class OutputAir:
 
     def create_plot_gantt(self, a_air):
         gantt_plots_both, legend_both = plots.plot_gantt(plot_type='both', plot_path=self.plots_path,
-                                                                 a_air=a_air)
+                                                         a_air=a_air)
         gantt_plots_template, legend_template = plots.plot_gantt(plot_type='templates', plot_path=self.plots_path,
                                                                  a_air=a_air)
         gantt_plots_msa, legend_msa = plots.plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air)
@@ -166,9 +166,10 @@ class OutputAir:
             if ranked.filtered:
                 found = False
                 for ranked2 in self.ranked_list:
-                    if ranked2.filtered and ranked2.name != ranked.name and ranked2.name in self.group_ranked_by_rmsd_dict \
-                            and ranked.rmsd_dict[ranked2.name] is not None and ranked.rmsd_dict[
-                        ranked2.name] <= PERCENTAGE_MAX_RMSD:
+                    if ranked2.filtered and ranked2.name != ranked.name \
+                            and ranked2.name in self.group_ranked_by_rmsd_dict \
+                            and ranked.rmsd_dict[ranked2.name] is not None \
+                            and ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
                         self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
                         found = True
                         ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])

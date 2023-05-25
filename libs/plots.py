@@ -35,7 +35,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
         res_list = [int(item) for item in range(1, len(plddt_list) + 1)]
         ranked.set_plddt(round(statistics.median(map(float, plddt_list)), 2))
         plt.plot(res_list, plddt_list, label=ranked.name)
-    plt.legend()
+    plt.legend(loc='upper right')
     plt.xlabel('residue number')
     plt.ylabel('pLDDT')
     plt.savefig(plot_path, dpi=100)
@@ -224,9 +224,9 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
                     if match:
                         match_split = match[0].split()[-9:]
                         legend_elements.append(
-                            f'{template_name}: Aligned={match_split[5]}({match_split[8].replace("(", "").replace(")", "")}) Evalue={match_split[2]}')
+                            f'\n{template_name}: Aligned={match_split[5]}({match_split[8].replace("(", "").replace(")", "")}) Evalue={match_split[2]}')
                     else:
-                        legend_elements.append(f'{template_name}')
+                        legend_elements.append(f'\n{template_name}')
 
             if features_search is not None:
                 aligned_sequence = bioutils.compare_sequences(a_air.sequence_assembled.sequence_assembled,

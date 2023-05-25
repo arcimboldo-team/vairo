@@ -6,9 +6,10 @@ class MatchRestrictions:
                  reference: str, reference_chain: str):
         self.chain: str
         self.position: int = -1
+        self.mask_region: bool
         self.residues: change_res.ChangeResidues = None
-        self.reference = None
-        self.reference_chain: Union[str, None] = None
+        self.reference
+        self.reference_chain: Union[str, None]
 
         self.chain = chain
         self.position = position

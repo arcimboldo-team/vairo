@@ -19,7 +19,6 @@ class Features:
         self.sequence_features: pipeline.FeatureDict
         self.msa_features: Dict
         self.template_features: Dict
-
         self.query_sequence = query_sequence
         self.sequence_features = pipeline.make_sequence_features(sequence=self.query_sequence,
                                                                  description='Query',
