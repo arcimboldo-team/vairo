@@ -106,7 +106,6 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
             if residue_number - prev_residue_number > 1:
                 for missing_number in range(prev_residue_number + 1, residue_number):
                     sequence_ext += "-"
-
             sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
             prev_residue_number = residue_number
         sequences[chain.id] = sequence_ext

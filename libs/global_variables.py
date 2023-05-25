@@ -178,6 +178,11 @@ INPUT_PARAMETERS = {
             'required': False,
             'mode': ['guided'],
             'default': []
+        },
+        'sequences_msa': {
+            'required': False,
+            'mode': ['guided'],
+            'default': []
         }
     },
     'sequence_input': {
@@ -266,6 +271,15 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': None
         }
+    },
+    'sequences_msa_input': {
+      'path': {
+          'required': True
+      },
+      'aligned': {
+          'required': False,
+          'default': True
+      }
     },
     'change_res_input': {
         'resname': {

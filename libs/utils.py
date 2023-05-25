@@ -346,7 +346,6 @@ def parse_pisa_interfaces(pisa_output: str) -> Dict:
 def sort_by_digit(container: Any, item: int = 0):
     # Sort list or dictionary by a digit instead of str.
     # Dict can be like this:
-
     if isinstance(container, dict):
         return sorted(container.items(), key=lambda x: int("".join([i for i in x[item] if i.isdigit()])))
     elif isinstance(container, list):
@@ -405,18 +404,15 @@ def check_input(global_dict: Dict):
 
 
 def get_input_value(name: str, section: str, input_dict: Dict):
-    if section == 'global':
-        chosen_dict = INPUT_PARAMETERS['global_input']
-    elif section == 'sequence':
-        chosen_dict = INPUT_PARAMETERS['sequence_input']
-    elif section == 'template':
-        chosen_dict = INPUT_PARAMETERS['template_input']
-    elif section == 'change_res':
-        chosen_dict = INPUT_PARAMETERS['change_res_input']
-    elif section == 'match':
-        chosen_dict = INPUT_PARAMETERS['match_input']
-    else:
-        chosen_dict = INPUT_PARAMETERS['features_input']
+    mapping = {
+        'global': 'global_input',
+        'sequence': 'sequence_input',
+        'template': 'template_input',
+        'change_res': 'change_res_input',
+        'match': 'match_input',
+        'sequence_msa': 'sequence_msa',
+    }
+    chosen_dict = INPUT_PARAMETERS.get(mapping.get(section, 'features_input'))
 
     value_dict = chosen_dict.get(name)
     value = input_dict.get(name)

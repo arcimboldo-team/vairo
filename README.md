@@ -34,6 +34,12 @@ sequences:
 
 Several features.pkl can be merged to the final features.pkl. It is possible to select the amount of templates and sequences to be inserted.
 Delete specific regions of the MSA, replace the sequence of the templates and insert the features in specific regions in the final features.
+
+- sequence_msa:
+  - path
+  - path
+  - path
+
 features:
 - path: (mandatory, string): Path to features.pkl
   keep_msa: (optional, int, -1): Keep the msa of the features.pkl 

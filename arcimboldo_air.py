@@ -68,6 +68,9 @@ def main():
                                                         positions=positions,
                                                         sequence_in=feat.sequence)
 
+            if a_air.sequences_msa:
+                a_air.append_sequences_to_msa()
+
             a_air.change_state(state=1)
             a_air.generate_output()
             for template in a_air.templates_list:

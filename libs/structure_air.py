@@ -36,6 +36,7 @@ class StructureAir:
         self.cluster_templates_msa: int
         self.cluster_templates_msa_delete: List[int]
         self.cluster_templates_sequence: str
+        self.sequences_msa: List[str] = []
         self.glycines: int
         self.template_positions_list: List[List] = []
         self.reference: Union[template.Template, None]
@@ -111,6 +112,20 @@ class StructureAir:
             new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
             sequence_list.append(new_sequence)
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
+
+        for sequence_msa in utils.get_input_value(name='sequences_msa', section='global', input_dict=parameters_dict):
+            path = utils.get_input_value(name='path', section='sequence_msa', input_dict=sequence_msa)
+            extensions = ['pdb', 'fasta', 'cif']
+            if os.path.exists(path):
+                if os.path.isdir(path):
+                    self.sequences_msa.extend([file for file in os.listdir(path) if utils.get_file_extension(file) in extensions])
+                else:
+                    if utils.get_file_extension(path) in extensions:
+                        self.sequences_msa.append(path)
+            else:
+                raise Exception(f'Path {path} does not exist. Check the input sequences_msa parameter.')
+
+
 
         for parameters_features in utils.get_input_value(name='features', section='global', input_dict=parameters_dict):
             positions = utils.get_input_value(name='positions', section='features', input_dict=parameters_features)
@@ -344,6 +359,14 @@ class StructureAir:
         # Add line to the template's matrix.
         # The list contains the position of the chains
         self.template_positions_list.append(new_list)
+
+    def append_sequences_to_msa(self):
+        for path in self.sequences_msa:
+            extension = utils.get_file_extension(path)
+            if extension == 'pdb':
+                sequence_in = bioutils.extract_sequence_msa_from_pdb(path)
+            if extension == 'fasta':
+                sequence_in = bioutils.extract_sequence(path)
 
     def run_alphafold(self, features_list: List[features.Features]):
         # Create the script and run alphafold         
