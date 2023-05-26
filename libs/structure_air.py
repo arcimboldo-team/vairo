@@ -36,7 +36,7 @@ class StructureAir:
         self.cluster_templates_msa: int
         self.cluster_templates_msa_delete: List[int]
         self.cluster_templates_sequence: str
-        self.sequences_msa: List[str] = []
+        self.sequences_msa: List[structures.SequencesMsa] = []
         self.glycines: int
         self.template_positions_list: List[List] = []
         self.reference: Union[template.Template, None]
@@ -104,28 +104,30 @@ class StructureAir:
                 try:
                     bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
                 except Exception as e:
-                    logging.info(f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
+                    logging.info(
+                        f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
-        for parameters_sequence in utils.get_input_value(name='sequences', section='global',
-                                                         input_dict=parameters_dict):
+        for parameters_sequence in utils.get_input_value(name='sequences', section='global', input_dict=parameters_dict):
             new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
             sequence_list.append(new_sequence)
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
 
         for sequence_msa in utils.get_input_value(name='sequences_msa', section='global', input_dict=parameters_dict):
             path = utils.get_input_value(name='path', section='sequence_msa', input_dict=sequence_msa)
-            extensions = ['pdb', 'fasta', 'cif']
+            aligned = utils.get_input_value(name='aligned', section='sequence_msa', input_dict=sequence_msa)
+            positions = utils.get_input_value(name='positions', section='sequence_msa', input_dict=sequence_msa)
+            if positions is None:
+                positions = f'1-{self.sequence_assembled.total_copies}'
+            positions = utils.expand_residues(positions)
             if os.path.exists(path):
-                if os.path.isdir(path):
-                    self.sequences_msa.extend([file for file in os.listdir(path) if utils.get_file_extension(file) in extensions])
-                else:
-                    if utils.get_file_extension(path) in extensions:
-                        self.sequences_msa.append(path)
+                aux_list = [file for file in os.listdir(path)] if os.path.isdir(path) else aux_list = [path]
+                for aux_path in aux_list:
+                    if utils.get_file_extension(aux_path) in ['pdb', 'fasta', 'cif']:
+                        self.sequences_msa.append(
+                            structures.SequencesMsa(path=path, aligned=aligned, positions=positions))
             else:
                 raise Exception(f'Path {path} does not exist. Check the input sequences_msa parameter.')
-
-
 
         for parameters_features in utils.get_input_value(name='features', section='global', input_dict=parameters_dict):
             positions = utils.get_input_value(name='positions', section='features', input_dict=parameters_features)
@@ -136,7 +138,8 @@ class StructureAir:
                 keep_msa=utils.get_input_value(name='keep_msa', section='features', input_dict=parameters_features),
                 keep_templates=utils.get_input_value(name='keep_templates', section='features',
                                                      input_dict=parameters_features),
-                msa_delete=utils.expand_residues(utils.get_input_value(name='msa_delete', section='features', input_dict=parameters_features)),
+                msa_delete=utils.expand_residues(
+                    utils.get_input_value(name='msa_delete', section='features', input_dict=parameters_features)),
                 positions=utils.expand_residues(positions),
                 sequence=bioutils.check_sequence_path(
                     utils.get_input_value(name='sequence', section='features', input_dict=parameters_features))
@@ -168,17 +171,10 @@ class StructureAir:
                 new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir,
                                                  num_of_copies=self.sequence_assembled.total_copies, new_name=new_name)
                 self.templates_list.append(new_template)
-                if new_template.pdb_id == self.reference:
-                    self.reference = new_template
-
-            for element in self.templates_list:
-                element.set_reference_templates(self)
-
+                self.reference = new_template if new_template.pdb_id == self.reference else self.reference
+            [element.set_reference_templates(self) for element in self.templates_list]
             self.order_templates_with_restrictions()
-
-            if self.reference is None:
-                self.reference = self.templates_list[0]
-
+            self.reference = self.templates_list[0] if self.reference is None else self.reference
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
 
     def partition_mosaic(self) -> List[features.Features]:
@@ -359,14 +355,6 @@ class StructureAir:
         # Add line to the template's matrix.
         # The list contains the position of the chains
         self.template_positions_list.append(new_list)
-
-    def append_sequences_to_msa(self):
-        for path in self.sequences_msa:
-            extension = utils.get_file_extension(path)
-            if extension == 'pdb':
-                sequence_in = bioutils.extract_sequence_msa_from_pdb(path)
-            if extension == 'fasta':
-                sequence_in = bioutils.extract_sequence(path)
 
     def run_alphafold(self, features_list: List[features.Features]):
         # Create the script and run alphafold         
@@ -581,6 +569,14 @@ class StructureAir:
                         f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
                 if self.cluster_templates_sequence is not None:
                     f_out.write(f'cluster_templates_sequence: {self.cluster_templates_sequence}\n')
+            if self.sequences_msa:
+                f_out.write(f'\nsequences_msa:\n')
+                for seq_msa in self.sequences_msa:
+                    f_out.write('-')
+                    f_out.write(f' path: {seq_msa.path}\n')
+                    f_out.write(f'  aligned: {seq_msa.aligned}\n')
+                    if seq_msa.positions:
+                        f_out.write(f'  positions: {",".join(map(str, seq_msa.positions))}\n')
             if self.features_input:
                 f_out.write(f'\nfeatures:\n')
                 for feat in self.features_input:

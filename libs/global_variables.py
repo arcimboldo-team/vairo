@@ -279,6 +279,10 @@ INPUT_PARAMETERS = {
       'aligned': {
           'required': False,
           'default': True
+      },
+      'positions': {
+          'required': False,
+          'default': None
       }
     },
     'change_res_input': {

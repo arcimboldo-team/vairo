@@ -6,7 +6,7 @@ os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
-from libs import features, structure_air, utils
+from libs import features, structure_air, utils, bioutils
 
 
 def main():
@@ -49,14 +49,10 @@ def main():
         a_air.generate_output()
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
-
             a_air.set_feature(feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
             for feat in a_air.features_input:
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
-                positions = [a_air.sequence_assembled.get_starting_length(feat.positions[0] - 1),
-                             a_air.sequence_assembled.get_starting_length(
-                                 feat.positions[-1] - 1) + a_air.sequence_assembled.get_sequence_length(
-                                 feat.positions[-1] - 1)]
+                positions = a_air.sequence_assembled.get_range_residues(position_ini=feat.positions[0] - 1, position_end=feat.positions[-1] - 1)
                 if feat.keep_msa != 0:
                     a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
                                                    finish=feat.keep_msa,
@@ -67,9 +63,14 @@ def main():
                                                         finish=feat.keep_templates,
                                                         positions=positions,
                                                         sequence_in=feat.sequence)
-
-            if a_air.sequences_msa:
-                a_air.append_sequences_to_msa()
+            for seq_msa in a_air.sequences_msa:
+                positions = a_air.sequence_assembled.get_range_residues(position_ini=seq_msa.positions[0] - 1, position_end=seq_msa.positions[-1] - 1)
+                extension = utils.get_file_extension(seq_msa.path)
+                if extension == 'pdb':
+                    sequence_in = bioutils.extract_sequence_msa_from_pdb(seq_msa.path)
+                if extension == 'fasta':
+                    sequence_in = bioutils.extract_sequence(seq_msa.path)
+                a_air.feature.append_row_in_msa()
 
             a_air.change_state(state=1)
             a_air.generate_output()

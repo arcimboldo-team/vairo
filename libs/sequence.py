@@ -18,7 +18,8 @@ class Sequence:
         fasta_path = utils.get_input_value(name='fasta_path', section='sequence', input_dict=parameters_dict)
         positions = utils.get_input_value(name='positions', section='sequence', input_dict=parameters_dict)
         if positions is None:
-            self.num_of_copies = utils.get_input_value(name='num_of_copies', section='sequence', input_dict=parameters_dict)
+            self.num_of_copies = utils.get_input_value(name='num_of_copies', section='sequence',
+                                                       input_dict=parameters_dict)
             self.positions = [-1] * self.num_of_copies
         else:
             positions_list = str(positions).replace(' ', '').split(',')
@@ -103,6 +104,10 @@ class SequenceAssembled:
         if residue + init <= self.get_starting_length(i) + self.get_sequence_length(i):
             return residue + init
         return None
+
+    def get_range_residues(self, position_ini, position_end) -> List[int]:
+        return [self.get_starting_length(position_ini),
+                self.get_starting_length(position_end) + self.get_sequence_length(position_end)]
 
     def partition(self, number_partitions: int, overlap: int) -> List[Tuple[int, int]]:
         # Slice string in chunks of size

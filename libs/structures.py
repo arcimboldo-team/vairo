@@ -135,6 +135,13 @@ class OpenmmEnergies:
 
 
 @dataclasses.dataclass(frozen=True)
+class SequencesMsa:
+    path: str
+    aligned: str
+    positions: List[int]
+
+
+@dataclasses.dataclass(frozen=True)
 class TemplateRanked:
     template: str
     rmsd: float
