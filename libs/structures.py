@@ -42,7 +42,9 @@ class Cluster:
 class Hinges:
     decreasing_rmsd: float
     one_rmsd: float
+    middle_rmsd: float
     min_rmsd: float
+    overlap: float
     groups: List
 
 

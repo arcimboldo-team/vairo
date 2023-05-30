@@ -51,6 +51,7 @@ class OutputAir:
         self.template_interfaces: dict = {}
         self.templates_dict = {}
         self.templates_nonsplit_dict = {}
+        self.percentage_sequences = {}
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -94,6 +95,7 @@ class OutputAir:
                 print_number=False)
         # Split the templates with chains
         for template, template_path in self.templates_nonsplit_dict.items():
+            self.percentage_sequences[template] = self.sequence_assembled.get_percentages(template_path)
             new_pdb_path = os.path.join(self.templates_path, f'{template}.pdb')
             self.templates_dict[template] = new_pdb_path
             shutil.copy2(template_path, new_pdb_path)
@@ -190,8 +192,7 @@ class OutputAir:
         # Generate CCANALYSIS plots, one without rankeds and another one with rankeds.
         templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=self.templates_dict,
                                                                      cc_analysis_paths=cc_analysis_paths,
-                                                                     cc_path=os.path.join(self.results_dir,
-                                                                                          'ccanalysis'))
+                                                                     cc_path=os.path.join(self.results_dir,'ccanalysis'))
         if analysis_dict:
             plots.plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=analysis_dict,
                                    clusters=templates_cluster_list)

@@ -224,12 +224,32 @@ def parse_hinges(output: str) -> structures.Hinges:
             for pair in pairs:
                 ngroup_data.append((int(pair[0]), int(pair[1])))
             residues_list.append(ngroup_data)
-
     if not rmsd_list:
         return None
+
+    # Extract counts from file 1 and file 2
+    file_1_count_match = re.search(r'number of CA in file 1:\s+(\d+)', output)
+    file_1_count = int(file_1_count_match.group(1)) if file_1_count_match else 0
+
+    file_2_count_match = re.search(r'number of CA in file 2:\s+(\d+)', output)
+    file_2_count = int(file_2_count_match.group(1)) if file_2_count_match else 0
+
+    # Extract warnings for file 1 and file 2
+    warnings_1_match = re.search(r'WARNING: (\d+) non-matching residue\(s\) in 1st sequence ignored', output)
+    warnings_1 = int(warnings_1_match.group(1)) if warnings_1_match else 0
+
+    warnings_2_match = re.search(r'WARNING: (\d+) non-matching residue\(s\) in 2nd sequence ignored', output)
+    warnings_2 = int(warnings_2_match.group(1)) if warnings_2_match else 0
+
+    # Calculate file ratios
+    file1 = (file_1_count - warnings_1) / file_1_count if file_1_count != 0 else 0
+    file2 = (file_2_count - warnings_2) / file_2_count if file_2_count != 0 else 0
+
     hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100,
                                       one_rmsd=rmsd_list[0],
+                                      middle_rmsd=rmsd_list[len(rmsd_list) // 2],
                                       min_rmsd=min(rmsd_list),
+                                      overlap=file1 if file1 < file2 else file2,
                                       groups=residues_list)
     return hinges_result
 
@@ -246,7 +266,6 @@ def parse_aleph_annotate(file_path: str) -> Dict:
 
 def parse_aleph_ss(file_path: str) -> Dict:
     # Parse the aleph.txt file and get all the domains by chain
-
     chain_res_dict = {}
     with open(file_path) as f_in:
         lines = f_in.readlines()

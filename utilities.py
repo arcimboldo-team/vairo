@@ -38,11 +38,10 @@ def hinges(template_path: str, sequence_length: int):
     hinges_analysis = structures.CCAnalysis(os.path.join(utils.get_main_path(), 'binaries')).hinges_path
     templates_cluster = bioutils.hinges(paths_in=templates_dict,
                                         hinges_path=hinges_analysis,
-                                        size_sequence=int(sequence_length),
                                         output_path=output_path)
 
-    for key, values in templates_cluster.items():
-        print(key, values)
+    for i, values in enumerate(templates_cluster):
+        print(f'Group {i}: {",".join(values)}')
 
 
 def ccanalysis(template_path: str):

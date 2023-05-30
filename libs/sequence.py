@@ -98,8 +98,18 @@ class SequenceAssembled:
             offset += len(self.sequence_list_expanded[j].sequence) + self.glycines
         return offset
 
+    def get_finishing_length(self, i: int) -> int:
+        # Return the starting length plus de sequence length, so the length the sequence it finishes.
+        return self.get_starting_length(i) + self.get_sequence_length(i)
+
+    def get_position_by_residue_number(self, res_num: int) -> int:
+        # Get the number of a residue. Return the position of the sequence it belongs
+        for i in range(0, self.total_copies):
+            if res_num <= self.get_finishing_length(i):
+                return i
+
     def get_real_residue_number(self, i: int, residue: int) -> int:
-        # Given a position (i) and a residue, get the residue number without being splitted in chains
+        # Given a position (i) and a residue, get the residue number without being split in chains
         init = self.get_starting_length(i)
         if residue + init <= self.get_starting_length(i) + self.get_sequence_length(i):
             return residue + init
@@ -156,3 +166,12 @@ class SequenceAssembled:
                     chunk_list.append((int(starting_position - overlap / 2), int(end_position + overlap / 2)))
                 starting_position = end_position
             return chunk_list
+
+    def get_percentages(self, path_in: str):
+        structure = bioutils.get_structure(path_in)
+        result_list = [0] * self.total_copies
+        for residue in structure[0].get_residues():
+            i = self.get_position_by_residue_number(bioutils.get_resseq(residue))
+            result_list[i] += 1
+        for i, num in enumerate(result_list):
+            result_list[i] = result_list[i] / self.get_sequence_length(i)

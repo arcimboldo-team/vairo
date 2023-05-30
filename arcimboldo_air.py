@@ -1,5 +1,4 @@
 #! /usr/bin/env python3
-
 import os
 
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
@@ -52,7 +51,8 @@ def main():
             a_air.set_feature(feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
             for feat in a_air.features_input:
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
-                positions = a_air.sequence_assembled.get_range_residues(position_ini=feat.positions[0] - 1, position_end=feat.positions[-1] - 1)
+                positions = a_air.sequence_assembled.get_range_residues(position_ini=feat.positions[0] - 1,
+                                                                        position_end=feat.positions[-1] - 1)
                 if feat.keep_msa != 0:
                     a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
                                                    finish=feat.keep_msa,
@@ -70,7 +70,11 @@ def main():
                     sequence_in = bioutils.extract_sequence_msa_from_pdb(seq_msa.path)
                 if extension == 'fasta':
                     sequence_in = bioutils.extract_sequence(seq_msa.path)
-                a_air.feature.append_row_in_msa()
+                feat_aux = features.Features()
+                a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
+                                               finish=-1,
+                                               delete_positions=[],
+                                               positions=positions)
 
             a_air.change_state(state=1)
             a_air.generate_output()
@@ -90,8 +94,9 @@ def main():
                         sequence_assembled=a_air.sequence_assembled)
                     a_air.append_line_in_templates(template.results_path_position)
                     if template.add_to_msa:
-                        sequence_from_template = template.get_old_sequence(sequence_list=a_air.sequence_assembled.sequence_list_expanded,
-                                                                           glycines=a_air.glycines)
+                        sequence_from_template = template.get_old_sequence(
+                            sequence_list=a_air.sequence_assembled.sequence_list_expanded,
+                            glycines=a_air.glycines)
                         a_air.feature.append_row_in_msa(sequence_in=sequence_from_template,
                                                         sequence_id=template.pdb_id)
                         logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')

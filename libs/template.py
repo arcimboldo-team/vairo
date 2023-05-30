@@ -64,7 +64,7 @@ class Template:
                                                  fasta_path=fasta_path,
                                                  when=when)
 
-        for parameters_match_dict in utils.get_input_value(name='match', section='templates', input_dict=parameters_dict):
+        for parameters_match_dict in utils.get_input_value(name='match', section='template', input_dict=parameters_dict):
             chain_match = utils.get_input_value(name='chain', section='match', input_dict=parameters_match_dict)
             residues_match_list = utils.get_input_value(name='residues', section='match', input_dict=parameters_match_dict)
             residues = None

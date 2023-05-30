@@ -1,6 +1,6 @@
 import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple, Union
-from statistics import mean
 import numpy as np
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
@@ -360,7 +360,6 @@ def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = No
 def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_path: str = None) -> Hinges:
     # Run hinges from hinges_path.
     # It needs two pdbs. Return the rmsd obtained.
-    chains1_list = [chain.id for chain in get_structure(pdb1_path).get_chains()]
     chains2_list = [chain.id for chain in get_structure(pdb2_path).get_chains()]
     command_line = f'{hinges_path} {pdb1_path} {pdb2_path} -p {"".join(chains2_list)}'
     output = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -455,13 +454,20 @@ def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
         os.chdir(store_old_dir)
 
 
-def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: str):
-    # Check if there are at least five pdbs that has more than 60% of the sequence length
-    # If there are at least 5, continue normally cc_analysis
-    # If there are less than 5, create groups using hinges
-    threshold_rmsd = 1
-    threshold_completeness = 0.6 * size_sequence
+def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences: Dict = None) -> List:
+    # Hinges algorithm does:
+    # Check completeness and ramachandran of every template. If it is not at least 70% discard for hinges.
+    # Do hinges 6 iterations in all for all the templates
+    # If iter1 < 1 or iterMiddle < 3 or iter6 < 10 AND at least 70% of sequence length -> GROUP TEMPLATE
+    # If it has generated more than one group with length > 1-> Return those groups that has generated
+    # If there is no group generated -> Return the one more completed and the one more different to that template
+    # Otherwise, return all the paths
     utils.create_dir(output_path, delete_if_exists=True)
+    threshold_completeness = 0.7
+    threshold_rmsd_domains = 10
+    threshold_rmsd_ss = 3
+    threshold_rmsd_local = 1
+    threshold_overlap = 0.7
 
     logging.info('Starting hinges analysis')
     accepted_pdbs = {}
@@ -471,13 +477,21 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     # Completeness respect the query size sequence
     # Ramachandran plot
     # And the compactness
+    pdb_complete = ''
+    pdb_complete_value = 0
     for key, value in paths_in.items():
         num_residues = sum(1 for _ in get_structure(value)[0].get_residues())
         # Validate using ramachandran, check the outliers
         validate_geometry = generate_ramachandran(pdb_path=value, output_path=output_path)
         # Check the query sequence vs the number of residues of the pdb
-        if threshold_completeness < num_residues and validate_geometry:
+        completeness = True
+        if length_sequences is not None:
+            completeness = any(number > 0.7 for number in length_sequences)
+        if completeness and validate_geometry:
             accepted_pdbs[key] = value
+            if num_residues > pdb_complete_value:
+                pdb_complete_value = num_residues
+                pdb_complete = value
         else:
             uncompleted_pdbs[key] = value
 
@@ -492,38 +506,44 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
                                            output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
                 results_rmsd[key1][key2] = result_hinges
                 results_rmsd[key2][key1] = result_hinges
-
-    groups_names = groups_rmsd = {key: [] for key in accepted_pdbs}
-    average_group_rmsd = {key: mean([value.one_rmsd for value in results_rmsd[key].values()]) for key in accepted_pdbs}
-    sorted_results = dict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
-    for key1, value in sorted_results.items():
-        sorted_one_dict = dict(sorted(value.items(), key=lambda x: x[1].one_rmsd if x[1] is not None else 100))
+    groups_names = {key: [] for key in accepted_pdbs}
+    results_rmsd = OrderedDict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
+    for key1, value in results_rmsd.items():
+        results_rmsd[key1] = OrderedDict(sorted({k: v for k, v in value.items() if v is not None}.items(), key=lambda x: x[1].one_rmsd))
         selected_group = key1
-        for key2, result in sorted_one_dict.items():
-            if result is None:
-                continue
+        for key2, result in results_rmsd[key1].items():
             group = utils.get_key_by_value(key2, groups_names)
-            if group:
-                average = mean(groups_rmsd[group[0]]) if groups_rmsd[group[0]] else result.one_rmsd
-                condition_average = average * 1.3
-                if (result.min_rmsd < threshold_rmsd) or (
-                        result.one_rmsd < average_group_rmsd[key2] and (condition_average > result.one_rmsd)):
-                    if (selected_group in groups_names and len(groups_names[group[0]]) > len(
-                            groups_names[selected_group])) or selected_group not in groups_names:
-                        for pdb in groups_names[group[0]]:
-                            if results_rmsd[key1][pdb].one_rmsd > condition_average * 1.5:
-                                break
-                        else:
-                            selected_group = group[0]
+            if group and (
+                    (
+                            result.min_rmsd < threshold_rmsd_domains or
+                            result.one_rmsd < threshold_rmsd_local or
+                            result.middle_rmsd < threshold_rmsd_ss
+                    )
+                    and result.overlap > threshold_overlap
+            ):
+                if selected_group not in groups_names or len(groups_names[group[0]]) > len(
+                        groups_names[selected_group]):
+                    selected_group = group[0]
         groups_names[selected_group].append(key1)
-        if key1 != selected_group:
-            min_rmsd = results_rmsd[key1][selected_group].min_rmsd if results_rmsd[key1][
-                                                                          selected_group].min_rmsd < threshold_rmsd else \
-                results_rmsd[key1][selected_group].one_rmsd
-            groups_rmsd[selected_group].append(min_rmsd)
-
-    groups_names = {key: value for key, value in groups_names.items() if value}
-    return groups_names
+    groups_names = [values for values in groups_names.values() if len(values) > 1]
+    if len(groups_names) > 1:
+        # Return the groups that has generated
+        logging.info(f'Hinges has created {len(groups_names)} groups:')
+        for i, values in enumerate(groups_names):
+            logging.info(f'Group {i}: {",".join(values)}')
+        return [[path for key, path in paths_in.items() if key in group] for group in groups_names]
+    elif len(list(results_rmsd.keys())) > 1:
+        # Create two groups, more different and completes pdbs
+        more_different = list(results_rmsd[utils.get_file_name(pdb_complete)].keys())[-1]
+        path_diff = paths_in[more_different]
+        logging.info(f'Hinges could not create any groups')
+        logging.info(f'Creating two groups: The more completed pdb: {utils.get_file_name(pdb_complete)} '
+                     f'and the more different one: {more_different}')
+        return [[pdb_complete], [path_diff]]
+    else:
+        # Return the original list of pdbs
+        logging.info('Not good enough pdbs for hinges.')
+        return [[values for values in paths_in.values()]]
 
 
 def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:

@@ -121,7 +121,7 @@ class StructureAir:
                 positions = f'1-{self.sequence_assembled.total_copies}'
             positions = utils.expand_residues(positions)
             if os.path.exists(path):
-                aux_list = [file for file in os.listdir(path)] if os.path.isdir(path) else aux_list = [path]
+                aux_list = [file for file in os.listdir(path)] if os.path.isdir(path) else [path]
                 for aux_path in aux_list:
                     if utils.get_file_extension(aux_path) in ['pdb', 'fasta', 'cif']:
                         self.sequences_msa.append(
@@ -469,14 +469,16 @@ class StructureAir:
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
-        # templates_cluster = bioutils.hinges(paths_in=self.output.templates_dict,
-        #                                    hinges_path=self.cc_analysis_paths.hinges_path,
-        #                                    size_sequence=self.sequence_assembled.length,
-        #                                    output_path=os.path.join(self.results_dir, 'hinges'))
+        templates_cluster = bioutils.hinges(paths_in=self.output.templates_dict,
+                                            hinges_path=self.cc_analysis_paths.hinges_path,
+                                            output_path=os.path.join(self.results_dir, 'hinges'))
 
-        templates_cluster, _ = bioutils.cc_analysis(paths_in=self.output.templates_dict,
-                                                    cc_analysis_paths=self.cc_analysis_paths,
-                                                    cc_path=os.path.join(self.results_dir, 'ccanalysis'))
+        templates_path_list = [template_in for template_list in templates_cluster for template_in in template_list]
+        num_templates = len(templates_path_list)
+        if len(templates_cluster) > 1 and num_templates >= 5:
+            templates_cluster, _ = bioutils.cc_analysis(paths_in=templates_path_list,
+                                                        cc_analysis_paths=self.cc_analysis_paths,
+                                                        cc_path=os.path.join(self.results_dir, 'ccanalysis'))
 
         if templates_cluster:
             logging.info(
