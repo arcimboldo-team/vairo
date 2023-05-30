@@ -1,6 +1,7 @@
 from typing import Union, List
 from libs import change_res
 
+
 class MatchRestrictions:
     def __init__(self, chain: str, position: int, residues,
                  reference: str, reference_chain: str):
@@ -8,8 +9,8 @@ class MatchRestrictions:
         self.position: int = -1
         self.mask_region: bool
         self.residues: change_res.ChangeResidues = None
-        self.reference
-        self.reference_chain: Union[str, None]
+        self.reference = None
+        self.reference_chain: Union[str, None] = None
 
         self.chain = chain
         self.position = position

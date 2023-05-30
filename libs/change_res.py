@@ -18,9 +18,9 @@ class ChangeResidues:
         self.chain_group_res_dict: Dict = None
         self.chain_bfactors_dict: Union[Dict, None] = None
         self.when: str
-        self.resname: Union[str, None]
-        self.sequence: Union[str, None]
-        self.fasta_path: Union[str, None]
+        self.resname: Union[str, None] = None
+        self.sequence: Union[str, None] = None
+        self.fasta_path: Union[str, None] = None
 
         self.resname = resname
         self.chain_res_dict = chain_res_dict

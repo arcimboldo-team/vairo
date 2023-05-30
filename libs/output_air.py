@@ -95,7 +95,7 @@ class OutputAir:
                 print_number=False)
         # Split the templates with chains
         for template, template_path in self.templates_nonsplit_dict.items():
-            self.percentage_sequences[template] = self.sequence_assembled.get_percentages(template_path)
+            self.percentage_sequences[template] = sequence_assembled.get_percentages(template_path)
             new_pdb_path = os.path.join(self.templates_path, f'{template}.pdb')
             self.templates_dict[template] = new_pdb_path
             shutil.copy2(template_path, new_pdb_path)
