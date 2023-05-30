@@ -85,7 +85,6 @@ class ChangeResidues:
                         elif self.sequence is not None:
                             name = utils.get_key_by_value(value=self.sequence[bioutils.get_resseq(res) - 1],
                                                           search_dict=residue_constants.restype_3to1)[0]
-
                         for atom in res:
                             res.resname = name
                             if not atom.name in residue_constants.residue_atoms[res.resname]:
