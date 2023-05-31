@@ -175,3 +175,4 @@ class SequenceAssembled:
             result_list[i] += 1
         for i, num in enumerate(result_list):
             result_list[i] = result_list[i] / self.get_sequence_length(i)
+        return result_list
