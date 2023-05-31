@@ -114,16 +114,16 @@ class StructureAir:
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
 
         for sequence_msa in utils.get_input_value(name='sequences_msa', section='global', input_dict=parameters_dict):
-            path = utils.get_input_value(name='path', section='sequence_msa', input_dict=sequence_msa)
-            aligned = utils.get_input_value(name='aligned', section='sequence_msa', input_dict=sequence_msa)
-            positions = utils.get_input_value(name='positions', section='sequence_msa', input_dict=sequence_msa)
+            path = utils.get_input_value(name='path', section='sequences_msa', input_dict=sequence_msa)
+            aligned = utils.get_input_value(name='aligned', section='sequences_msa', input_dict=sequence_msa)
+            positions = utils.get_input_value(name='positions', section='sequences_msa', input_dict=sequence_msa)
             if positions is None:
                 positions = f'1-{self.sequence_assembled.total_copies}'
             positions = utils.expand_residues(positions)
             if os.path.exists(path):
                 aux_list = [file for file in os.listdir(path)] if os.path.isdir(path) else [path]
                 for aux_path in aux_list:
-                    if utils.get_file_extension(aux_path) in ['pdb', 'fasta', 'cif']:
+                    if utils.get_file_extension(aux_path) in ['.pdb', '.fasta']:
                         self.sequences_msa.append(
                             structures.SequencesMsa(path=path, aligned=aligned, positions=positions))
             else:

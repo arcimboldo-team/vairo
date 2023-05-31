@@ -409,11 +409,10 @@ def check_input(global_dict: Dict):
     def check_keys(data: Dict) -> str:
         if isinstance(data, dict):
             for key in data.keys():
+                if key not in all_keys and (key.lower() != 'all' and len(key) != 1):
+                    raise Exception(f'Parameter {key} does not exist. Check the input file.')
                 if isinstance(data[key], list):
                     check_keys(data[key])
-                else:
-                    if key not in all_keys and (not key.lower() == 'all' and len(key) != 1):
-                        raise Exception(f'Parameter {key} does not exist. Check the input file.')
 
         if isinstance(data, list):
             for aux_dict in data:
@@ -429,7 +428,7 @@ def get_input_value(name: str, section: str, input_dict: Dict):
         'template': 'template_input',
         'change_res': 'change_res_input',
         'match': 'match_input',
-        'sequence_msa': 'sequence_msa',
+        'sequences_msa': 'sequences_msa_input',
     }
     chosen_dict = INPUT_PARAMETERS.get(mapping.get(section, 'features_input'))
 

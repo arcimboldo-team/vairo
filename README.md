@@ -36,9 +36,8 @@ Several features.pkl can be merged to the final features.pkl. It is possible to 
 Delete specific regions of the MSA, replace the sequence of the templates and insert the features in specific regions in the final features.
 
 - sequence_msa:
-  - path
-  - path
-  - path
+  - path: (mandatory, string): Path to a folder, pdb or fasta. The folder can contain fastas or pdbs too.
+    position: Position in which the sequences will be appended.
 
 features:
 - path: (mandatory, string): Path to features.pkl

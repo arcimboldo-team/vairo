@@ -58,7 +58,7 @@ class Features:
         self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape,
                                                       len(self.msa_features['msa']))
 
-    def append_row_in_msa(self, sequence_in: str, sequence_id: str):
+    def append_row_in_msa(self, sequence_in: str, sequence_id: str, positions: List[int] = []):
         sequence_array = np.array([residue_constants.HHBLITS_AA_TO_ID[res] for res in sequence_in])
         self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
         self.msa_features['accession_ids'] = np.hstack([self.msa_features['accession_ids'], sequence_id.encode()])
