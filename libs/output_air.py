@@ -210,12 +210,9 @@ class OutputAir:
         if self.templates_dict:
             for i, ranked in enumerate(self.ranked_list):
                 for template, template_path in self.templates_dict.items():
-                    total_residues = len(
-                        [res for res in
-                         Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
+                    total_residues = bioutils.get_number_residues(template_path)
                     rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([ranked.split_path, template_path])
-                    if rmsd is not None:
-                        rmsd = round(rmsd, 2)
+                    rmsd = round(rmsd, 2) if rmsd is not None else rmsd
                     ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
                 ranked.sort_template_rankeds()
 
@@ -273,8 +270,10 @@ class OutputAir:
         for experimental in experimental_pdbs:
             aux_dict = {}
             for pdb in [ranked.split_path for ranked in self.ranked_list] + list(self.templates_dict.values()):
-                rmsd, nalign, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
-                aux_dict[utils.get_file_name(pdb)] = round(rmsd, 2) if rmsd is not None else str(rmsd)
+                rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
+                total_residues = bioutils.get_number_residues(pdb)
+                rmsd = round(rmsd, 2) if rmsd is not None else str(rmsd)
+                aux_dict[utils.get_file_name(pdb)] = structures.TemplateRanked(pdb, rmsd, aligned_residues, total_residues)
             output_pdb = os.path.join(self.output_dir, os.path.basename(experimental))
             bioutils.gesamt_pdbs([reference_superpose, experimental], output_pdb)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
@@ -395,7 +394,7 @@ class OutputAir:
                 data = {'experimental': self.experimental_dict.keys()}
                 for keys_pdbs in self.experimental_dict.values():
                     for key, value in keys_pdbs.items():
-                        data.setdefault(key, []).append(value)
+                        data.setdefault(key, []).append(f'{value.rmsd} {value.aligned_residues} ({value.total_residues})')
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())
 

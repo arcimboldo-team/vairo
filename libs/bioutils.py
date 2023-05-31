@@ -320,6 +320,10 @@ def get_structure(pdb_path: str) -> Structure:
     return parser.get_structure(pdb_id, pdb_path)
 
 
+def get_number_residues(pdb_path: str) -> int:
+    return len([res for res in Selection.unfold_entities(get_structure(pdb_path), 'R')])
+
+
 def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
     try:
         cwd = os.getcwd()
@@ -509,7 +513,8 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
     groups_names = {key: [] for key in accepted_pdbs}
     results_rmsd = OrderedDict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
     for key1, value in results_rmsd.items():
-        results_rmsd[key1] = OrderedDict(sorted({k: v for k, v in value.items() if v is not None}.items(), key=lambda x: x[1].one_rmsd))
+        results_rmsd[key1] = OrderedDict(
+            sorted({k: v for k, v in value.items() if v is not None}.items(), key=lambda x: x[1].one_rmsd))
         selected_group = key1
         for key2, result in results_rmsd[key1].items():
             group = utils.get_key_by_value(key2, groups_names)

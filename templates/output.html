@@ -544,7 +544,7 @@
                     </table>
                 {% endif %}
                 {% if 'ranked_rmsd_dict' in data.table %}
-                    <h3>Superposition between predictions</h3>
+                    <h3>Superposition between predictions (RMSD)</h3>
                     <table>
                         <tr>
                             <th>prediction</th>
@@ -570,7 +570,7 @@
                 {% endif %}
 
                 {% if 'rmsd_dict' in data.table %}
-                    <h3>Superposition of predictions and templates</h3>
+                    <h3>Superposition of predictions and templates (RMSD, superposed residues, total residues)</h3>
                     <table>
                         <tr>
                             <th>prediction</th>
@@ -645,7 +645,7 @@
                     </table>
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
-                    <h3>Experimental pdbs with predictions and templates</h3>
+                    <h3>Experimental pdbs with predictions and templates (RMSD, superposed residues, total residues)</h3>
                     <table>
                         <tr>
                             <th>experimental pdb</th>
@@ -659,7 +659,7 @@
                             <tr>
                                 <td>{{ key }}</td>
                                 {% for value2 in value.values() %}
-                                    <td>{{ value2 }}</td>
+                                    <td>{{ value2.rmsd }} {{ value2.aligned_residues }} ({{ value2.total_residues }})</td>
                                 {% endfor %}
                             </tr>
                         {% endfor %}
