@@ -412,7 +412,7 @@ def check_input(global_dict: Dict):
                 if isinstance(data[key], list):
                     check_keys(data[key])
                 else:
-                    if key not in all_keys and (not key.lower() == 'all' or len(key) == 1):
+                    if key not in all_keys and (not key.lower() == 'all' and len(key) != 1):
                         raise Exception(f'Parameter {key} does not exist. Check the input file.')
 
         if isinstance(data, list):
