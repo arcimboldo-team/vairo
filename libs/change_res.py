@@ -67,17 +67,14 @@ class ChangeResidues:
         chains_change = list(self.chain_res_dict.keys())
         chains_inter = set(chains_struct).intersection(chains_change)
         atoms_del_list = []
+        res_del_list = []
 
         for chain in chains_inter:
-            for res in structure[0][chain]:
-                if type == 'delete_inverse':
-                    if bioutils.get_resseq(res) not in self.chain_res_dict[chain]:
-                        for atom in res:
-                            atoms_del_list.append(atom.get_serial_number())
-                if type == 'delete':
-                    if bioutils.get_resseq(res) in self.chain_res_dict[chain]:
-                        for atom in res:
-                            atoms_del_list.append(atom.get_serial_number())
+            for res in structure[0][chain].get_residues():
+                if (type == 'delete_inverse' and bioutils.get_resseq(res) not in self.chain_res_dict[chain]) or (
+                        type == 'delete' and bioutils.get_resseq(res) in self.chain_res_dict[chain]):
+                    res_del_list.append(bioutils.get_resseq(res))
+
                 if type == 'change':
                     if bioutils.get_resseq(res) in self.chain_res_dict[chain]:
                         if self.resname is not None:
@@ -97,14 +94,18 @@ class ChangeResidues:
 
         class AtomSelect(Select):
             def accept_atom(self, atom):
-                if atom.get_serial_number() in atoms_del_list:
-                    return 0
-                else:
-                    return 1
+                return not atom.get_serial_number() in atoms_del_list
+
+        class ResidueSelect(Select):
+            def accept_residue(self, residue):
+                return not bioutils.get_resseq(residue) in res_del_list
 
         io = PDBIO()
         io.set_structure(structure)
-        io.save(pdb_out_path, select=AtomSelect())
+        if atoms_del_list:
+            io.save(pdb_out_path, select=AtomSelect())
+        else:
+            io.save(pdb_out_path, select=ResidueSelect())
 
 
 class ChangeResiduesList:

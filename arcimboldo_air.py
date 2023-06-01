@@ -64,15 +64,13 @@ def main():
                                                         positions=positions,
                                                         sequence_in=feat.sequence)
             for seq_msa in a_air.sequences_msa:
-                positions = a_air.sequence_assembled.get_range_residues(position_ini=seq_msa.positions[0] - 1, position_end=seq_msa.positions[-1] - 1)
                 extension = utils.get_file_extension(seq_msa.path)
-                if extension == '.pdb':
-                    sequence_list = [bioutils.extract_sequence_msa_from_pdb(seq_msa.path)]
+                if extension in ['.pdb', '.cif']:
+                    sequence_list = bioutils.extract_sequence_from_file(seq_msa.path)
                 if extension == '.fasta':
-                    sequence_list = list(bioutils.extract_sequences(seq_msa.path).values())
-
-                for sequence_in in sequence_list:
-                    a_air.feature.append_row_in_msa(utils.get_file_name(seq_msa.path), sequence_in, positions)
+                    sequence_list = bioutils.extract_sequences(seq_msa.path)
+                for key, seq in sequence_list.items():
+                    a_air.feature.append_row_in_msa(seq, key, seq_msa.position_query_res_ini)
 
             a_air.change_state(state=1)
             a_air.generate_output()

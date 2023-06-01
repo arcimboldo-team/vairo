@@ -114,18 +114,31 @@ class StructureAir:
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
 
         for sequence_msa in utils.get_input_value(name='sequences_msa', section='global', input_dict=parameters_dict):
+
             path = utils.get_input_value(name='path', section='sequences_msa', input_dict=sequence_msa)
             aligned = utils.get_input_value(name='aligned', section='sequences_msa', input_dict=sequence_msa)
+            position_query_ini = utils.get_input_value(name='position_query_ini', section='sequences_msa', input_dict=sequence_msa)
+            position_query_res_ini = utils.get_input_value(name='position_query_res_ini', section='sequences_msa', input_dict=sequence_msa)
             positions = utils.get_input_value(name='positions', section='sequences_msa', input_dict=sequence_msa)
-            if positions is None:
-                positions = f'1-{self.sequence_assembled.total_copies}'
-            positions = utils.expand_residues(positions)
+
+            if position_query_ini is None:
+                position_query_ini = 1
+
+            if position_query_res_ini is None:
+                position_query_res_ini = self.sequence_assembled.get_starting_length(0)+1
+
+            if positions:
+                positions = utils.expand_residues(positions)
+
             if os.path.exists(path):
                 aux_list = [file for file in os.listdir(path)] if os.path.isdir(path) else [path]
                 for aux_path in aux_list:
-                    if utils.get_file_extension(aux_path) in ['.pdb', '.fasta']:
+                    if utils.get_file_extension(aux_path) in ['.pdb', '.cif', '.fasta']:
                         self.sequences_msa.append(
-                            structures.SequencesMsa(path=path, aligned=aligned, positions=positions))
+                            structures.SequencesMsa(path=path, aligned=aligned,
+                                                    position_query_ini=position_query_ini,
+                                                    position_query_res_ini=position_query_res_ini,
+                                                    positions=positions))
             else:
                 raise Exception(f'Path {path} does not exist. Check the input sequences_msa parameter.')
 
@@ -577,6 +590,10 @@ class StructureAir:
                     f_out.write('-')
                     f_out.write(f' path: {seq_msa.path}\n')
                     f_out.write(f'  aligned: {seq_msa.aligned}\n')
+                    if seq_msa.position_query_ini:
+                        f_out.write(f'  position_query_ini: {seq_msa.position_query_ini}\n')
+                    if seq_msa.position_query_res_ini:
+                        f_out.write(f'  position_query_res_ini: {seq_msa.position_query_res_ini}\n')
                     if seq_msa.positions:
                         f_out.write(f'  positions: {",".join(map(str, seq_msa.positions))}\n')
             if self.features_input:

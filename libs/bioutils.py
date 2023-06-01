@@ -106,7 +106,9 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
             if residue_number - prev_residue_number > 1:
                 for missing_number in range(prev_residue_number + 1, residue_number):
                     sequence_ext += "-"
-            sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
+            try:
+                sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
+            except: pass
             prev_residue_number = residue_number
         sequences[chain.id] = sequence_ext
     return sequences
@@ -148,7 +150,7 @@ def read_seqres(pdb_path: str) -> str:
 
 
 def extract_sequence_from_file(file_path: str) -> List[str]:
-    results_list = []
+    results_dict = {}
     extension = utils.get_file_extension(file_path)
     if extension == '.pdb':
         extraction = 'pdb-atom'
@@ -157,13 +159,13 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
     try:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
-                results = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}\n'
-                results += str(record.seq.replace("X", ""))
-                results_list.append(results)
+                key = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}'
+                value = str(record.seq.replace("X", ""))
+                results_dict[key] = value
     except Exception as e:
         logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
         pass
-    return results_list
+    return results_dict
 
 
 def write_sequence(sequence_name: str, sequence_amino: str, sequence_path: str) -> str:
@@ -1108,7 +1110,11 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(sorted_list)
 
-    max_length = max(len(lst) for lst in trimmed_list)
+    if trimmed_list:
+        max_length = max(len(lst) for lst in trimmed_list)
+    else:
+        return []
+
     trimmed_list = [lst for lst in trimmed_list if len(lst) == max_length]
 
     score_list = []

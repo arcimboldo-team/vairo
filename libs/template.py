@@ -154,12 +154,12 @@ class Template:
                         change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
 
     def generate_database(self, output_dir: str, databases: alphafold_classes.AlphaFoldPaths):
-        for extracted_sequence in self.template_sequence:
-            sequence_chain = extracted_sequence[extracted_sequence.find(':') + 1:extracted_sequence.find('\n')]
-            sequence_name = extracted_sequence.splitlines()[0].replace('>', '')
-            spit_sequence = extracted_sequence.splitlines()[1]
+        for key, seq in self.template_sequence.items():
+            aux_key = key.replace('>', '')
+            sequence_name = aux_key.split(':')[0]
+            sequence_chain = aux_key.split(':')[1]
             fasta_path = os.path.join(output_dir, f'{self.pdb_id}_{sequence_chain}.fasta')
-            bioutils.write_sequence(sequence_name=sequence_name, sequence_amino=spit_sequence, sequence_path=fasta_path)
+            bioutils.write_sequence(sequence_name=sequence_name, sequence_amino=seq, sequence_path=fasta_path)
             new_database = hhsearch.create_database_from_pdb(fasta_path=fasta_path,
                                                              databases=databases,
                                                              output_dir=output_dir)
@@ -263,13 +263,14 @@ class Template:
                                                            deleted_positions=deleted_positions,
                                                            template_chains_list=new_targets_list,
                                                            name_list=sequence_name_list)
-            if not any(results_targets_list):
-                raise Exception(
-                    f'Not possible to meet the requisites for the template {self.pdb_id}. No chains have good alignments')
 
             for i, element in enumerate(results_targets_list):
                 if composition_path_list[i] is None:
                     composition_path_list[i] = element
+
+            if not any(composition_path_list):
+                raise Exception(
+                    f'Not possible to meet the requisites for the template {self.pdb_id}. No chains have good alignments')
 
             if self.template_chains_struct.get_number_chains() != sum(x is not None for x in composition_path_list) \
                     and not all(composition_path_list):

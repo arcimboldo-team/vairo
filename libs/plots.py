@@ -105,7 +105,7 @@ def plot_sequence(plot_path: str, a_air):
     ax_secondary.set_xticks(
         ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies - 1)], rotation=45)
     ax_secondary.set_xticks(
-        ticks=list(ax_secondary.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 1 for i
+        ticks=list(ax_secondary.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i
                                                  in range(a_air.sequence_assembled.total_copies)], rotation=45)
     ax_secondary.set_xticklabels(
         labels=[1] * a_air.sequence_assembled.total_copies + [a_air.sequence_assembled.get_sequence_length(i) + 1 for i
@@ -116,7 +116,7 @@ def plot_sequence(plot_path: str, a_air):
                range(a_air.sequence_assembled.total_copies)],
         rotation=45)
     ax.set_xticks(
-        ticks=list(ax.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 1 for i
+        ticks=list(ax.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i
                                        in range(a_air.sequence_assembled.total_copies - 1)],
         rotation=45)
     ax.set_xticklabels(labels=ax.get_xticks(), rotation=45)
@@ -141,7 +141,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
                 left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
         if i < a_air.sequence_assembled.total_copies - 1:
             ax.barh('sequence', a_air.sequence_assembled.glycines,
-                    left=a_air.sequence_assembled.get_finishing_length(i) + 1, color='tab:blue')
+                    left=a_air.sequence_assembled.get_finishing_length(i) + 2, color='tab:blue')
 
     if plot_type == 'msa':
         title = 'MSA'
@@ -267,7 +267,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
 
     ax.set_xticks(
         [a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
-    ax.set_xticks(list(ax.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 1 for i in
+    ax.set_xticks(list(ax.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i in
                                            range(a_air.sequence_assembled.total_copies - 1)])
 
     cut_chunk = [list(tup) for tup in a_air.chunk_list]

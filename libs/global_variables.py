@@ -280,10 +280,18 @@ INPUT_PARAMETERS = {
           'required': False,
           'default': True
       },
-      'positions': {
+      'position_query_ini': {
           'required': False,
           'default': None
-      }
+      },
+      'position_query_res_ini': {
+            'required': False,
+            'default': None
+      },
+      'positions': {
+            'required': False,
+            'default': None
+      },
     },
     'change_res_input': {
         'resname': {

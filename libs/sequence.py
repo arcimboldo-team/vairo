@@ -2,7 +2,6 @@ import collections
 import os
 import shutil
 from typing import Dict, List, Tuple
-
 from libs import bioutils, utils
 
 
@@ -99,13 +98,13 @@ class SequenceAssembled:
         return offset
 
     def get_finishing_length(self, i: int) -> int:
-        # Return the starting length plus de sequence length, so the length the sequence it finishes.
-        return self.get_starting_length(i) + self.get_sequence_length(i)
+        # Return the starting length plus de sequence length, so the number the sequence it finishes
+        return self.get_starting_length(i) + self.get_sequence_length(i) - 1
 
     def get_position_by_residue_number(self, res_num: int) -> int:
         # Get the number of a residue. Return the position of the sequence it belongs
         for i in range(0, self.total_copies):
-            if res_num <= self.get_finishing_length(i):
+            if res_num-1 <= self.get_finishing_length(i):
                 return i
 
     def get_real_residue_number(self, i: int, residue: int) -> int:
@@ -116,8 +115,7 @@ class SequenceAssembled:
         return None
 
     def get_range_residues(self, position_ini, position_end) -> List[int]:
-        return [self.get_starting_length(position_ini),
-                self.get_starting_length(position_end) + self.get_sequence_length(position_end)]
+        return [self.get_starting_length(position_ini), self.get_finishing_length(position_end)]
 
     def partition(self, number_partitions: int, overlap: int) -> List[Tuple[int, int]]:
         # Slice string in chunks of size

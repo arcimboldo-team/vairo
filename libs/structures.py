@@ -140,6 +140,8 @@ class OpenmmEnergies:
 class SequencesMsa:
     path: str
     aligned: str
+    position_query_ini: int
+    position_query_res_ini: int
     positions: List[int]
 
 
