@@ -131,6 +131,7 @@ class Features:
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = [],
                          positions: List[int] = []):
         coverage_msa = []
+        print('sorrting')
         for i in range(start, len(new_msa['msa'])):
             if delete_positions:
                 new_msa = delete_residues_msa(msa=new_msa, position=i, delete_positions=delete_positions)
@@ -141,6 +142,7 @@ class Features:
             arr = np.array(coverage_msa)
             coverage_msa = arr.argsort()[-finish:][::-1]
             coverage_msa = np.sort(coverage_msa)
+        print('sorrting')
         msa_dict = self.create_empty_msa_list(len(coverage_msa))
         for i, num in enumerate(coverage_msa):
             msa_dict['msa'][i] = new_msa['msa'][num+start]
