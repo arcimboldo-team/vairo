@@ -3,16 +3,19 @@ import os
 import shutil
 from typing import Dict, List, Tuple
 from libs import bioutils, utils
+from alphafold.common import residue_constants
 
 
 class Sequence:
     def __init__(self, parameters_dict: Dict, input_dir: str):
         self.fasta_path: str
         self.sequence: str
+        self.sequence_mutated: str
         self.name: str
         self.length: int
         self.num_of_copies: int
         self.positions: List[int]
+        self.mutations_dict: Dict = {}
 
         fasta_path = utils.get_input_value(name='fasta_path', section='sequence', input_dict=parameters_dict)
         positions = utils.get_input_value(name='positions', section='sequence', input_dict=parameters_dict)
@@ -45,16 +48,32 @@ class Sequence:
             self.sequence = bioutils.extract_sequence(self.fasta_path)
             self.length = len(self.sequence)
 
+        self.sequence_mutated = list(self.sequence)
+        mutations = utils.get_input_value(name='mutations', section='sequence', input_dict=parameters_dict)
+        if mutations:
+            for mutation in mutations:
+                key = list(mutation.keys())[0]
+                values = utils.expand_residues(list(mutation.values())[0])
+                if key not in list(residue_constants.restype_1to3.keys()):
+                    raise Exception(f'Mutation residues {"".join(values)} in {key} could not be possible. Residue {key} does not exist')
+                self.mutations_dict.setdefault(key, []).extend(values)
+                for value in values:
+                    if value <= len(self.sequence):
+                        self.sequence_mutated[value-1] = key
+        self.sequence_mutated = ''.join(self.sequence_mutated)
+
 
 class SequenceAssembled:
     def __init__(self, sequence_list: List[Sequence], glycines: int):
 
         self.sequence_assembled: str = ''
+        self.sequence_mutated_assembled: str = ''
         self.sequence_list: List[Sequence] = []
         self.sequence_list_expanded: List[Sequence] = []
         self.length: str
         self.glycines: int = glycines
         self.total_copies: int = 0
+        self.mutated_resides: List[int] = []
 
         self.total_copies = sum([sequence.num_of_copies for sequence in sequence_list])
         positions_to_fill = []
@@ -75,10 +94,11 @@ class SequenceAssembled:
             if position is None:
                 sequence = positions_to_fill.pop(0)
                 self.sequence_list_expanded[i] = sequence
-
             self.sequence_assembled += self.sequence_list_expanded[i].sequence + self.glycines * 'G'
-
+            self.sequence_mutated_assembled += self.sequence_list_expanded[i].sequence_mutated + self.glycines * 'G'
         self.sequence_assembled = self.sequence_assembled[:-self.glycines]
+        self.sequence_mutated_assembled = self.sequence_mutated_assembled[:-self.glycines]
+        self.mutated_resides = utils.find_differences_between_strings(self.sequence_assembled, self.sequence_mutated_assembled)
         self.length = len(self.sequence_assembled)
 
     def get_sequence_length(self, i: int) -> int:

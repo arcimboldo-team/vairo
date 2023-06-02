@@ -63,7 +63,6 @@ class Features:
         if position:
             sequence_in = '-'*(position-1) + sequence_in + '-'*(seq_length-(position-1)-len(sequence_in))
         sequence_in = sequence_in[:seq_length]
-        print(sequence_in)
         sequence_array = np.array([residue_constants.HHBLITS_AA_TO_ID[res] for res in sequence_in])
         self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
         self.msa_features['accession_ids'] = np.hstack([self.msa_features['accession_ids'], sequence_id.encode()])

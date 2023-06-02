@@ -33,7 +33,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
         return_dict = bioutils.read_bfactors_from_residues(pdb_path=ranked.path)
         plddt_list = [value for value in list(return_dict.values())[0] if value is not None]
         res_list = [int(item) for item in range(1, len(plddt_list) + 1)]
-        ranked.set_plddt(round(statistics.median(map(float, plddt_list)), 2))
+        ranked.set_plddt(round(statistics.mean(map(float, plddt_list)), 2))
         plt.plot(res_list, plddt_list, label=ranked.name)
     plt.legend(loc='upper right')
     plt.xlabel('residue number')
@@ -103,7 +103,8 @@ def plot_sequence(plot_path: str, a_air):
 
     ax_secondary = ax.secondary_xaxis('top')
     ax_secondary.set_xticks(
-        ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies - 1)], rotation=45)
+        ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in
+               range(a_air.sequence_assembled.total_copies - 1)], rotation=45)
     ax_secondary.set_xticks(
         ticks=list(ax_secondary.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i
                                                  in range(a_air.sequence_assembled.total_copies)], rotation=45)
@@ -134,11 +135,22 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     legend_elements = []
     legend_seq = [Patch(label='Sequence', color='tab:cyan'), Patch(label='Linker', color='tab:blue')]
     number_of_templates = 1
+    total_length = len(a_air.sequence_assembled.sequence_mutated_assembled)
 
-    total_length = len(a_air.sequence_assembled.sequence_assembled)
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
-                left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan', height=1)
+        if i < a_air.sequence_assembled.total_copies - 1:
+            ax.barh('sequence', a_air.sequence_assembled.glycines,
+                    left=a_air.sequence_assembled.get_finishing_length(i) + 2, color='tab:blue')
+
+    mutated_residues = a_air.sequence_assembled.mutated_resides
+    for i in mutated_residues:
+        ax.barh('sequence', 1, left=i+1, color='yellow', height=0.1)
+
+    for i in range(a_air.sequence_assembled.total_copies):
+        ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, align='edge', color='tab:cyan', height=0.25)
         if i < a_air.sequence_assembled.total_copies - 1:
             ax.barh('sequence', a_air.sequence_assembled.glycines,
                     left=a_air.sequence_assembled.get_finishing_length(i) + 2, color='tab:blue')
@@ -161,13 +173,14 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     names = [name for name in names if name != '']
     if (len(names) > 30 or plot_type == 'both') and len(names) > 0:
         number_of_templates += 1
-        add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
+        add_sequences = [0] * len(a_air.sequence_assembled.sequence_mutated_assembled)
         for name in names:
             if plot_type == 'msa' or plot_type == 'both':
                 features_search = a_air.feature.get_msa_by_name(name)
             else:
                 features_search = a_air.feature.get_sequence_by_name(name)
-            aligned_sequence = bioutils.compare_sequences(a_air.sequence_assembled.sequence_assembled, features_search)
+            aligned_sequence = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
+                                                          features_search)
             aligned_sequence = [1 if align == '-' else float(align) for align in aligned_sequence]
             add_sequences = np.add(aligned_sequence, add_sequences)
         add_sequences = [aligned / len(names) for aligned in add_sequences]
@@ -190,24 +203,24 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
             template = a_air.get_template_by_id(name)
             changed_residues = []
             changed_fasta = []
+
+            if len(name) > 6:
+                template_name = f"M{j + 1}" if plot_type == "msa" else f"T{j + 1}"
+                text = f'\n{template_name} ({name})'
+            else:
+                template_name = name
+                text = f'\n{template_name}'
+
             if template is not None:
                 changed_residues, changed_fasta, _ = template.get_changes()
                 changed_residues = bioutils.convert_residues(changed_residues, a_air.sequence_assembled)
                 changed_fasta = bioutils.convert_residues(changed_fasta, a_air.sequence_assembled)
-                if len(name) > 6:
-                    template_name = f'T{j + 1}'
-                    text = f'\n{template_name} ({name}):'
-                else:
-                    template_name = name
-                    text = f'\n{template_name}:'
                 for alignment in template.get_results_alignment():
                     if alignment is not None:
                         text += f'\n\tChain {alignment.database.chain}: Aligned={alignment.aligned_columns}({alignment.total_columns}) Evalue={alignment.evalue} Identities={alignment.identities}'
                     else:
                         text += f'\n\tNo alignment'
-                legend_elements.append(text)
-            else:
-                template_name = name
+            legend_elements.append(text)
 
             if plot_type == 'msa':
                 features_search = a_air.feature.get_msa_by_name(name)
@@ -223,17 +236,19 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
                         legend_elements.append(f'\n{template_name}')
 
             if features_search is not None:
-                aligned_sequence = bioutils.compare_sequences(a_air.sequence_assembled.sequence_assembled,
+                aligned_sequence = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
                                                               features_search)
+
                 for i in range(1, len(features_search)):
                     if aligned_sequence[i - 1] != '-':
                         ax.barh(template_name, 1, left=i, height=0.5, color=str(aligned_sequence[i - 1]))
-                        if i in changed_residues and plot_type != 'msa':
+                        if i in changed_residues:
                             ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='yellow')
-                        elif i in changed_fasta and plot_type != 'msa':
+                        elif i in changed_fasta:
                             ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red')
                         else:
-                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='white')
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge',
+                                    color=str(aligned_sequence[i - 1]))
                         ax.barh(template_name, 1, left=i, height=0.1, align='edge', color=str(aligned_sequence[i - 1]))
 
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')

@@ -200,6 +200,10 @@ INPUT_PARAMETERS = {
         'name': {
             'required': False,
             'default': None
+        },
+        'mutations': {
+            'required': False,
+            'default': None
         }
     },
     'template_input': {

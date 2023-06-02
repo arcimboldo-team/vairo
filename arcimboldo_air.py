@@ -48,30 +48,7 @@ def main():
         a_air.generate_output()
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
-            a_air.set_feature(feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
-            for feat in a_air.features_input:
-                feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
-                positions = a_air.sequence_assembled.get_range_residues(position_ini=feat.positions[0] - 1,
-                                                                        position_end=feat.positions[-1] - 1)
-                if feat.keep_msa != 0:
-                    a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
-                                                   finish=feat.keep_msa,
-                                                   delete_positions=feat.msa_delete,
-                                                   positions=positions)
-                if feat.keep_templates != 0:
-                    a_air.feature.set_template_features(new_templates=feat_aux.template_features,
-                                                        finish=feat.keep_templates,
-                                                        positions=positions,
-                                                        sequence_in=feat.sequence)
-            for seq_msa in a_air.sequences_msa:
-                extension = utils.get_file_extension(seq_msa.path)
-                if extension in ['.pdb', '.cif']:
-                    sequence_list = bioutils.extract_sequence_from_file(seq_msa.path)
-                if extension == '.fasta':
-                    sequence_list = bioutils.extract_sequences(seq_msa.path)
-                for key, seq in sequence_list.items():
-                    a_air.feature.append_row_in_msa(seq, key, seq_msa.position_query_res_ini)
-
+            a_air.set_feature(feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_mutated_assembled))
             a_air.change_state(state=1)
             a_air.generate_output()
             for template in a_air.templates_list:
@@ -100,6 +77,33 @@ def main():
                         a_air.feature.append_new_template_features(new_template_features=template.template_features,
                                                                    custom_sum_prob=template.sum_prob)
                     logging.info(f'Template {template.pdb_id} was added to templates')
+            for feat in a_air.features_input:
+                feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
+                positions = a_air.sequence_assembled.get_range_residues(position_ini=feat.positions[0] - 1,
+                                                                        position_end=feat.positions[-1] - 1)
+                if feat.keep_msa != 0:
+                    a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
+                                                   finish=feat.keep_msa,
+                                                   delete_positions=feat.msa_delete,
+                                                   positions=positions)
+                if feat.keep_templates != 0:
+                    a_air.feature.set_template_features(new_templates=feat_aux.template_features,
+                                                        finish=feat.keep_templates,
+                                                        positions=positions,
+                                                        sequence_in=feat.sequence)
+            for seq_msa in a_air.sequences_msa:
+                extension = utils.get_file_extension(seq_msa.path)
+                if extension in ['.pdb', '.cif']:
+                    sequence_list = bioutils.extract_sequence_from_file(seq_msa.path)
+                if extension == '.fasta':
+                    sequence_list = bioutils.extract_sequences(seq_msa.path)
+                for key, seq in sequence_list.items():
+                    if seq_msa.positions:
+                        end = seq_msa.positions[-1]
+                        if end > len(seq):
+                            end = len(seq)
+                        seq = seq[seq_msa.positions[0]-1:end]
+                    a_air.feature.append_row_in_msa(seq, key, seq_msa.position_query_res_ini)
             features_list = a_air.partition_mosaic()
         else:
             features_list = [None] * a_air.mosaic

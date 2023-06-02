@@ -409,8 +409,10 @@ def check_input(global_dict: Dict):
     def check_keys(data: Dict) -> str:
         if isinstance(data, dict):
             for key in data.keys():
-                if key not in all_keys and (key.lower() != 'all' and len(key) != 1):
-                    raise Exception(f'Parameter {key} does not exist. Check the input file.')
+                if key not in all_keys and key.lower() != 'all' and len(key) != 1:
+                    raise Exception(f'Parameter {key} does not exist. Check the input file')
+                if data[key] is None:
+                    raise Exception(f'Paramter {key} does not have any value. Comment it or add input')
                 if isinstance(data[key], list):
                     check_keys(data[key])
 
@@ -419,6 +421,10 @@ def check_input(global_dict: Dict):
                 check_keys(aux_dict)
 
     check_keys(global_dict)
+
+
+def find_differences_between_strings(string1: str, string2: str) -> List[int]:
+    return [i for i, (char1, char2) in enumerate(zip(string1, string2)) if char1 != char2]
 
 
 def get_input_value(name: str, section: str, input_dict: Dict):

@@ -126,7 +126,6 @@ class StructureAir:
 
             if position_query_res_ini is None:
                 position_query_res_ini = self.sequence_assembled.get_starting_length(0)+1
-
             if positions:
                 positions = utils.expand_residues(positions)
 
@@ -377,7 +376,7 @@ class StructureAir:
             else:
                 name = f'{self.name_results_dir}{i}'
             path = os.path.join(self.run_dir, name)
-            sequence_chunk = self.sequence_assembled.sequence_assembled[self.chunk_list[i][0]:self.chunk_list[i][1]]
+            sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[self.chunk_list[i][0]:self.chunk_list[i][1]]
             afrun = alphafold_classes.AlphaFoldRun(results_dir=path,
                                                    sequence=sequence_chunk,
                                                    custom_features=self.custom_features,
@@ -616,6 +615,10 @@ class StructureAir:
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
+                if sequence_in.mutations_dict.items():
+                    f_out.write(f'  mutations:\n')
+                for residue, values in sequence_in.mutations_dict.items():
+                    f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
             if self.templates_list:
                 f_out.write(f'\ntemplates:\n')
                 for template_in in self.templates_list:
