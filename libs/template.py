@@ -37,7 +37,8 @@ class Template:
         self.pdb_path = bioutils.check_pdb(pdb_path, pdb_out_path)
         self.pdb_id = utils.get_file_name(self.pdb_path)
         self.add_to_msa = utils.get_input_value(name='add_to_msa', section='template', input_dict=parameters_dict)
-        self.add_to_templates = utils.get_input_value(name='add_to_templates', section='template', input_dict=parameters_dict)
+        self.add_to_templates = utils.get_input_value(name='add_to_templates', section='template',
+                                                      input_dict=parameters_dict)
         self.sum_prob = utils.get_input_value(name='sum_prob', section='template', input_dict=parameters_dict)
         self.legacy = utils.get_input_value(name='legacy', section='template', input_dict=parameters_dict)
         self.strict = utils.get_input_value(name='strict', section='template', input_dict=parameters_dict)
@@ -45,13 +46,16 @@ class Template:
         self.aligned = utils.get_input_value(name='aligned', section='template', input_dict=parameters_dict)
         self.template_path = f'{os.path.join(output_dir, self.pdb_id)}_template.pdb'
         self.reference = utils.get_input_value(name='reference', section='template', input_dict=parameters_dict)
-        self.generate_multimer = utils.get_input_value(name='generate_multimer', section='template', input_dict=parameters_dict)
+        self.generate_multimer = utils.get_input_value(name='generate_multimer', section='template',
+                                                       input_dict=parameters_dict)
         self.generate_multimer = False if self.legacy else self.generate_multimer
 
-        for paramaters_change_res in utils.get_input_value(name='change_res', section='template', input_dict=parameters_dict):
+        for paramaters_change_res in utils.get_input_value(name='change_res', section='template',
+                                                           input_dict=parameters_dict):
             change_res_dict = {}
             resname = utils.get_input_value(name='resname', section='change_res', input_dict=paramaters_change_res)
-            fasta_path = utils.get_input_value(name='fasta_path', section='change_res', input_dict=paramaters_change_res)
+            fasta_path = utils.get_input_value(name='fasta_path', section='change_res',
+                                               input_dict=paramaters_change_res)
             when = utils.get_input_value(name='when', section='change_res', input_dict=paramaters_change_res)
             for chain, change in paramaters_change_res.items():
                 if chain.lower() == 'all' or len(chain) == 1:
@@ -64,9 +68,11 @@ class Template:
                                                  fasta_path=fasta_path,
                                                  when=when)
 
-        for parameters_match_dict in utils.get_input_value(name='match', section='template', input_dict=parameters_dict):
+        for parameters_match_dict in utils.get_input_value(name='match', section='template',
+                                                           input_dict=parameters_dict):
             chain_match = utils.get_input_value(name='chain', section='match', input_dict=parameters_match_dict)
-            residues_match_list = utils.get_input_value(name='residues', section='match', input_dict=parameters_match_dict)
+            residues_match_list = utils.get_input_value(name='residues', section='match',
+                                                        input_dict=parameters_match_dict)
             residues = None
             if residues_match_list is not None:
                 change_list = utils.expand_residues(residues_match_list)
@@ -76,7 +82,8 @@ class Template:
             if position != -1:
                 position = position - 1
             reference = utils.get_input_value(name='reference', section='match', input_dict=parameters_match_dict)
-            reference_chain = utils.get_input_value(name='reference_chain', section='match', input_dict=parameters_match_dict)
+            reference_chain = utils.get_input_value(name='reference_chain', section='match',
+                                                    input_dict=parameters_match_dict)
             self.match_restrict_struct.append_match(chain=chain_match, position=position, residues=residues,
                                                     reference=reference, reference_chain=reference_chain)
 
@@ -159,7 +166,8 @@ class Template:
             sequence_name = aux_key.split(':')[0]
             sequence_chain = aux_key.split(':')[1]
             fasta_path = os.path.join(output_dir, f'{self.pdb_id}_{sequence_chain}.fasta')
-            bioutils.write_sequence(sequence_name=sequence_name, sequence_amino=seq, sequence_path=fasta_path)
+            bioutils.write_sequence(sequence_name=f'{sequence_name}:{sequence_chain}', sequence_amino=seq,
+                                    sequence_path=fasta_path)
             new_database = hhsearch.create_database_from_pdb(fasta_path=fasta_path,
                                                              databases=databases,
                                                              output_dir=output_dir)
@@ -274,12 +282,8 @@ class Template:
 
             if self.template_chains_struct.get_number_chains() != sum(x is not None for x in composition_path_list) \
                     and not all(composition_path_list):
-                text = f'Not all chains have been selected in the template {self.pdb_id}. Probably there are chains ' \
-                       f'with bad alignment.'
-                if self.strict:
-                    raise Exception(text)
-                else:
-                    logging.info(text)
+                logging.info(f'Not all chains have been selected in the template {self.pdb_id}. Probably there are '
+                             f'chains with bad alignment.')
 
         return composition_path_list
 

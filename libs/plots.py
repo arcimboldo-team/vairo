@@ -137,23 +137,19 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     number_of_templates = 1
     total_length = len(a_air.sequence_assembled.sequence_mutated_assembled)
 
-    for i in range(a_air.sequence_assembled.total_copies):
-        ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
-                left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan', height=1)
-        if i < a_air.sequence_assembled.total_copies - 1:
-            ax.barh('sequence', a_air.sequence_assembled.glycines,
-                    left=a_air.sequence_assembled.get_finishing_length(i) + 2, color='tab:blue')
-
     mutated_residues = a_air.sequence_assembled.mutated_resides
     for i in mutated_residues:
-        ax.barh('sequence', 1, left=i+1, color='yellow', height=0.1)
+        ax.barh('sequence', 1, left=i + 1, align='edge', color='yellow', height=0.25, zorder=3)
 
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
-                left=a_air.sequence_assembled.get_starting_length(i) + 1, align='edge', color='tab:cyan', height=0.25)
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan', height=0.5, zorder=2)
+        ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, align='edge', color='tab:cyan', height=0.1,
+                zorder=3)
         if i < a_air.sequence_assembled.total_copies - 1:
             ax.barh('sequence', a_air.sequence_assembled.glycines,
-                    left=a_air.sequence_assembled.get_finishing_length(i) + 2, color='tab:blue')
+                    left=a_air.sequence_assembled.get_finishing_length(i) + 2, color='tab:blue', height=0.5, zorder=2)
 
     if plot_type == 'msa':
         title = 'MSA'
@@ -190,7 +186,8 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         else:
             name = 'Percentage'
         for i in range(1, len(add_sequences)):
-            ax.barh(name, 1, left=i, height=0.5, color=str(add_sequences[i - 1]))
+            if add_sequences[i - 1] != 1:
+                ax.barh(name, 1, left=i, height=0.5, color=str(add_sequences[i - 1]), zorder=2)
     if len(names) <= 30 or plot_type == 'both':
         if plot_type == 'both':
             names = a_air.feature.get_names_templates()
@@ -241,15 +238,16 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
 
                 for i in range(1, len(features_search)):
                     if aligned_sequence[i - 1] != '-':
-                        ax.barh(template_name, 1, left=i, height=0.5, color=str(aligned_sequence[i - 1]))
                         if i in changed_residues:
-                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='yellow')
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='yellow', zorder=3)
                         elif i in changed_fasta:
-                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red')
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red', zorder=3)
                         else:
-                            ax.barh(template_name, 1, left=i, height=0.25, align='edge',
+                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', zorder=3,
                                     color=str(aligned_sequence[i - 1]))
-                        ax.barh(template_name, 1, left=i, height=0.1, align='edge', color=str(aligned_sequence[i - 1]))
+                        ax.barh(template_name, 1, left=i, height=0.1, align='edge', zorder=3,
+                                color=str(aligned_sequence[i - 1]))
+                        ax.barh(template_name, 1, left=i, height=0.5, zorder=2, color=str(aligned_sequence[i - 1]))
 
     ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     if number_of_templates == 1:
@@ -270,8 +268,26 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
 
     fig.set_size_inches(16, index)
     plt.setp([ax.get_xticklines()], color='k')
-    ax.set_xlim(0, total_length)
-    ax.set_ylim(0, number_of_templates)
+    ax.set_xlim(-round(ax.get_xlim()[1] - total_length) / 6, total_length + round(ax.get_xlim()[1] - total_length) / 6)
+    ax.set_ylim(-0.5, number_of_templates + 0.5)
+
+    color_template = '#E8DFF5'
+    color_msa = '#FFD6A5'
+    color_sequence = '#F9F7E8'
+    if number_of_templates == 1:
+        ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
+    else:
+        if plot_type == 'both':
+            ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
+            ax.axhspan(0.5, 1.5, facecolor='0.5', zorder=1, color=color_msa)
+            ax.axhspan(1.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_template)
+        elif plot_type == 'msa':
+            ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
+            ax.axhspan(0.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_msa)
+        else:
+            ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
+            ax.axhspan(0.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_template)
+
     legend_elements.append(
         'The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n'
         'The darker parts indicate that the residues are the same or belong to the same group.')
@@ -283,7 +299,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     ax.set_xticks(
         [a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xticks(list(ax.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i in
-                                           range(a_air.sequence_assembled.total_copies - 1)])
+                                           range(a_air.sequence_assembled.total_copies)])
 
     cut_chunk = [list(tup) for tup in a_air.chunk_list]
     cut_chunk = utils.remove_list_layer(cut_chunk)
