@@ -45,7 +45,7 @@ class Template:
         self.aligned = utils.get_input_value(name='aligned', section='template', input_dict=parameters_dict)
         self.template_path = f'{os.path.join(output_dir, self.pdb_id)}_template.pdb'
         self.reference = utils.get_input_value(name='reference', section='template', input_dict=parameters_dict)
-        self.generate_multimer = utils.get_input_value(name='pdb', section='template', input_dict=parameters_dict)
+        self.generate_multimer = utils.get_input_value(name='generate_multimer', section='template', input_dict=parameters_dict)
         self.generate_multimer = False if self.legacy else self.generate_multimer
 
         for paramaters_change_res in utils.get_input_value(name='change_res', section='template', input_dict=parameters_dict):
