@@ -192,15 +192,20 @@ def parse_cc_analysis(file_path: str) -> Dict:
 def parse_hinges_chains(output: str) -> str:
     # Read the output of hines when using -p chains
     # Return the bets chain combination
-    lines = output.strip().split('\n')[8:]
+    lines = output.strip().split('\n')
     lowest_rmstot = float('inf')
     lowest_perm = ''
+    found_hash = False
     for line in lines:
-        split_line = line.split()
-        rmstot = float(split_line[3])
-        if rmstot < lowest_rmstot:
-            lowest_rmstot = rmstot
-            lowest_perm = split_line[1]
+        if found_hash:
+            split_line = line.split()
+            rmstot = float(split_line[3])
+            if rmstot < lowest_rmstot:
+                lowest_rmstot = rmstot
+                lowest_perm = split_line[1]
+        elif line.startswith(' #'):
+            found_hash = True
+
     return lowest_perm
 
 
@@ -245,7 +250,7 @@ def parse_hinges(output: str) -> structures.Hinges:
     file1 = (file_1_count - warnings_1) / file_1_count if file_1_count != 0 else 0
     file2 = (file_2_count - warnings_2) / file_2_count if file_2_count != 0 else 0
 
-    hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100,
+    hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
                                       one_rmsd=rmsd_list[0],
                                       middle_rmsd=rmsd_list[len(rmsd_list) // 2],
                                       min_rmsd=min(rmsd_list),

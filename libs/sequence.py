@@ -14,7 +14,7 @@ class Sequence:
         self.name: str
         self.length: int
         self.num_of_copies: int
-        self.positions: List[int]
+        self.positions: List[int] = []
         self.mutations_dict: Dict = {}
 
         fasta_path = utils.get_input_value(name='fasta_path', section='sequence', input_dict=parameters_dict)

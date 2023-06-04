@@ -377,6 +377,7 @@ class StructureAir:
                 name = f'{self.name_results_dir}{i}'
             path = os.path.join(self.run_dir, name)
             sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[self.chunk_list[i][0]:self.chunk_list[i][1]]
+            run_af2 = False if self.mode == 'guided' and self.cluster_templates else self.run_af2
             afrun = alphafold_classes.AlphaFoldRun(results_dir=path,
                                                    sequence=sequence_chunk,
                                                    custom_features=self.custom_features,
@@ -384,7 +385,7 @@ class StructureAir:
                                                    small_bfd=self.small_bfd,
                                                    start_chunk=self.chunk_list[i][0],
                                                    end_chunk=self.chunk_list[i][1],
-                                                   run=self.run_af2,
+                                                   run=run_af2,
                                                    feature=feature
                                                    )
             self.afrun_list.append(afrun)
@@ -483,7 +484,8 @@ class StructureAir:
         utils.create_dir(self.cluster_path, delete_if_exists=False)
         templates_cluster = bioutils.hinges(paths_in=self.output.templates_dict,
                                             hinges_path=self.cc_analysis_paths.hinges_path,
-                                            output_path=os.path.join(self.results_dir, 'hinges'))
+                                            output_path=os.path.join(self.results_dir, 'hinges'),
+                                            length_sequences=self.output.percentage_sequences)
 
         templates_path_list = [template_in for template_list in templates_cluster for template_in in template_list]
         num_templates = len(templates_path_list)
@@ -494,7 +496,7 @@ class StructureAir:
 
         if templates_cluster:
             logging.info(
-                f'The templates obtained in alphafold2 can be grouped in {len(templates_cluster)} clusters')
+                f'The templates can be grouped in {len(templates_cluster)} clusters')
             for templates in templates_cluster:
                 name_job = f'cluster_{counter}'
                 label_job = f'Cluster {counter}'
@@ -529,8 +531,13 @@ class StructureAir:
         features_path = os.path.join(job_path, 'features.pkl')
         utils.create_dir(dir_path=job_path, delete_if_exists=False)
         new_features = features.Features(self.sequence_assembled.sequence_assembled)
-        new_features.set_template_features(new_templates=self.features.template_features,
-                                           sequence_in=self.cluster_templates_sequence)
+
+        for template_in in templates:
+            index = self.feature.get_index_by_name(utils.get_file_name(template_in))
+            template_dict = self.feature.get_template_by_index(index)
+            new_features.set_template_features(new_templates=template_dict,
+                                               sequence_in=self.cluster_templates_sequence)
+
         total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
         if self.cluster_templates_msa != 0:
             new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa,
@@ -538,6 +545,7 @@ class StructureAir:
         new_features.write_pkl(features_path)
 
         with open(yml_path, 'w') as f_out:
+            f_out.write(f'mode: guided\n')
             f_out.write(f'output_dir: {job_path}\n')
             f_out.write(f'run_dir: {os.path.join(job_path, os.path.basename(self.run_dir))}\n')
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')

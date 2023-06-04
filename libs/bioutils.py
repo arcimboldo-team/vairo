@@ -469,7 +469,7 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
     # If there is no group generated -> Return the one more completed and the one more different to that template
     # Otherwise, return all the paths
     utils.create_dir(output_path, delete_if_exists=True)
-    threshold_completeness = 0.7
+    threshold_completeness = 0.6
     threshold_rmsd_domains = 10
     threshold_rmsd_ss = 3
     threshold_rmsd_local = 1
@@ -491,8 +491,8 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
         validate_geometry = generate_ramachandran(pdb_path=value, output_path=output_path)
         # Check the query sequence vs the number of residues of the pdb
         completeness = True
-        if length_sequences is not None:
-            completeness = any(number > 0.7 for number in length_sequences)
+        if length_sequences is not None and key in length_sequences:
+            completeness = any(number > threshold_completeness for number in length_sequences[key])
         if completeness and validate_geometry:
             accepted_pdbs[key] = value
             if num_residues > pdb_complete_value:
@@ -501,7 +501,11 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
         else:
             uncompleted_pdbs[key] = value
 
-    logging.info(f'There are {len(accepted_pdbs)} complete pdbs. Using hinges to create groups.')
+    logging.info(f'There are {len(accepted_pdbs)} complete pdbs.')
+    if len(accepted_pdbs) < 2:
+        logging.info(f'Skipping hinges.')
+        return [[values for values in paths_in.values()]]
+    logging.info(f'Using hinges to create groups.')
 
     # Run hinges all-against-all, store the results in a dict.
     results_rmsd = {key: {} for key in accepted_pdbs}
@@ -533,9 +537,10 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
                     selected_group = group[0]
         groups_names[selected_group].append(key1)
     groups_names = [values for values in groups_names.values() if len(values) > 1]
-    if len(groups_names) > 1:
+
+    if len(groups_names) > 1 or (len(groups_names) == 1 and len(groups_names[0]) > 1):
         # Return the groups that has generated
-        logging.info(f'Hinges has created {len(groups_names)} groups:')
+        logging.info(f'Hinges has created {len(groups_names)} group/s:')
         for i, values in enumerate(groups_names):
             logging.info(f'Group {i}: {",".join(values)}')
         return [[path for key, path in paths_in.items() if key in group] for group in groups_names]
@@ -549,7 +554,7 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
         return [[pdb_complete], [path_diff]]
     else:
         # Return the original list of pdbs
-        logging.info('Not good enough pdbs for hinges.')
+        logging.info('Not enough pdbs for hinges.')
         return [[values for values in paths_in.values()]]
 
 
