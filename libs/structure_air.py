@@ -108,7 +108,8 @@ class StructureAir:
                         f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
-        for parameters_sequence in utils.get_input_value(name='sequences', section='global', input_dict=parameters_dict):
+        for parameters_sequence in utils.get_input_value(name='sequences', section='global',
+                                                         input_dict=parameters_dict):
             new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
             sequence_list.append(new_sequence)
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
@@ -117,15 +118,17 @@ class StructureAir:
 
             path = utils.get_input_value(name='path', section='sequences_msa', input_dict=sequence_msa)
             aligned = utils.get_input_value(name='aligned', section='sequences_msa', input_dict=sequence_msa)
-            position_query_ini = utils.get_input_value(name='position_query_ini', section='sequences_msa', input_dict=sequence_msa)
-            position_query_res_ini = utils.get_input_value(name='position_query_res_ini', section='sequences_msa', input_dict=sequence_msa)
+            position_query_ini = utils.get_input_value(name='position_query_ini', section='sequences_msa',
+                                                       input_dict=sequence_msa)
+            position_query_res_ini = utils.get_input_value(name='position_query_res_ini', section='sequences_msa',
+                                                           input_dict=sequence_msa)
             positions = utils.get_input_value(name='positions', section='sequences_msa', input_dict=sequence_msa)
 
             if position_query_ini is None:
                 position_query_ini = 1
 
             if position_query_res_ini is None:
-                position_query_res_ini = self.sequence_assembled.get_starting_length(0)+1
+                position_query_res_ini = self.sequence_assembled.get_starting_length(0) + 1
             if positions:
                 positions = utils.expand_residues(positions)
 
@@ -376,7 +379,8 @@ class StructureAir:
             else:
                 name = f'{self.name_results_dir}{i}'
             path = os.path.join(self.run_dir, name)
-            sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[self.chunk_list[i][0]:self.chunk_list[i][1]]
+            sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[
+                             self.chunk_list[i][0]:self.chunk_list[i][1]]
             run_af2 = False if self.mode == 'guided' and self.cluster_templates else self.run_af2
             afrun = alphafold_classes.AlphaFoldRun(results_dir=path,
                                                    sequence=sequence_chunk,
@@ -482,17 +486,10 @@ class StructureAir:
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
-        templates_cluster = bioutils.hinges(paths_in=self.output.templates_dict,
-                                            hinges_path=self.cc_analysis_paths.hinges_path,
-                                            output_path=os.path.join(self.results_dir, 'hinges'),
-                                            length_sequences=self.output.percentage_sequences)
-
-        templates_path_list = [template_in for template_list in templates_cluster for template_in in template_list]
-        num_templates = len(templates_path_list)
-        if len(templates_cluster) > 1 and num_templates >= 5:
-            templates_cluster, _ = bioutils.cc_analysis(paths_in=templates_path_list,
-                                                        cc_analysis_paths=self.cc_analysis_paths,
-                                                        cc_path=os.path.join(self.results_dir, 'ccanalysis'))
+        templates_cluster, _ = bioutils.cc_and_hinges_analysis(paths_in=self.output.templates_dict,
+                                                               binaries_path=self.cc_analysis_paths,
+                                                               output_path=self.results_dir,
+                                                               length_sequences=self.output.percentage_sequences)
 
         if templates_cluster:
             logging.info(
@@ -550,6 +547,12 @@ class StructureAir:
             f_out.write(f'run_dir: {os.path.join(job_path, os.path.basename(self.run_dir))}\n')
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
             f_out.write(f'glycines: {self.glycines}\n')
+            f_out.write(f'mosaic: {self.mosaic}\n')
+            if self.mosaic_partition:
+                txt_aux = []
+                for partition in self.mosaic_partition:
+                    txt_aux.append("-".join(map(str, partition)))
+                f_out.write(f'mosaic_partition: {",".join(map(str, txt_aux))}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')

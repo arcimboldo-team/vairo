@@ -130,6 +130,8 @@ class Features:
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = [],
                          positions: List[int] = []):
         coverage_msa = []
+        if positions and len(new_msa['msa']) > 0 and positions[1]-positions[0]+1 != len(new_msa['msa'][0]):
+            raise Exception('Select the positions of the features.pkl. The features.pkl msa is smaller than the query sequence')
         for i in range(start, len(new_msa['msa'])):
             if delete_positions:
                 new_msa = delete_residues_msa(msa=new_msa, position=i, delete_positions=delete_positions)

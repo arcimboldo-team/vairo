@@ -136,6 +136,8 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     legend_seq = [Patch(label='Sequence', color='tab:cyan'), Patch(label='Linker', color='tab:blue')]
     number_of_templates = 1
     total_length = len(a_air.sequence_assembled.sequence_mutated_assembled)
+    msa_found = False
+    templates_found = False
 
     mutated_residues = a_air.sequence_assembled.mutated_resides
     for i in mutated_residues:
@@ -186,6 +188,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         else:
             name = 'Percentage'
         for i in range(1, len(add_sequences)):
+            msa_found = True
             if add_sequences[i - 1] != 1:
                 ax.barh(name, 1, left=i, height=0.5, color=str(add_sequences[i - 1]), zorder=2)
     if len(names) <= 30 or plot_type == 'both':
@@ -196,6 +199,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         if os.path.exists(pdb_hits_path):
             hhr_text = open(pdb_hits_path, 'r').read()
         for j, name in reversed(list(enumerate(names))):
+            templates_found = True
             number_of_templates += 1
             template = a_air.get_template_by_id(name)
             changed_residues = []
@@ -217,7 +221,6 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
                         text += f'\n\tChain {alignment.database.chain}: Aligned={alignment.aligned_columns}({alignment.total_columns}) Evalue={alignment.evalue} Identities={alignment.identities}'
                     else:
                         text += f'\n\tNo alignment'
-            legend_elements.append(text)
 
             if plot_type == 'msa':
                 features_search = a_air.feature.get_msa_by_name(name)
@@ -227,10 +230,10 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
                     match = re.findall(rf'(\d+ {name.upper()}.*$)', hhr_text, re.M)
                     if match:
                         match_split = match[0].split()[-9:]
-                        legend_elements.append(
-                            f'\n{template_name}: Aligned={match_split[5]}({match_split[8].replace("(", "").replace(")", "")}) Evalue={match_split[2]}')
+                        text = f'\n{template_name}: Aligned={match_split[5]}({match_split[8].replace("(", "").replace(")", "")}) Evalue={match_split[2]}'
                     else:
-                        legend_elements.append(f'\n{template_name}')
+                        text = f'\n{template_name}'
+            legend_elements.append(text)
 
             if features_search is not None:
                 aligned_sequence = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
@@ -279,8 +282,12 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     else:
         if plot_type == 'both':
             ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
-            ax.axhspan(0.5, 1.5, facecolor='0.5', zorder=1, color=color_msa)
-            ax.axhspan(1.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_template)
+            if msa_found:
+                ax.axhspan(0.5, 1.5, facecolor='0.5', zorder=1, color=color_msa)
+                if templates_found:
+                    ax.axhspan(1.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_template)
+            elif templates_found:
+                ax.axhspan(0.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_template)
         elif plot_type == 'msa':
             ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
             ax.axhspan(0.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_msa)

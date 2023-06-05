@@ -190,18 +190,22 @@ class OutputAir:
                         green_color -= 5
 
         # Generate CCANALYSIS plots, one without rankeds and another one with rankeds.
-        templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=self.templates_dict,
-                                                                     cc_analysis_paths=cc_analysis_paths,
-                                                                     cc_path=os.path.join(self.results_dir,'ccanalysis'))
+
+        templates_cluster_list, analysis_dict = bioutils.cc_and_hinges_analysis(paths_in=self.templates_dict,
+                                                                                binaries_path=cc_analysis_paths,
+                                                                                output_path=self.results_dir,
+                                                                                length_sequences=self.percentage_sequences)
         if analysis_dict:
-            plots.plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=analysis_dict,
+            plots.plot_cc_analysis(plot_path=self.analysis_plot_path,
+                                   analysis_dict=analysis_dict,
                                    clusters=templates_cluster_list)
         aux_dict = dict({ranked.name: ranked.split_path for ranked in self.ranked_list}, **self.templates_dict)
-        templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_analysis(paths_in=aux_dict,
-                                                                                   cc_analysis_paths=cc_analysis_paths,
-                                                                                   cc_path=os.path.join(
-                                                                                       self.results_dir,
-                                                                                       'ccanalysis_ranked'))
+
+        templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_and_hinges_analysis(paths_in=aux_dict,
+                                                                                              binaries_path=cc_analysis_paths,
+                                                                                              output_path=self.results_dir,
+                                                                                              length_sequences=self.percentage_sequences)
+
         if analysis_dict_ranked:
             plots.plot_cc_analysis(plot_path=self.analysis_ranked_plot_path, analysis_dict=analysis_dict_ranked,
                                    clusters=templates_cluster_ranked_list, predictions=True)
@@ -217,12 +221,12 @@ class OutputAir:
                 ranked.sort_template_rankeds()
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
-        if best_ranked_dict:
-            [bioutils.gesamt_pdbs([best_ranked_dict[template_path], template_path], template_path) for template_path
-             in self.templates_dict.values()]
-        else:
-            [bioutils.gesamt_pdbs([self.ranked_list[0].split_path, template_path], template_path) for template_path
-             in self.templates_dict.values()]
+
+        for template_path in self.templates_dict.values():
+            if best_ranked_dict and template_path in best_ranked_dict:
+                bioutils.gesamt_pdbs([best_ranked_dict[template_path], template_path], template_path)
+            else:
+                bioutils.gesamt_pdbs([self.ranked_list[0].split_path, template_path], template_path)
 
         # Use aleph to generate domains and calculate secondary structure percentage
 
@@ -273,7 +277,8 @@ class OutputAir:
                 rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
                 total_residues = bioutils.get_number_residues(pdb)
                 rmsd = round(rmsd, 2) if rmsd is not None else str(rmsd)
-                aux_dict[utils.get_file_name(pdb)] = structures.TemplateRanked(pdb, rmsd, aligned_residues, total_residues)
+                aux_dict[utils.get_file_name(pdb)] = structures.TemplateRanked(pdb, rmsd, aligned_residues,
+                                                                               total_residues)
             output_pdb = os.path.join(self.output_dir, os.path.basename(experimental))
             bioutils.gesamt_pdbs([reference_superpose, experimental], output_pdb)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
@@ -394,7 +399,8 @@ class OutputAir:
                 data = {'experimental': self.experimental_dict.keys()}
                 for keys_pdbs in self.experimental_dict.values():
                     for key, value in keys_pdbs.items():
-                        data.setdefault(key, []).append(f'{value.rmsd} {value.aligned_residues} ({value.total_residues})')
+                        data.setdefault(key, []).append(
+                            f'{value.rmsd} {value.aligned_residues} ({value.total_residues})')
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())
 
