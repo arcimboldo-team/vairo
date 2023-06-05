@@ -133,11 +133,11 @@ class StructureAir:
                 positions = utils.expand_residues(positions)
 
             if os.path.exists(path):
-                aux_list = [file for file in os.listdir(path)] if os.path.isdir(path) else [path]
+                aux_list = [os.path.join(path, file) for file in os.listdir(path)] if os.path.isdir(path) else [path]
                 for aux_path in aux_list:
                     if utils.get_file_extension(aux_path) in ['.pdb', '.cif', '.fasta']:
                         self.sequences_msa.append(
-                            structures.SequencesMsa(path=path, aligned=aligned,
+                            structures.SequencesMsa(path=aux_path, aligned=aligned,
                                                     position_query_ini=position_query_ini,
                                                     position_query_res_ini=position_query_res_ini,
                                                     positions=positions))
