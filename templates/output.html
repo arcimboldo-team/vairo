@@ -1,3 +1,16 @@
+{% macro color_plddt(plddt) %}
+    <span style="color:
+            {% if plddt > 70 %}
+                green
+            {% elif plddt < 50 %}
+                red
+            {% else %}
+                orange
+            {% endif %}
+         ">{{ plddt }} average pLDDT</span>
+{% endmacro %}
+
+
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -126,7 +139,7 @@
                 background: #767B7D;
                 color: #fff;
                 display: block;
-            }
+            }color_plddt
 
             .section-div{
                 padding-top: 35px;
@@ -251,7 +264,7 @@
                 {% if data.ranked_by_rmsd %}
                     {% for key, values in data.ranked_by_rmsd.items() %}
                         {% if loop.first %}
-                            <p>Best result is <span style="color:green;">{{ values[0].name }}</span> with a {{ values[0].plddt }} average pLDDT.
+                            <p>Best result is <span style="color:green;">{{ values[0].name }}</span> with a {{ color_plddt(values[0].plddt ) }}.
                                 Can be found in the following path: <a download="{{ values[0].name }}.pdb" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
                             </p>
                             {% for ranked in values if ranked.name != values[0].name %}
@@ -274,9 +287,9 @@
                                         {% if loop.first %}
                                             <ul>
                                                 {% if ranked.name in data.filtered_dict %}
-                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.plddt }} average pLDDT)</li>
+                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
                                                 {% else %}
-                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.plddt }} average pLDDT)</li>
+                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
                                                 {% endif %}
                                         {% else %}
                                                 {% if ranked.name in data.filtered_dict %}
@@ -343,10 +356,26 @@
             {% if 'gantt' in data %}
                 <div id="alignment" class="section-div">
                     <h2>Alignment</h2>
-                    {% for gantt_graph in data.gantt %}
-                        <img style="width: 100%" src="data:image/png;base64,{{ gantt_graph }}" alt="Gantt diagram with alignments">
-                    {% endfor %}
-                </div>            
+                        <img style="width: 100%" src="data:image/png;base64,{{ data.gantt.plot_both }}" alt="Gantt diagram with msa and templates">
+                        <p style="white-space: pre-wrap;">{{ data.gantt.legend_both }}</p>
+
+                        <ul style="margin: 0px 0px; padding-left: 0px">
+                            <li style="list-style: none;">
+                                <details>
+                                <summary><h4 style="display:inline">Templates plot</h4></summary>
+                                    <img style="width: 100%" src="data:image/png;base64,{{ data.gantt.plot_template }}" alt="Gantt diagram with templates">
+                                    <p style="white-space: pre-wrap;">{{ data.gantt.legend_template }}</p>
+                                </details>
+                            </li>
+                            <li style="list-style: none;">
+                            <details>
+                            <summary><h4 style="display:inline">MSA plot</h4></summary>
+                                    <img style="width: 100%" src="data:image/png;base64,{{ data.gantt.plot_msa }}" alt="Gantt diagram with msa">
+                                    <p style="white-space: pre-wrap;">{{ data.gantt.legend_msa }}</p>
+                            </details>
+                            </li>
+                        </ul>
+                </div>
             {% endif %}
             {% if 'plddt' in data %}
                 <div id="plddt" class="section-div">
@@ -515,7 +544,7 @@
                     </table>
                 {% endif %}
                 {% if 'ranked_rmsd_dict' in data.table %}
-                    <h3>Superposition between predictions</h3>
+                    <h3>Superposition between predictions (RMSD)</h3>
                     <table>
                         <tr>
                             <th>prediction</th>
@@ -541,7 +570,7 @@
                 {% endif %}
 
                 {% if 'rmsd_dict' in data.table %}
-                    <h3>Superposition of predictions and templates</h3>
+                    <h3>Superposition of predictions and templates (RMSD, superposed residues, total residues)</h3>
                     <table>
                         <tr>
                             <th>prediction</th>
@@ -616,7 +645,7 @@
                     </table>
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
-                    <h3>Experimental pdbs with predictions and templates</h3>
+                    <h3>Experimental pdbs with predictions and templates (RMSD, superposed residues, total residues)</h3>
                     <table>
                         <tr>
                             <th>experimental pdb</th>
@@ -630,7 +659,7 @@
                             <tr>
                                 <td>{{ key }}</td>
                                 {% for value2 in value.values() %}
-                                    <td>{{ value2 }}</td>
+                                    <td>{{ value2.rmsd }} {{ value2.aligned_residues }} ({{ value2.total_residues }})</td>
                                 {% endfor %}
                             </tr>
                         {% endfor %}

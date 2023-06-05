@@ -1,4 +1,4 @@
-Requires HHsearch, maxit, pisa and superpose installation.
+Requires HH-suite and CCP4 suite installation.
 Using AlphaFold2 and ALEPH.
 
 Usage: arcimboldo_air.py configuration.bor
@@ -6,17 +6,16 @@ Usage: arcimboldo_air.py configuration.bor
 The configuration.bor has to be a file with YAML format and can contain the following
 parameters:
 
+  mode (mandatory, string): {naive, guided}
   output_dir (mandatory, string): Path to the results' directory.
   af2_dbs_path (mandatory, string): Path to the AlphaFold2 databases, they have to be downloaded.
   run_dir (optional, string, 'run'): Path to the directory where AlphaFold2 will be run.
-  verbose (optional, bool, true): Enable debugging.
   glycines (optional, integer, 50): Number of glycines between sequence copies.
   small_bfd (optional, bool, false): Use reduced bfd library.
   run_af2 (optional, bool, true): Run AlphaFold2, it can be used to generate a features.pkl without going further.
   stop_after_msa (optional, bool, false): Run AlphaFold2 and stop it after generating the msa.
   reference (optional, string, ''): Existing pdbid or path to a pdb
   experimental_pdbs (optional, List, []): List of existing pdbid or path to a pdb
-  custom_features (optional, bool, true): Run AlphaFold2 without any modification and with AlphaFold2 generated features.pkl
   mosaic (optional, integer, None): Split the sequence in X partitions.
   mosaic_partition (optional, range, None): Split the sequence by the number of residues.
   mosaic_seq_partition (optional, range, None): Split the sequence by the number of sequences.
@@ -25,7 +24,6 @@ parameters:
   cluster_templates_msa_delete: (optional, range, None): Delete specific residues from the MSA sequences.
   cluster_templates_sequence: (optional, path, None): Replace templates sequence with sequence in path.
 
-
 Several sequences can be added to the query sequence. Each Fasta can have several copies and can be inserted in a specific position
 inside the query sequence. All the sequences will be concatenated using Glycines.
 sequences:
@@ -33,9 +31,18 @@ sequences:
   num_of_copies:
   positions:
   name:
+  mutations:
+    'G': 10, 20
 
 Several features.pkl can be merged to the final features.pkl. It is possible to select the amount of templates and sequences to be inserted.
 Delete specific regions of the MSA, replace the sequence of the templates and insert the features in specific regions in the final features.
+
+- sequence_msa:
+  - path: (mandatory, string): Path to a folder, pdb or fasta. The folder can contain fastas or pdbs too.
+    position: (optional, string) Position to cut the sequence. Starting and finishing position (Eg. 3-6)
+    positions_query_ini: (optional, int): Starting position in the query sequence (if there is more than one sequence)
+    position_query_res_ini: (optional, int): Starting position in the query sequence, the starting residue.
+
 features:
 - path: (mandatory, string): Path to features.pkl
   keep_msa: (optional, int, -1): Keep the msa of the features.pkl 
@@ -44,15 +51,14 @@ features:
   sequence: (optional, path, None): Replace templates sequence with sequence in path.
   positions: (optional, range, None): Insert the features.pkl in a specific region inside the query sequence.
 
-
 Templates can be added to the templates section inside the features.pkl, as well as their sequence to the msa, it is possible to add as many templates as the user requires:
 
 templates:
 - pdb (mandatory, string): Existing pdbid or path to a pdb
-  add_to_msa (optional, bool, false): Add template to the msa.
-  add_to_templates (optional, bool, true): Add template to the features.pkl
-  generate_multimer (optional, bool, true if num_of_copies > 1 else false):
-  sum_prob (optional, integer, None):
+  add_to_msa (optional, bool, False): Add template to the msa.
+  add_to_templates (optional, bool, True): Add template to the features.pkl
+  generate_multimer (optional, bool, True):
+  sum_prob (optional, integer, False):
   strict (optional, bool True): Check the evalues of the alignment
   aligned (optional, bool, false): If the template has already been aligned with the sequence.
   legacy (optional, bool, false): If the template has been prepared (aligned, one chain)
@@ -60,7 +66,9 @@ templates:
   
   change_res: -> Change residues of the template. It can be a chain or 'ALL' so this can be applied to all chains
     - {chain_name or ALL}: (mandatory, range): Selection of residues to apply the modification
-      resname (mandatory, string): Residue name
+      resname (optional, string): Residue name
+      fasta_path (optional, string): Fasta path to replace the sequence
+      when (optional, string, after_alignment): When change the chain, before_alignment or after_alignment
 
   match: -> Set restrictions in order to insert the template into the sequence copies
     - chain (mandatory, string): Set the position of the chain
@@ -68,41 +76,6 @@ templates:
       residues: (optional, int range, ''): Selection of residues to set in a position. Can be a range or an integer (Ex: 100-120, 100), otherwise, the whole chain is going to be selected.
       reference:  (optional, string, ''): Existing pdbid or path to a pdb
       reference_chain: (optional, string, ''): Existing reference chain. The match chain will be fixed in the same position as the reference chain.
-
-Example of a configuration.bor:
-
-templates:
-- pdb: 3fxq
-  add_to_msa: false
-  add_to_templates: true
-  generate_multimer: false
-  change_res:
-    - resname: 'ALA'
-      fasta_path:
-      when: after_alignment/before_alignment
-      B: 10-50
-      A: 1-10
-  match:
-      - chain: B
-        position: 1
-        residues: 30
-      - chain: A
-        position: 2
-      - chain: A
-        position: 3
-
-- pdb: 3fzv
-  add_to_msa: false
-  add_to_templates: true
-  generate_multimer: true
-  match:
-    - chain: B
-      position: 1
-
-- pdb: 4x6g
-  add_to_msa: false
-  add_to_templates: true
-  generate_multimer: true
 
 
 PATHS:

@@ -1,15 +1,6 @@
-import copy
-import itertools
-import logging
-import os
-import re
-import shutil
-import subprocess
-import sys
+import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple, Union
-from statistics import mean
-from collections import defaultdict
-
 import numpy as np
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
@@ -19,24 +10,24 @@ from sklearn.cluster import KMeans
 
 from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
-from libs import change_res, structures, utils, sequence, plots, global_variables
+from libs import change_res, structures, utils, plots, global_variables, sequence
 from alphafold.relax import cleanup
-
 from libs.structures import Hinges
 
 
-def download_pdb(pdb_id: str, output_dir: str):
+def download_pdb(pdb_id: str, pdb_path: str) -> str:
     pdbl = PDBList(server='https://files.wwpdb.org')
-    result_ent = pdbl.retrieve_pdb_file(pdb_code=pdb_id, pdir=output_dir, file_format='pdb', obsolete=False)
+    result_ent = pdbl.retrieve_pdb_file(pdb_code=pdb_id, file_format='pdb', obsolete=False)
     if not os.path.exists(result_ent):
         raise Exception(f'{pdb_id} could not be downloaded.')
-    shutil.copy2(result_ent, os.path.join(output_dir, f'{pdb_id}.pdb'))
+    shutil.copy2(result_ent, pdb_path)
     os.remove(result_ent)
     shutil.rmtree('obsolete')
+    return pdb_path
 
 
-def pdb2mmcif(output_dir: str, pdb_in_path: str, cif_out_path: str):
-    maxit_dir = os.path.join(output_dir, 'maxit')
+def pdb2mmcif(pdb_in_path: str, cif_out_path: str) -> str:
+    maxit_dir = os.path.join(os.path.dirname(cif_out_path), 'maxit')
     if not os.path.exists(maxit_dir):
         os.mkdir(maxit_dir)
     subprocess.Popen(['maxit', '-input', pdb_in_path, '-output', cif_out_path, '-o', '1'], cwd=maxit_dir,
@@ -68,20 +59,14 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int,
                      cwd=os.path.dirname(pdb_out)).communicate()
 
 
-def check_pdb(pdb: str, output_dir: str) -> str:
+def check_pdb(pdb: str, pdb_out_path: str) -> str:
     # Check if pdb is a path, and if it doesn't exist, download it.
     # If the pdb is a path, copy it to our input folder
-
     if not os.path.exists(pdb):
-        download_pdb(pdb_id=pdb, output_dir=output_dir)
-        pdb = os.path.join(output_dir, f'{pdb}.pdb')
+        pdb_path = download_pdb(pdb_id=pdb, pdb_path=pdb_out_path)
     else:
-        pdb_aux = os.path.join(output_dir, os.path.basename(pdb))
-        if pdb != pdb_aux:
-            shutil.copy2(pdb, pdb_aux)
-            pdb = pdb_aux
-
-    return pdb
+        pdb_path = shutil.copy2(pdb, pdb_out_path)
+    return pdb_path
 
 
 def check_sequence_path(path_in: str) -> str:
@@ -104,6 +89,30 @@ def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
     except Exception as e:
         logging.info(f'Something went wrong adding the CRYST1 record to the pdb at {pdb_in_path}')
         return False
+
+
+def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
+    structure = get_structure(pdb_path)
+    model = structure[0]
+    sequences = {}
+    for chain in model:
+        residue_numbers = set()
+        for residue in chain:
+            residue_numbers.add(residue.get_id()[1])
+        sequence_ext = ""
+        prev_residue_number = 0
+        for residue in chain:
+            residue_number = residue.get_id()[1]
+            if residue_number - prev_residue_number > 1:
+                for missing_number in range(prev_residue_number + 1, residue_number):
+                    sequence_ext += "-"
+            try:
+                sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
+            except:
+                pass
+            prev_residue_number = residue_number
+        sequences[chain.id] = sequence_ext
+    return sequences
 
 
 def extract_sequence(fasta_path: str) -> str:
@@ -142,7 +151,7 @@ def read_seqres(pdb_path: str) -> str:
 
 
 def extract_sequence_from_file(file_path: str) -> List[str]:
-    results_list = []
+    results_dict = {}
     extension = utils.get_file_extension(file_path)
     if extension == '.pdb':
         extraction = 'pdb-atom'
@@ -151,13 +160,13 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
     try:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
-                results = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}\n'
-                results += str(record.seq.replace("X", ""))
-                results_list.append(results)
+                key = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}'
+                value = str(record.seq.replace("X", ""))
+                results_dict[key] = value
     except Exception as e:
         logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
         pass
-    return results_list
+    return results_dict
 
 
 def write_sequence(sequence_name: str, sequence_amino: str, sequence_path: str) -> str:
@@ -171,12 +180,11 @@ def split_pdb_in_chains(output_dir: str, pdb_in_path: str) -> Dict:
     aux_path = os.path.join(output_dir, os.path.basename(pdb_in_path))
     shutil.copy2(pdb_in_path, aux_path)
     chain_dict = chain_splitter(aux_path)
-    extracted_chain_dict = {k: [v] for k, v in chain_dict.items()}
-    return extracted_chain_dict
+    return chain_dict
 
 
 def merge_pdbs(list_of_paths_of_pdbs_to_merge: List[str], merged_pdb_path: str):
-    with open(merged_pdb_path, 'w') as f:
+    with open(merged_pdb_path, 'w+') as f:
         counter = 0
         for pdb_path in list_of_paths_of_pdbs_to_merge:
             for line in open(pdb_path, 'r').readlines():
@@ -269,23 +277,27 @@ def read_remark_350(pdb_path: str) -> Tuple[List[str], List[List[List[Any]]]]:
 
 def change_chain(pdb_in_path: str, pdb_out_path: str, rot_tra_matrix: List[List] = None, offset: Optional[int] = 0,
                  chain: Optional[str] = None):
-    with open('/tmp/pdbset.sh', 'w') as f:
-        f.write(f'pdbset xyzin {pdb_in_path} xyzout {pdb_out_path} << eof\n')
-        if rot_tra_matrix is not None:
-            r11, r12, r13 = rot_tra_matrix[0]
-            r21, r22, r23 = rot_tra_matrix[1]
-            r31, r32, r33 = rot_tra_matrix[2]
-            t1, t2, t3 = rot_tra_matrix[3]
-            f.write(
-                f'rotate {float(r11)} {float(r12)} {float(r13)} {float(r21)} {float(r22)} {float(r23)} {float(r31)} {float(r32)} {float(r33)}\n')
-            f.write(f'shift {float(t1)} {float(t2)} {float(t3)}\n')
-        f.write(f'renumber increment {offset}\n')
-        if chain:
-            f.write(f'chain {chain}\n')
-        f.write('end\n')
-        f.write('eof')
-    subprocess.Popen(['bash', '/tmp/pdbset.sh'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
-    utils.rmsilent(f'/tmp/pdbset.sh')
+    try:
+        tmp_file = tempfile.NamedTemporaryFile(delete=False)
+        with open(tmp_file.name, 'w+') as f:
+            f.write(f'pdbset xyzin {pdb_in_path} xyzout {pdb_out_path} << eof\n')
+            if rot_tra_matrix is not None:
+                r11, r12, r13 = rot_tra_matrix[0]
+                r21, r22, r23 = rot_tra_matrix[1]
+                r31, r32, r33 = rot_tra_matrix[2]
+                t1, t2, t3 = rot_tra_matrix[3]
+                f.write(
+                    f'rotate {float(r11)} {float(r12)} {float(r13)} {float(r21)} {float(r22)} {float(r23)} {float(r31)} {float(r32)} {float(r33)}\n')
+                f.write(f'shift {float(t1)} {float(t2)} {float(t3)}\n')
+            f.write(f'renumber increment {offset}\n')
+            if chain:
+                f.write(f'chain {chain}\n')
+            f.write('end\n')
+            f.write('eof')
+        subprocess.Popen(['bash', tmp_file.name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()
+    finally:
+        tmp_file.close()
+        os.unlink(tmp_file.name)
 
 
 def get_resseq(residue: Residue) -> int:
@@ -309,6 +321,10 @@ def get_structure(pdb_path: str) -> Structure:
     pdb_id = utils.get_file_name(pdb_path)
     parser = PDBParser(QUIET=True)
     return parser.get_structure(pdb_id, pdb_path)
+
+
+def get_number_residues(pdb_path: str) -> int:
+    return len([res for res in Selection.unfold_entities(get_structure(pdb_path), 'R')])
 
 
 def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
@@ -351,7 +367,6 @@ def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = No
 def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_path: str = None) -> Hinges:
     # Run hinges from hinges_path.
     # It needs two pdbs. Return the rmsd obtained.
-    chains1_list = [chain.id for chain in get_structure(pdb1_path).get_chains()]
     chains2_list = [chain.id for chain in get_structure(pdb2_path).get_chains()]
     command_line = f'{hinges_path} {pdb1_path} {pdb2_path} -p {"".join(chains2_list)}'
     output = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -446,13 +461,42 @@ def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
         os.chdir(store_old_dir)
 
 
-def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: str):
-    # Check if there are at least five pdbs that has more than 60% of the sequence length
-    # If there are at least 5, continue normally cc_analysis
-    # If there are less than 5, create groups using hinges
-    threshold_rmsd = 1
-    threshold_completeness = 0.6 * size_sequence
+def cc_and_hinges_analysis(paths_in: Dict, binaries_path: structures.CCAnalysis, output_path: str,
+                           length_sequences: Dict = None) -> List:
+    analysis_dict = None
+    templates_cluster2 = []
+    templates_cluster = hinges(paths_in=paths_in,
+                               hinges_path=binaries_path.hinges_path,
+                               output_path=os.path.join(output_path, 'hinges'),
+                               length_sequences=length_sequences)
+
+    templates_path_list = [template_in for template_list in templates_cluster for template_in in template_list]
+    num_templates = len(templates_path_list)
+    if num_templates >= 5:
+        templates_cluster2, analysis_dict = cc_analysis(paths_in=templates_path_list,
+                                                        cc_analysis_paths=binaries_path,
+                                                        cc_path=os.path.join(output_path, 'ccanalysis'))
+
+    if len(templates_cluster) > 1 and templates_cluster2:
+        return templates_cluster2, analysis_dict
+    else:
+        return templates_cluster, analysis_dict
+
+
+def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences: Dict = None) -> List:
+    # Hinges algorithm does:
+    # Check completeness and ramachandran of every template. If it is not at least 70% discard for hinges.
+    # Do hinges 6 iterations in all for all the templates
+    # If iter1 < 1 or iterMiddle < 3 or iter6 < 10 AND at least 70% of sequence length -> GROUP TEMPLATE
+    # If it has generated more than one group with length > 1-> Return those groups that has generated
+    # If there is no group generated -> Return the one more completed and the one more different to that template
+    # Otherwise, return all the paths
     utils.create_dir(output_path, delete_if_exists=True)
+    threshold_completeness = 0.6
+    threshold_rmsd_domains = 10
+    threshold_rmsd_ss = 3
+    threshold_rmsd_local = 1
+    threshold_overlap = 0.7
 
     logging.info('Starting hinges analysis')
     accepted_pdbs = {}
@@ -462,17 +506,30 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
     # Completeness respect the query size sequence
     # Ramachandran plot
     # And the compactness
+    pdb_complete = ''
+    pdb_complete_value = 0
     for key, value in paths_in.items():
         num_residues = sum(1 for _ in get_structure(value)[0].get_residues())
         # Validate using ramachandran, check the outliers
         validate_geometry = generate_ramachandran(pdb_path=value, output_path=output_path)
         # Check the query sequence vs the number of residues of the pdb
-        if threshold_completeness < num_residues and validate_geometry:
+        completeness = True
+        if length_sequences is not None and key in length_sequences:
+            completeness = any(number > threshold_completeness for number in length_sequences[key])
+
+        if completeness and validate_geometry:
             accepted_pdbs[key] = value
+            if num_residues > pdb_complete_value:
+                pdb_complete_value = num_residues
+                pdb_complete = value
         else:
             uncompleted_pdbs[key] = value
 
-    logging.info(f'There are {len(accepted_pdbs)} complete pdbs. Using hinges to create groups.')
+    logging.info(f'There are {len(accepted_pdbs)} complete pdbs.')
+    if len(accepted_pdbs) < 2:
+        logging.info(f'Skipping hinges.')
+        return [[values for values in paths_in.values()]]
+    logging.info(f'Using hinges to create groups.')
 
     # Run hinges all-against-all, store the results in a dict.
     results_rmsd = {key: {} for key in accepted_pdbs}
@@ -483,52 +540,60 @@ def hinges(paths_in: Dict, hinges_path: str, size_sequence: int, output_path: st
                                            output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
                 results_rmsd[key1][key2] = result_hinges
                 results_rmsd[key2][key1] = result_hinges
-
     groups_names = {key: [] for key in accepted_pdbs}
-    groups_rmsd = {key: [] for key in accepted_pdbs}
-    average_group_rmsd = {key: mean([value.one_rmsd for value in results_rmsd[key].values()]) for key in accepted_pdbs}
-    sorted_results = dict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
-    for key1, value in sorted_results.items():
-        sorted_one_dict = dict(sorted(value.items(), key=lambda x: x[1].one_rmsd if x[1] is not None else 100))
+    results_rmsd = OrderedDict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
+    for key1, value in results_rmsd.items():
+        results_rmsd[key1] = OrderedDict(
+            sorted({k: v for k, v in value.items() if v is not None}.items(), key=lambda x: x[1].one_rmsd))
         selected_group = key1
-        for key2, result in sorted_one_dict.items():
-            if result is None:
-                continue
+        for key2, result in results_rmsd[key1].items():
             group = utils.get_key_by_value(key2, groups_names)
-            if group:
-                average = mean(groups_rmsd[group[0]]) if groups_rmsd[group[0]] else result.one_rmsd
-                condition_average = average * 1.3
-                if (result.min_rmsd < threshold_rmsd) or (
-                        result.one_rmsd < average_group_rmsd[key2] and (condition_average > result.one_rmsd)):
-                    if (selected_group in groups_names and len(groups_names[group[0]]) > len(
-                            groups_names[selected_group])) or selected_group not in groups_names:
-                        for pdb in groups_names[group[0]]:
-                            if results_rmsd[key1][pdb].one_rmsd > condition_average * 1.5:
-                                break
-                        else:
-                            selected_group = group[0]
+            if group and (
+                    (
+                            result.min_rmsd < threshold_rmsd_domains or
+                            result.one_rmsd < threshold_rmsd_local or
+                            result.middle_rmsd < threshold_rmsd_ss
+                    )
+                    and result.overlap > threshold_overlap
+            ):
+                if selected_group not in groups_names or len(groups_names[group[0]]) > len(
+                        groups_names[selected_group]):
+                    selected_group = group[0]
         groups_names[selected_group].append(key1)
-        if key1 != selected_group:
-            min_rmsd = results_rmsd[key1][selected_group].min_rmsd if results_rmsd[key1][
-                                                                          selected_group].min_rmsd < threshold_rmsd else \
-                results_rmsd[key1][selected_group].one_rmsd
-            groups_rmsd[selected_group].append(min_rmsd)
+    groups_names = [values for values in groups_names.values() if len(values) > 1]
 
-    groups_names = {key: value for key, value in groups_names.items() if value}
-    return groups_names
+    if len(groups_names) > 1 or (len(groups_names) == 1 and len(groups_names[0]) > 1):
+        # Return the groups that has generated
+        logging.info(f'Hinges has created {len(groups_names)} group/s:')
+        for i, values in enumerate(groups_names):
+            logging.info(f'Group {i}: {",".join(values)}')
+        return [[path for key, path in paths_in.items() if key in group] for group in groups_names]
+    elif len(list(results_rmsd.keys())) > 1:
+        # Create two groups, more different and completes pdbs
+        more_different = list(results_rmsd[utils.get_file_name(pdb_complete)].keys())[-1]
+        path_diff = paths_in[more_different]
+        logging.info(f'Hinges could not create any groups')
+        logging.info(f'Creating two groups: The more completed pdb: {utils.get_file_name(pdb_complete)} '
+                     f'and the more different one: {more_different}')
+        return [[pdb_complete], [path_diff]]
+    else:
+        # Return the original list of pdbs
+        logging.info('Not enough pdbs for hinges.')
+        return [[values for values in paths_in.values()]]
 
 
-def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_path: str, n_clusters: int = 2) -> List:
+def cc_analysis(paths_in: List[str], cc_analysis_paths: structures.CCAnalysis, cc_path: str,
+                n_clusters: int = 2) -> List:
     # CC_analysis. It is mandatory to have the paths of the programs in order to run pdb2cc and ccanalysis.
     # A dictionary with the different pdbs that are going to be analysed.
 
     utils.create_dir(cc_path, delete_if_exists=True)
-    paths = [shutil.copy2(path, cc_path) for path in paths_in.values()]
     trans_dict = {}
     return_templates_cluster = [[] for _ in range(n_clusters)]
     clean_dict = {}
 
-    for index, path in enumerate(paths):
+    for index, path in enumerate(paths_in):
+        path = shutil.copy2(path, cc_path)
         # If it is a ranked, it is mandatory to change the bfactors to VALUE-70.
         # We want to evaluate the residues that have a good PLDDT
         # PDB2CC ignore the residues with bfactors below 0
@@ -581,7 +646,9 @@ def cc_analysis(paths_in: Dict, cc_analysis_paths: structures.CCAnalysis, cc_pat
                 conversion = [lookup_table[label] for label in kmeans.labels_]
                 # Translate the kmeans, which only has the position of the pdbs for the real pdbs.
                 for i, label in enumerate(conversion):
-                    return_templates_cluster[int(label)].append(paths_in[list(clean_dict.keys())[i]])
+                    real_path = [path for path in paths_in if utils.get_file_name(path) == list(clean_dict.keys())[i]][
+                        0]
+                    return_templates_cluster[int(label)].append(real_path)
     # Return the clusters, a list, where each position has a group of pdbs.
     # Also, clean_dict has the cc_analysis vectors, so is useful to create the plots.
     return return_templates_cluster, clean_dict
@@ -801,7 +868,6 @@ def change_chains(chain_dict: Dict):
     # The Dict has to be: {A: path}
     # It will rename the chains of the path to the
     # chain indicated in the key
-
     for key, value in chain_dict.items():
         change_chain(pdb_in_path=value,
                      pdb_out_path=value,
@@ -1054,7 +1120,7 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
 
     change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
     change.delete_residues_inverse(pdb_out_path, pdb_out_path)
-    change.change_bfactors(pdb_out_path, pdb_out_path)
+    # change.change_bfactors(pdb_out_path, pdb_out_path)
 
     return add_domains_dict
 
@@ -1076,7 +1142,11 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(sorted_list)
 
-    max_length = max(len(lst) for lst in trimmed_list)
+    if trimmed_list:
+        max_length = max(len(lst) for lst in trimmed_list)
+    else:
+        return []
+
     trimmed_list = [lst for lst in trimmed_list if len(lst) == max_length]
 
     score_list = []

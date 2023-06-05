@@ -13,6 +13,7 @@ class StructureAir:
 
     def __init__(self, parameters_dict: Dict):
 
+        self.mode: str
         self.output_dir: str
         self.run_dir: str
         self.results_dir: str
@@ -29,22 +30,22 @@ class StructureAir:
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
         self.templates_list: List[template.Template] = []
-        self.run_af2: bool = True
-        self.verbose: bool = True
-        self.small_bfd: bool = False
-        self.cluster_templates: bool = False
-        self.cluster_templates_msa: int = 0
-        self.cluster_templates_msa_delete: List[int] = []
-        self.cluster_templates_sequence: str = None
-        self.glycines: int = 50
+        self.run_af2: bool
+        self.small_bfd: bool
+        self.cluster_templates: bool
+        self.cluster_templates_msa: int
+        self.cluster_templates_msa_delete: List[int]
+        self.cluster_templates_sequence: str
+        self.sequences_msa: List[structures.SequencesMsa] = []
+        self.glycines: int
         self.template_positions_list: List[List] = []
-        self.reference: Union[template.Template, None] = None
-        self.custom_features: bool = True
+        self.reference: Union[template.Template, None]
+        self.custom_features: bool
         self.experimental_pdbs: List[str] = []
-        self.mosaic: Union[int, None] = None
+        self.mosaic: Union[int, None]
         self.mosaic_overlap: int = 150
-        self.mosaic_partition: List[int] = []
-        self.mosaic_seq_partition: List[int] = []
+        self.mosaic_partition: List[int]
+        self.mosaic_seq_partition: List[int]
         self.feature: Union[features.Features, None] = None
         self.output: output_air.OutputAir
         self.state: int = 0
@@ -52,8 +53,12 @@ class StructureAir:
         self.features_list: List[features.Features] = []
         self.chunk_list: List[int] = []
 
-        self.output_dir = utils.get_mandatory_value(input_load=parameters_dict, value='output_dir')
-        self.run_dir = parameters_dict.get('run_dir', os.path.join(self.output_dir, 'run'))
+        self.mode = utils.get_input_value(name='mode', section='global', input_dict=parameters_dict)
+        self.custom_features = False if self.mode == 'naive' else True
+        self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
+        self.run_dir = utils.get_input_value(name='run_dir', section='global', input_dict=parameters_dict)
+        if self.run_dir is None:
+            self.run_dir = os.path.join(self.output_dir, 'run')
         self.input_dir = os.path.join(self.output_dir, 'input')
         self.results_dir = os.path.join(self.run_dir, self.name_results_dir)
         self.log_path = os.path.join(self.output_dir, 'output.log')
@@ -68,55 +73,92 @@ class StructureAir:
         utils.create_dir(self.input_dir)
         utils.delete_old_rankeds(self.output_dir)
 
-        self.af2_dbs_path = utils.get_mandatory_value(input_load=parameters_dict, value='af2_dbs_path')
-        self.run_af2 = parameters_dict.get('run_af2', self.run_af2)
-        self.verbose = parameters_dict.get('verbose', self.verbose)
-        self.custom_features = parameters_dict.get('custom_features', self.custom_features)
-        self.mosaic = parameters_dict.get('mosaic', self.mosaic)
-        self.small_bfd = parameters_dict.get('small_bfd', self.small_bfd)
-        self.cluster_templates = parameters_dict.get('cluster_templates', self.cluster_templates)
-        self.cluster_templates_msa = parameters_dict.get('cluster_templates_msa', self.cluster_templates_msa)
+        self.af2_dbs_path = utils.get_input_value(name='af2_dbs_path', section='global', input_dict=parameters_dict)
+        if not os.path.exists(self.af2_dbs_path):
+            raise Exception(f'Path {self.af2_dbs_path} does not exist. Check the af2_dbs_path input parameter')
+        self.run_af2 = utils.get_input_value(name='run_af2', section='global', input_dict=parameters_dict)
+        self.glycines = utils.get_input_value(name='glycines', section='global', input_dict=parameters_dict)
+        self.mosaic = utils.get_input_value(name='mosaic', section='global', input_dict=parameters_dict)
+        self.small_bfd = utils.get_input_value(name='small_bfd', section='global', input_dict=parameters_dict)
+        self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global',
+                                                       input_dict=parameters_dict)
+        self.cluster_templates_msa = utils.get_input_value(name='cluster_templates_msa', section='global',
+                                                           input_dict=parameters_dict)
         self.cluster_templates_msa_delete = utils.expand_residues(
-            parameters_dict.get('cluster_templates_msa_delete', ''))
-        self.cluster_templates_sequence = bioutils.check_sequence_path(
-            parameters_dict.get('cluster_templates_sequence', self.cluster_templates_sequence))
-        self.mosaic_partition = parameters_dict.get('mosaic_partition', self.mosaic_partition)
-        self.mosaic_seq_partition = parameters_dict.get('mosaic_seq_partition', self.mosaic_seq_partition)
+            utils.get_input_value(name='cluster_templates_msa_delete', section='global', input_dict=parameters_dict))
 
-        experimental_string = parameters_dict.get('experimental_pdbs', self.experimental_pdbs)
+        self.cluster_templates_sequence = bioutils.check_sequence_path(
+            utils.get_input_value(name='cluster_templates_sequence', section='global', input_dict=parameters_dict))
+        self.mosaic_partition = utils.get_input_value(name='mosaic_partition', section='global',
+                                                      input_dict=parameters_dict)
+        self.mosaic_seq_partition = utils.get_input_value(name='mosaic_seq_partition', section='global',
+                                                          input_dict=parameters_dict)
+
+        experimental_string = utils.get_input_value(name='experimental_pdbs', section='global',
+                                                    input_dict=parameters_dict)
         if experimental_string:
             experimental_list = experimental_string.replace(' ', '').split(',')
             for pdb in experimental_list:
-                pdb_path = bioutils.check_pdb(pdb, self.input_dir)
+                pdb_path = bioutils.check_pdb(pdb, f'{os.path.join(self.input_dir, utils.get_file_name(pdb))}.pdb')
                 self.experimental_pdbs.append(os.path.join(self.input_dir, os.path.basename(pdb_path)))
                 try:
                     bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
                 except Exception as e:
-                    logging.info('Not possible to generate the multimer for the experimental pdb')
+                    logging.info(
+                        f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
-        if 'sequences' not in parameters_dict:
-            raise Exception('No sequences detected. Mandatory input')
-        else:
-            for parameters_sequence in parameters_dict.get('sequences'):
-                new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
-                sequence_list.append(new_sequence)
+        for parameters_sequence in utils.get_input_value(name='sequences', section='global',
+                                                         input_dict=parameters_dict):
+            new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
+            sequence_list.append(new_sequence)
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
 
-        if 'features' in parameters_dict:
-            for parameters_features in parameters_dict.get('features'):
-                self.features_input.append(structures.FeaturesInput(
-                    path=utils.get_mandatory_value(input_load=parameters_features, value='path'),
-                    keep_msa=parameters_features.get('keep_msa', -1),
-                    keep_templates=parameters_features.get('keep_templates', -1),
-                    msa_delete=utils.expand_residues(parameters_features.get('msa_delete', '')),
-                    positions=utils.expand_residues(
-                        parameters_features.get('positions', f'1-{self.sequence_assembled.total_copies}')),
-                    sequence=bioutils.check_sequence_path(parameters_features.get('sequence', None))
-                ))
+        for sequence_msa in utils.get_input_value(name='sequences_msa', section='global', input_dict=parameters_dict):
 
-        if self.mosaic is None:
-            self.mosaic = 1
+            path = utils.get_input_value(name='path', section='sequences_msa', input_dict=sequence_msa)
+            aligned = utils.get_input_value(name='aligned', section='sequences_msa', input_dict=sequence_msa)
+            position_query_ini = utils.get_input_value(name='position_query_ini', section='sequences_msa',
+                                                       input_dict=sequence_msa)
+            position_query_res_ini = utils.get_input_value(name='position_query_res_ini', section='sequences_msa',
+                                                           input_dict=sequence_msa)
+            positions = utils.get_input_value(name='positions', section='sequences_msa', input_dict=sequence_msa)
+
+            if position_query_ini is None:
+                position_query_ini = 1
+
+            if position_query_res_ini is None:
+                position_query_res_ini = self.sequence_assembled.get_starting_length(0) + 1
+            if positions:
+                positions = utils.expand_residues(positions)
+
+            if os.path.exists(path):
+                aux_list = [file for file in os.listdir(path)] if os.path.isdir(path) else [path]
+                for aux_path in aux_list:
+                    if utils.get_file_extension(aux_path) in ['.pdb', '.cif', '.fasta']:
+                        self.sequences_msa.append(
+                            structures.SequencesMsa(path=path, aligned=aligned,
+                                                    position_query_ini=position_query_ini,
+                                                    position_query_res_ini=position_query_res_ini,
+                                                    positions=positions))
+            else:
+                raise Exception(f'Path {path} does not exist. Check the input sequences_msa parameter.')
+
+        for parameters_features in utils.get_input_value(name='features', section='global', input_dict=parameters_dict):
+            positions = utils.get_input_value(name='positions', section='features', input_dict=parameters_features)
+            if positions is None:
+                positions = f'1-{self.sequence_assembled.total_copies}'
+            self.features_input.append(structures.FeaturesInput(
+                path=utils.get_input_value(name='path', section='features', input_dict=parameters_features),
+                keep_msa=utils.get_input_value(name='keep_msa', section='features', input_dict=parameters_features),
+                keep_templates=utils.get_input_value(name='keep_templates', section='features',
+                                                     input_dict=parameters_features),
+                msa_delete=utils.expand_residues(
+                    utils.get_input_value(name='msa_delete', section='features', input_dict=parameters_features)),
+                positions=utils.expand_residues(positions),
+                sequence=bioutils.check_sequence_path(
+                    utils.get_input_value(name='sequence', section='features', input_dict=parameters_features))
+            ))
 
         if self.mosaic_partition:
             self.mosaic_partition = utils.expand_partition(self.mosaic_partition)
@@ -130,36 +172,24 @@ class StructureAir:
                                                   exp[1] - 1)])
             self.mosaic = len(self.mosaic_partition)
 
-        if not os.path.exists(self.af2_dbs_path):
-            raise Exception('af2_dbs_path does not exist')
-
-        if 'templates' not in parameters_dict:
-            logging.info('No templates detected')
-        else:
+        self.reference = utils.get_input_value(name='reference', section='global', input_dict=parameters_dict)
+        templates = utils.get_input_value(name='templates', section='global', input_dict=parameters_dict)
+        if templates:
             counter = 0
-            reference = parameters_dict.get('reference')
-            new_name = None
-            for parameters_template in parameters_dict.get('templates'):
-                pdb_id = utils.get_mandatory_value(parameters_template, 'pdb')
-                result = self.get_template_by_id(utils.get_file_name(pdb_id))
+            for parameters_template in templates:
+                new_name = None
+                pdb = utils.get_input_value(name='pdb', section='template', input_dict=parameters_template)
+                result = self.get_template_by_id(utils.get_file_name(pdb))
                 if result is not None:
                     counter += 1
-                    new_name = f'{pdb_id}_{counter}'
+                    new_name = f'{result.pdb_id}_{counter}'
                 new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir,
-                                                 input_dir=self.input_dir,
                                                  num_of_copies=self.sequence_assembled.total_copies, new_name=new_name)
                 self.templates_list.append(new_template)
-                if new_template.pdb_id == reference:
-                    self.reference = new_template
-
-            for element in self.templates_list:
-                element.set_reference_templates(self)
-
+                self.reference = new_template if new_template.pdb_id == self.reference else self.reference
+            [element.set_reference_templates(self) for element in self.templates_list]
             self.order_templates_with_restrictions()
-
-            if self.reference is None:
-                self.reference = self.templates_list[0]
-
+            self.reference = self.templates_list[0] if self.reference is None else self.reference
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
 
     def partition_mosaic(self) -> List[features.Features]:
@@ -186,7 +216,7 @@ class StructureAir:
         render_dict['custom_features'] = self.custom_features
         render_dict['mosaic'] = self.mosaic
         render_dict['total_copies'] = self.sequence_assembled.total_copies
-        render_dict['number_templates'] = len(self.templates_list)
+        render_dict['number_templates'] = len(self.template_positions_list)
         render_dict['number_alignments'] = len(
             [template_path for template_list in self.template_positions_list for template_path in template_list if
              template_path is not None])
@@ -199,7 +229,8 @@ class StructureAir:
 
         if self.feature is not None:
             self.output.create_plot_gantt(self)
-            render_dict['gantt'] = [utils.encode_data(plot) for plot in self.output.gantt_plots_path]
+            if self.output.gantt_plots is not None:
+                render_dict['gantt'] = self.output.gantt_plots
 
         if os.path.exists(self.output.plddt_plot_path):
             render_dict['plddt'] = utils.encode_data(self.output.plddt_plot_path)
@@ -326,7 +357,7 @@ class StructureAir:
         while old_templates_list:
             deleted_items = []
             for temp in old_templates_list:
-                reference_list = temp.get_reference_list()
+                reference_list = temp.get_templates_references()
                 if set(reference_list).issubset(new_templates_list):
                     new_templates_list.append(temp)
                     deleted_items.append(temp)
@@ -348,7 +379,9 @@ class StructureAir:
             else:
                 name = f'{self.name_results_dir}{i}'
             path = os.path.join(self.run_dir, name)
-            sequence_chunk = self.sequence_assembled.sequence_assembled[self.chunk_list[i][0]:self.chunk_list[i][1]]
+            sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[
+                             self.chunk_list[i][0]:self.chunk_list[i][1]]
+            run_af2 = False if self.mode == 'guided' and self.cluster_templates else self.run_af2
             afrun = alphafold_classes.AlphaFoldRun(results_dir=path,
                                                    sequence=sequence_chunk,
                                                    custom_features=self.custom_features,
@@ -356,7 +389,7 @@ class StructureAir:
                                                    small_bfd=self.small_bfd,
                                                    start_chunk=self.chunk_list[i][0],
                                                    end_chunk=self.chunk_list[i][1],
-                                                   run=self.run_af2,
+                                                   run=run_af2,
                                                    feature=feature
                                                    )
             self.afrun_list.append(afrun)
@@ -453,19 +486,14 @@ class StructureAir:
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
-        #templates_cluster = bioutils.hinges(paths_in=self.output.templates_dict,
-        #                                    hinges_path=self.cc_analysis_paths.hinges_path,
-        #                                    size_sequence=self.sequence_assembled.length,
-        #                                    output_path=os.path.join(self.results_dir, 'hinges'))
-
-        #if not templates_cluster:
-        templates_cluster, _ = bioutils.cc_analysis(paths_in=self.output.templates_dict,
-                                                    cc_analysis_paths=self.cc_analysis_paths,
-                                                    cc_path=os.path.join(self.results_dir, 'ccanalysis'))
+        templates_cluster, _ = bioutils.cc_and_hinges_analysis(paths_in=self.output.templates_dict,
+                                                               binaries_path=self.cc_analysis_paths,
+                                                               output_path=self.results_dir,
+                                                               length_sequences=self.output.percentage_sequences)
 
         if templates_cluster:
             logging.info(
-                f'The templates obtained in alphafold2 can be grouped in {len(templates_cluster)} clusters')
+                f'The templates can be grouped in {len(templates_cluster)} clusters')
             for templates in templates_cluster:
                 name_job = f'cluster_{counter}'
                 label_job = f'Cluster {counter}'
@@ -500,13 +528,12 @@ class StructureAir:
         features_path = os.path.join(job_path, 'features.pkl')
         utils.create_dir(dir_path=job_path, delete_if_exists=False)
         new_features = features.Features(self.sequence_assembled.sequence_assembled)
+
         for template_in in templates:
             index = self.feature.get_index_by_name(utils.get_file_name(template_in))
             template_dict = self.feature.get_template_by_index(index)
-            if self.cluster_templates_sequence is not None:
-                template_dict = features.replace_sequence_template(template_dict=template_dict,
-                                                                   sequence_in=self.cluster_templates_sequence)
-            new_features.append_new_template_features(template_dict)
+            new_features.set_template_features(new_templates=template_dict,
+                                               sequence_in=self.cluster_templates_sequence)
 
         total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
         if self.cluster_templates_msa != 0:
@@ -515,10 +542,17 @@ class StructureAir:
         new_features.write_pkl(features_path)
 
         with open(yml_path, 'w') as f_out:
+            f_out.write(f'mode: guided\n')
             f_out.write(f'output_dir: {job_path}\n')
             f_out.write(f'run_dir: {os.path.join(job_path, os.path.basename(self.run_dir))}\n')
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
             f_out.write(f'glycines: {self.glycines}\n')
+            f_out.write(f'mosaic: {self.mosaic}\n')
+            if self.mosaic_partition:
+                txt_aux = []
+                for partition in self.mosaic_partition:
+                    txt_aux.append("-".join(map(str, partition)))
+                f_out.write(f'mosaic_partition: {",".join(map(str, txt_aux))}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
@@ -535,17 +569,16 @@ class StructureAir:
 
     def write_input_file(self):
         with open(self.input_path, 'w') as f_out:
+            f_out.write(f'mode: {self.mode}\n')
             f_out.write(f'output_dir: {self.output_dir}\n')
             f_out.write(f'run_dir: {self.run_dir}\n')
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
-            f_out.write(f'verbose: {self.verbose}\n')
             f_out.write(f'glycines: {self.glycines}\n')
             f_out.write(f'run_af2: {self.run_af2}\n')
             if self.reference is not None:
                 f_out.write(f'reference: {self.reference.pdb_path}\n')
             if self.experimental_pdbs:
                 f_out.write(f'experimental_pdbs: {",".join(map(str, self.experimental_pdbs))}\n')
-            f_out.write(f'custom_features: {self.custom_features}\n')
             f_out.write(f'small_bfd: {self.small_bfd}\n')
             f_out.write(f'mosaic: {self.mosaic}\n')
             if self.mosaic_partition:
@@ -561,6 +594,18 @@ class StructureAir:
                         f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
                 if self.cluster_templates_sequence is not None:
                     f_out.write(f'cluster_templates_sequence: {self.cluster_templates_sequence}\n')
+            if self.sequences_msa:
+                f_out.write(f'\nsequences_msa:\n')
+                for seq_msa in self.sequences_msa:
+                    f_out.write('-')
+                    f_out.write(f' path: {seq_msa.path}\n')
+                    f_out.write(f'  aligned: {seq_msa.aligned}\n')
+                    if seq_msa.position_query_ini:
+                        f_out.write(f'  position_query_ini: {seq_msa.position_query_ini}\n')
+                    if seq_msa.position_query_res_ini:
+                        f_out.write(f'  position_query_res_ini: {seq_msa.position_query_res_ini}\n')
+                    if seq_msa.positions:
+                        f_out.write(f'  positions: {",".join(map(str, seq_msa.positions))}\n')
             if self.features_input:
                 f_out.write(f'\nfeatures:\n')
                 for feat in self.features_input:
@@ -581,6 +626,10 @@ class StructureAir:
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
+                if sequence_in.mutations_dict.items():
+                    f_out.write(f'  mutations:\n')
+                for residue, values in sequence_in.mutations_dict.items():
+                    f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
             if self.templates_list:
                 f_out.write(f'\ntemplates:\n')
                 for template_in in self.templates_list:
@@ -594,9 +643,9 @@ class StructureAir:
                     f_out.write(f'  strict: {template_in.strict}\n')
                     if template_in.reference is not None:
                         f_out.write(f'  reference: {self.reference}\n')
-                    if template_in.change_res_list:
+                    if template_in.change_res_struct.change_residues_list:
                         f_out.write(f'  change_res:\n')
-                        for change in template_in.change_res_list:
+                        for change in template_in.change_res_struct.change_residues_list:
                             f_out.write('  -')
                             if change.resname is not None:
                                 f_out.write(f' resname: {change.resname}\n')
@@ -606,9 +655,9 @@ class StructureAir:
                             for key, value in change.chain_group_res_dict.items():
                                 f_out.write(f'    {key}: {", ".join(map(str, value))}\n')
 
-                    if template_in.match_restrict_list:
+                    if template_in.match_restrict_struct.match_restrict_list:
                         f_out.write(f'  match:\n')
-                        for match in template_in.match_restrict_list:
+                        for match in template_in.match_restrict_struct.match_restrict_list:
                             f_out.write('  -')
                             f_out.write(f' chain: {match.chain}\n')
                             f_out.write(

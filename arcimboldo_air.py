@@ -1,12 +1,11 @@
 #! /usr/bin/env python3
-
 import os
 
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
-from libs import features, structure_air, utils
+from libs import features, structure_air, utils, bioutils
 
 
 def main():
@@ -40,6 +39,7 @@ def main():
         except Exception as e:
             raise Exception('It has not been possible to read the input file')
 
+        utils.check_input(input_load)
         a_air = structure_air.StructureAir(parameters_dict=input_load)
 
         utils.create_logger_dir(a_air.log_path)
@@ -48,15 +48,40 @@ def main():
         a_air.generate_output()
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
-
-            a_air.set_feature(feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_assembled))
+            a_air.set_feature(feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_mutated_assembled))
+            a_air.change_state(state=1)
+            a_air.generate_output()
+            for template in a_air.templates_list:
+                if template.add_to_templates or template.add_to_msa:
+                    if not template.aligned:
+                        database_dir = os.path.join(a_air.run_dir, template.pdb_id)
+                        utils.create_dir(database_dir)
+                        template.generate_database(output_dir=database_dir, databases=a_air.alphafold_paths)
+                    for sequence in a_air.sequence_assembled.sequence_list:
+                        alignment_dir = os.path.join(a_air.run_dir, sequence.name)
+                        utils.create_dir(alignment_dir)
+                        template.align(output_dir=alignment_dir, sequence_in=sequence, databases=a_air.alphafold_paths)
+                    template.generate_features(
+                        output_dir=a_air.run_dir,
+                        global_reference=a_air.reference,
+                        sequence_assembled=a_air.sequence_assembled)
+                    a_air.append_line_in_templates(template.results_path_position)
+                    if template.add_to_msa:
+                        sequence_from_template = template.get_old_sequence(
+                            sequence_list=a_air.sequence_assembled.sequence_list_expanded,
+                            glycines=a_air.glycines)
+                        a_air.feature.append_row_in_msa(sequence_in=sequence_from_template,
+                                                        sequence_id=template.pdb_id)
+                        logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
+                    if template.add_to_templates:
+                        a_air.feature.append_new_template_features(new_template_features=template.template_features,
+                                                                   custom_sum_prob=template.sum_prob)
+                    logging.info(f'Template {template.pdb_id} was added to templates')
             for feat in a_air.features_input:
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
+                positions = a_air.sequence_assembled.get_range_residues(position_ini=feat.positions[0] - 1,
+                                                                        position_end=feat.positions[-1] - 1)
                 if feat.keep_msa != 0:
-                    positions = [a_air.sequence_assembled.get_starting_length(feat.positions[0] - 1),
-                                 a_air.sequence_assembled.get_starting_length(
-                                     feat.positions[-1] - 1) + a_air.sequence_assembled.get_sequence_length(
-                                     feat.positions[-1] - 1)]
                     a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
                                                    finish=feat.keep_msa,
                                                    delete_positions=feat.msa_delete,
@@ -66,32 +91,19 @@ def main():
                                                         finish=feat.keep_templates,
                                                         positions=positions,
                                                         sequence_in=feat.sequence)
-
-            a_air.change_state(state=1)
-            a_air.generate_output()
-            for template in a_air.templates_list:
-                if not template.aligned:
-                    database_dir = os.path.join(a_air.run_dir, template.pdb_id)
-                    utils.create_dir(database_dir)
-                    template.generate_database(output_dir=database_dir, databases=a_air.alphafold_paths)
-                for sequence in a_air.sequence_assembled.sequence_list:
-                    alignment_dir = os.path.join(a_air.run_dir, sequence.name)
-                    utils.create_dir(alignment_dir)
-                    template.align(output_dir=alignment_dir, sequence_in=sequence, databases=a_air.alphafold_paths)
-                template.generate_features(
-                    output_dir=a_air.run_dir,
-                    global_reference=a_air.reference,
-                    sequence_assembled=a_air.sequence_assembled)
-                a_air.append_line_in_templates(template.results_path_position)
-                if template.add_to_msa:
-                    sequence_from_template = template.template_features['template_sequence'][0].decode('utf-8')
-                    a_air.feature.append_row_in_msa(sequence_in=sequence_from_template,
-                                                    sequence_id=template.pdb_id)
-                    logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
-                if template.add_to_templates:
-                    a_air.feature.append_new_template_features(new_template_features=template.template_features,
-                                                               custom_sum_prob=template.sum_prob)
-                    logging.info(f'Template {template.pdb_id} was added to templates')
+            for seq_msa in a_air.sequences_msa:
+                extension = utils.get_file_extension(seq_msa.path)
+                if extension in ['.pdb', '.cif']:
+                    sequence_list = bioutils.extract_sequence_from_file(seq_msa.path)
+                if extension == '.fasta':
+                    sequence_list = bioutils.extract_sequences(seq_msa.path)
+                for key, seq in sequence_list.items():
+                    if seq_msa.positions:
+                        end = seq_msa.positions[-1]
+                        if end > len(seq):
+                            end = len(seq)
+                        seq = seq[seq_msa.positions[0]-1:end]
+                    a_air.feature.append_row_in_msa(seq, key, seq_msa.position_query_res_ini)
             features_list = a_air.partition_mosaic()
         else:
             features_list = [None] * a_air.mosaic

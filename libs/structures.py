@@ -2,7 +2,6 @@ import dataclasses
 import os
 import sys
 from typing import Dict, List
-
 from libs import utils
 
 
@@ -43,7 +42,9 @@ class Cluster:
 class Hinges:
     decreasing_rmsd: float
     one_rmsd: float
+    middle_rmsd: float
     min_rmsd: float
+    overlap: float
     groups: List
 
 
@@ -71,8 +72,18 @@ class Alignment:
     evalue: str
     identities: int
     hhr_path: str
-    extracted_path: str
     database: AlignmentDatabase
+    mapping: Dict
+
+
+@dataclasses.dataclass(frozen=True)
+class GanttPlot:
+    plot_both: bytes
+    legend_both: str
+    plot_template: bytes
+    legend_template: str
+    plot_msa: bytes
+    legend_msa: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -126,6 +137,15 @@ class OpenmmEnergies:
 
 
 @dataclasses.dataclass(frozen=True)
+class SequencesMsa:
+    path: str
+    aligned: str
+    position_query_ini: int
+    position_query_res_ini: int
+    positions: List[int]
+
+
+@dataclasses.dataclass(frozen=True)
 class TemplateRanked:
     template: str
     rmsd: float
@@ -134,7 +154,7 @@ class TemplateRanked:
 
 
 class Ranked:
-    def __init__(self, ranked_path):
+    def __init__(self, ranked_path: str):
         self.path: str
         self.name: str
         self.split_path: str

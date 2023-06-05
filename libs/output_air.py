@@ -4,7 +4,6 @@ import shutil
 import sys
 from itertools import combinations
 from typing import Dict, List
-
 import pandas as pd
 from Bio.PDB import PDBParser, Selection
 
@@ -39,7 +38,7 @@ class OutputAir:
         self.analysis_plot_path: str = f'{self.plots_path}/cc_analysis_plot.png'
         self.analysis_ranked_plot_path: str = f'{self.plots_path}/cc_analysis_ranked_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
-        self.gantt_plots_path: List[str] = []
+        self.gantt_plots: structures.GanttPlot = None
         self.ranked_list: List[structures.Ranked] = []
         self.output_dir: str = output_dir
         self.experimental_dict = {}
@@ -52,6 +51,7 @@ class OutputAir:
         self.template_interfaces: dict = {}
         self.templates_dict = {}
         self.templates_nonsplit_dict = {}
+        self.percentage_sequences = {}
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -59,8 +59,17 @@ class OutputAir:
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
     def create_plot_gantt(self, a_air):
-        self.gantt_plots_path = [plots.plot_gantt(plot_type='template', plot_path=self.plots_path, a_air=a_air)]
-        self.gantt_plots_path.append(plots.plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air))
+        gantt_plots_both, legend_both = plots.plot_gantt(plot_type='both', plot_path=self.plots_path,
+                                                         a_air=a_air)
+        gantt_plots_template, legend_template = plots.plot_gantt(plot_type='templates', plot_path=self.plots_path,
+                                                                 a_air=a_air)
+        gantt_plots_msa, legend_msa = plots.plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air)
+        self.gantt_plots = structures.GanttPlot(plot_both=utils.encode_data(gantt_plots_both),
+                                                legend_both=legend_both,
+                                                plot_template=utils.encode_data(gantt_plots_template),
+                                                legend_template=legend_template,
+                                                plot_msa=utils.encode_data(gantt_plots_msa),
+                                                legend_msa=legend_msa)
         plots.plot_sequence(plot_path=self.sequence_plot_path, a_air=a_air)
 
     def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled,
@@ -86,6 +95,7 @@ class OutputAir:
                 print_number=False)
         # Split the templates with chains
         for template, template_path in self.templates_nonsplit_dict.items():
+            self.percentage_sequences[template] = sequence_assembled.get_percentages(template_path)
             new_pdb_path = os.path.join(self.templates_path, f'{template}.pdb')
             self.templates_dict[template] = new_pdb_path
             shutil.copy2(template_path, new_pdb_path)
@@ -158,8 +168,10 @@ class OutputAir:
             if ranked.filtered:
                 found = False
                 for ranked2 in self.ranked_list:
-                    if ranked2.filtered and ranked2.name != ranked.name and ranked2.name in self.group_ranked_by_rmsd_dict \
-                            and ranked.rmsd_dict[ranked2.name] is not None and ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
+                    if ranked2.filtered and ranked2.name != ranked.name \
+                            and ranked2.name in self.group_ranked_by_rmsd_dict \
+                            and ranked.rmsd_dict[ranked2.name] is not None \
+                            and ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
                         self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
                         found = True
                         ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
@@ -178,19 +190,22 @@ class OutputAir:
                         green_color -= 5
 
         # Generate CCANALYSIS plots, one without rankeds and another one with rankeds.
-        templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=self.templates_dict,
-                                                                     cc_analysis_paths=cc_analysis_paths,
-                                                                     cc_path=os.path.join(self.results_dir,
-                                                                                          'ccanalysis'))
+
+        templates_cluster_list, analysis_dict = bioutils.cc_and_hinges_analysis(paths_in=self.templates_dict,
+                                                                                binaries_path=cc_analysis_paths,
+                                                                                output_path=self.results_dir,
+                                                                                length_sequences=self.percentage_sequences)
         if analysis_dict:
-            plots.plot_cc_analysis(plot_path=self.analysis_plot_path, analysis_dict=analysis_dict,
+            plots.plot_cc_analysis(plot_path=self.analysis_plot_path,
+                                   analysis_dict=analysis_dict,
                                    clusters=templates_cluster_list)
         aux_dict = dict({ranked.name: ranked.split_path for ranked in self.ranked_list}, **self.templates_dict)
-        templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_analysis(paths_in=aux_dict,
-                                                                                   cc_analysis_paths=cc_analysis_paths,
-                                                                                   cc_path=os.path.join(
-                                                                                       self.results_dir,
-                                                                                       'ccanalysis_ranked'))
+
+        templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_and_hinges_analysis(paths_in=aux_dict,
+                                                                                              binaries_path=cc_analysis_paths,
+                                                                                              output_path=self.results_dir,
+                                                                                              length_sequences=self.percentage_sequences)
+
         if analysis_dict_ranked:
             plots.plot_cc_analysis(plot_path=self.analysis_ranked_plot_path, analysis_dict=analysis_dict_ranked,
                                    clusters=templates_cluster_ranked_list, predictions=True)
@@ -199,22 +214,19 @@ class OutputAir:
         if self.templates_dict:
             for i, ranked in enumerate(self.ranked_list):
                 for template, template_path in self.templates_dict.items():
-                    total_residues = len(
-                        [res for res in
-                         Selection.unfold_entities(PDBParser().get_structure(template, template_path), 'R')])
+                    total_residues = bioutils.get_number_residues(template_path)
                     rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([ranked.split_path, template_path])
-                    if rmsd is not None:
-                        rmsd = round(rmsd, 2)
+                    rmsd = round(rmsd, 2) if rmsd is not None else rmsd
                     ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
                 ranked.sort_template_rankeds()
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
-        if best_ranked_dict:
-            [bioutils.gesamt_pdbs([best_ranked_dict[template_path], template_path], template_path) for template_path
-             in self.templates_dict.values()]
-        else:
-            [bioutils.gesamt_pdbs([self.ranked_list[0].split_path, template_path], template_path) for template_path
-             in self.templates_dict.values()]
+
+        for template_path in self.templates_dict.values():
+            if best_ranked_dict and template_path in best_ranked_dict:
+                bioutils.gesamt_pdbs([best_ranked_dict[template_path], template_path], template_path)
+            else:
+                bioutils.gesamt_pdbs([self.ranked_list[0].split_path, template_path], template_path)
 
         # Use aleph to generate domains and calculate secondary structure percentage
 
@@ -262,8 +274,11 @@ class OutputAir:
         for experimental in experimental_pdbs:
             aux_dict = {}
             for pdb in [ranked.split_path for ranked in self.ranked_list] + list(self.templates_dict.values()):
-                rmsd, nalign, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
-                aux_dict[utils.get_file_name(pdb)] = round(rmsd, 2) if rmsd is not None else str(rmsd)
+                rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
+                total_residues = bioutils.get_number_residues(pdb)
+                rmsd = round(rmsd, 2) if rmsd is not None else str(rmsd)
+                aux_dict[utils.get_file_name(pdb)] = structures.TemplateRanked(pdb, rmsd, aligned_residues,
+                                                                               total_residues)
             output_pdb = os.path.join(self.output_dir, os.path.basename(experimental))
             bioutils.gesamt_pdbs([reference_superpose, experimental], output_pdb)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
@@ -384,7 +399,8 @@ class OutputAir:
                 data = {'experimental': self.experimental_dict.keys()}
                 for keys_pdbs in self.experimental_dict.values():
                     for key, value in keys_pdbs.items():
-                        data.setdefault(key, []).append(value)
+                        data.setdefault(key, []).append(
+                            f'{value.rmsd} {value.aligned_residues} ({value.total_residues})')
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())
 

@@ -1,9 +1,7 @@
-from typing import Dict, Union
-
+from typing import Dict, Union, List
 from Bio.PDB import Select, PDBIO
 from alphafold.common import residue_constants
-
-from libs import bioutils, features, utils
+from libs import bioutils, utils
 
 
 class ChangeResidues:
@@ -19,7 +17,7 @@ class ChangeResidues:
         self.chain_res_dict: Dict
         self.chain_group_res_dict: Dict = None
         self.chain_bfactors_dict: Union[Dict, None] = None
-        self.when: str = 'after_alignment'
+        self.when: str
         self.resname: Union[str, None] = None
         self.sequence: Union[str, None] = None
         self.fasta_path: Union[str, None] = None
@@ -35,11 +33,10 @@ class ChangeResidues:
 
     def apply_mapping(self, chain: str, mapping: Dict):
         # Change residues numbering by the ones in mapping
-        if chain in self.chain_res_dict:
-            residues = self.chain_res_dict[chain]
+        residues = self.chain_res_dict.get(chain)
+        if residues:
             results = [utils.get_key_by_value(res, mapping) for res in residues]
             self.chain_res_dict[chain] = [x[0] for x in results if x]
-        self.group_change_res()
 
     def group_change_res(self):
         self.chain_group_res_dict = {}
@@ -70,17 +67,14 @@ class ChangeResidues:
         chains_change = list(self.chain_res_dict.keys())
         chains_inter = set(chains_struct).intersection(chains_change)
         atoms_del_list = []
+        res_del_list = []
 
         for chain in chains_inter:
-            for res in structure[0][chain]:
-                if type == 'delete_inverse':
-                    if bioutils.get_resseq(res) not in self.chain_res_dict[chain]:
-                        for atom in res:
-                            atoms_del_list.append(atom.get_serial_number())
-                if type == 'delete':
-                    if bioutils.get_resseq(res) in self.chain_res_dict[chain]:
-                        for atom in res:
-                            atoms_del_list.append(atom.get_serial_number())
+            for res in structure[0][chain].get_residues():
+                if (type == 'delete_inverse' and bioutils.get_resseq(res) not in self.chain_res_dict[chain]) or (
+                        type == 'delete' and bioutils.get_resseq(res) in self.chain_res_dict[chain]):
+                    res_del_list.append(bioutils.get_resseq(res))
+
                 if type == 'change':
                     if bioutils.get_resseq(res) in self.chain_res_dict[chain]:
                         if self.resname is not None:
@@ -100,11 +94,45 @@ class ChangeResidues:
 
         class AtomSelect(Select):
             def accept_atom(self, atom):
-                if atom.get_serial_number() in atoms_del_list:
-                    return 0
-                else:
-                    return 1
+                return not atom.get_serial_number() in atoms_del_list
+
+        class ResidueSelect(Select):
+            def accept_residue(self, residue):
+                return not bioutils.get_resseq(residue) in res_del_list
 
         io = PDBIO()
         io.set_structure(structure)
-        io.save(pdb_out_path, select=AtomSelect())
+        if atoms_del_list:
+            io.save(pdb_out_path, select=AtomSelect())
+        else:
+            io.save(pdb_out_path, select=ResidueSelect())
+
+
+class ChangeResiduesList:
+    def __init__(self):
+        self.change_residues_list: List[ChangeResidues] = []
+
+    def get_residues_changed_by_chain(self, chain: str) -> List:
+        # Return all the changes for a specific chain.
+        # In the dict, there will be the residue name as key
+        # and all the residues to change in a list
+        fasta = set()
+        resname = set()
+        for change in self.change_residues_list:
+            residues = change.chain_res_dict.get(chain)
+            if residues:
+                if change.fasta_path:
+                    fasta.update(residues)
+                elif change.resname:
+                    resname.update(residues)
+        return list(resname), list(fasta)
+
+    def get_changes_by_chain(self, chain: str, when: str = '') -> List[ChangeResidues]:
+        return [change for change in self.change_residues_list if
+                change.chain_res_dict.get(chain) and (when == '' or change.when == when)]
+
+    def append_change(self, chain_res_dict: Dict, resname: str, fasta_path: str, when: str):
+        self.change_residues_list.append(ChangeResidues(chain_res_dict=chain_res_dict,
+                                                        resname=resname,
+                                                        fasta_path=fasta_path,
+                                                        when=when))

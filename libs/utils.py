@@ -1,22 +1,11 @@
-import base64
-import copy
-import errno
-import glob
-import io
-import json
-import logging
-import os
-import re
-import shutil
-import sys
+import base64, copy, errno, glob, io, json, logging, os, re, shutil, sys
 from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Union, Optional
-
+from typing import Any, Dict, List, Tuple
 from sklearn import preprocessing
-
 from libs import structures
+from libs.global_variables import INPUT_PARAMETERS
 
 
 def print_msg_box(msg, indent=1, title=None):
@@ -41,17 +30,7 @@ def print_matrix(matrix: List):
 
 def normalize_list(input_list: List):
     # Normalize list of values
-
     return preprocessing.normalize(input_list)[0]
-
-
-def get_mandatory_value(input_load: dict, value: str) -> str:
-    # Read value, Raise exception if value could not be found
-
-    read_value = input_load.get(value)
-    if read_value is None:
-        raise Exception(f'{value} is mandatory')
-    return read_value
 
 
 def get_file_extension(path: str) -> str:
@@ -137,30 +116,6 @@ def get_chain_and_number(path_pdb: str) -> Tuple[str, int]:
     return code[0], int(code[1:])
 
 
-def select_paths_in_dict(chain_dict: Dict, code: str) -> str:
-    # Search for the files in all the dict that
-    # finish with code
-    for _, paths in chain_dict.items():
-        for path in paths:
-            split_code = get_chain_and_number(path)
-            if f'{split_code[0]}{split_code[1]}' == code:
-                return path
-
-
-def get_paths_in_alignment(align_dict: Dict, code: str) -> List[str]:
-    # Search for the files in all to align dict that
-    # finish with code
-    return_list = []
-    for _, chain_dict in align_dict.items():
-        return_list.append(select_paths_in_dict(chain_dict=chain_dict, code=code))
-    return return_list
-
-
-def select_path_from_code(align_dict: Dict, code: str, position: int, sequence_name_list: List[str]) -> str:
-    sequence_name = sequence_name_list[position]
-    return select_paths_in_dict(chain_dict=align_dict[sequence_name], code=code)
-
-
 def replace_last_number(text: str, value: int) -> str:
     # Replace the last number of text by the value
     return re.sub(r'\d+.pdb', str(value), str(text)) + '.pdb'
@@ -237,15 +192,20 @@ def parse_cc_analysis(file_path: str) -> Dict:
 def parse_hinges_chains(output: str) -> str:
     # Read the output of hines when using -p chains
     # Return the bets chain combination
-    lines = output.strip().split('\n')[8:]
+    lines = output.strip().split('\n')
     lowest_rmstot = float('inf')
     lowest_perm = ''
+    found_hash = False
     for line in lines:
-        split_line = line.split()
-        rmstot = float(split_line[3])
-        if rmstot < lowest_rmstot:
-            lowest_rmstot = rmstot
-            lowest_perm = split_line[1]
+        if found_hash:
+            split_line = line.split()
+            rmstot = float(split_line[3])
+            if rmstot < lowest_rmstot:
+                lowest_rmstot = rmstot
+                lowest_perm = split_line[1]
+        elif line.startswith(' #'):
+            found_hash = True
+
     return lowest_perm
 
 
@@ -269,12 +229,32 @@ def parse_hinges(output: str) -> structures.Hinges:
             for pair in pairs:
                 ngroup_data.append((int(pair[0]), int(pair[1])))
             residues_list.append(ngroup_data)
-
     if not rmsd_list:
         return None
-    hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100,
+
+    # Extract counts from file 1 and file 2
+    file_1_count_match = re.search(r'number of CA in file 1:\s+(\d+)', output)
+    file_1_count = int(file_1_count_match.group(1)) if file_1_count_match else 0
+
+    file_2_count_match = re.search(r'number of CA in file 2:\s+(\d+)', output)
+    file_2_count = int(file_2_count_match.group(1)) if file_2_count_match else 0
+
+    # Extract warnings for file 1 and file 2
+    warnings_1_match = re.search(r'WARNING: (\d+) non-matching residue\(s\) in 1st sequence ignored', output)
+    warnings_1 = int(warnings_1_match.group(1)) if warnings_1_match else 0
+
+    warnings_2_match = re.search(r'WARNING: (\d+) non-matching residue\(s\) in 2nd sequence ignored', output)
+    warnings_2 = int(warnings_2_match.group(1)) if warnings_2_match else 0
+
+    # Calculate file ratios
+    file1 = (file_1_count - warnings_1) / file_1_count if file_1_count != 0 else 0
+    file2 = (file_2_count - warnings_2) / file_2_count if file_2_count != 0 else 0
+
+    hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
                                       one_rmsd=rmsd_list[0],
+                                      middle_rmsd=rmsd_list[len(rmsd_list) // 2],
                                       min_rmsd=min(rmsd_list),
+                                      overlap=file1 if file1 < file2 else file2,
                                       groups=residues_list)
     return hinges_result
 
@@ -291,7 +271,6 @@ def parse_aleph_annotate(file_path: str) -> Dict:
 
 def parse_aleph_ss(file_path: str) -> Dict:
     # Parse the aleph.txt file and get all the domains by chain
-
     chain_res_dict = {}
     with open(file_path) as f_in:
         lines = f_in.readlines()
@@ -391,7 +370,6 @@ def parse_pisa_interfaces(pisa_output: str) -> Dict:
 def sort_by_digit(container: Any, item: int = 0):
     # Sort list or dictionary by a digit instead of str.
     # Dict can be like this:
-
     if isinstance(container, dict):
         return sorted(container.items(), key=lambda x: int("".join([i for i in x[item] if i.isdigit()])))
     elif isinstance(container, list):
@@ -427,6 +405,51 @@ def check_ranked(input_path: str) -> bool:
 
 def delete_old_rankeds(input_path: str):
     [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if check_ranked(path)]
+
+
+def check_input(global_dict: Dict):
+    all_keys = []
+    [all_keys.extend(list(value.keys())) for key, value in INPUT_PARAMETERS.items()]
+
+    def check_keys(data: Dict) -> str:
+        if isinstance(data, dict):
+            for key in data.keys():
+                if key not in all_keys and key.lower() != 'all' and len(key) != 1:
+                    raise Exception(f'Parameter {key} does not exist. Check the input file')
+                if data[key] is None:
+                    raise Exception(f'Paramter {key} does not have any value. Comment it or add input')
+                if isinstance(data[key], list):
+                    check_keys(data[key])
+
+        if isinstance(data, list):
+            for aux_dict in data:
+                check_keys(aux_dict)
+
+    check_keys(global_dict)
+
+
+def find_differences_between_strings(string1: str, string2: str) -> List[int]:
+    return [i for i, (char1, char2) in enumerate(zip(string1, string2)) if char1 != char2]
+
+
+def get_input_value(name: str, section: str, input_dict: Dict):
+    mapping = {
+        'global': 'global_input',
+        'sequence': 'sequence_input',
+        'template': 'template_input',
+        'change_res': 'change_res_input',
+        'match': 'match_input',
+        'sequences_msa': 'sequences_msa_input',
+    }
+    chosen_dict = INPUT_PARAMETERS.get(mapping.get(section, 'features_input'))
+
+    value_dict = chosen_dict.get(name)
+    value = input_dict.get(name)
+    if value is None and value_dict['required']:
+        raise Exception(f'{name} does not exist and it is a mandatory input parameter. Check the input file.')
+    elif value is None:
+        value = value_dict['default']
+    return value
 
 
 def print_dict(input_dict: Dict):
