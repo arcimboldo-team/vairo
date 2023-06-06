@@ -189,12 +189,11 @@ class Template:
         extracted_chain_dict = {}
         alignment_chain_dict = {}
         if not self.aligned:
-            a3m_path = hhsearch.create_a3m(fasta_path=sequence_in.fasta_path,
-                                           databases=databases,
-                                           output_dir=output_dir)
+            a3m_path = None
             for database in self.alignment_database:
+                # Sometimes with A3M doesn't work, so first we will try with fasta.
                 hhr_path = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}.hhr')
-                hhsearch.run_hhsearch(a3m_path=a3m_path,
+                hhsearch.run_hhsearch(a3m_path=sequence_in.fasta_path,
                                       database_path=database.database_path,
                                       output_path=hhr_path)
                 template_features, mapping, identities, aligned_columns, total_columns, evalue = \
@@ -204,6 +203,30 @@ class Template:
                         cif_path=self.cif_path,
                         chain_id=database.chain
                     )
+
+                if int(aligned_columns) != int(total_columns):
+                    hhr_path2 = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}2.hhr')
+                    if not a3m_path:
+                        a3m_path = hhsearch.create_a3m(fasta_path=sequence_in.fasta_path,
+                                                       databases=databases,
+                                                       output_dir=output_dir)
+                    hhsearch.run_hhsearch(a3m_path=a3m_path,
+                                          database_path=database.database_path,
+                                          output_path=hhr_path2)
+
+                    template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2 = \
+                        features.extract_template_features_from_pdb(
+                            query_sequence=query_sequence,
+                            hhr_path=hhr_path2,
+                            cif_path=self.cif_path,
+                            chain_id=database.chain
+                        )
+                    if int(aligned_columns) < int(aligned_columns2):
+                        os.remove(hhr_path)
+                        shutil.move(hhr_path2, hhr_path)
+                        template_features, mapping, identities, aligned_columns, total_columns, evalue = \
+                            template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2
+
                 if template_features is not None:
                     g = features.Features(query_sequence=query_sequence)
                     g.append_new_template_features(new_template_features=template_features,
