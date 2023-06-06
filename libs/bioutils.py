@@ -16,8 +16,8 @@ from libs.structures import Hinges
 
 
 def download_pdb(pdb_id: str, pdb_path: str) -> str:
-    pdbl = PDBList(server='https://files.wwpdb.org')
-    result_ent = pdbl.retrieve_pdb_file(pdb_code=pdb_id, file_format='pdb', obsolete=False)
+    pdbl = PDBList(server='https://files.wwpdb.org', verbose=False)
+    result_ent = pdbl.retrieve_pdb_file(pdb_code=pdb_id, file_format='pdb', pdir='.', obsolete=False)
     if not os.path.exists(result_ent):
         raise Exception(f'{pdb_id} could not be downloaded.')
     shutil.copy2(result_ent, pdb_path)
