@@ -44,7 +44,6 @@ class OutputAir:
         self.experimental_dict = {}
         self.results_dir: str = ''
         self.templates_nonsplit_dir: str = ''
-        self.rankeds_nonsplit_dir: str = ''
         self.rankeds_split_dir: str = ''
         self.tmp_dir: str = ''
         self.group_ranked_by_rmsd_dict: dict = {}

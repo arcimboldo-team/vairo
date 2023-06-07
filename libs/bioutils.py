@@ -1150,7 +1150,6 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
             x = tup[0]
             distance = tup[2]
             if distance < min_distances[x][0]:
-                print(tup)
                 min_distances[x] = tup
         sorted_list = list(min_distances.values())
 
