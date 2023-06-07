@@ -55,11 +55,12 @@ class Sequence:
                 key = list(mutation.keys())[0]
                 values = utils.expand_residues(list(mutation.values())[0])
                 if key not in list(residue_constants.restype_1to3.keys()):
-                    raise Exception(f'Mutation residues {"".join(values)} in {key} could not be possible. Residue {key} does not exist')
+                    raise Exception(
+                        f'Mutation residues {"".join(values)} in {key} could not be possible. Residue {key} does not exist')
                 self.mutations_dict.setdefault(key, []).extend(values)
                 for value in values:
                     if value <= len(self.sequence):
-                        self.sequence_mutated[value-1] = key
+                        self.sequence_mutated[value - 1] = key
         self.sequence_mutated = ''.join(self.sequence_mutated)
 
 
@@ -73,7 +74,6 @@ class SequenceAssembled:
         self.length: str
         self.glycines: int = glycines
         self.total_copies: int = 0
-        self.mutated_resides: List[int] = []
 
         self.total_copies = sum([sequence.num_of_copies for sequence in sequence_list])
         positions_to_fill = []
@@ -98,8 +98,15 @@ class SequenceAssembled:
             self.sequence_mutated_assembled += self.sequence_list_expanded[i].sequence_mutated + self.glycines * 'G'
         self.sequence_assembled = self.sequence_assembled[:-self.glycines]
         self.sequence_mutated_assembled = self.sequence_mutated_assembled[:-self.glycines]
-        self.mutated_resides = utils.find_differences_between_strings(self.sequence_assembled, self.sequence_mutated_assembled)
         self.length = len(self.sequence_assembled)
+
+    def get_mutated_residues_list(self) -> List[int]:
+        _, changes_dict = bioutils.compare_sequences(self.sequence_assembled, self.sequence_mutated_assembled)
+        return list(changes_dict.keys())
+
+    def get_mutated_residues_dict(self) -> Dict:
+        _, changes_dict = bioutils.compare_sequences(self.sequence_assembled, self.sequence_mutated_assembled)
+        return changes_dict
 
     def get_sequence_length(self, i: int) -> int:
         return len(self.sequence_list_expanded[i].sequence)
@@ -124,7 +131,7 @@ class SequenceAssembled:
     def get_position_by_residue_number(self, res_num: int) -> int:
         # Get the number of a residue. Return the position of the sequence it belongs
         for i in range(0, self.total_copies):
-            if res_num-1 <= self.get_finishing_length(i):
+            if res_num - 1 <= self.get_finishing_length(i):
                 return i
 
     def get_real_residue_number(self, i: int, residue: int) -> int:

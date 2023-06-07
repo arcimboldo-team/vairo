@@ -229,7 +229,6 @@ class OutputAir:
                 bioutils.gesamt_pdbs([self.ranked_list[0].split_path, template_path], template_path)
 
         # Use aleph to generate domains and calculate secondary structure percentage
-
         for ranked in self.ranked_list:
             results_dict, domains_dict = bioutils.aleph_annotate(output_path=self.tmp_dir, pdb_path=ranked.split_path)
             if domains_dict is None or results_dict is None:
@@ -239,6 +238,7 @@ class OutputAir:
             if ranked.filtered:
                 ranked.set_minimized_path(os.path.join(self.tmp_dir, f'{ranked.name}_minimized.pdb'))
                 ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 if interfaces_data_list:
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]

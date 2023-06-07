@@ -135,11 +135,11 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     legend_elements = []
     legend_seq = [Patch(label='Sequence', color='tab:cyan'), Patch(label='Linker', color='tab:blue')]
     number_of_templates = 1
-    total_length = len(a_air.sequence_assembled.sequence_mutated_assembled)
+    total_length = len(a_air.sequence_assembled.sequence_assembled)
     msa_found = False
     templates_found = False
 
-    mutated_residues = a_air.sequence_assembled.mutated_resides
+    mutated_residues = a_air.sequence_assembled.get_mutated_residues_list()
     for i in mutated_residues:
         ax.barh('sequence', 1, left=i + 1, align='edge', color='yellow', height=0.25, zorder=3)
 
@@ -171,13 +171,13 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
     names = [name for name in names if name != '']
     if (len(names) > 30 or plot_type == 'both') and len(names) > 0:
         number_of_templates += 1
-        add_sequences = [0] * len(a_air.sequence_assembled.sequence_mutated_assembled)
+        add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
         for name in names:
             if plot_type == 'msa' or plot_type == 'both':
                 features_search = a_air.feature.get_msa_by_name(name)
             else:
                 features_search = a_air.feature.get_sequence_by_name(name)
-            aligned_sequence = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
+            aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
                                                           features_search)
             aligned_sequence = [1 if align == '-' else float(align) for align in aligned_sequence]
             add_sequences = np.add(aligned_sequence, add_sequences)
@@ -236,7 +236,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
             legend_elements.append(text)
 
             if features_search is not None:
-                aligned_sequence = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
+                aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
                                                               features_search)
 
                 for i in range(1, len(features_search)):

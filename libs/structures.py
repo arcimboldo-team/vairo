@@ -157,8 +157,10 @@ class Ranked:
     def __init__(self, ranked_path: str):
         self.path: str
         self.name: str
+        self.without_mutations_path: str
         self.split_path: str
         self.minimized_path: str
+        self.without_mutations_minimized_path: str
         self.plddt: int
         self.ah: int
         self.bs: int

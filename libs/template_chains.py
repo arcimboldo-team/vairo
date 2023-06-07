@@ -1,6 +1,6 @@
 import copy
 import os
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple
 
 from libs import match_restrictions, utils, bioutils
 from libs.structures import Alignment
@@ -30,6 +30,9 @@ class TemplateChain:
         self.fasta_residues = fasta_residues
         self.sequence_before_changes = sequence_before_changes
 
+    def get_chain_code(self) -> List:
+        return self.chain, self.code
+
     def check_alignment(self, stop: bool):
         # Check if it has been a good alignment. If stop, then throw an error.
         if self.alignment:
@@ -42,6 +45,10 @@ class TemplateChain:
                         f'Stopping the run.')
             return True
         return True
+
+    def __repr__(self):
+        # Print class
+        return f'pdb_path: {self.path}'
 
 
 class TemplateChainsList:
@@ -148,13 +155,15 @@ class TemplateChainsList:
                     deleted_residues = match.get_deleted_residues(chain=chain)
                 changed_residues, fasta_residues = change_res_copy.get_residues_changed_by_chain(chain)
                 chain, number = utils.get_chain_and_number(path)
-                self.template_chains_list.append(TemplateChain(chain=chain,
-                                                               path=path,
-                                                               code=number,
-                                                               sequence=sequence,
-                                                               match=match,
-                                                               alignment=alignment,
-                                                               deleted_residues=deleted_residues,
-                                                               changed_residues=changed_residues,
-                                                               fasta_residues=fasta_residues,
-                                                               sequence_before_changes=sequence_before_changes))
+
+                if not self.get_template_chain(path):
+                    self.template_chains_list.append(TemplateChain(chain=chain,
+                                                                   path=path,
+                                                                   code=number,
+                                                                   sequence=sequence,
+                                                                   match=match,
+                                                                   alignment=alignment,
+                                                                   deleted_residues=deleted_residues,
+                                                                   changed_residues=changed_residues,
+                                                                   fasta_residues=fasta_residues,
+                                                                   sequence_before_changes=sequence_before_changes))

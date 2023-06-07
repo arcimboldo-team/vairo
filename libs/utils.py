@@ -428,10 +428,6 @@ def check_input(global_dict: Dict):
     check_keys(global_dict)
 
 
-def find_differences_between_strings(string1: str, string2: str) -> List[int]:
-    return [i for i, (char1, char2) in enumerate(zip(string1, string2)) if char1 != char2]
-
-
 def get_input_value(name: str, section: str, input_dict: Dict):
     mapping = {
         'global': 'global_input',

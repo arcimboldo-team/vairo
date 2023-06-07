@@ -15,7 +15,6 @@ def main():
         logging.info('ARCIMBOLDO_AIR')
         logging.info('--------------')
         logging.info('')
-
         try:
             input_path = os.path.abspath(sys.argv[1])
             if not os.path.isfile(input_path):
@@ -48,7 +47,8 @@ def main():
         a_air.generate_output()
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
-            a_air.set_feature(feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_mutated_assembled))
+            a_air.set_feature(
+                feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_mutated_assembled))
             a_air.change_state(state=1)
             a_air.generate_output()
             for template in a_air.templates_list:
@@ -102,7 +102,7 @@ def main():
                         end = seq_msa.positions[-1]
                         if end > len(seq):
                             end = len(seq)
-                        seq = seq[seq_msa.positions[0]-1:end]
+                        seq = seq[seq_msa.positions[0] - 1:end]
                     a_air.feature.append_row_in_msa(seq, key, seq_msa.position_query_res_ini)
             features_list = a_air.partition_mosaic()
         else:

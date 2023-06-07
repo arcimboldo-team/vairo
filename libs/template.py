@@ -288,25 +288,25 @@ class Template:
         reference = self.reference if self.reference is not None else None
         reference = global_reference if reference is None else reference
 
-        new_targets_list = self.template_chains_struct.get_chains_not_in_list(composition_path_list)
-        if new_targets_list and len(deleted_positions) < len(sequence_name_list):
-            results_targets_list = self.choose_best_offset(reference=reference,
-                                                           deleted_positions=deleted_positions,
-                                                           template_chains_list=new_targets_list,
-                                                           name_list=sequence_name_list)
+        if not any(composition_path_list):
+            new_targets_list = self.template_chains_struct.get_chains_not_in_list(composition_path_list)
+            if new_targets_list and len(deleted_positions) < len(sequence_name_list):
+                results_targets_list = self.choose_best_offset(reference=reference,
+                                                               deleted_positions=deleted_positions,
+                                                               template_chains_list=new_targets_list,
+                                                               name_list=sequence_name_list)
+                print(results_targets_list)
+                for i, element in enumerate(results_targets_list):
+                    if composition_path_list[i] is None:
+                        composition_path_list[i] = element
 
-            for i, element in enumerate(results_targets_list):
-                if composition_path_list[i] is None:
-                    composition_path_list[i] = element
+        if not any(composition_path_list):
+            raise Exception(
+                f'Not possible to meet the requisites for the template {self.pdb_id}. No chains have good alignments')
 
-            if not any(composition_path_list):
-                raise Exception(
-                    f'Not possible to meet the requisites for the template {self.pdb_id}. No chains have good alignments')
-
-            if self.template_chains_struct.get_number_chains() != sum(x is not None for x in composition_path_list) \
-                    and not all(composition_path_list):
-                logging.info(f'Not all chains have been selected in the template {self.pdb_id}. Probably there are '
-                             f'chains with bad alignment.')
+        if self.template_chains_struct.get_number_chains() != sum(x is not None for x in composition_path_list) \
+                and not all(composition_path_list):
+            logging.info(f'Not all chains have been selected in the template {self.pdb_id}')
 
         return composition_path_list
 
@@ -315,7 +315,12 @@ class Template:
                            name_list: List[str]) -> List[Optional[str]]:
 
         results_algorithm = []
-        for x, template_chain in enumerate(template_chains_list):
+        x = 0
+        last_chain_code = None
+        for template_chain in template_chains_list:
+            if last_chain_code and template_chain.get_chain_code() != last_chain_code:
+                x += 1
+            last_chain_code = template_chain.get_chain_code()
             reference_algorithm = []
             for y, target_pdb in enumerate(reference.results_path_position):
                 if y not in deleted_positions and name_list[y] == template_chain.sequence:

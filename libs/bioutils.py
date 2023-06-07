@@ -1,5 +1,5 @@
 import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from Bio import SeqIO
@@ -13,6 +13,8 @@ from alphafold.common import residue_constants
 from libs import change_res, structures, utils, plots, global_variables, sequence
 from alphafold.relax import cleanup
 from libs.structures import Hinges
+
+import io
 
 
 def download_pdb(pdb_id: str, pdb_path: str) -> str:
@@ -720,8 +722,9 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
     # Given two sequences with same length, return a list showing
     # if there is a match, a group match, they are different, or
     # they are not aligned
+    # Also, return the changes in the sequence2
     return_list = []
-
+    changes_dict = {}
     for i in range(0, len(sequence1)):
         if i < len(sequence2):
             res1 = sequence1[i]
@@ -734,10 +737,12 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
                 return_list.append('0.4')
             else:
                 return_list.append('0.7')
+            if res1 != res2:
+                changes_dict[i] = res2
         else:
             return_list.append('-')
 
-    return return_list
+    return return_list, changes_dict
 
 
 def read_bfactors_from_residues(pdb_path: str) -> Dict:
@@ -949,7 +954,8 @@ def remove_hydrogens(pdb_in_path: str, pdb_out_path: str):
 def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
     try:
         pdb_text = open(pdb_in_path, 'r').read()
-        pdb_output = cleanup.fix_pdb(pdb_text, {})
+        pdb_file = io.StringIO(pdb_text)
+        pdb_output = cleanup.fix_pdb(pdb_file, {})
         with open(pdb_out_path, 'w') as f_out:
             f_out.write(pdb_output)
     except:
@@ -1138,6 +1144,16 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
         elif len(element_aux) < length:
             aux_length = len(element_aux)
         sorted_list = sorted(element_aux, key=lambda x: x[2])[:aux_length]
+
+        min_distances = defaultdict(lambda: (float('inf'),))
+        for tup in sorted_list:
+            x = tup[0]
+            distance = tup[2]
+            if distance < min_distances[x][0]:
+                print(tup)
+                min_distances[x] = tup
+        sorted_list = list(min_distances.values())
+
         target_list = [target for _, target, _, _ in sorted_list]
         if len(target_list) == len(set(target_list)):
             trimmed_list.append(sorted_list)
