@@ -275,10 +275,9 @@ class StructureAir:
                                                    'number_total_residues': ranked.total_residues}
                 except:
                     pass
-                if ranked.energies is not None:
-                    energies_dict[ranked.name] = {'kinetic': ranked.energies.kinetic,
-                                                  'potential': ranked.energies.potential
-                                                  }
+                if ranked.potential_energy is not None:
+                    energies_dict[ranked.name] = ranked.potential_energy
+
                 rmsd_dict[ranked.name] = {}
                 for ranked_template in ranked.superposition_templates:
                     rmsd_dict[ranked.name][ranked_template.template] = {'rmsd': ranked_template.rmsd,
@@ -393,7 +392,7 @@ class StructureAir:
                                                    feature=feature
                                                    )
             self.afrun_list.append(afrun)
-            afrun.run_af2(alphafold_paths=self.alphafold_paths)
+            #afrun.run_af2(alphafold_paths=self.alphafold_paths)
 
     def merge_results(self):
         best_rankeds_dir = os.path.join(self.results_dir, 'best_rankeds')

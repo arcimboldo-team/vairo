@@ -1,3 +1,4 @@
+import os.path
 from typing import Dict, Union, List
 from Bio.PDB import Select, PDBIO
 from alphafold.common import residue_constants
@@ -7,7 +8,7 @@ from libs import bioutils, utils
 class ChangeResidues:
 
     def __init__(self, chain_res_dict: Dict, resname: str = None, chain_bfactors_dict: Dict = None,
-                 fasta_path: str = None, when: str = 'after_alignment'):
+                 sequence: str = None, when: str = 'after_alignment'):
         # Read parameters and create ChangeResidues class
         # The change is a mandatory value, can be a dict, a list or an int
         # If change is a list, the specific residues will be changed from
@@ -25,9 +26,12 @@ class ChangeResidues:
         self.resname = resname
         self.chain_res_dict = chain_res_dict
         self.chain_bfactors_dict = chain_bfactors_dict
-        if fasta_path is not None:
-            self.sequence = bioutils.extract_sequence(fasta_path=fasta_path)
-            self.fasta_path = fasta_path
+        if sequence is not None:
+            if os.path.exists(sequence):
+                self.sequence = bioutils.extract_sequence(fasta_path=sequence)
+                self.fasta_path = sequence
+            else:
+                self.sequence = sequence
         self.when = when
         self.group_change_res()
 
@@ -68,13 +72,11 @@ class ChangeResidues:
         chains_inter = set(chains_struct).intersection(chains_change)
         atoms_del_list = []
         res_del_list = []
-
         for chain in chains_inter:
             for res in structure[0][chain].get_residues():
                 if (type == 'delete_inverse' and bioutils.get_resseq(res) not in self.chain_res_dict[chain]) or (
                         type == 'delete' and bioutils.get_resseq(res) in self.chain_res_dict[chain]):
                     res_del_list.append(bioutils.get_resseq(res))
-
                 if type == 'change':
                     if bioutils.get_resseq(res) in self.chain_res_dict[chain]:
                         if self.resname is not None:
@@ -134,5 +136,5 @@ class ChangeResiduesList:
     def append_change(self, chain_res_dict: Dict, resname: str, fasta_path: str, when: str):
         self.change_residues_list.append(ChangeResidues(chain_res_dict=chain_res_dict,
                                                         resname=resname,
-                                                        fasta_path=fasta_path,
+                                                        sequence=fasta_path,
                                                         when=when))

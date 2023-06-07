@@ -129,13 +129,6 @@ class Frobenius:
     encoded_ang_plot: bytes
     core: int
 
-
-@dataclasses.dataclass(frozen=True)
-class OpenmmEnergies:
-    kinetic: str
-    potential: List[int]
-
-
 @dataclasses.dataclass(frozen=True)
 class SequencesMsa:
     path: str
@@ -157,17 +150,17 @@ class Ranked:
     def __init__(self, ranked_path: str):
         self.path: str
         self.name: str
-        self.without_mutations_path: str
         self.split_path: str
         self.minimized_path: str
-        self.without_mutations_minimized_path: str
+        self.without_mutations_path: str = None
+        self.without_mutations_minimized_path: str = None
         self.plddt: int
         self.ah: int
         self.bs: int
         self.total_residues: int
         self.superposition_templates: List[TemplateRanked] = []
         self.mapping: Dict = {}
-        self.energies: OpenmmEnergies = None
+        self.potential_energy: float = None
         self.interfaces: List[Interface] = []
         self.frobenius_plots: List[Frobenius] = []
         self.filtered: bool = False
@@ -182,6 +175,12 @@ class Ranked:
 
     def set_path(self, path: str):
         self.path = path
+
+    def set_without_mutations_minimized_path(self, path: str):
+        self.without_mutations_minimized_path = path
+
+    def set_without_mutations_path(self, path: str):
+        self.without_mutations_path = path
 
     def set_plddt(self, plddt: float):
         self.plddt = round(plddt)
@@ -221,8 +220,8 @@ class Ranked:
         self.bs = bs
         self.total_residues = total_residues
 
-    def set_energies(self, energies: OpenmmEnergies):
-        self.energies = energies
+    def set_potential_energy(self, potential_energy: float):
+        self.potential_energy = potential_energy
 
     def add_interfaces_frobenius_plot(self, plot: str):
         self.interfaces_frobenius_plot.append(plot)

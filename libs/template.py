@@ -295,7 +295,6 @@ class Template:
                                                                deleted_positions=deleted_positions,
                                                                template_chains_list=new_targets_list,
                                                                name_list=sequence_name_list)
-                print(results_targets_list)
                 for i, element in enumerate(results_targets_list):
                     if composition_path_list[i] is None:
                         composition_path_list[i] = element

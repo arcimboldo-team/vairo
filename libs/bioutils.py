@@ -5,15 +5,14 @@ import numpy as np
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
 from scipy.spatial import distance
-from simtk import unit, openmm
 from sklearn.cluster import KMeans
-
 from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
 from libs import change_res, structures, utils, plots, global_variables, sequence
-from alphafold.relax import cleanup
+from alphafold.relax import cleanup, amber_minimize
 from libs.structures import Hinges
-
+from simtk import openmm
+from simtk import unit
 import io
 
 
@@ -973,25 +972,26 @@ def run_arcimboldo_air(yml_path: str):
     logging.info('ARCIMBOLDO_AIR cluster run finished successfully.')
 
 
-def run_openmm(pdb_in_path: str, pdb_out_path: str) -> structures.OpenmmEnergies:
-    try:
-        run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
-        protein_pdb = openmm.app.pdbfile.PDBFile(pdb_out_path)
-        forcefield = openmm.app.ForceField('amber99sb.xml')
-        system = forcefield.createSystem(protein_pdb.topology, constraints=openmm.app.HBonds)
-        integrator = openmm.openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.002 * unit.picoseconds)
-        simulation = openmm.app.simulation.Simulation(protein_pdb.topology, system, integrator)
-        simulation.context.setPositions(protein_pdb.positions)
-        simulation.minimizeEnergy()
-        simulation.step(1000)
-        state = simulation.context.getState(getPositions=True, getEnergy=True)
-        with open(pdb_out_path, 'w') as f_out:
-            openmm.app.pdbfile.PDBFile.writeFile(protein_pdb.topology, state.getPositions(), file=f_out, keepIds=True)
-        return structures.OpenmmEnergies(round(state.getKineticEnergy()._value, 2),
-                                         round(state.getPotentialEnergy()._value, 2))
-    except:
-        logging.info(f'Not possible to calculate energies for {utils.get_file_name(pdb_in_path)}')
-        return structures.OpenmmEnergies(None, None)
+def run_openmm(pdb_in_path: str, pdb_out_path: str) -> float:
+    energy = unit.kilocalories_per_mole
+    length = unit.angstroms
+    restraint_set = "non_hydrogen"
+    max_iterations = 1
+    tolerance = 2.39 * energy
+    stiffness = 10.0 * energy / (length ** 2)
+    run_pdbfixer(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path)
+    pdb_text = open(pdb_out_path, 'r').read()
+    ret = amber_minimize._openmm_minimize(
+        pdb_str=pdb_text,
+        max_iterations=1,
+        tolerance=tolerance,
+        stiffness=stiffness,
+        exclude_residues=[],
+        restraint_set='non_hydrogen',
+        use_gpu=True)
+    with open(pdb_out_path, 'w+') as f:
+        f.write(ret["min_pdb"])
+    return round(ret["efinal"], 2)
 
 
 def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[float], Optional[str], Optional[str]]:

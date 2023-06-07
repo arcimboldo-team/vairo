@@ -8,7 +8,7 @@ import pandas as pd
 from Bio.PDB import PDBParser, Selection
 
 from ALEPH.aleph.core import ALEPH
-from libs import bioutils, features, utils, sequence, structures, plots
+from libs import bioutils, features, utils, sequence, structures, plots, change_res
 
 PERCENTAGE_FILTER = 0.8
 PERCENTAGE_MAX_RMSD = 1
@@ -45,6 +45,7 @@ class OutputAir:
         self.results_dir: str = ''
         self.templates_nonsplit_dir: str = ''
         self.rankeds_split_dir: str = ''
+        self.rankeds_without_mutations_dir: str = ''
         self.tmp_dir: str = ''
         self.group_ranked_by_rmsd_dict: dict = {}
         self.template_interfaces: dict = {}
@@ -74,16 +75,18 @@ class OutputAir:
     def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled,
                        feature: features.Features, experimental_pdbs: List[str], cc_analysis_paths,
                        cluster_templates: bool = False):
-        # Read all templates and rankeds, if there are no ranked, raise an error
 
+        # Read all templates and rankeds, if there are no ranked, raise an error
         self.results_dir = results_dir
         self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
         self.rankeds_split_dir = f'{self.results_dir}/rankeds_split'
+        self.rankeds_without_mutations_dir = f'{self.results_dir}/rankeds_without_mutations'
         self.tmp_dir = f'{self.results_dir}/tmp'
 
         utils.create_dir(dir_path=self.templates_nonsplit_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.rankeds_split_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
+        utils.create_dir(dir_path=self.rankeds_without_mutations_dir, delete_if_exists=True)
 
         store_old_dir = os.getcwd()
         os.chdir(self.tmp_dir)
@@ -126,6 +129,15 @@ class OutputAir:
         max_plddt = plots.plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
                                 sequence_amino=sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
+
+        # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
+        for ranked in self.ranked_list:
+            if sequence_assembled.get_mutated_residues_list():
+                path = shutil.copy2(ranked.path, self.rankeds_without_mutations_dir)
+                ranked.set_without_mutations_path(path)
+                residues = [*range(1, sequence_assembled.length, 1)]
+                change = change_res.ChangeResidues(chain_res_dict={'A': residues}, sequence=sequence_assembled.sequence_assembled)
+                change.change_residues(path, path)
 
         # Save split path of all rankeds, taking into account the split dir
         [ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path))) for ranked in
@@ -235,8 +247,12 @@ class OutputAir:
             ranked.set_secondary_structure(ah=results_dict['ah'], bs=results_dict['bs'],
                                            total_residues=results_dict['number_total_residues'])
             if ranked.filtered:
-                ranked.set_minimized_path(os.path.join(self.tmp_dir, f'{ranked.name}_minimized.pdb'))
-                ranked.set_energies(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                ranked.set_minimized_path(os.path.join(self.results_dir, f'{ranked.name}_minimized.pdb'))
+                ranked.set_potential_energy(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+
+                if ranked.without_mutations_path:
+                    ranked.set_without_mutations_minimized_path(os.path.join(self.rankeds_without_mutations_dir, f'{ranked.name}_minimized.pdb'))
+                    bioutils.run_openmm(pdb_in_path=ranked.without_mutations_path, pdb_out_path=ranked.without_mutations_minimized_path)
 
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 if interfaces_data_list:
@@ -386,8 +402,7 @@ class OutputAir:
                 f_in.write('\n\n')
                 f_in.write('OPENMM Energies\n')
                 data = {'ranked': energies_dict.keys(),
-                        'kinetic': [value['kinetic'] for value in energies_dict.values()],
-                        'potential': [value['potential'] for value in energies_dict.values()]
+                        'potential': energies_dict.values()
                         }
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())

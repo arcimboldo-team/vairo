@@ -626,8 +626,7 @@
                     <table>
                         <tr>
                             <th>prediction</th>
-                            <th>kinetic (kJ/mol)</th>
-                            <th>potential (kJ/mol)</th>
+                            <th>potential (kcal/mol)</th>
                         </tr>
                         {% for key, value in data.table.energies_dict.items() %}
                             {% if key in data.bests_dict %}
@@ -638,8 +637,7 @@
                                 <tr>
                             {% endif %}
                                 <td>{{ key }}</td>
-                                <td>{{ value.kinetic }}</td>
-                                <td>{{ value.potential }}</td>
+                                <td>{{ value }}</td>
                             </tr>
                         {% endfor %}
                     </table>
