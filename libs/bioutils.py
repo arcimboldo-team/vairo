@@ -11,7 +11,6 @@ from alphafold.common import residue_constants
 from libs import change_res, structures, utils, plots, global_variables, sequence
 from alphafold.relax import cleanup, amber_minimize
 from libs.structures import Hinges
-from simtk import openmm
 from simtk import unit
 import io
 

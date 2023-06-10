@@ -36,7 +36,7 @@ class StructureAir:
         self.cluster_templates_msa: int
         self.cluster_templates_msa_delete: List[int]
         self.cluster_templates_sequence: str
-        self.sequences_msa: List[structures.SequencesMsa] = []
+        self.libraries: List[structures.Library] = []
         self.glycines: int
         self.template_positions_list: List[List] = []
         self.reference: Union[template.Template, None]
@@ -114,35 +114,41 @@ class StructureAir:
             sequence_list.append(new_sequence)
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
 
-        for sequence_msa in utils.get_input_value(name='sequences_msa', section='global', input_dict=parameters_dict):
-
-            path = utils.get_input_value(name='path', section='sequences_msa', input_dict=sequence_msa)
-            aligned = utils.get_input_value(name='aligned', section='sequences_msa', input_dict=sequence_msa)
-            position_query_ini = utils.get_input_value(name='position_query_ini', section='sequences_msa',
-                                                       input_dict=sequence_msa)
-            position_query_res_ini = utils.get_input_value(name='position_query_res_ini', section='sequences_msa',
-                                                           input_dict=sequence_msa)
-            positions = utils.get_input_value(name='positions', section='sequences_msa', input_dict=sequence_msa)
-
-            if position_query_ini is None:
-                position_query_ini = 1
-
-            if position_query_res_ini is None:
-                position_query_res_ini = self.sequence_assembled.get_starting_length(0) + 1
+        for library in utils.get_input_value(name='append_library', section='global', input_dict=parameters_dict):
+            path = utils.get_input_value(name='path', section='append_library', input_dict=library)
+            aligned = utils.get_input_value(name='aligned', section='append_library', input_dict=library)
+            add_to_msa = utils.get_input_value(name='add_to_msa', section='append_library', input_dict=library)
+            positions = utils.get_input_value(name='positions', section='append_library', input_dict=library)
+            positions_list = None
             if positions:
-                positions = utils.expand_residues(positions)
+                positions_list = ['-'] * self.sequence_assembled.length
+                for pos in positions:
+                    for pos_lib, pos_query_list in pos.items():
+                        pos_lib_exp = utils.expand_residues(pos_lib)
+                        for pos_query in pos_query_list.split(','):
+                            pos_query_exp = utils.expand_residues(pos_query)
+                            if len(pos_lib_exp) != len(pos_query_exp):
+                                raise Exception('Wrong format in the positions in append_library. Residue range numbers '
+                                                'mismatch')
+                            for i, pos_aux in enumerate(pos_query_exp):
+                                positions_list[pos_aux-1] = pos_lib_exp[i]-1
 
             if os.path.exists(path):
                 aux_list = [os.path.join(path, file) for file in os.listdir(path)] if os.path.isdir(path) else [path]
                 for aux_path in aux_list:
-                    if utils.get_file_extension(aux_path) in ['.pdb', '.cif', '.fasta']:
-                        self.sequences_msa.append(
-                            structures.SequencesMsa(path=aux_path, aligned=aligned,
-                                                    position_query_ini=position_query_ini,
-                                                    position_query_res_ini=position_query_res_ini,
-                                                    positions=positions))
+                    add_to_templates = utils.get_input_value(name='add_to_templates', section='append_library',
+                                                             input_dict=library)
+                    if utils.get_file_extension(aux_path) == '.fasta' and add_to_templates:
+                        logging.info(f'Ignoring add_to_templates to True for fasta file {aux_path}')
+                        add_to_templates = False
+                    if utils.get_file_extension(aux_path) in ['.pdb', '.fasta']:
+                        self.libraries.append(structures.Library(path=aux_path, aligned=aligned,
+                                                                 add_to_msa=add_to_msa,
+                                                                 add_to_templates=add_to_templates,
+                                                                 positions=positions,
+                                                                 positions_list=positions_list))
             else:
-                raise Exception(f'Path {path} does not exist. Check the input sequences_msa parameter.')
+                raise Exception(f'Path {path} does not exist. Check the input append_library parameter.')
 
         for parameters_features in utils.get_input_value(name='features', section='global', input_dict=parameters_dict):
             positions = utils.get_input_value(name='positions', section='features', input_dict=parameters_features)
@@ -593,18 +599,21 @@ class StructureAir:
                         f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
                 if self.cluster_templates_sequence is not None:
                     f_out.write(f'cluster_templates_sequence: {self.cluster_templates_sequence}\n')
-            if self.sequences_msa:
-                f_out.write(f'\nsequences_msa:\n')
-                for seq_msa in self.sequences_msa:
+            if self.libraries:
+                f_out.write(f'\nappend_library:\n')
+                for library in self.libraries:
                     f_out.write('-')
-                    f_out.write(f' path: {seq_msa.path}\n')
-                    f_out.write(f'  aligned: {seq_msa.aligned}\n')
-                    if seq_msa.position_query_ini:
-                        f_out.write(f'  position_query_ini: {seq_msa.position_query_ini}\n')
-                    if seq_msa.position_query_res_ini:
-                        f_out.write(f'  position_query_res_ini: {seq_msa.position_query_res_ini}\n')
-                    if seq_msa.positions:
-                        f_out.write(f'  positions: {",".join(map(str, seq_msa.positions))}\n')
+                    f_out.write(f' path: {library.path}\n')
+                    f_out.write(f'  aligned: {library.aligned}\n')
+                    if library.add_to_msa:
+                        f_out.write(f'  add_to_msa: {library.add_to_msa}\n')
+                    if library.add_to_templates:
+                        f_out.write(f'  add_to_templates: {library.add_to_templates}\n')
+                    if library.positions:
+                        f_out.write(f'  positions:\n')
+                        for positions in library.positions:
+                            for lib, query in positions.items():
+                                f_out.write(f'  -{lib}: {query}\n')
             if self.features_input:
                 f_out.write(f'\nfeatures:\n')
                 for feat in self.features_input:
@@ -627,8 +636,8 @@ class StructureAir:
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
                 if sequence_in.mutations_dict.items():
                     f_out.write(f'  mutations:\n')
-                for residue, values in sequence_in.mutations_dict.items():
-                    f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
+                    for residue, values in sequence_in.mutations_dict.items():
+                        f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
             if self.templates_list:
                 f_out.write(f'\ntemplates:\n')
                 for template_in in self.templates_list:

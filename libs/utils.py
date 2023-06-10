@@ -250,12 +250,13 @@ def parse_hinges(output: str) -> structures.Hinges:
     file1 = (file_1_count - warnings_1) / file_1_count if file_1_count != 0 else 0
     file2 = (file_2_count - warnings_2) / file_2_count if file_2_count != 0 else 0
 
-    hinges_result = structures.Hinges(decreasing_rmsd=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
-                                      one_rmsd=rmsd_list[0],
-                                      middle_rmsd=rmsd_list[len(rmsd_list) // 2],
-                                      min_rmsd=min(rmsd_list),
-                                      overlap=file1 if file1 < file2 else file2,
-                                      groups=residues_list)
+    hinges_result = structures.Hinges(
+        decreasing_rmsd=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
+        one_rmsd=rmsd_list[0],
+        middle_rmsd=rmsd_list[len(rmsd_list) // 2],
+        min_rmsd=min(rmsd_list),
+        overlap=file1 if file1 < file2 else file2,
+        groups=residues_list)
     return hinges_result
 
 
@@ -407,6 +408,12 @@ def delete_old_rankeds(input_path: str):
     [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if check_ranked(path)]
 
 
+def check_format(string_in):
+    pattern = r"\d+-\d+"
+    match = re.match(pattern, string_in)
+    return bool(match)
+
+
 def check_input(global_dict: Dict):
     all_keys = []
     [all_keys.extend(list(value.keys())) for key, value in INPUT_PARAMETERS.items()]
@@ -414,7 +421,7 @@ def check_input(global_dict: Dict):
     def check_keys(data: Dict) -> str:
         if isinstance(data, dict):
             for key in data.keys():
-                if key not in all_keys and key.lower() != 'all' and len(key) != 1:
+                if key not in all_keys and key.lower() != 'all' and len(key) != 1 and not check_format(key):
                     raise Exception(f'Parameter {key} does not exist. Check the input file')
                 if data[key] is None:
                     raise Exception(f'Paramter {key} does not have any value. Comment it or add input')
@@ -435,7 +442,7 @@ def get_input_value(name: str, section: str, input_dict: Dict):
         'template': 'template_input',
         'change_res': 'change_res_input',
         'match': 'match_input',
-        'sequences_msa': 'sequences_msa_input',
+        'append_library': 'append_library_input',
     }
     chosen_dict = INPUT_PARAMETERS.get(mapping.get(section, 'features_input'))
 

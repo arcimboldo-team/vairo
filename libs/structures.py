@@ -130,12 +130,13 @@ class Frobenius:
     core: int
 
 @dataclasses.dataclass(frozen=True)
-class SequencesMsa:
+class Library:
     path: str
     aligned: str
-    position_query_ini: int
-    position_query_res_ini: int
-    positions: List[int]
+    add_to_msa: bool
+    add_to_templates: bool
+    positions: Dict
+    positions_list: List[str]
 
 
 @dataclasses.dataclass(frozen=True)

@@ -179,7 +179,7 @@ INPUT_PARAMETERS = {
             'mode': ['guided'],
             'default': []
         },
-        'sequences_msa': {
+        'append_library': {
             'required': False,
             'mode': ['guided'],
             'default': []
@@ -276,7 +276,7 @@ INPUT_PARAMETERS = {
             'default': None
         }
     },
-    'sequences_msa_input': {
+    'append_library_input': {
       'path': {
           'required': True
       },
@@ -284,13 +284,13 @@ INPUT_PARAMETERS = {
           'required': False,
           'default': True
       },
-      'position_query_ini': {
+      'add_to_msa': {
           'required': False,
-          'default': None
+          'default': True
       },
-      'position_query_res_ini': {
+      'add_to_templates': {
             'required': False,
-            'default': None
+            'default': False
       },
       'positions': {
             'required': False,

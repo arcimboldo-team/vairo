@@ -37,11 +37,12 @@ sequences:
 Several features.pkl can be merged to the final features.pkl. It is possible to select the amount of templates and sequences to be inserted.
 Delete specific regions of the MSA, replace the sequence of the templates and insert the features in specific regions in the final features.
 
-sequence_msa:
+append_library:
   - path: (mandatory, string): Path to a folder, pdb or fasta. The folder can contain fastas or pdbs too.
-    position: (optional, string) Position to cut the sequence. Starting and finishing position (Eg. 3-6)
-    positions_query_ini: (optional, int): Starting position in the query sequence (if there is more than one sequence)
-    position_query_res_ini: (optional, int): Starting position in the query sequence, the starting residue.
+    position:
+    add_to_msa:
+    add_to_templates: (only if it is pdbs)
+    positions: Dict
 
 features:
 - path: (mandatory, string): Path to features.pkl
