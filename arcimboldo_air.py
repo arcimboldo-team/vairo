@@ -97,7 +97,7 @@ def main():
                 if library.add_to_templates:
                     template_path = f'{os.path.join(a_air.input_dir, utils.get_file_name(library.path))}.pdb'
                     if library.positions:
-                        template_path = bioutils.copy_positions_of_pdb(path_in=library.path, path_out=template_path, positions=library.positions)
+                        template_path = bioutils.copy_positions_of_pdb(path_in=library.path, path_out=template_path, positions=library.positions_list)
                     else:
                         shutil.copy2(library.path, template_path)
                     template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
