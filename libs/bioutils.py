@@ -69,6 +69,32 @@ def check_pdb(pdb: str, pdb_out_path: str) -> str:
     return pdb_path
 
 
+def copy_positions_of_pdb(path_in: str, path_out: str, positions: List[str]) -> str:
+    new_structure = Structure.Structure(utils.get_file_name(path_in))
+    new_model = Model.Model('model')
+    chain = Chain.Chain('A')
+    new_structure.add(new_model)
+    new_model.add(chain)
+    structure = get_structure(path_in)
+    chain_name = get_chains(path_in)[0]
+    for m, pos in enumerate(positions):
+        if pos != '-':
+            residue = copy.deepcopy(structure[0][chain_name][int(pos) + 1])
+            residue.id = (residue.id[0], m + 1, residue.id[2])
+            chain.add(residue)
+            residue.parent = chain
+
+    class AtomSelect(Select):
+        def accept_atom(self, atom):
+            return atom.get_name() in global_variables.ATOM_TYPES
+
+    pdb_io = PDBIO()
+    pdb_io.set_structure(new_structure)
+    pdb_io.save(path_out, select=AtomSelect())
+
+    return path_out
+
+
 def check_sequence_path(path_in: str) -> str:
     if path_in is not None:
         if not os.path.exists(path_in):

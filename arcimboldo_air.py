@@ -7,8 +7,7 @@ os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
-from libs import features, structure_air, utils, bioutils, global_variables
-from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
+from libs import features, structure_air, utils, bioutils
 
 
 def main():
@@ -96,29 +95,9 @@ def main():
                                                         sequence_in=feat.sequence)
             for i, library in enumerate(a_air.libraries):
                 if library.add_to_templates:
-                    new_structure = Structure.Structure(utils.get_file_name(library.path))
-                    new_model = Model.Model('model')
-                    chain = Chain.Chain('A')
-                    new_structure.add(new_model)
-                    new_model.add(chain)
-                    template_path = f'{os.path.join(a_air.output_dir, utils.get_file_name(library.path))}.pdb'
-                    if library.positions_list:
-                        structure = bioutils.get_structure(library.path)
-                        chain_name = bioutils.get_chains(library.path)[0]
-                        for m, pos in enumerate(library.positions_list):
-                            if pos != '-':
-                                residue = copy.deepcopy(structure[0][chain_name][int(pos) + 1])
-                                residue.id = (residue.id[0], m + 1, residue.id[2])
-                                chain.add(residue)
-                                residue.parent = chain
-
-                        class AtomSelect(Select):
-                            def accept_atom(self, atom):
-                                return atom.get_name() in global_variables.ATOM_TYPES
-
-                        io = PDBIO()
-                        io.set_structure(new_structure)
-                        io.save(template_path, select=AtomSelect())
+                    template_path = f'{os.path.join(a_air.input_dir, utils.get_file_name(library.path))}.pdb'
+                    if library.positions:
+                        template_path = bioutils.copy_positions_of_pdb(path_in=library.path, path_out=template_path, positions=library.positions)
                     else:
                         shutil.copy2(library.path, template_path)
                     template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
@@ -132,18 +111,20 @@ def main():
                     extension = utils.get_file_extension(library.path)
                     if extension in ['.pdb']:
                         sequence_list = bioutils.extract_sequence_msa_from_pdb(library.path)
-                        sequence_list = list(sequence_list.values())[0]
+                        sequence_list = list(sequence_list.values())
                     if extension == '.fasta':
-                        sequence_list = bioutils.extract_sequences(library.path)
-                    if library.positions_list:
-                        aux_library_list = copy.copy(library.positions_list)
-                        for m, pos in enumerate(aux_library_list):
-                            if pos != '-':
-                                aux_library_list[m] = sequence_list[pos]
-                        sequence_list = aux_library_list
-                    sequence_list = ''.join(sequence_list)
-                    print(sequence_list)
-                    a_air.feature.append_row_in_msa(sequence_list, f'lib_{i}_{utils.get_file_name(library.path)}', 1)
+                        sequence_list = list(bioutils.extract_sequences(library.path).values())
+
+                    for sequence in sequence_list:
+                        seq_aux = sequence
+                        if library.positions_list:
+                            aux_library_list = copy.copy(library.positions_list)
+                            for m, pos in enumerate(aux_library_list):
+                                if pos != '-':
+                                    aux_library_list[m] = seq_aux[pos]
+                            seq_aux = aux_library_list
+                        seq_aux = ''.join(seq_aux)
+                        a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}_{utils.get_file_name(library.path)}', 1)
 
             features_list = a_air.partition_mosaic()
         else:
