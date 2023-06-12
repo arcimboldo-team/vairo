@@ -1044,9 +1044,9 @@ def gesamt_pdbs(pdb_list: List[str], output_path: str = None) -> Tuple[Optional[
     if output_path is not None:
         superpose_input_list.extend(['-o', name_folder, '-o-d'])
     superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
-    new_path = [file for file in os.listdir(name_folder) if file.startswith(utils.get_file_name(pdb_list[-1]))]
+    new_path = [file for file in os.listdir(name_folder) if file == f'{utils.get_file_name(pdb_list[-1])}_2.pdb']
     if new_path:
-        shutil.copy2(os.path.join(name_folder, new_path[0]), output_path)
+        shutil.copy2(os.path.join(name_folder, new_path[-1]), output_path)
     shutil.rmtree(name_folder)
     rmsd, quality_q, nalign = None, None, None
     for line in superpose_output.split('\n'):
