@@ -820,7 +820,6 @@ def split_chains_assembly(pdb_in_path: str,
         residues_list = list(structure[0][chains[0]].get_residues())
         idres_list = list([get_resseq(res) for res in residues_list])
         original_chain_name = chains[0]
-
         for i in range(sequence_assembled.total_copies):
             sequence_length = sequence_assembled.get_sequence_length(i)
             start_min = sequence_assembled.get_starting_length(i)
@@ -1008,11 +1007,11 @@ def run_openmm(pdb_in_path: str, pdb_out_path: str) -> float:
     pdb_text = open(pdb_out_path, 'r').read()
     ret = amber_minimize._openmm_minimize(
         pdb_str=pdb_text,
-        max_iterations=1,
+        max_iterations=max_iterations,
         tolerance=tolerance,
         stiffness=stiffness,
         exclude_residues=[],
-        restraint_set='non_hydrogen',
+        restraint_set=restraint_set,
         use_gpu=True)
     with open(pdb_out_path, 'w+') as f:
         f.write(ret["min_pdb"])

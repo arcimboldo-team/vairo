@@ -31,6 +31,7 @@ class OutputAir:
         self.frobenius_path: str = f'{output_dir}/frobenius'
         self.sequence_path: str = os.path.join(self.frobenius_path, 'sequence.fasta')
         self.templates_path: str = f'{output_dir}/templates'
+        self.experimental_dir: str = f'{output_dir}/experimental_pdbs'
         self.interfaces_path: str = f'{output_dir}/interfaces'
         self.analysis_path: str = f'{self.plots_path}/analysis.txt'
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
@@ -165,12 +166,15 @@ class OutputAir:
         for ranked in self.ranked_list:
             if ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
                 ranked.set_filtered(True)
+                mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.split_path,
+                                                         pdb_out_path=ranked.split_path,
+                                                         sequence_assembled=sequence_assembled)
                 ranked.set_split_path(
                     shutil.copy2(ranked.split_path, os.path.join(self.output_dir, os.path.basename(ranked.path))))
-
-            mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.split_path,
-                                                     pdb_out_path=ranked.split_path,
-                                                     sequence_assembled=sequence_assembled)
+            else:
+                mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.split_path,
+                                                         pdb_out_path=ranked.split_path,
+                                                         sequence_assembled=sequence_assembled)
             ranked.set_mapping(mapping)
             ranked.set_encoded(ranked.split_path)
             bioutils.remove_hydrogens(ranked.split_path, ranked.split_path)
@@ -294,7 +298,7 @@ class OutputAir:
                 rmsd = round(rmsd, 2) if rmsd is not None else str(rmsd)
                 aux_dict[utils.get_file_name(pdb)] = structures.TemplateRanked(pdb, rmsd, aligned_residues,
                                                                                total_residues)
-            output_pdb = os.path.join(self.output_dir, os.path.basename(experimental))
+            output_pdb = os.path.join(self.experimental_dir, os.path.basename(experimental))
             bioutils.gesamt_pdbs([reference_superpose, experimental], output_pdb)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
 
