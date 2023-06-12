@@ -58,6 +58,7 @@ class OutputAir:
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
+        utils.create_dir(dir_path=self.experimental_dir, delete_if_exists=True)
 
     def create_plot_gantt(self, a_air):
         gantt_plots_both, legend_both = plots.plot_gantt(plot_type='both', plot_path=self.plots_path,
