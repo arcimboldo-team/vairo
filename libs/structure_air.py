@@ -60,6 +60,7 @@ class StructureAir:
         if self.run_dir is None:
             self.run_dir = os.path.join(self.output_dir, 'run')
         self.input_dir = os.path.join(self.output_dir, 'input')
+        self.experimental_dir: str = os.path.join(self.output_dir, 'experimental_pdbs')
         self.results_dir = os.path.join(self.run_dir, self.name_results_dir)
         self.log_path = os.path.join(self.output_dir, 'output.log')
         self.cluster_path = os.path.join(self.output_dir, 'clustering')
@@ -71,6 +72,7 @@ class StructureAir:
         utils.create_dir(self.output_dir)
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
+        utils.create_dir(self.experimental_dir, delete_if_exists=True)
         utils.delete_old_rankeds(self.output_dir)
 
         self.af2_dbs_path = utils.get_input_value(name='af2_dbs_path', section='global', input_dict=parameters_dict)
@@ -99,7 +101,7 @@ class StructureAir:
         if experimental_string:
             experimental_list = experimental_string.replace(' ', '').split(',')
             for pdb in experimental_list:
-                pdb_path = bioutils.check_pdb(pdb, f'{os.path.join(self.input_dir, utils.get_file_name(pdb))}.pdb')
+                pdb_path = bioutils.check_pdb(pdb, f'{os.path.join(self.experimental_dir, utils.get_file_name(pdb))}.pdb')
                 self.experimental_pdbs.append(os.path.join(self.input_dir, os.path.basename(pdb_path)))
                 try:
                     bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])

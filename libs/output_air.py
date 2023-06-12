@@ -31,7 +31,6 @@ class OutputAir:
         self.frobenius_path: str = f'{output_dir}/frobenius'
         self.sequence_path: str = os.path.join(self.frobenius_path, 'sequence.fasta')
         self.templates_path: str = f'{output_dir}/templates'
-        self.experimental_dir: str = f'{output_dir}/experimental_pdbs'
         self.interfaces_path: str = f'{output_dir}/interfaces'
         self.analysis_path: str = f'{self.plots_path}/analysis.txt'
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
@@ -58,7 +57,6 @@ class OutputAir:
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
-        utils.create_dir(dir_path=self.experimental_dir, delete_if_exists=True)
 
     def create_plot_gantt(self, a_air):
         gantt_plots_both, legend_both = plots.plot_gantt(plot_type='both', plot_path=self.plots_path,
@@ -299,8 +297,7 @@ class OutputAir:
                 rmsd = round(rmsd, 2) if rmsd is not None else str(rmsd)
                 aux_dict[utils.get_file_name(pdb)] = structures.TemplateRanked(pdb, rmsd, aligned_residues,
                                                                                total_residues)
-            output_pdb = os.path.join(self.experimental_dir, os.path.basename(experimental))
-            bioutils.gesamt_pdbs([reference_superpose, experimental], output_pdb)
+            bioutils.gesamt_pdbs([reference_superpose, experimental], experimental)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
 
         for template, template_path in self.templates_nonsplit_dict.items():
