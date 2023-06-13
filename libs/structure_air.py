@@ -102,7 +102,7 @@ class StructureAir:
             experimental_list = experimental_string.replace(' ', '').split(',')
             for pdb in experimental_list:
                 pdb_path = bioutils.check_pdb(pdb, f'{os.path.join(self.experimental_dir, utils.get_file_name(pdb))}.pdb')
-                self.experimental_pdbs.append(os.path.join(self.input_dir, os.path.basename(pdb_path)))
+                self.experimental_pdbs.append(os.path.join(self.experimental_dir, os.path.basename(pdb_path)))
                 try:
                     bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
                 except Exception as e:
