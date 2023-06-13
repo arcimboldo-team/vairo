@@ -660,7 +660,10 @@ class StructureAir:
                             if change.resname is not None:
                                 f_out.write(f' resname: {change.resname}\n')
                             elif change.sequence is not None:
-                                f_out.write(f' fasta_path: {change.fasta_path}\n')
+                                if change.fasta_path is not None:
+                                    f_out.write(f' fasta_path: {change.fasta_path}\n')
+                                else:
+                                    f_out.write(f' fasta_path: {change.sequence}\n')
                             f_out.write(f'    when: {change.when}\n')
                             for key, value in change.chain_group_res_dict.items():
                                 f_out.write(f'    {key}: {", ".join(map(str, value))}\n')

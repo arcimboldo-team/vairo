@@ -1,6 +1,6 @@
 import copy
 import os
-from typing import Union, List, Dict, Tuple
+from typing import Union, List, Dict
 
 from libs import match_restrictions, utils, bioutils
 from libs.structures import Alignment

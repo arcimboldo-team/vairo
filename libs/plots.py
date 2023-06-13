@@ -295,12 +295,11 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
             ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
             ax.axhspan(0.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_template)
 
-    legend_elements.append(
-        'The templates gray scale shows the similarity between the aligned template sequence and the input sequence.\n'
-        'The darker parts indicate that the residues are the same or belong to the same group.')
-    legend_elements.append('Yellow shows which residues have been changed to another specific residue.\n'
-                           'Red shows which residues have been changed from another query sequence.\n'
-                           'No information (white) implies that no modifications have been done.\n')
+    legend_elements.append('<span style="color: yellow">■</span> Yellow flags residues substituted by another type.\n'
+                           '<span style="color: red">■</span> Red flags residues substituted following a sequence ('
+                           'typically to match query sequence).\n'
+                           'The gray scale on the template bar expresses similarity to the query sequence (black '
+                           'identical, the lighter the more dissimilar).\n')
     legend_elements.reverse()
 
     ax.set_xticks(

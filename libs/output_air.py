@@ -5,7 +5,6 @@ import sys
 from itertools import combinations
 from typing import Dict, List
 import pandas as pd
-from Bio.PDB import PDBParser, Selection
 
 from ALEPH.aleph.core import ALEPH
 from libs import bioutils, features, utils, sequence, structures, plots, change_res
