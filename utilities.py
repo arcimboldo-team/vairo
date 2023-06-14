@@ -5,6 +5,7 @@ import os
 import sys
 import logging
 from libs import features, bioutils, utils, structures, output_air
+from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
 
 
 def write_features(features_path: str, output_dir: str = None):
@@ -55,6 +56,71 @@ def ccanalysis(template_path: str):
     if analysis_dict:
         output_air.plot_cc_analysis(plot_path=os.path.join(output_path, 'plot.png'), analysis_dict=analysis_dict,
                                     clusters=templates_cluster_list)
+
+
+
+def renumber():
+
+    def check_consecutive(numbers):
+        # Check if the difference between each pair of consecutive numbers is equal to 1
+        for i in range(len(numbers) - 1):
+            if numbers[i + 1] - numbers[i] != 1:
+                return False
+        return True
+
+
+    # Specify the folder path containing the PDB files
+    folder_path = "/Users/pep/work/transfers/clusters_lib"
+    # Get a list of all PDB files in the folder
+    pdb_files = [os.path.join(folder_path, file) for file in os.listdir(folder_path) if file.endswith(".pdb")]
+
+    list_pdbs = []
+
+    # Loop through each PDB file
+    for pdb_file in pdb_files:
+
+        structure = bioutils.get_structure(pdb_file)
+
+        # Initialize counters for CYS residues and consecutive positions
+        cys_count = 0
+        save_residues = []
+        save_pdb = False
+
+        # Iterate over all residues in the structure
+        for model in structure:
+            for chain in model:
+                residues = list(chain.get_residues())
+                residues = sorted(residues, key=lambda x: bioutils.get_resseq(x))
+                for j, residue in enumerate(residues):
+                    # Check if the residue is CYS
+                    if residue.get_resname() == 'CYS':
+                        cys_count += 1
+                        if cys_count == 1:
+                            try:
+                                list_cys = [residues[j+i] for i in range(-5, 2)]
+                                list_cys = [bioutils.get_resseq(res)-1 for res in list_cys]
+                                if check_consecutive(list_cys):
+                                    save_residues.extend(list_cys)
+                            except:
+                                cys_count = 3
+                                pass
+                        if cys_count == 2:
+                            try:
+                                list_cys = [residues[j+i] for i in range(-5, 3)]
+                                list_cys = [bioutils.get_resseq(res)-1 for res in list_cys]
+                                if check_consecutive(list_cys):
+                                    save_residues.extend(list_cys)
+                                    if utils.get_file_name(pdb_file)[:4] not in list_pdbs:
+                                        list_pdbs.append(utils.get_file_name(pdb_file)[:4])
+                                        save_pdb = True
+                            except:
+                                pass
+                
+
+        if save_pdb:
+            bioutils.copy_positions_of_pdb(pdb_file, os.path.join("/Users/pep/work/transfers/library", utils.get_file_name(pdb_file))+'.pdb', save_residues)
+            print(f"Renumbering complete for {pdb_file}. Renumbered file saved as {utils.get_file_name(pdb_file)}.")
+
 
 
 if __name__ == "__main__":

@@ -79,7 +79,8 @@ def copy_positions_of_pdb(path_in: str, path_out: str, positions: List[str]) -> 
     chain_name = get_chains(path_in)[0]
     for m, pos in enumerate(positions):
         if pos != '-':
-            residue = copy.deepcopy(structure[0][chain_name][int(pos) + 1])
+            residue = copy.copy(structure[0][chain_name][int(pos) + 1])
+            residue.parent = None
             residue.id = (residue.id[0], m + 1, residue.id[2])
             chain.add(residue)
             residue.parent = chain
@@ -655,26 +656,28 @@ def cc_analysis(paths_in: List[str], cc_analysis_paths: structures.CCAnalysis, c
                     # If the modules are higher than 0.1, keep the pdb, otherwise discard it
                     if values.module is None or values.module > 0.1 or values.module < -0.1:
                         clean_dict[trans_dict[int(key) - 1]] = values
-                # Get the positions given by ccanalysis
-                points = np.array([values.coord for values in clean_dict.values()])
-                # Generate n clusters groups with KMEANS
-                kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(points)
-                lookup_table = {}
-                counter = 0
-                # The kmeans results has a list with all the positions belonging to the corresponding pdb.
-                # Translate the labels into groups, so they appear in sequentially (group 0 first, 1...)
-                # Otherwise they are chosen randomly.
-                for i in kmeans.labels_:
-                    if i not in lookup_table:
-                        lookup_table[i] = counter
-                        counter += 1
-                # Replace the values for the ordered ones.
-                conversion = [lookup_table[label] for label in kmeans.labels_]
-                # Translate the kmeans, which only has the position of the pdbs for the real pdbs.
-                for i, label in enumerate(conversion):
-                    real_path = [path for path in paths_in if utils.get_file_name(path) == list(clean_dict.keys())[i]][
-                        0]
-                    return_templates_cluster[int(label)].append(real_path)
+                if clean_dict:
+                    # Get the positions given by ccanalysis
+                    points = np.array([values.coord for values in clean_dict.values()])
+                    # Generate n clusters groups with KMEANS
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(points)
+                    lookup_table = {}
+                    counter = 0
+                    # The kmeans results has a list with all the positions belonging to the corresponding pdb.
+                    # Translate the labels into groups, so they appear in sequentially (group 0 first, 1...)
+                    # Otherwise they are chosen randomly.
+                    for i in kmeans.labels_:
+                        if i not in lookup_table:
+                            lookup_table[i] = counter
+                            counter += 1
+                    # Replace the values for the ordered ones.
+                    conversion = [lookup_table[label] for label in kmeans.labels_]
+                    # Translate the kmeans, which only has the position of the pdbs for the real pdbs.
+                    for i, label in enumerate(conversion):
+                        real_path = [path for path in paths_in if utils.get_file_name(path) == list(clean_dict.keys())[i]][
+                            0]
+                        return_templates_cluster[int(label)].append(real_path)
+                    
     # Return the clusters, a list, where each position has a group of pdbs.
     # Also, clean_dict has the cc_analysis vectors, so is useful to create the plots.
     return return_templates_cluster, clean_dict
