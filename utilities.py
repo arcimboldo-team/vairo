@@ -101,6 +101,8 @@ def renumber():
                                 list_cys = [bioutils.get_resseq(res)-1 for res in list_cys]
                                 if check_consecutive(list_cys):
                                     save_residues.extend(list_cys)
+                                else:
+                                    raise Exception
                             except:
                                 cys_count = 3
                                 pass
@@ -113,11 +115,16 @@ def renumber():
                                     if utils.get_file_name(pdb_file)[:4] not in list_pdbs:
                                         list_pdbs.append(utils.get_file_name(pdb_file)[:4])
                                         save_pdb = True
+                                else:
+                                    raise Exception
                             except:
                                 pass
                 
 
         if save_pdb:
+            print(save_residues)
+            if len(save_residues) != 15:
+                raise Exception
             bioutils.copy_positions_of_pdb(pdb_file, os.path.join("/Users/pep/work/transfers/library", utils.get_file_name(pdb_file))+'.pdb', save_residues)
             print(f"Renumbering complete for {pdb_file}. Renumbered file saved as {utils.get_file_name(pdb_file)}.")
 

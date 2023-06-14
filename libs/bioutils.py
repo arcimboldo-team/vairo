@@ -134,8 +134,11 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
                 for missing_number in range(prev_residue_number + 1, residue_number):
                     sequence_ext += "-"
             try:
-                sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
-            except:
+                if residue.get_resname() == 'MSE':
+                    sequence_ext += 'M'
+                else:
+                    sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
+            except Exception as e:
                 pass
             prev_residue_number = residue_number
         sequences[chain.id] = sequence_ext
@@ -947,7 +950,7 @@ def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
 
     structure = get_structure(pdb_path=pdb_in_path)
     for res in structure[0].get_residues():
-        if get_hetatm(res) == 'H_MSE':
+        if get_hetatm(res) == 'H_MSE' or res.resname == 'MSE':
             res.id = (' ', get_resseq(res), ' ')
             res.resname = 'MET'
             for atom in res:

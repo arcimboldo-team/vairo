@@ -100,6 +100,8 @@ def main():
                         template_path = bioutils.copy_positions_of_pdb(path_in=library.path, path_out=template_path, positions=library.positions_list)
                     else:
                         shutil.copy2(library.path, template_path)
+                    bioutils.remove_hetatm(template_path, template_path)
+                    bioutils.remove_hydrogens(template_path, template_path)
                     template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
                         query_sequence=a_air.sequence_assembled.sequence_assembled,
                         pdb_path=template_path,
