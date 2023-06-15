@@ -257,13 +257,16 @@ class OutputAir:
                     bioutils.run_openmm(pdb_in_path=ranked.without_mutations_path, pdb_out_path=ranked.without_mutations_minimized_path)
 
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
+                ranked_chains_list = bioutils.get_chains(ranked.split_path)
                 if interfaces_data_list:
                     deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
                     deltas_list = utils.normalize_list([deltas_list])
                     for i, interface in enumerate(interfaces_data_list):
                         if not interface["chain1"] in domains_dict or not interface["chain2"] in domains_dict:
                             continue
-                        code = f'{interface["chain1"]}{interface["chain2"]}'
+                        seq1_name = sequence_assembled.get_sequence_name(ranked_chains_list.index(interface["chain1"]))
+                        seq2_name = sequence_assembled.get_sequence_name(ranked_chains_list.index(interface["chain2"]))
+                        code = f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}'
                         dimers_path = os.path.join(self.interfaces_path, f'{ranked.name}_{code}.pdb')
                         interface['bfactor'] = deltas_list[i]
                         if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
@@ -314,9 +317,12 @@ class OutputAir:
 
             interfaces_data_list = bioutils.find_interface_from_pisa(self.templates_dict[template],
                                                                      self.interfaces_path)
+            template_chains_list = bioutils.get_chains(self.templates_dict[template])
             template_interface_list = []
             for interface in interfaces_data_list:
-                template_interface_list.append(f'{interface["chain1"]}{interface["chain2"]}')
+                seq1_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain1"]))
+                seq2_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain2"]))
+                template_interface_list.append(f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}')
             self.template_interfaces[template] = template_interface_list
 
             for ranked in ranked_filtered:
@@ -338,10 +344,10 @@ class OutputAir:
                     frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{ranked.name}_{interface.name}.txt')
                     with open(frobenius_file, 'w') as sys.stdout:
                         fro_distance, fro_core, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix,
-                                                                                   path_tar=ranked_matrix,
-                                                                                   residues_tar=interface.res_list,
-                                                                                   write_plot=True,
-                                                                                   title=f'Interface: {interface.name}')
+                                                                                path_tar=ranked_matrix,
+                                                                                residues_tar=interface.res_list,
+                                                                                write_plot=True,
+                                                                                title=f'Interface: {interface.name}')
                     sys.stdout = sys.__stdout__
                     new_name = os.path.join(self.frobenius_path, f'{template}_{ranked.name}_{interface.name}.png')
                     plot_path = os.path.join(self.tmp_dir, os.path.basename(plot))
