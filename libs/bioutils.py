@@ -493,7 +493,6 @@ def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
 
 def cc_and_hinges_analysis(paths_in: Dict, binaries_path: structures.CCAnalysis, output_path: str,
                            length_sequences: Dict = None) -> List:
-    analysis_dict = None
     templates_cluster2 = []
     templates_cluster = hinges(paths_in=paths_in,
                                hinges_path=binaries_path.hinges_path,
@@ -503,14 +502,14 @@ def cc_and_hinges_analysis(paths_in: Dict, binaries_path: structures.CCAnalysis,
     templates_path_list = [template_in for template_list in templates_cluster for template_in in template_list]
     num_templates = len(templates_path_list)
     if num_templates >= 5:
-        templates_cluster2, analysis_dict = cc_analysis(paths_in=templates_path_list,
+        templates_cluster2, analysis_dict2 = cc_analysis(paths_in=templates_path_list,
                                                         cc_analysis_paths=binaries_path,
                                                         cc_path=os.path.join(output_path, 'ccanalysis'))
 
     if len(templates_cluster) > 1 and templates_cluster2:
-        return templates_cluster2, analysis_dict
+        return templates_cluster2, analysis_dict2
     else:
-        return templates_cluster, analysis_dict
+        return templates_cluster, {}
 
 
 def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences: Dict = None) -> List:
@@ -680,7 +679,7 @@ def cc_analysis(paths_in: List[str], cc_analysis_paths: structures.CCAnalysis, c
                         real_path = [path for path in paths_in if utils.get_file_name(path) == list(clean_dict.keys())[i]][
                             0]
                         return_templates_cluster[int(label)].append(real_path)
-                    
+
     # Return the clusters, a list, where each position has a group of pdbs.
     # Also, clean_dict has the cc_analysis vectors, so is useful to create the plots.
     return return_templates_cluster, clean_dict
