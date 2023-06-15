@@ -295,8 +295,8 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
             ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
             ax.axhspan(0.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_template)
 
-    legend_elements.append('<span style="color: yellow">■</span> Yellow flags residues substituted by another type.\n'
-                           '<span style="color: red">■</span> Red flags residues substituted following a sequence ('
+    legend_elements.append('Yellow flags residues substituted by another type.\n'
+                           'Red flags residues substituted following a sequence ('
                            'typically to match query sequence).\n'
                            'The gray scale on the template bar expresses similarity to the query sequence (black '
                            'identical, the lighter the more dissimilar).\n')
