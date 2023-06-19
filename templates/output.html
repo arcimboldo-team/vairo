@@ -253,7 +253,7 @@
                     {% else %}
                         structure
                     {% endif %}                    
-                    is predicted in homology to {{ data.number_templates }} template/s, {{ data.number_alignments }} alignment/s provided.
+                    is predicted in homology to {{ data.num_templates }} template/s, {{ data.number_alignments }} alignment/s provided.
                 {% else %}
                     AF-selected templates will be analysed and structurally clustered. Predictions will be driven towards the different extreme structures.
                 {% endif %}
@@ -356,6 +356,16 @@
             {% if 'gantt' in data %}
                 <div id="alignment" class="section-div">
                     <h2>Alignment</h2>
+                        {% if data.num_msa == 0 %}
+                            <p>There are no sequences in the MSA.
+                        {% else %}
+                            <p>There are {{ data.num_msa }} sequences in the MSA.
+                        {% endif %}
+                        {% if data.num_templates == 0 %}
+                            . No templates have been used as input.</p>
+                        {% else %}
+                             {{ data.num_templates }} templates have been used as input.</p>
+                        {% endif %}
                         <img style="width: 100%" src="data:image/png;base64,{{ data.gantt.plot_both }}" alt="Gantt diagram with msa and templates">
                         <p style="white-space: pre-wrap;">{{ data.gantt.legend_both }}</p>
 

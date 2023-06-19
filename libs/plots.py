@@ -169,7 +169,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         names = a_air.feature.get_names_templates()
 
     names = [name for name in names if name != '']
-    if (len(names) > 30 or plot_type == 'both') and len(names) > 0:
+    if (len(names) > 20 or plot_type == 'both') and len(names) > 0:
         number_of_templates += 1
         add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
         for name in names:
@@ -191,7 +191,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
             msa_found = True
             if add_sequences[i - 1] != 1:
                 ax.barh(name, 1, left=i, height=0.5, color=str(add_sequences[i - 1]), zorder=2)
-    if len(names) <= 30 or plot_type == 'both':
+    if len(names) <= 20 or plot_type == 'both':
         if plot_type == 'both':
             names = a_air.feature.get_names_templates()
         pdb_hits_path = os.path.join(a_air.results_dir, 'msas/pdb_hits.hhr')

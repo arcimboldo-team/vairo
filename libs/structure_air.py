@@ -224,7 +224,6 @@ class StructureAir:
         render_dict['custom_features'] = self.custom_features
         render_dict['mosaic'] = self.mosaic
         render_dict['total_copies'] = self.sequence_assembled.total_copies
-        render_dict['number_templates'] = len(self.template_positions_list)
         render_dict['number_alignments'] = len(
             [template_path for template_list in self.template_positions_list for template_path in template_list if
              template_path is not None])
@@ -254,6 +253,10 @@ class StructureAir:
 
         if self.cluster_list:
             render_dict['cluster_list'] = self.cluster_list
+
+        if self.feature:
+            render_dict['num_msa'] = self.feature.get_msa_length()
+            render_dict['num_templates'] = self.feature.get_templates_length()
 
         if self.output.ranked_list:
             render_dict['table'] = {}
@@ -386,8 +389,12 @@ class StructureAir:
             else:
                 name = f'{self.name_results_dir}{i}'
             path = os.path.join(self.run_dir, name)
-            sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[
-                             self.chunk_list[i][0]:self.chunk_list[i][1]]
+            if self.cluster_templates and self.mode == 'naive':
+                sequence_chunk = self.sequence_assembled.sequence_assembled[
+                                 self.chunk_list[i][0]:self.chunk_list[i][1]]
+            else:
+                sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[
+                                 self.chunk_list[i][0]:self.chunk_list[i][1]]
             run_af2 = False if self.mode == 'guided' and self.cluster_templates else self.run_af2
             afrun = alphafold_classes.AlphaFoldRun(results_dir=path,
                                                    sequence=sequence_chunk,
@@ -447,7 +454,6 @@ class StructureAir:
                                 pdb_out=pdb_out,
                                 delta_out=delta_out
                                 )
-
             best_list = []
             best_min = MIN_RMSD_SPLIT
             with open(delta_out, 'r') as f_in:
@@ -497,7 +503,6 @@ class StructureAir:
                                                                binaries_path=self.cc_analysis_paths,
                                                                output_path=self.results_dir,
                                                                length_sequences=self.output.percentage_sequences)
-
         if templates_cluster:
             logging.info(
                 f'The templates can be grouped in {len(templates_cluster)} clusters')
@@ -535,13 +540,11 @@ class StructureAir:
         features_path = os.path.join(job_path, 'features.pkl')
         utils.create_dir(dir_path=job_path, delete_if_exists=False)
         new_features = features.Features(self.sequence_assembled.sequence_assembled)
-
         for template_in in templates:
             index = self.feature.get_index_by_name(utils.get_file_name(template_in))
             template_dict = self.feature.get_template_by_index(index)
             new_features.set_template_features(new_templates=template_dict,
                                                sequence_in=self.cluster_templates_sequence)
-
         total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
         if self.cluster_templates_msa != 0:
             new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa,
@@ -563,7 +566,7 @@ class StructureAir:
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
-                f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
+                f_out.write(f' fasta_path: {sequence_in.fasta_mutated_path}\n')
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')

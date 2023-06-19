@@ -9,6 +9,7 @@ from alphafold.common import residue_constants
 class Sequence:
     def __init__(self, parameters_dict: Dict, input_dir: str):
         self.fasta_path: str
+        self.fasta_mutated_path: str
         self.sequence: str
         self.sequence_mutated: str
         self.name: str
@@ -62,6 +63,10 @@ class Sequence:
                     if value <= len(self.sequence):
                         self.sequence_mutated[value - 1] = key
         self.sequence_mutated = ''.join(self.sequence_mutated)
+
+        mutated_name = f'{self.name}_mutated'
+        self.fasta_mutated_path = os.path.join(input_dir, f'{mutated_name}.fasta')
+        bioutils.write_sequence(sequence_name=mutated_name, sequence_amino=self.sequence_mutated, sequence_path=self.fasta_mutated_path)
 
 
 class SequenceAssembled:
