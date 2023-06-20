@@ -92,7 +92,6 @@ we can find the following folders and files:
 - run: All the run information.
 - templates: Extracted templates from the features.pkl. split in chains
 - rankeds: Generated rankeds by AlphaFold2, split in chains (if necessary)
-- 
 Inside run directory we can find the following folders:
 - results: Results of the AlphaFold2 run.
 - Templates folder: Named by each template name. It has the databases generated to align the template.

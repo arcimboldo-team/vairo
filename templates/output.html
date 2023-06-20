@@ -38,7 +38,6 @@
             }
 
             .hide-row{
-                display: none
             }
 
             #frobenius_graphs ul li {
@@ -533,11 +532,11 @@
             <div id="tables" class="section-div">
                 <h2>Tables</h2>
                 {% if data.ranked_list %}
-                    <h3>Prediction pLDDT</h3>
-                    <table>
+                    <h3>Average pLDDT</h3>
+                    <table id="table_average_plldt">
                         <tr>
-                            <th>predictions</th>
-                            <th>average pLDDT</th>
+                            <th>Predictions</th>
+                            <th>Average pLDDT</th>
                         </tr>
                         {% for ranked in data.ranked_list %}
                             {% if ranked.name in data.bests_dict %}
@@ -545,19 +544,20 @@
                             {% elif ranked.name in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
-                                <tr>
+                                <tr class="hide-row" style="display:none;">
                             {% endif %}
                                 <td>{{ ranked.name }}</td>
                                 <td>{{ ranked.plddt }}</td>
                             </tr>
                         {% endfor %}
                     </table>
+                    <button onclick="hideValues('table_average_plldt', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'ranked_rmsd_dict' in data.table %}
                     <h3>Superposition between predictions (RMSD)</h3>
-                    <table>
+                    <table id="table_rankeds_rmsd">
                         <tr>
-                            <th>prediction</th>
+                            <th>Prediction</th>
                             {% for key in data.table.ranked_rmsd_dict.keys() %}
                                 <th>{{ key }}</th>
                             {% endfor %}
@@ -568,7 +568,7 @@
                             {% elif key in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
-                                <tr>
+                            <tr class="hide-row" style="display:none;">
                             {% endif %}
                                 <td>{{ key }}</td>
                                 {% for value2 in value.values() %}
@@ -577,11 +577,12 @@
                             </tr>
                         {% endfor %}
                     </table>
+                    <button onclick="hideValues('table_rankeds_rmsd', this)">Show all predictions</button>
                 {% endif %}
 
                 {% if 'rmsd_dict' in data.table %}
                     <h3>Superposition of predictions and templates (RMSD, superposed residues, total residues)</h3>
-                    <table>
+                    <table id="table_templates_rmsd">
                         <tr>
                             <th>prediction</th>
                             {% for value in data.table.rmsd_dict.values() %}
@@ -596,7 +597,7 @@
                             {% elif key in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
-                                <tr>
+                            <tr class="hide-row" style="display:none;">
                             {% endif %}
                                 <td>{{ key }}</td>
                                 {% for key2, value2 in value.items() %}
@@ -605,15 +606,15 @@
                             </tr>
                         {% endfor %}
                     </table>
+                    <button onclick="hideValues('table_templates_rmsd', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'secondary_dict' in data.table %}
                     <h3>Secondary structure percentages calculated with ALEPH</h3>
-                    <table>
+                    <table id="table_ss">
                         <tr>
-                            <th>prediction</th>
-                            <th>ah</th>
-                            <th>bs</th>
-                            <th>number of residues</th>
+                            <th>Prediction</th>
+                            <th>Helix</th>
+                            <th>Beta</th>
                         </tr>
                         {% for key, value in data.table.secondary_dict.items() %}
                             {% if key in data.bests_dict %}
@@ -621,19 +622,19 @@
                             {% elif key in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
-                                <tr>
+                                <tr class="hide-row" style="display:none;">
                             {% endif %}
                                 <td>{{ key }}</td>
                                 <td>{{ value.ah }}</td>
                                 <td>{{ value.bs }}</td>
-                                <td>{{ value.number_total_residues }}</td>
                             </tr>
                         {% endfor %}
                     </table>
+                    <button onclick="hideValues('table_ss', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'energies_dict' in data.table %}
                     <h3>Prediction energies</h3>
-                    <table>
+                    <table id="table_energies">
                         <tr>
                             <th>prediction</th>
                             <th>potential (kcal/mol)</th>
@@ -644,16 +645,17 @@
                             {% elif key in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
-                                <tr>
+                                <tr class="hide-row" style="display:none;">
                             {% endif %}
                                 <td>{{ key }}</td>
                                 <td>{{ value }}</td>
                             </tr>
                         {% endfor %}
                     </table>
+                    <button onclick="hideValues('table_energies', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
-                    <h3>Experimental pdbs with predictions and templates (RMSD, superposed residues, total residues)</h3>
+                    <h3>Experimental pdbs with predictions and templates (RMSD (superposed residues))</h3>
                     <table>
                         <tr>
                             <th>experimental pdb</th>
@@ -667,7 +669,7 @@
                             <tr>
                                 <td>{{ key }}</td>
                                 {% for value2 in value.values() %}
-                                    <td>{{ value2.rmsd }} {{ value2.aligned_residues }} ({{ value2.total_residues }})</td>
+                                    <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
                                 {% endfor %}
                             </tr>
                         {% endfor %}
@@ -797,12 +799,17 @@
             window.location.hash = e.target.getAttribute("name");
         }
 
-        function toggleRow() {
-            if (this.value=="Show more rows") this.value = "Hide rows";
-            else this.value = "Show more rows";
-
-            var row = document.getElementsByClassName("hide-row");
-            next.style.display = next.style.display == "none" ? "table-row" : "none";
+        function hideValues(tableId, button) {
+            var table = document.getElementById(tableId, this);
+            var elements = table.getElementsByClassName("hide-row");
+            for (var i = 0; i < elements.length; i++) {
+                var element = elements[i];
+                element.style.display = element.style.display === "none" ? "" : "none";
+            }
+            console.log(button.textContent)
+            button.textContent = button.textContent === "Show all predictions"? "Hide bad predictions" : "Show all predictions";
         }
+            
+
     </script>
 </html>
