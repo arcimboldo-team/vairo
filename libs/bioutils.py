@@ -3,7 +3,7 @@ from collections import OrderedDict, defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from Bio import SeqIO
-from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
+from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder, Superimposer
 from scipy.spatial import distance
 from sklearn.cluster import KMeans
 from ALEPH.aleph.core import ALEPH
@@ -34,6 +34,44 @@ def pdb2mmcif(pdb_in_path: str, cif_out_path: str) -> str:
                      stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     shutil.rmtree(maxit_dir)
     return cif_out_path
+
+
+def superposition_by_chains(pdb1_in_path: str, pdb2_in_path: str) -> Dict:
+
+    def compare_residues(list1, list2) -> List:
+        list_res = [at.get_parent().get_id()[1] for at in list2]
+        return [at for at in list1 if at.get_parent().get_id()[1] in list_res]
+
+    output_dict = {}
+    structure_1 = get_structure(pdb1_in_path)
+    structure_2 = get_structure(pdb1_in_path)
+    chains1_list = list(structure_1.get_chains())
+    chains2_list = list(structure_2.get_chains())
+    for chain1 in chains1_list:
+        name1 = f'{utils.get_file_name(pdb1_in_path)}_{chain1.id}'
+        output_dict[name1] = {}
+        atoms_1 = [at for at in chain1.get_atoms() if at.get_id() == 'CA']
+        for chain2 in chains2_list:
+            name2 = f'{utils.get_file_name(pdb2_in_path)}_{chain2.id}'
+            output_dict[name1][name2] = {}
+            atoms_2 = copy.deepcopy([at for at in chain2.get_atoms() if at.get_id() == 'CA'])
+            atoms_1_aux = compare_residues(atoms_1, atoms_2)
+            atoms_2 = compare_residues(atoms_2, atoms_1_aux)
+            superimposer1 = Superimposer()
+            print(len(atoms_2), len(atoms_1_aux))
+            superimposer1.set_atoms(atoms_1_aux, atoms_2)            
+            for chain3 in chains2_list:
+                print('entra')
+                print(superimposer1.rotran)
+                name3 = f'{utils.get_file_name(pdb2_in_path)}'
+                atoms_3 = copy.deepcopy([at for at in chain3.get_atoms() if at.get_id() == 'CA'])
+                atoms_12_aux = compare_residues(atoms_1, atoms_3)
+                atoms_3 = compare_residues(atoms_3, atoms_12_aux)                    
+                superimposer2 = Superimposer()
+                superimposer1.apply(atoms_3)
+                superimposer2.set_atoms(atoms_12_aux, atoms_3)
+                output_dict[name1][name2][name3] = superimposer2.rms
+    return output_dict
 
 
 def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int, match_ini: int, match_end: int,
@@ -229,7 +267,6 @@ def merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge: List[str], pdb_out_p
     chain = Chain.Chain('A')
     new_structure.add(new_model)
     new_model.add(chain)
-
     count_res = 1
     for pdb_path in list_of_paths_of_pdbs_to_merge:
         structure = get_structure(pdb_path=pdb_path)
@@ -364,7 +401,7 @@ def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
         output_path = 'cc_analysis.in'
         if pdb2cc_path is None:
             pdb2cc_path = 'pdb2cc'
-        command_line = f'{pdb2cc_path} -m -i 10 -y 0.15 "orig.*.pdb" 0 {output_path}'
+        command_line = f'{pdb2cc_path} -n 50 "orig.*.pdb" 0 {output_path}'
         p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         p.communicate()
@@ -516,15 +553,15 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
     # Hinges algorithm does:
     # Check completeness and ramachandran of every template. If it is not at least 70% discard for hinges.
     # Do hinges 6 iterations in all for all the templates
-    # If iter1 < 1 or iterMiddle < 3 or iter6 < 10 AND at least 70% of sequence length -> GROUP TEMPLATE
+    # If iter1 < 1 or iterMiddle < 4.5 or iter6 < 8 AND at least 70% of sequence length -> GROUP TEMPLATE
     # If it has generated more than one group with length > 1-> Return those groups that has generated
     # If there is no group generated -> Return the one more completed and the one more different to that template
     # Otherwise, return all the paths
     utils.create_dir(output_path, delete_if_exists=True)
     threshold_completeness = 0.6
-    threshold_rmsd_domains = 10
-    threshold_rmsd_ss = 3
-    threshold_rmsd_local = 1
+    threshold_rmsd_domains = 8
+    threshold_rmsd_ss = 4.5
+    threshold_rmsd_local = 1.5
     threshold_overlap = 0.7
 
     logging.info('Starting hinges analysis')

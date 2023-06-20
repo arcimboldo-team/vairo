@@ -58,6 +58,16 @@ def ccanalysis(template_path: str):
                                     clusters=templates_cluster_list)
 
 
+def superposition_chains(pdb1_path: str, pdb2_path: str):
+    ret_dict = bioutils.superposition_by_chains(pdb1_in_path=pdb1_path, pdb2_in_path=pdb2_path)
+    for key3, i3 in ret_dict.items():
+        print(key3)
+        for key2, i2 in i3.items():
+            print(key2)
+            for key1, i1 in i2.items():
+                print(key1, i1)
+
+
 
 def renumber():
 
