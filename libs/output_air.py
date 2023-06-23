@@ -250,11 +250,11 @@ class OutputAir:
                                            total_residues=results_dict['number_total_residues'])
             if ranked.filtered:
                 ranked.set_minimized_path(os.path.join(self.results_dir, f'{ranked.name}_minimized.pdb'))
-                #ranked.set_potential_energy(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                ranked.set_potential_energy(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
 
                 if ranked.without_mutations_path:
                     ranked.set_without_mutations_minimized_path(os.path.join(self.rankeds_without_mutations_dir, f'{ranked.name}_minimized.pdb'))
-                    #bioutils.run_openmm(pdb_in_path=ranked.without_mutations_path, pdb_out_path=ranked.without_mutations_minimized_path)
+                    bioutils.run_openmm(pdb_in_path=ranked.without_mutations_path, pdb_out_path=ranked.without_mutations_minimized_path)
 
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 ranked_chains_list = bioutils.get_chains(ranked.split_path)
