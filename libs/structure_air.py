@@ -26,7 +26,7 @@ class StructureAir:
         self.cluster_path: str
         self.cluster_list: List[structures.Cluster] = []
         self.af2_dbs_path: str
-        self.cc_analysis_paths: structures.CCAnalysis
+        self.binaries_paths: structures.BinariesPath
         self.sequence_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
@@ -67,7 +67,7 @@ class StructureAir:
         self.cluster_path = os.path.join(self.output_dir, 'clustering')
         self.input_path = os.path.join(self.input_dir, 'config.yml')
         self.binaries_path = os.path.join(utils.get_main_path(), 'binaries')
-        self.cc_analysis_paths = structures.CCAnalysis(self.binaries_path)
+        self.binaries_paths = structures.BinariesPath(self.binaries_path)
         self.output = output_air.OutputAir(output_dir=self.output_dir)
 
         utils.create_dir(self.output_dir)
@@ -296,7 +296,7 @@ class StructureAir:
                 if ranked.superposition_templates:
                     template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
 
-                plddt_dict[ranked.name] = ranked.plddt
+                plddt_dict[ranked.name] = {'plddt': ranked.plddt, 'compactness': ranked.compactness, 'ramachandran': ranked.ramachandran}
                 try:
                     secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
                                                    'number_total_residues': ranked.total_residues}
@@ -537,8 +537,9 @@ class StructureAir:
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
-        templates_cluster, _ = bioutils.cc_and_hinges_analysis(paths_in=self.output.templates_dict,
-                                                               binaries_path=self.cc_analysis_paths,
+        templates_cluster, _ = bioutils.cc_and_hinges_analysis(paths_split_in=self.output.templates_dict,
+                                                               paths_nonsplit_in=self.output.templates_nonsplit_dict,
+                                                               binaries_path=self.binaries_paths,
                                                                output_path=self.results_dir,
                                                                length_sequences=self.output.percentage_sequences)
         if templates_cluster:

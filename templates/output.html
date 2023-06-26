@@ -544,11 +544,13 @@
             <div id="tables" class="section-div">
                 <h2>Tables</h2>
                 {% if data.ranked_list %}
-                    <h3>Average pLDDT</h3>
-                    <table id="table_average_plldt">
+                    <h3>pLDDT information</h3>
+                    <table id="table_average_plddt">
                         <tr>
                             <th>Predictions</th>
                             <th>Average pLDDT</th>
+                            <th>Compactness</th>
+                            <th>Percentage Ramachandran outliers</th>
                         </tr>
                         {% for ranked in data.ranked_list %}
                             {% if ranked.name in data.bests_dict %}
@@ -560,10 +562,12 @@
                             {% endif %}
                                 <td>{{ ranked.name }}</td>
                                 <td>{{ ranked.plddt }}</td>
+                                <td>{{ ranked.compactness }}</td>
+                                <td>{{ ranked.ramachandran }}</td>
                             </tr>
                         {% endfor %}
                     </table>
-                    <button onclick="hideValues('table_average_plldt', this)">Show all predictions</button>
+                    <button onclick="hideValues('table_average_plddt', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'ranked_rmsd_dict' in data.table %}
                     <h3>Superposition between predictions (RMSD)</h3>

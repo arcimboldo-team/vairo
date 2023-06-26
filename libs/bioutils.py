@@ -58,11 +58,8 @@ def superposition_by_chains(pdb1_in_path: str, pdb2_in_path: str) -> Dict:
             atoms_1_aux = compare_residues(atoms_1, atoms_2)
             atoms_2 = compare_residues(atoms_2, atoms_1_aux)
             superimposer1 = Superimposer()
-            print(len(atoms_2), len(atoms_1_aux))
             superimposer1.set_atoms(atoms_1_aux, atoms_2)            
             for chain3 in chains2_list:
-                print('entra')
-                print(superimposer1.rotran)
                 name3 = f'{utils.get_file_name(pdb2_in_path)}'
                 atoms_3 = copy.deepcopy([at for at in chain3.get_atoms() if at.get_id() == 'CA'])
                 atoms_12_aux = compare_residues(atoms_1, atoms_3)
@@ -96,6 +93,24 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int,
     subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                      cwd=os.path.dirname(pdb_out)).communicate()
 
+
+def run_spong(pdb_in_path: str, spong_path: str) -> float:
+    #Run Spong and return compactness
+
+    store_old_dir = os.getcwd()
+    os.chdir(os.path.dirname(pdb_in_path))
+    command_line = f'{spong_path} {os.path.basename(pdb_in_path)}'
+    output = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
+
+    compactness = None
+    pattern = r"COMPACTNESS=\s+(\d+\.?\d*)"
+    match = re.search(pattern, output)
+    if match:
+        compactness = match.group(1)
+
+    os.chdir(store_old_dir)
+    return compactness
 
 def check_pdb(pdb: str, pdb_out_path: str) -> str:
     # Check if pdb is a path, and if it doesn't exist, download it.
@@ -488,8 +503,8 @@ def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
     logging.info(
         f'{round(percentage, 2)}% of outliers in the ramachandran analysis of {utils.get_file_name(pdb_path)}.')
     if percentage > percentage_minimum:
-        return False
-    return True
+        return False, percentage
+    return True, percentage
 
 
 def ramachandran_analysis(phi_psi_angles: List[List[int]]) -> List[int]:
@@ -528,18 +543,19 @@ def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
         os.chdir(store_old_dir)
 
 
-def cc_and_hinges_analysis(paths_in: Dict, binaries_path: structures.CCAnalysis, output_path: str,
+def cc_and_hinges_analysis(paths_split_in: Dict, paths_nonsplit_in: Dict, binaries_path: structures.BinariesPath, output_path: str,
                            length_sequences: Dict = None) -> List:
     templates_cluster2 = []
-    templates_cluster = hinges(paths_in=paths_in,
+    templates_cluster = hinges(paths_in=paths_split_in,
                                hinges_path=binaries_path.hinges_path,
                                output_path=os.path.join(output_path, 'hinges'),
                                length_sequences=length_sequences)
 
     templates_path_list = [template_in for template_list in templates_cluster for template_in in template_list]
     num_templates = len(templates_path_list)
+    templates_nonsplit_list = [paths_nonsplit_in[utils.get_file_name(template)] for template in templates_path_list]
     if num_templates >= 5:
-        templates_cluster2, analysis_dict2 = cc_analysis(paths_in=templates_path_list,
+        templates_cluster2, analysis_dict2 = cc_analysis(paths_in=templates_nonsplit_list,
                                                         cc_analysis_paths=binaries_path,
                                                         cc_path=os.path.join(output_path, 'ccanalysis'))
 
@@ -577,7 +593,7 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
     for key, value in paths_in.items():
         num_residues = sum(1 for _ in get_structure(value)[0].get_residues())
         # Validate using ramachandran, check the outliers
-        validate_geometry = generate_ramachandran(pdb_path=value, output_path=output_path)
+        validate_geometry, _ = generate_ramachandran(pdb_path=value, output_path=output_path)
         # Check the query sequence vs the number of residues of the pdb
         completeness = True
         if length_sequences is not None and key in length_sequences:
@@ -648,7 +664,7 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
         return [[values for values in paths_in.values()]]
 
 
-def cc_analysis(paths_in: List[str], cc_analysis_paths: structures.CCAnalysis, cc_path: str,
+def cc_analysis(paths_in: List[str], cc_analysis_paths: structures.BinariesPath, cc_path: str,
                 n_clusters: int = 2) -> List:
     # CC_analysis. It is mandatory to have the paths of the programs in order to run pdb2cc and ccanalysis.
     # A dictionary with the different pdbs that are going to be analysed.

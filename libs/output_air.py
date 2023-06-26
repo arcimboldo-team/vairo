@@ -64,7 +64,7 @@ class OutputAir:
 
 
     def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled,
-                       feature: features.Features, experimental_pdbs: List[str], cc_analysis_paths,
+                       feature: features.Features, experimental_pdbs: List[str], binaries_paths,
                        cluster_templates: bool = False):
 
         # Read all templates and rankeds, if there are no ranked, raise an error
@@ -111,6 +111,11 @@ class OutputAir:
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
+            ranked.set_compactness(bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path))
+            _, perc = bioutils.generate_ramachandran(pdb_path=ranked.path)
+            if perc is not None:
+                perc = round(perc, 2)
+            ranked.set_ramachandran(perc)
             if sequence_assembled.get_mutated_residues_list():
                 path = shutil.copy2(ranked.path, self.rankeds_without_mutations_dir)
                 ranked.set_without_mutations_path(path)
@@ -124,6 +129,12 @@ class OutputAir:
 
         # Sort list of ranked by pLDDT
         self.ranked_list.sort(key=lambda x: x.plddt, reverse=True)
+        
+        
+        
+        
+        
+        
         shutil.copy2(self.ranked_list[0].path, self.ranked_list[0].split_path)
         results = [items for items in combinations(self.ranked_list, r=2)]
         for result in results:
@@ -179,18 +190,20 @@ class OutputAir:
 
         # Generate CCANALYSIS plots, one without rankeds and another one with rankeds.
 
-        templates_cluster_list, analysis_dict = bioutils.cc_and_hinges_analysis(paths_in=self.templates_dict,
-                                                                                binaries_path=cc_analysis_paths,
+        templates_cluster_list, analysis_dict = bioutils.cc_and_hinges_analysis(paths_split_in=self.templates_dict,
+                                                                                paths_nonsplit_in=self.templates_nonsplit_dict,
+                                                                                binaries_path=binaries_paths,
                                                                                 output_path=self.results_dir,
                                                                                 length_sequences=self.percentage_sequences)
         if analysis_dict:
             plots.plot_cc_analysis(plot_path=self.analysis_plot_path,
                                    analysis_dict=analysis_dict,
                                    clusters=templates_cluster_list)
-        aux_dict = dict({ranked.name: ranked.split_path for ranked in self.ranked_list}, **self.templates_dict)
-
-        templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_and_hinges_analysis(paths_in=aux_dict,
-                                                                                              binaries_path=cc_analysis_paths,
+        aux_split_dict = dict({ranked.name: ranked.split_path for ranked in self.ranked_list}, **self.templates_dict)
+        aux_nonsplit_dict = dict({ranked.name: ranked.path for ranked in self.ranked_list}, **self.templates_nonsplit_dict)
+        templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_and_hinges_analysis(paths_split_in=aux_split_dict,
+                                                                                              paths_nonsplit_in=aux_nonsplit_dict,
+                                                                                              binaries_path=binaries_paths,
                                                                                               output_path=self.results_dir,
                                                                                               length_sequences=self.percentage_sequences)
 
@@ -397,9 +410,11 @@ class OutputAir:
 
             if bool(plddt_dict):
                 f_in.write('\n\n')
-                f_in.write('rankeds PLDDT\n')
+                f_in.write('ranked information \n')
                 data = {'ranked': plddt_dict.keys(),
-                        'plddt': [value for value in plddt_dict.values()],
+                        'plddt': [value['plddt'] for value in plddt_dict.values()],
+                        'compactness': [value['compactness'] for value in plddt_dict.values()],
+                        'ramachandran': [value['ramachandran'] for value in plddt_dict.values()]
                         }
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())

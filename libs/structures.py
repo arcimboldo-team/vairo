@@ -12,20 +12,23 @@ class CCAnalysisOutput:
     angle: float
 
 
-class CCAnalysis:
+class BinariesPath:
     def __init__(self, binaries_path):
         pd2cc_path: str
         cc_analysis_path: str
         hinges_path: str
+        spong_path: str
 
         if sys.platform == "darwin":
             self.cc_analysis_path = os.path.join(binaries_path, 'cc_analysis_mac')
             self.pd2cc_path = os.path.join(binaries_path, 'pdb2cc_mac')
             self.hinges_path = os.path.join(binaries_path, 'hinges_mac')
+            self.spong_path = os.path.join(binaries_path, 'spong_mac')
         else:
             self.cc_analysis_path = os.path.join(binaries_path, 'cc_analysis_linux')
             self.pd2cc_path = os.path.join(binaries_path, 'pdb2cc_linux')
             self.hinges_path = os.path.join(binaries_path, 'hinges_linux')
+            self.spong_path = os.path.join(binaries_path, 'spong_linux')
 
 
 @dataclasses.dataclass(frozen=True)
@@ -169,6 +172,8 @@ class Ranked:
         self.rmsd: float
         self.rmsd_dict: Dict = {}
         self.encoded: bytes
+        self.compactness: float
+        self.ramachandran: float
 
         self.path = ranked_path
         self.name = utils.get_file_name(ranked_path)
@@ -202,6 +207,12 @@ class Ranked:
 
     def set_split_path(self, path: str):
         self.split_path = path
+
+    def set_compactness(self, compactness: float):
+        self.compactness = compactness
+
+    def set_ramachandran(self, ramachandran: float):
+        self.ramachandran = ramachandran
 
     def set_minimized_path(self, path: str):
         self.minimized_path = path

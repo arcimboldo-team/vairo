@@ -149,7 +149,7 @@ def main():
                                     sequence_assembled=a_air.sequence_assembled,
                                     feature=a_air.feature,
                                     experimental_pdbs=a_air.experimental_pdbs,
-                                    cc_analysis_paths=a_air.cc_analysis_paths,
+                                    binaries_paths=a_air.binaries_paths,
                                     cluster_templates=a_air.cluster_templates)
         if a_air.cluster_templates:
             if a_air.run_af2:
@@ -158,7 +158,7 @@ def main():
                                         sequence_assembled=a_air.sequence_assembled,
                                         feature=a_air.feature,
                                         experimental_pdbs=a_air.experimental_pdbs,
-                                        cc_analysis_paths=a_air.cc_analysis_paths)
+                                        binaries_paths=a_air.binaries_paths)
         a_air.change_state(state=3)
         a_air.generate_output()
         logging.info('ARCIMBOLDO_AIR has finished successfully')

@@ -92,7 +92,7 @@ def plot_sequence(plot_path: str, a_air):
     fig, ax = plt.subplots(1, figsize=(16, 0.5))
     lines_leg = [Line2D([0], [0], color=color_seq, linewidth=3), Line2D([0], [0], color=color_link, linewidth=3, linestyle='dashed')]
     lines_leg_lab = ['Sequence', 'Linker']
-    fig.legend(lines_leg, lines_leg_lab, loc="lower left", bbox_to_anchor=(0.75, 0), ncol=2, frameon=False) 
+    fig.legend(lines_leg, lines_leg_lab, loc='upper center', bbox_to_anchor=(0.5, -0.4), ncol=2, frameon=False) 
 
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
@@ -162,6 +162,11 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
                 ax.barh('sequence', 4,
                         left=a_air.sequence_assembled.get_finishing_length(i) + 2 + num, color=color_link, height=0.2, zorder=2)
 
+
+        xcenters = (a_air.sequence_assembled.get_starting_length(i) + 1) + a_air.sequence_assembled.get_sequence_length(
+            i) / 2
+        ax.text(xcenters, 0, a_air.sequence_assembled.get_sequence_name(i), fontsize='xx-small', ha='center', va='center')
+    
     if plot_type == 'msa':
         title = 'MSA'
         file = os.path.join(plot_path, 'msa_gantt.png')
