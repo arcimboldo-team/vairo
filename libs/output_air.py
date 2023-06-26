@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 import shutil
@@ -37,7 +38,9 @@ class OutputAir:
         self.analysis_plot_path: str = f'{self.plots_path}/cc_analysis_plot.png'
         self.analysis_ranked_plot_path: str = f'{self.plots_path}/cc_analysis_ranked_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
+        self.html_complete_path: str = f'{output_dir}/output_complete.html'
         self.gantt_plots: structures.GanttPlot = None
+        self.gantt_complete_plots: structures.GanttPlot = None
         self.ranked_list: List[structures.Ranked] = []
         self.output_dir: str = output_dir
         self.experimental_dict = {}
@@ -48,28 +51,17 @@ class OutputAir:
         self.tmp_dir: str = ''
         self.group_ranked_by_rmsd_dict: dict = {}
         self.template_interfaces: dict = {}
-        self.templates_dict = {}
-        self.templates_nonsplit_dict = {}
-        self.percentage_sequences = {}
+        self.templates_dict: dict = {}
+        self.templates_nonsplit_dict: dict = {}
+        self.percentage_sequences: dict = {}
+        self.templates_selected: List = []
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
-    def create_plot_gantt(self, a_air):
-        gantt_plots_both, legend_both = plots.plot_gantt(plot_type='both', plot_path=self.plots_path,
-                                                         a_air=a_air)
-        gantt_plots_template, legend_template = plots.plot_gantt(plot_type='templates', plot_path=self.plots_path,
-                                                                 a_air=a_air)
-        gantt_plots_msa, legend_msa = plots.plot_gantt(plot_type='msa', plot_path=self.plots_path, a_air=a_air)
-        self.gantt_plots = structures.GanttPlot(plot_both=utils.encode_data(gantt_plots_both),
-                                                legend_both=legend_both,
-                                                plot_template=utils.encode_data(gantt_plots_template),
-                                                legend_template=legend_template,
-                                                plot_msa=utils.encode_data(gantt_plots_msa),
-                                                legend_msa=legend_msa)
-        plots.plot_sequence(plot_path=self.sequence_plot_path, a_air=a_air)
+
 
     def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled,
                        feature: features.Features, experimental_pdbs: List[str], cc_analysis_paths,
@@ -94,6 +86,7 @@ class OutputAir:
             self.templates_nonsplit_dict = feature.write_all_templates_in_features(
                 output_dir=self.templates_nonsplit_dir,
                 print_number=False)
+            
         # Split the templates with chains
         for template, template_path in self.templates_nonsplit_dict.items():
             self.percentage_sequences[template] = sequence_assembled.get_percentages(template_path)
@@ -105,19 +98,6 @@ class OutputAir:
                                            sequence_assembled=sequence_assembled)
 
         self.ranked_list = utils.read_rankeds(input_path=self.results_dir)
-
-        # dendogram_file = os.path.join(self.run_dir, 'dendogram.txt')
-        # dendogram_plot = os.path.join(self.run_dir, 'clustering_dendogram_angles.png')
-        # with open(dendogram_file, 'w') as sys.stdout:
-        #    _, _, _, _, _, _, _, _, dendogram_list = ALEPH.frobenius(references=list(  .values()),
-        #                                            targets=list(template_nonsplit.values()), write_plot=True,
-        #                                            write_matrix=True)
-        # sys.stdout = sys.__stdout__
-        # if dendogram_list:
-        #    shutil.copy2(dendogram_plot, self.template_dendogram)
-        #    if not custom_features:
-        #        for templates in dendogram_list:
-        #            self.templates_cluster.append([template_nonsplit[template] for template in templates])
 
         if not self.ranked_list or cluster_templates:
             logging.info('No ranked PDBs found')
@@ -158,7 +138,6 @@ class OutputAir:
             result[1].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[0].name)
 
         reference_superpose = self.ranked_list[0].path
-        green_color = 55
 
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
@@ -189,18 +168,14 @@ class OutputAir:
                         found = True
                         ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
                         if self.ranked_list[0].name == ranked2.name:
-                            ranked.set_green_color(green_color)
                             ranked.set_best(True)
-                            #green_color -= 5
                         break
 
                 if not found:
                     self.group_ranked_by_rmsd_dict[ranked.name] = [ranked]
                     ranked.set_rmsd(0)
                     if self.ranked_list[0].name == ranked.name:
-                        ranked.set_green_color(green_color)
                         ranked.set_best(True)
-                        #green_color -= 5
 
         # Generate CCANALYSIS plots, one without rankeds and another one with rankeds.
 
@@ -229,8 +204,9 @@ class OutputAir:
                 for template, template_path in self.templates_dict.items():
                     total_residues = bioutils.get_number_residues(template_path)
                     rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([ranked.split_path, template_path])
-                    rmsd = round(rmsd, 2) if rmsd is not None else rmsd
-                    ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
+                    if rmsd is not None:
+                        rmsd = round(rmsd, 2)
+                        ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
                 ranked.sort_template_rankeds()
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
@@ -250,55 +226,63 @@ class OutputAir:
                                            total_residues=results_dict['number_total_residues'])
             if ranked.filtered:
                 ranked.set_minimized_path(os.path.join(self.results_dir, f'{ranked.name}_minimized.pdb'))
-                #ranked.set_potential_energy(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
-
+                try:
+                    ranked.set_potential_energy(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                except:
+                    logging.info(f'Not possible to calculate the energies for pdb {ranked.path}')
                 if ranked.without_mutations_path:
                     ranked.set_without_mutations_minimized_path(os.path.join(self.rankeds_without_mutations_dir, f'{ranked.name}_minimized.pdb'))
-                    #bioutils.run_openmm(pdb_in_path=ranked.without_mutations_path, pdb_out_path=ranked.without_mutations_minimized_path)
+                    try:
+                        bioutils.run_openmm(pdb_in_path=ranked.without_mutations_path, pdb_out_path=ranked.without_mutations_minimized_path)
+                    except:
+                        logging.info(f'Not possible to calculate the energies for pdb {ranked.without_mutations_path}')
 
-                interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
                 ranked_chains_list = bioutils.get_chains(ranked.split_path)
-                if interfaces_data_list:
-                    deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
-                    deltas_list = utils.normalize_list([deltas_list])
-                    for i, interface in enumerate(interfaces_data_list):
-                        if not interface["chain1"] in domains_dict or not interface["chain2"] in domains_dict:
-                            continue
-                        seq1_name = sequence_assembled.get_sequence_name(ranked_chains_list.index(interface["chain1"]))
-                        seq2_name = sequence_assembled.get_sequence_name(ranked_chains_list.index(interface["chain2"]))
-                        code = f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}'
-                        dimers_path = os.path.join(self.interfaces_path, f'{ranked.name}_{code}.pdb')
-                        interface['bfactor'] = deltas_list[i]
-                        if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
-                            interface['bfactor'] = abs(max(deltas_list)) * 2
-                        extended_res_dict = bioutils.create_interface_domain(pdb_in_path=ranked.split_path,
-                                                                             pdb_out_path=dimers_path,
-                                                                             interface=interface,
-                                                                             domains_dict=domains_dict)
-                        renum_residues_list = []
-                        renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain1']],
-                                                                        mapping=ranked.mapping[interface['chain1']]))
-                        renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain2']],
-                                                                        mapping=ranked.mapping[interface['chain2']]))
-                        ranked.add_interface(structures.Interface(name=code,
-                                                                  res_list=renum_residues_list,
-                                                                  chain1=interface["chain1"],
-                                                                  chain2=interface["chain2"],
-                                                                  se_gain1=float(interface['se_gain1']),
-                                                                  se_gain2=float(interface['se_gain2']),
-                                                                  solvation1=float(interface['solvation1']),
-                                                                  solvation2=float(interface['solvation2'])
-                                                                  ))
-
+                if len(ranked_chains_list) > 1:
+                    interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
+                    if interfaces_data_list:
+                        deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
+                        deltas_list = utils.normalize_list([deltas_list])
+                        for i, interface in enumerate(interfaces_data_list):
+                            if not interface["chain1"] in domains_dict or not interface["chain2"] in domains_dict:
+                                continue
+                            seq1_name = sequence_assembled.get_sequence_name(ranked_chains_list.index(interface["chain1"]))
+                            seq2_name = sequence_assembled.get_sequence_name(ranked_chains_list.index(interface["chain2"]))
+                            code = f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}'
+                            dimers_path = os.path.join(self.interfaces_path, f'{ranked.name}_{code}.pdb')
+                            interface['bfactor'] = deltas_list[i]
+                            if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
+                                interface['bfactor'] = abs(max(deltas_list)) * 2
+                            extended_res_dict = bioutils.create_interface_domain(pdb_in_path=ranked.split_path,
+                                                                                pdb_out_path=dimers_path,
+                                                                                interface=interface,
+                                                                                domains_dict=domains_dict)
+                            renum_residues_list = []
+                            renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain1']],
+                                                                            mapping=ranked.mapping[interface['chain1']]))
+                            renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain2']],
+                                                                            mapping=ranked.mapping[interface['chain2']]))
+                            ranked.add_interface(structures.Interface(name=code,
+                                                                    res_list=renum_residues_list,
+                                                                    chain1=interface["chain1"],
+                                                                    chain2=interface["chain2"],
+                                                                    se_gain1=float(interface['se_gain1']),
+                                                                    se_gain2=float(interface['se_gain2']),
+                                                                    solvation1=float(interface['solvation1']),
+                                                                    solvation2=float(interface['solvation2'])
+                                                                    ))
+                else:
+                    logging.info(f'Skipping interface search as there is only one chain in pdb {ranked.split_path}')
         # Superpose the experimental pdb with all the rankeds and templates
         for experimental in experimental_pdbs:
             aux_dict = {}
             for pdb in [ranked.split_path for ranked in self.ranked_list] + list(self.templates_dict.values()):
                 rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
-                total_residues = bioutils.get_number_residues(pdb)
-                rmsd = round(rmsd, 2) if rmsd is not None else str(rmsd)
-                aux_dict[utils.get_file_name(pdb)] = structures.TemplateRanked(pdb, rmsd, aligned_residues,
-                                                                               total_residues)
+                if rmsd is not None:
+                    rmsd = round(rmsd, 2)
+                    total_residues = bioutils.get_number_residues(pdb)
+                    aux_dict[utils.get_file_name(pdb)] = structures.TemplateRanked(pdb, rmsd, aligned_residues,
+                                                                                total_residues)
             bioutils.gesamt_pdbs([reference_superpose, experimental], experimental)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
 
@@ -314,17 +298,19 @@ class OutputAir:
                     write_matrix=True)
             sys.stdout = sys.__stdout__
             ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
-
-            interfaces_data_list = bioutils.find_interface_from_pisa(self.templates_dict[template],
-                                                                     self.interfaces_path)
             template_chains_list = bioutils.get_chains(self.templates_dict[template])
             template_interface_list = []
-            for interface in interfaces_data_list:
-                seq1_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain1"]))
-                seq2_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain2"]))
-                template_interface_list.append(f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}')
-            self.template_interfaces[template] = template_interface_list
-
+            if len(template_chains_list) > 1:
+                interfaces_data_list = bioutils.find_interface_from_pisa(self.templates_dict[template],
+                                                                        self.interfaces_path)
+                for interface in interfaces_data_list:
+                    seq1_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain1"]))
+                    seq2_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain2"]))
+                    template_interface_list.append(f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}')
+                self.template_interfaces[template] = template_interface_list
+            else:
+                logging.info(f'Skipping interface search as there is only one chain in pdb {template_path}')
+             
             for ranked in ranked_filtered:
                 index = list_targets.index(ranked.name)
                 ranked.add_frobenius_plot(
@@ -358,6 +344,19 @@ class OutputAir:
                         dist_plot=shutil.copy2(plot_path, new_name)
                     )
 
+        if len(self.templates_nonsplit_dict) > 20:
+            sorted_percentages = dict(sorted(self.percentage_sequences.items(), key=lambda x: sum(x[1])))
+            cut_dict = dict(itertools.islice(sorted_percentages.items(), 20))
+            self.templates_selected = list(cut_dict.keys())
+            change_pos = -1
+            for ranked in self.ranked_list:
+                if ranked.superposition_templates:
+                    if not ranked.superposition_templates[0].template in self.templates_selected:
+                        self.templates_selected[change_pos] = ranked.superposition_templates[0].template
+                        change_pos -= 1
+        else:
+            self.templates_selected = list(self.templates_nonsplit_dict.keys())
+
         os.chdir(store_old_dir)
 
     def write_tables(self, rmsd_dict: Dict, ranked_rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict,
@@ -378,7 +377,7 @@ class OutputAir:
             if bool(ranked_rmsd_dict):
                 f_in.write('\n\n')
                 f_in.write('Superposition between predictions\n')
-                data = {'ranked': rmsd_dict.keys()}
+                data = {'ranked': ranked_rmsd_dict.keys()}
                 for ranked in ranked_rmsd_dict.values():
                     for key, value in ranked.items():
                         data.setdefault(key, []).append(value)

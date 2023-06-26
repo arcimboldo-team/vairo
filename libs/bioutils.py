@@ -1147,7 +1147,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
         f_out.write(pisa_output)
 
     if 'NO INTERFACES FOUND' in pisa_output or 'no chains found in input file' in pisa_text:
-        logging.info('No interfaces found in pisa')
+        logging.info(f'No interfaces found in pisa for pdb {pdb_in_path}')
     else:
         interfaces_list = utils.parse_pisa_general_multimer(pisa_output)
         for interface in interfaces_list:

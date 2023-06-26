@@ -22,7 +22,7 @@
         <style type='text/css'>
             body {
                 color: #000000;
-                background: #FFFDE7;
+                background: #FFFFFF;
                 font-family: sans-serif;
                 padding: 0px !important;
                 margin: 0px !important;
@@ -33,8 +33,20 @@
                 list-style: none;
             }
 
+            .green-row {
+                background-color: #8cbc6c;
+            }
+
             .blue-row {
-                background-color: rgb(0, 94, 255);
+                background-color: #9ec3e5;
+            }
+
+            .green {
+                color: green;
+            }
+
+            .blue {
+                color: blue;
             }
 
             .hide-row{
@@ -170,9 +182,6 @@
             li{
                 margin: 10px 0;
             }
-            .best-filtered {
-                background-color: blue;
-            }
 
             td{
                 border: 2px solid #000000;
@@ -260,10 +269,13 @@
                      {{ data.mosaic }} partially overlapping fragments are predicted and merged into the structure.
                 {% endif %}
                 </p>
+                {% if data.expanded_html  %}
+                    <p>On this page, only the top 20 most complete and/or similar to the prediction templates are displayed. To access the full list of templates, please click the following <a href="{{data.complete_html}}" target="_blank">link</a> </p>
+                {% endif %}
                 {% if data.ranked_by_rmsd %}
                     {% for key, values in data.ranked_by_rmsd.items() %}
                         {% if loop.first %}
-                            <p>Best result is <span style="color:green;">{{ values[0].name }}</span> with a {{ color_plddt(values[0].plddt ) }}.
+                            <p>Best result is <span class="green">{{ values[0].name }}</span> with a {{ color_plddt(values[0].plddt ) }}.
                                 Can be found in the following path: <a download="{{ values[0].name }}.pdb" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
                             </p>
                             {% for ranked in values if ranked.name != values[0].name %}
@@ -271,7 +283,7 @@
                                     <p>Other equal structural solutions are:</p>
                                     <ul>
                                 {% endif %}
-                                    <li><span style="color:green;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD)</li>
+                                    <li><span class="green"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD)</li>
                                 {% if loop.last %}
                                     </ul>
                                 {% endif %}
@@ -286,13 +298,13 @@
                                         {% if loop.first %}
                                             <ul>
                                                 {% if ranked.name in data.filtered_dict %}
-                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
+                                                    <li><span class="blue"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
                                                 {% else %}
                                                     <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
                                                 {% endif %}
                                         {% else %}
                                                 {% if ranked.name in data.filtered_dict %}
-                                                    <li><span style="color:blue;"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
+                                                    <li><span class="blue"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
                                                 {% else %}
                                                     <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
                                                 {% endif %}
@@ -358,12 +370,12 @@
                         {% if data.num_msa == 0 %}
                             <p>There are no sequences in the MSA.
                         {% else %}
-                            <p>There are {{ data.num_msa }} sequences in the MSA.
+                            <p>There is/are {{ data.num_msa }} sequence/s in the MSA.
                         {% endif %}
                         {% if data.num_templates == 0 %}
-                            . No templates have been used as input.</p>
+                             No templates have been used as input.</p>
                         {% else %}
-                             {{ data.num_templates }} templates have been used as input.</p>
+                             {{ data.num_templates }} template/s has/have been used as input.</p>
                         {% endif %}
                         <img style="width: 100%" src="data:image/png;base64,{{ data.gantt.plot_both }}" alt="Gantt diagram with msa and templates">
                         <p style="white-space: pre-wrap;">{{ data.gantt.legend_both }}</p>
@@ -540,7 +552,7 @@
                         </tr>
                         {% for ranked in data.ranked_list %}
                             {% if ranked.name in data.bests_dict %}
-                                <tr style="background-color:{{ ranked.color }};">
+                                <tr class="green-row">
                             {% elif ranked.name in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
@@ -564,7 +576,7 @@
                         </tr>
                         {% for key, value in data.table.ranked_rmsd_dict.items() %}
                             {% if key in data.bests_dict %}
-                                <tr style="background-color:{{ data.bests_dict[key].color }};">
+                                <tr class="green-row">
                             {% elif key in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
@@ -593,7 +605,7 @@
                         </tr>
                         {% for key, value in data.table.rmsd_dict.items() %}
                             {% if key in data.bests_dict %}
-                                <tr style="background-color:{{ data.bests_dict[key].color }};">
+                                <tr class="green-row">
                             {% elif key in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
@@ -601,7 +613,7 @@
                             {% endif %}
                                 <td>{{ key }}</td>
                                 {% for key2, value2 in value.items() %}
-                                    <td>{{ value2.rmsd }} {{ value2.aligned_residues }} ({{ value2.total_residues }})</td>
+                                    <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
                                 {% endfor %}
                             </tr>
                         {% endfor %}
@@ -618,7 +630,7 @@
                         </tr>
                         {% for key, value in data.table.secondary_dict.items() %}
                             {% if key in data.bests_dict %}
-                                <tr style="background-color:{{ data.bests_dict[key].color }};">
+                                <tr class="green-row">
                             {% elif key in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
@@ -641,7 +653,7 @@
                         </tr>
                         {% for key, value in data.table.energies_dict.items() %}
                             {% if key in data.bests_dict %}
-                                <tr style="background-color:{{ data.bests_dict[key].color }};">
+                                <tr class="green-row">
                             {% elif key in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
@@ -656,6 +668,7 @@
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
                     <h3>Experimental pdbs with predictions and templates (RMSD (superposed residues))</h3>
+
                     <table>
                         <tr>
                             <th>experimental pdb</th>
@@ -669,7 +682,13 @@
                             <tr>
                                 <td>{{ key }}</td>
                                 {% for value2 in value.values() %}
-                                    <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
+                                    {% if key2 in data.bests_dict %}
+                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
+                                    {% elif key in data.filtered_dict %}
+                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>                                
+                                    {% else %}
+                                        <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
+                                    {% endif %} 
                                 {% endfor %}
                             </tr>
                         {% endfor %}
@@ -686,14 +705,14 @@
             <div id="conclusions" class="section-div">
                 <h2>Conclusions</h2>
                 {% if data.bests_dict|length == 1 %}
-                    <p>The best predicted model is <span style="color:green;">{{ data.ranked_list[0].name }}</span>.
+                    <p>The best predicted model is <span class="green">{{ data.ranked_list[0].name }}</span>.
                         {% if data.ranked_list[0].superposition_templates %}
                             The closest template is {{ data.ranked_list[0].superposition_templates[0].template }} with a {{ data.ranked_list[0].superposition_templates[0].rmsd }} RMSD</p>
                         {% endif %}
                 {% elif data.bests_dict|length > 1 %}
                     <p>There are {{ data.bests_dict|length }} equal best predicted models:
                         {% for key, value in data.bests_dict.items() %}
-                            <span style="color:green;">{{ key }}</span>
+                            <span class="green">{{ key }}</span>
                             {% if not loop.last %}
                                 ,
                             {% endif %}
@@ -709,9 +728,9 @@
                                 <li>{{ key }}:
                                     {% for ranked in value %}
                                         {% if ranked in data.bests_dict %}
-                                            <span style="color:green;">{{ ranked }}</span>
+                                            <span class="green">{{ ranked }}</span>
                                         {% elif ranked in data.filtered_dict %}
-                                            <span style="color:blue;">{{ ranked }}</span>
+                                            <span class="blue">{{ ranked }}</span>
                                         {% else %}
                                             {{ ranked }}
                                         {% endif %}
@@ -751,9 +770,9 @@
                                                             : Missing in
                                                         {% endif %}
                                                         {% if not_interface in data.bests_dict %}
-                                                            <span style="color:green;">{{ not_interface }}</span>
+                                                            <span class="green">{{ not_interface }}</span>
                                                         {% elif not_interface in data.filtered_dict %}
-                                                            <span style="color:blue;">{{ not_interface }}</span>
+                                                            <span class="blue">{{ not_interface }}</span>
                                                         {% else %}
                                                             {{ not_interface }}
                                                         {% endif %}

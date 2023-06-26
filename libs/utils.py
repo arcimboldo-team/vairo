@@ -407,6 +407,8 @@ def check_ranked(input_path: str) -> bool:
 def delete_old_rankeds(input_path: str):
     [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if check_ranked(path)]
 
+def delete_old_html(input_path: str):
+    [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if get_file_extension(path) == '.html']
 
 def check_format(string_in):
     pattern = r"\d+-\d+"

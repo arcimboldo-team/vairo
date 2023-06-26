@@ -1,4 +1,5 @@
 import os
+from matplotlib.lines import Line2D
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,6 +39,7 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.legend(loc='upper right')
     plt.xlabel('residue number')
     plt.ylabel('pLDDT')
+    plt.ylim(0,100)
     plt.savefig(plot_path, dpi=100)
     plt.cla()
     max_plddt = max([ranked.plddt for ranked in ranked_list])
@@ -85,17 +87,20 @@ def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List, predic
 
 def plot_sequence(plot_path: str, a_air):
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
+    color_seq = '#2e75b6'
+    color_link = '#7f7f7f'
     fig, ax = plt.subplots(1, figsize=(16, 0.5))
-    legend_seq = [Patch(label='Sequence', color='tab:cyan'), Patch(label='Linker', color='tab:blue')]
-    ax.legend(handles=legend_seq[::-1], loc='upper center', bbox_to_anchor=(0.5, -0.4), fancybox=True, framealpha=0.5,
-              ncol=2)
+    lines_leg = [Line2D([0], [0], color=color_seq, linewidth=3), Line2D([0], [0], color=color_link, linewidth=3, linestyle='dashed')]
+    lines_leg_lab = ['Sequence', 'Linker']
+    fig.legend(lines_leg, lines_leg_lab, loc="lower left", bbox_to_anchor=(0.75, 0), ncol=2, frameon=False) 
+
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
-                left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan')
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, color=color_seq)
         if i < a_air.sequence_assembled.total_copies - 1:
-            ax.barh('sequence', a_air.sequence_assembled.glycines,
-                    left=a_air.sequence_assembled.get_starting_length(i) + a_air.sequence_assembled.get_sequence_length(
-                        i) + 1, color='tab:blue')
+            for num in range(0, a_air.sequence_assembled.glycines, 8): 
+                ax.barh('sequence', 4,
+                        left=a_air.sequence_assembled.get_finishing_length(i) + 2 + num, color=color_link, height=0.2, zorder=2)            
 
         xcenters = (a_air.sequence_assembled.get_starting_length(i) + 1) + a_air.sequence_assembled.get_sequence_length(
             i) / 2
@@ -129,15 +134,18 @@ def plot_sequence(plot_path: str, a_air):
     plt.cla()
 
 
-def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
+def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> str:
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
+    color_seq = '#2e75b6'
+    color_link = '#7f7f7f'
     fig, ax = plt.subplots(1, figsize=(16, 2))
     legend_elements = []
-    legend_seq = [Patch(label='Sequence', color='tab:cyan'), Patch(label='Linker', color='tab:blue')]
+    
     number_of_templates = 1
     total_length = len(a_air.sequence_assembled.sequence_assembled)
     msa_found = False
     templates_found = False
+
 
     mutated_residues = a_air.sequence_assembled.get_mutated_residues_list()
     for i in mutated_residues:
@@ -145,13 +153,14 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
 
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
-                left=a_air.sequence_assembled.get_starting_length(i) + 1, color='tab:cyan', height=0.5, zorder=2)
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, color=color_seq, height=0.5, zorder=2)
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
-                left=a_air.sequence_assembled.get_starting_length(i) + 1, align='edge', color='tab:cyan', height=0.1,
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, align='edge', color=color_seq, height=0.1,
                 zorder=3)
         if i < a_air.sequence_assembled.total_copies - 1:
-            ax.barh('sequence', a_air.sequence_assembled.glycines,
-                    left=a_air.sequence_assembled.get_finishing_length(i) + 2, color='tab:blue', height=0.5, zorder=2)
+            for num in range(0, a_air.sequence_assembled.glycines, 8): 
+                ax.barh('sequence', 4,
+                        left=a_air.sequence_assembled.get_finishing_length(i) + 2 + num, color=color_link, height=0.2, zorder=2)
 
     if plot_type == 'msa':
         title = 'MSA'
@@ -163,20 +172,13 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         title = 'TEMPLATES and MSA'
         file = os.path.join(plot_path, 'template_msa_gantt.png')
 
-    if plot_type == 'msa' or plot_type == 'both':
-        names = a_air.feature.get_names_msa()
-    else:
-        names = a_air.feature.get_names_templates()
-
+    names = a_air.feature.get_names_msa()
     names = [name for name in names if name != '']
-    if (len(names) > 20 or plot_type == 'both') and len(names) > 0:
+    if ((len(names) > 20 and plot_type == 'msa') or plot_type == 'both') and len(names) > 0:
         number_of_templates += 1
         add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
         for name in names:
-            if plot_type == 'msa' or plot_type == 'both':
-                features_search = a_air.feature.get_msa_by_name(name)
-            else:
-                features_search = a_air.feature.get_sequence_by_name(name)
+            features_search = a_air.feature.get_msa_by_name(name)
             aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
                                                           features_search)
             aligned_sequence = [1 if align == '-' else float(align) for align in aligned_sequence]
@@ -191,9 +193,12 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
             msa_found = True
             if add_sequences[i - 1] != 1:
                 ax.barh(name, 1, left=i, height=0.5, color=str(add_sequences[i - 1]), zorder=2)
-    if len(names) <= 20 or plot_type == 'both':
-        if plot_type == 'both':
+    
+    if plot_type != 'msa' or len(names) <= 20:
+        if plot_type != 'msa':
             names = a_air.feature.get_names_templates()
+            if reduced:
+                names = [name for name in names if name in a_air.output.templates_selected]
         pdb_hits_path = os.path.join(a_air.results_dir, 'msas/pdb_hits.hhr')
         hhr_text = ''
         if os.path.exists(pdb_hits_path):
@@ -267,16 +272,19 @@ def plot_gantt(plot_type: str, plot_path: str, a_air) -> str:
         index = number_of_templates * 0.7
     else:
         index = number_of_templates * 0.5
-    fig.legend(handles=legend_seq[::-1], loc="lower left", bbox_to_anchor=(0.75, 0), ncol=2, frameon=False)
+
+    lines_leg = [Line2D([0], [0], color=color_seq, linewidth=3), Line2D([0], [0], color=color_link, linewidth=3, linestyle='dashed')]
+    lines_leg_lab = ['Sequence', 'Linker']
+    fig.legend(lines_leg, lines_leg_lab, loc="lower left", bbox_to_anchor=(0.75, 0), ncol=2, frameon=False)
 
     fig.set_size_inches(16, index)
     plt.setp([ax.get_xticklines()], color='k')
     ax.set_xlim(-round(ax.get_xlim()[1] - total_length) / 6, total_length + round(ax.get_xlim()[1] - total_length) / 6)
     ax.set_ylim(-0.5, number_of_templates + 0.5)
 
-    color_template = '#E8DFF5'
-    color_msa = '#FFD6A5'
-    color_sequence = '#F9F7E8'
+    color_template = '#dcede9'
+    color_msa = '#fae6d6'
+    color_sequence = '#e9dff6'
     if number_of_templates == 1:
         ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
     else:

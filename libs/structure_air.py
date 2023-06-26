@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import shutil
@@ -74,6 +75,7 @@ class StructureAir:
         utils.create_dir(self.input_dir)
         utils.create_dir(self.experimental_dir, delete_if_exists=True)
         utils.delete_old_rankeds(self.output_dir)
+        utils.delete_old_html(self.output_dir)
 
         self.af2_dbs_path = utils.get_input_value(name='af2_dbs_path', section='global', input_dict=parameters_dict)
         if not os.path.exists(self.af2_dbs_path):
@@ -101,7 +103,8 @@ class StructureAir:
         if experimental_string:
             experimental_list = experimental_string.replace(' ', '').split(',')
             for pdb in experimental_list:
-                pdb_path = bioutils.check_pdb(pdb, f'{os.path.join(self.experimental_dir, utils.get_file_name(pdb))}.pdb')
+                pdb_path = bioutils.check_pdb(pdb,
+                                              f'{os.path.join(self.experimental_dir, utils.get_file_name(pdb))}.pdb')
                 self.experimental_pdbs.append(os.path.join(self.experimental_dir, os.path.basename(pdb_path)))
                 try:
                     bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
@@ -130,10 +133,11 @@ class StructureAir:
                         for pos_query in pos_query_list.split(','):
                             pos_query_exp = utils.expand_residues(pos_query)
                             if len(pos_lib_exp) != len(pos_query_exp):
-                                raise Exception('Wrong format in the positions in append_library. Residue range numbers '
-                                                'mismatch')
+                                raise Exception(
+                                    'Wrong format in the positions in append_library. Residue range numbers '
+                                    'mismatch')
                             for i, pos_aux in enumerate(pos_query_exp):
-                                positions_list[pos_aux-1] = pos_lib_exp[i]-1
+                                positions_list[pos_aux - 1] = pos_lib_exp[i] - 1
 
             if os.path.exists(path):
                 aux_list = [os.path.join(path, file) for file in os.listdir(path)] if os.path.isdir(path) else [path]
@@ -210,12 +214,20 @@ class StructureAir:
             self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
 
-    def generate_output(self):
+
+    def render_output(self, reduced: bool):
         render_dict = {}
 
         template_str = open(f'{utils.get_main_path()}/templates/output.html', 'r').read()
         jinja_template = Environment(loader=FileSystemLoader(f'{utils.get_main_path()}/templates/')).from_string(
             template_str)
+        
+        if reduced:
+            accepted_templates = self.output.templates_selected
+            if os.path.exists(self.output.html_complete_path):
+                render_dict['complete_html'] = self.output.html_complete_path
+        else:
+            accepted_templates = [temp for temp in self.output.templates_dict.keys()]
 
         render_dict['frobenius_equation'] = utils.encode_data(
             input_data=f'{utils.get_main_path()}/templates/frobenius_equation.png')
@@ -235,9 +247,13 @@ class StructureAir:
             render_dict['log_text'] = f_in.read()
 
         if self.feature is not None:
-            self.output.create_plot_gantt(self)
-            if self.output.gantt_plots is not None:
-                render_dict['gantt'] = self.output.gantt_plots
+            self.create_plot_gantt(reduced=reduced)
+            if reduced:
+                if self.output.gantt_plots is not None:
+                    render_dict['gantt'] = self.output.gantt_plots
+            else:
+                if self.output.gantt_complete_plots is not None:
+                    render_dict['gantt'] = self.output.gantt_complete_plots
 
         if os.path.exists(self.output.plddt_plot_path):
             render_dict['plddt'] = utils.encode_data(self.output.plddt_plot_path)
@@ -289,24 +305,28 @@ class StructureAir:
                 if ranked.potential_energy is not None:
                     energies_dict[ranked.name] = ranked.potential_energy
 
-                rmsd_dict[ranked.name] = {}
-                for ranked_template in ranked.superposition_templates:
-                    rmsd_dict[ranked.name][ranked_template.template] = {'rmsd': ranked_template.rmsd,
-                                                                        'aligned_residues': ranked_template.aligned_residues,
-                                                                        'total_residues': ranked_template.total_residues
-                                                                        }
-
+                if ranked.superposition_templates and any(ranked_template.template in accepted_templates for ranked_template in ranked.superposition_templates):
+                    rmsd_dict[ranked.name] = {}
+                    for ranked_template in ranked.superposition_templates:
+                        if ranked_template.template in accepted_templates:
+                            rmsd_dict[ranked.name][ranked_template.template] = {'rmsd': ranked_template.rmsd,
+                                                                                'aligned_residues': ranked_template.aligned_residues,
+                                                                                'total_residues': ranked_template.total_residues
+                                                                                }
                 if ranked.filtered and ranked.interfaces:
-                    interfaces_list = [interface for interface in ranked.interfaces if interface.interface_template]
+                    interfaces_list = [copy.deepcopy(interface) for interface in ranked.interfaces if interface.interface_template and any([inter.template in accepted_templates for inter in interface.interface_template])]
                     if interfaces_list:
+                        for inter in interfaces_list:
+                            inter.interface_template = [int_temp for int_temp in inter.interface_template if int_temp.template in accepted_templates]
                         interfaces_dict[ranked.name] = interfaces_list
-
                 if ranked.frobenius_plots:
-                    ordered_list = sorted(ranked.frobenius_plots, key=lambda x: x.core, reverse=True)
-                    frobenius_plots_list = [ordered_list.pop(0)]
-                    if ordered_list:
-                        frobenius_plots_list.append(ordered_list.pop())
-                    frobenius_dict[ranked.name] = frobenius_plots_list + ordered_list
+                    new_frobenius_plots = [plts for plts in ranked.frobenius_plots if plts.template in accepted_templates]
+                    if new_frobenius_plots:
+                        ordered_list = sorted(new_frobenius_plots, key=lambda x: x.core, reverse=True)
+                        frobenius_plots_list = [ordered_list.pop(0)]
+                        if ordered_list:
+                            frobenius_plots_list.append(ordered_list.pop())
+                        frobenius_dict[ranked.name] = frobenius_plots_list + ordered_list
 
             render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
             render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if
@@ -335,7 +355,10 @@ class StructureAir:
             if frobenius_dict:
                 render_dict['frobenius_dict'] = frobenius_dict
             if self.output.experimental_dict:
-                render_dict['table']['experimental_dict'] = self.output.experimental_dict
+                new_dict = copy.deepcopy(self.output.experimental_dict)
+                for key, inner_dict in new_dict.items():
+                    new_dict[key] = {k: v for k, v in inner_dict.items() if k in accepted_templates}
+                render_dict['table']['experimental_dict'] = new_dict
 
             self.output.write_tables(rmsd_dict=rmsd_dict, ranked_rmsd_dict=ranked_rmsd_dict,
                                      secondary_dict=secondary_dict, plddt_dict=plddt_dict,
@@ -343,8 +366,23 @@ class StructureAir:
 
         render_dict['state'] = self.get_state_text()
 
-        with open(self.output.html_path, 'w') as f_out:
+        if reduced:
+            write_output = self.output.html_path
+        else:
+            write_output = self.output.html_complete_path
+        
+        with open(write_output, 'w') as f_out:
             f_out.write(jinja_template.render(data=render_dict))
+       
+
+    def generate_output(self):
+        if self.feature and self.feature.get_templates_length() > 20:
+            self.render_output(reduced=True)
+            self.render_output(reduced=False)
+        else:
+            self.render_output(reduced=True)
+
+
 
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
         # Return the template matching the pdb_id
@@ -534,6 +572,28 @@ class StructureAir:
                     rankeds={utils.get_file_name(ranked_path): ranked_path for ranked_path in rankeds_path_list},
                     templates={utils.get_file_name(template_in): template_in for template_in in templates}
                 ))
+
+    def create_plot_gantt(self, reduced: bool):
+        gantt_plots_both, legend_both = plots.plot_gantt(plot_type='both', plot_path=self.output.plots_path,
+                                                        a_air=self, reduced=reduced)
+        gantt_plots_template, legend_template = plots.plot_gantt(plot_type='templates', plot_path=self.output.plots_path,
+                                                                a_air=self, reduced=reduced)
+        gantt_plots_msa, legend_msa = plots.plot_gantt(plot_type='msa', plot_path=self.output.plots_path, a_air=self)
+
+        struct = structures.GanttPlot(plot_both=utils.encode_data(gantt_plots_both),
+                                                    legend_both=legend_both,
+                                                    plot_template=utils.encode_data(gantt_plots_template),
+                                                    legend_template=legend_template,
+                                                    plot_msa=utils.encode_data(gantt_plots_msa),
+                                                    legend_msa=legend_msa)
+
+        if reduced:
+            self.output.gantt_plots = struct
+        else:
+            self.output.gantt_complete_plots = struct
+
+        plots.plot_sequence(plot_path=self.output.sequence_plot_path, a_air=self)
+
 
     def create_cluster(self, job_path: str, templates: List[str]) -> str:
         yml_path = os.path.join(job_path, 'config.yml')

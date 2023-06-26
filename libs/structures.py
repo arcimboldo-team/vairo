@@ -168,7 +168,6 @@ class Ranked:
         self.best: bool = False
         self.rmsd: float
         self.rmsd_dict: Dict = {}
-        self.color: str
         self.encoded: bytes
 
         self.path = ranked_path
@@ -194,9 +193,6 @@ class Ranked:
 
     def set_filtered(self, filtered: bool):
         self.filtered = filtered
-
-    def set_green_color(self, color: str):
-        self.color = f'hsl(120, 100% ,{color}%)'
 
     def set_best(self, best: bool):
         self.best = best
