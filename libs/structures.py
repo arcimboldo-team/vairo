@@ -43,7 +43,8 @@ class Cluster:
 
 @dataclasses.dataclass(frozen=True)
 class Hinges:
-    decreasing_rmsd: float
+    decreasing_rmsd_middle: float
+    decreasing_rmsd_total: float
     one_rmsd: float
     middle_rmsd: float
     min_rmsd: float
@@ -51,7 +52,7 @@ class Hinges:
     groups: List
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class FeaturesInput:
     path: str
     keep_msa: int
@@ -59,7 +60,27 @@ class FeaturesInput:
     msa_delete: List[int]
     sequence: str
     positions: List[int]
+    extracted_sequences: int = dataclasses.field(default=0)
+    extracted_templates: int = dataclasses.field(default=0)
 
+    def add_information(self, extracted_sequences: int = 0, extracted_templates: int = 0):
+        self.extracted_sequences = extracted_sequences
+        self.extracted_templates = extracted_templates
+
+@dataclasses.dataclass
+class Library:
+    path: str
+    aligned: str
+    add_to_msa: bool
+    add_to_templates: bool
+    positions: Dict
+    positions_list: List[str]
+    extracted_sequences: int = dataclasses.field(default=0)
+    extracted_templates: int = dataclasses.field(default=0)
+
+    def add_information(self, extracted_sequences: int = 0, extracted_templates: int = 0):
+        self.extracted_sequences = extracted_sequences
+        self.extracted_templates = extracted_templates
 
 @dataclasses.dataclass(frozen=True)
 class AlignmentDatabase:
@@ -132,15 +153,6 @@ class Frobenius:
     encoded_ang_plot: bytes
     core: int
 
-@dataclasses.dataclass(frozen=True)
-class Library:
-    path: str
-    aligned: str
-    add_to_msa: bool
-    add_to_templates: bool
-    positions: Dict
-    positions_list: List[str]
-
 
 @dataclasses.dataclass(frozen=True)
 class TemplateRanked:
@@ -148,6 +160,7 @@ class TemplateRanked:
     rmsd: float
     aligned_residues: int
     total_residues: int
+    
 
 
 class Ranked:

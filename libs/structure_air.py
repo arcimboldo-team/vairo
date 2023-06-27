@@ -84,8 +84,12 @@ class StructureAir:
         self.glycines = utils.get_input_value(name='glycines', section='global', input_dict=parameters_dict)
         self.mosaic = utils.get_input_value(name='mosaic', section='global', input_dict=parameters_dict)
         self.small_bfd = utils.get_input_value(name='small_bfd', section='global', input_dict=parameters_dict)
-        self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global',
-                                                       input_dict=parameters_dict)
+        
+        if self.mode == 'naive':
+            self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global', input_dict=parameters_dict, override_default=True)
+        else:
+            self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global', input_dict=parameters_dict)
+        
         self.cluster_templates_msa = utils.get_input_value(name='cluster_templates_msa', section='global',
                                                            input_dict=parameters_dict)
         self.cluster_templates_msa_delete = utils.expand_residues(
@@ -593,7 +597,8 @@ class StructureAir:
         else:
             self.output.gantt_complete_plots = struct
 
-        plots.plot_sequence(plot_path=self.output.sequence_plot_path, a_air=self)
+        if self.sequence_assembled.total_copies > 1:
+            plots.plot_sequence(plot_path=self.output.sequence_plot_path, a_air=self)
 
 
     def create_cluster(self, job_path: str, templates: List[str]) -> str:

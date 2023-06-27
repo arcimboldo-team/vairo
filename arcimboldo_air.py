@@ -83,17 +83,22 @@ def main():
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
                 positions = a_air.sequence_assembled.get_range_residues(position_ini=feat.positions[0] - 1,
                                                                         position_end=feat.positions[-1] - 1)
+                num_msa = 0
+                num_templates = 0
                 if feat.keep_msa != 0:
-                    a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
+                    num_msa = a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
                                                    finish=feat.keep_msa,
                                                    delete_positions=feat.msa_delete,
                                                    positions=positions)
                 if feat.keep_templates != 0:
-                    a_air.feature.set_template_features(new_templates=feat_aux.template_features,
+                    num_templates = a_air.feature.set_template_features(new_templates=feat_aux.template_features,
                                                         finish=feat.keep_templates,
                                                         positions=positions,
                                                         sequence_in=feat.sequence)
+                feat.add_information(extracted_sequences=num_msa, extracted_templates=num_templates)
             for i, library in enumerate(a_air.libraries):
+                num_msa = 0
+                num_templates = 0
                 if library.add_to_templates:
                     template_path = f'{os.path.join(a_air.input_dir, utils.get_file_name(library.path))}.pdb'
                     if library.positions:
@@ -108,6 +113,7 @@ def main():
                         pdb_id=utils.get_file_name(library.path),
                         chain_id='A')
                     a_air.feature.append_new_template_features(new_template_features=template_features)
+                    num_templates = 1
 
                 if library.add_to_msa:
                     extension = utils.get_file_extension(library.path)
@@ -127,6 +133,8 @@ def main():
                             seq_aux = aux_library_list
                         seq_aux = ''.join(seq_aux)
                         a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}_{utils.get_file_name(library.path)}', 1)
+                        num_msa += 1
+                library.add_information(extracted_sequences=num_msa, extracted_templates=num_templates)
 
             features_list = a_air.partition_mosaic()
         else:

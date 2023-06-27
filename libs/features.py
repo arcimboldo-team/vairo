@@ -128,7 +128,7 @@ class Features:
         return template_dict
 
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = [],
-                         positions: List[int] = []):
+                         positions: List[int] = []) -> int:
         coverage_msa = []
         if positions and len(new_msa['msa']) > 0 and positions[1]-positions[0]+1 != len(new_msa['msa'][0]):
             raise Exception('Select the positions of the features.pkl. The features.pkl msa is smaller than the query sequence')
@@ -153,9 +153,10 @@ class Features:
             msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)
         if len(msa_dict['msa']) > 0:
             self.append_row_in_msa_from_features(msa_dict)
+        return len(msa_dict['msa'])
 
     def set_template_features(self, new_templates: Dict, finish: int = -1, positions: List[int] = [],
-                              sequence_in: str = None):
+                              sequence_in: str = None) -> int:
         finish = len(new_templates['template_sequence']) if finish == -1 else finish
         template_dict = self.create_empty_template_list(finish)
         for i in range(0, finish):
@@ -174,6 +175,7 @@ class Features:
             if positions:
                 template_dict = self.expand_template(template_dict=template_dict, expand=positions)
             self.append_new_template_features(template_dict)
+        return len(template_dict['template_all_atom_positions'])
 
     def expand_msa(self, msa_dict: Dict, expand: List[int]) -> Dict:
         aux_dict = copy.deepcopy(msa_dict)

@@ -2,6 +2,7 @@ import os
 from matplotlib.lines import Line2D
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import AutoMinorLocator, FixedLocator
 import numpy as np
 from matplotlib.patches import Patch
 import re
@@ -12,6 +13,16 @@ from typing import Dict, List
 MATPLOTLIB_FONT = 14
 plt.set_loglevel('WARNING')
 
+
+def generate_minor_ticks(ax_list: List[int]) -> List[int]:
+    ax_list = sorted(ax_list)
+    minor_ticks = []
+    for i in range(0, len(ax_list) - 1, 2):
+        current_num = ax_list[i]
+        next_num = ax_list[i + 1]
+        step = (next_num - current_num) / 6  # Divide by 6 to get 5 numbers between each pair
+        minor_ticks.extend([current_num + j * step for j in range(1, 6)])
+    return minor_ticks
 
 def plot_ramachandran(plot_path: str, phi_psi_angles: List[List[float]]):
     fig, ax = plt.subplots(figsize=(8, 8))
@@ -114,7 +125,7 @@ def plot_sequence(plot_path: str, a_air):
         ticks=list(ax_secondary.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i
                                                  in range(a_air.sequence_assembled.total_copies)], rotation=45)
     ax_secondary.set_xticklabels(
-        labels=[1] * a_air.sequence_assembled.total_copies + [a_air.sequence_assembled.get_sequence_length(i) + 1 for i
+        labels=[1] * a_air.sequence_assembled.total_copies + [a_air.sequence_assembled.get_sequence_length(i) + 2 for i
                                                               in range(a_air.sequence_assembled.total_copies - 1)],
         rotation=45)
     ax.set_xticks(
@@ -123,8 +134,11 @@ def plot_sequence(plot_path: str, a_air):
         rotation=45)
     ax.set_xticks(
         ticks=list(ax.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i
-                                       in range(a_air.sequence_assembled.total_copies - 1)],
+                                       in range(a_air.sequence_assembled.total_copies)],
         rotation=45)
+
+
+    ax.set_xticks(generate_minor_ticks(list(ax.get_xticks())), minor=True)
     ax.set_xticklabels(labels=ax.get_xticks(), rotation=45)
     ax.set_xlim(0, len(a_air.sequence_assembled.sequence_assembled))
     ax.set_yticks([])
@@ -262,7 +276,6 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
                                 color=str(aligned_sequence[i - 1]))
                         ax.barh(template_name, 1, left=i, height=0.5, zorder=2, color=str(aligned_sequence[i - 1]))
 
-    ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='both')
     if number_of_templates == 1:
         index = 1.5
     elif number_of_templates == 2:
@@ -288,8 +301,8 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
     ax.set_ylim(-0.5, number_of_templates + 0.5)
 
     color_template = '#dcede9'
-    color_msa = '#fae6d6'
-    color_sequence = '#e9dff6'
+    color_msa = '#d7e9cb'
+    color_sequence = '#fbf7e6'
     if number_of_templates == 1:
         ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
     else:
@@ -315,15 +328,22 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
                            'identical, the lighter the more dissimilar).\n')
     legend_elements.reverse()
 
+
+    ax.xaxis.grid(color='k', linestyle='dashed', alpha=0.4, which='major')
     ax.set_xticks(
         [a_air.sequence_assembled.get_starting_length(i) + 1 for i in range(a_air.sequence_assembled.total_copies)])
     ax.set_xticks(list(ax.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i in
                                            range(a_air.sequence_assembled.total_copies)])
 
+    ax.set_xticks(generate_minor_ticks(list(ax.get_xticks())), minor=True)
+    
     cut_chunk = [list(tup) for tup in a_air.chunk_list]
     cut_chunk = utils.remove_list_layer(cut_chunk)
     ax.set_xticks(list(ax.get_xticks()) + [cut + 1 for cut in cut_chunk])
+
     ax.set_xticklabels(ax.get_xticks(), rotation=45)
+
+
 
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')

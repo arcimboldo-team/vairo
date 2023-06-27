@@ -579,6 +579,8 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
     threshold_rmsd_ss = 4.5
     threshold_rmsd_local = 1.5
     threshold_overlap = 0.7
+    threshold_minimum = 3
+    threshold_decrease = 40
 
     logging.info('Starting hinges analysis')
     accepted_pdbs = {}
@@ -630,16 +632,18 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
         selected_group = key1
         for key2, result in results_rmsd[key1].items():
             group = utils.get_key_by_value(key2, groups_names)
-            if group and (
-                    (
-                            result.min_rmsd < threshold_rmsd_domains or
-                            result.one_rmsd < threshold_rmsd_local or
-                            result.middle_rmsd < threshold_rmsd_ss
-                    )
-                    and result.overlap > threshold_overlap
-            ):
-                if selected_group not in groups_names or len(groups_names[group[0]]) > len(
-                        groups_names[selected_group]):
+            selected_for = None
+            if group and result.overlap > threshold_overlap:
+                if result.one_rmsd < threshold_rmsd_local:
+                    selected_for = 'local changes'
+                elif result.middle_rmsd < threshold_rmsd_ss and result.decreasing_rmsd_middle > threshold_decrease:
+                    selected_for = 'secondary structure changes'
+                elif result.min_rmsd < threshold_rmsd_domains and result.decreasing_rmsd_middle > threshold_decrease:
+                    selected_for = 'domain changes'
+                elif result.min_rmsd < threshold_minimum:
+                    selected_for = 'equivalence'
+                if selected_for is not None and selected_group not in groups_names or len(groups_names[group[0]]) > len(groups_names[selected_group]):
+                    logging.info(f'{key2} into group {key1} because of {selected_for}')
                     selected_group = group[0]
         groups_names[selected_group].append(key1)
     groups_names = [values for values in groups_names.values() if len(values) > 1]

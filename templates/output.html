@@ -600,7 +600,7 @@
                     <h3>Superposition of predictions and templates (RMSD, superposed residues, total residues)</h3>
                     <table id="table_templates_rmsd">
                         <tr>
-                            <th>prediction</th>
+                            <th>Prediction</th>
                             {% for value in data.table.rmsd_dict.values() %}
                                 {% for key in value.keys() if loop.first%}            
                                     <th>{{ key }}</th>
@@ -652,7 +652,7 @@
                     <h3>Prediction energies</h3>
                     <table id="table_energies">
                         <tr>
-                            <th>prediction</th>
+                            <th>Prediction</th>
                             <th>potential (kcal/mol)</th>
                         </tr>
                         {% for key, value in data.table.energies_dict.items() %}

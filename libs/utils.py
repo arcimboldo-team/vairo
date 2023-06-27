@@ -251,7 +251,8 @@ def parse_hinges(output: str) -> structures.Hinges:
     file2 = (file_2_count - warnings_2) / file_2_count if file_2_count != 0 else 0
 
     hinges_result = structures.Hinges(
-        decreasing_rmsd=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
+        decreasing_rmsd_total=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
+        decreasing_rmsd_middle=(rmsd_list[0] - rmsd_list[len(rmsd_list) // 2]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
         one_rmsd=rmsd_list[0],
         middle_rmsd=rmsd_list[len(rmsd_list) // 2],
         min_rmsd=min(rmsd_list),
@@ -437,7 +438,7 @@ def check_input(global_dict: Dict):
     check_keys(global_dict)
 
 
-def get_input_value(name: str, section: str, input_dict: Dict):
+def get_input_value(name: str, section: str, input_dict: Dict, override_default=None):
     mapping = {
         'global': 'global_input',
         'sequence': 'sequence_input',
@@ -453,7 +454,10 @@ def get_input_value(name: str, section: str, input_dict: Dict):
     if value is None and value_dict['required']:
         raise Exception(f'{name} does not exist and it is a mandatory input parameter. Check the input file.')
     elif value is None:
-        value = value_dict['default']
+        if override_default is not None:
+            value = override_default
+        else:
+            value = value_dict['default']
     return value
 
 

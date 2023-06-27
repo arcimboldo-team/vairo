@@ -153,7 +153,7 @@ INPUT_PARAMETERS = {
         'cluster_templates_msa': {
             'required': False,
             'mode': ['naive'],
-            'default': 0
+            'default': -1
         },
         'cluster_templates_msa_delete': {
             'required': False,
