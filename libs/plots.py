@@ -115,7 +115,7 @@ def plot_sequence(plot_path: str, a_air):
 
         xcenters = (a_air.sequence_assembled.get_starting_length(i) + 1) + a_air.sequence_assembled.get_sequence_length(
             i) / 2
-        ax.text(xcenters, 0, a_air.sequence_assembled.get_sequence_name(i), ha='center', va='center')
+        ax.text(xcenters, 0, a_air.sequence_assembled.get_sequence_name(i), ha='center', va='center', color='white')
 
     ax_secondary = ax.secondary_xaxis('top')
     ax_secondary.set_xticks(
@@ -137,6 +137,8 @@ def plot_sequence(plot_path: str, a_air):
                                        in range(a_air.sequence_assembled.total_copies)],
         rotation=45)
 
+    ax.tick_params('both', length=10, which='major')
+    ax.tick_params('both', length=5, which='minor')
 
     ax.set_xticks(generate_minor_ticks(list(ax.get_xticks())), minor=True)
     ax.set_xticklabels(labels=ax.get_xticks(), rotation=45)
@@ -179,7 +181,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
 
         xcenters = (a_air.sequence_assembled.get_starting_length(i) + 1) + a_air.sequence_assembled.get_sequence_length(
             i) / 2
-        ax.text(xcenters, 0, a_air.sequence_assembled.get_sequence_name(i), fontsize='xx-small', ha='center', va='center')
+        ax.text(xcenters, 0, a_air.sequence_assembled.get_sequence_name(i), fontsize='xx-small', ha='center', va='center', color='white')
     
     if plot_type == 'msa':
         title = 'MSA'
@@ -340,10 +342,11 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
     cut_chunk = [list(tup) for tup in a_air.chunk_list]
     cut_chunk = utils.remove_list_layer(cut_chunk)
     ax.set_xticks(list(ax.get_xticks()) + [cut + 1 for cut in cut_chunk])
-
     ax.set_xticklabels(ax.get_xticks(), rotation=45)
 
 
+    ax.tick_params('both', length=10, which='major')
+    ax.tick_params('both', length=5, which='minor')
 
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Sequences')
