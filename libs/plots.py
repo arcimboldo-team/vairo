@@ -102,7 +102,7 @@ def plot_sequence(plot_path: str, a_air):
     color_link = '#7f7f7f'
     fig, ax = plt.subplots(1, figsize=(16, 0.5))
     lines_leg = [Line2D([0], [0], color=color_seq, linewidth=3), Line2D([0], [0], color=color_link, linewidth=3, linestyle='dashed')]
-    lines_leg_lab = ['Sequence', 'Linker']
+    lines_leg_lab = ['Query sequence', 'Linker']
     fig.legend(lines_leg, lines_leg_lab, loc='upper center', bbox_to_anchor=(0.5, -0.4), ncol=2, frameon=False) 
 
     for i in range(a_air.sequence_assembled.total_copies):
@@ -294,7 +294,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
         index = number_of_templates * 0.5
 
     lines_leg = [Line2D([0], [0], color=color_seq, linewidth=3), Line2D([0], [0], color=color_link, linewidth=3, linestyle='dashed')]
-    lines_leg_lab = ['Sequence', 'Linker']
+    lines_leg_lab = ['Query Sequence', 'Linker']
     fig.legend(lines_leg, lines_leg_lab, loc="lower left", bbox_to_anchor=(0.75, 0), ncol=2, frameon=False)
 
     fig.set_size_inches(16, index)
@@ -349,7 +349,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
     ax.tick_params('both', length=5, which='minor')
 
     ax.set_xlabel('Residue number')
-    ax.set_ylabel('Sequences')
+    ax.set_ylabel('Information')
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
     ax.spines['left'].set_position(('outward', 10))
