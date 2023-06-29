@@ -46,7 +46,6 @@ def main():
         utils.create_logger_dir(a_air.log_path)
         os.chdir(a_air.run_dir)
         a_air.write_input_file()
-        a_air.generate_output()
         if a_air.custom_features:
             logging.info('Generating features.pkl for AlphaFold2')
             a_air.set_feature(
@@ -95,49 +94,56 @@ def main():
                                                         finish=feat.keep_templates,
                                                         positions=positions,
                                                         sequence_in=feat.sequence)
-                feat.add_information(extracted_sequences=num_msa, extracted_templates=num_templates)
-            for i, library in enumerate(a_air.libraries):
+                feat.add_information(num_msa=num_msa, num_templates=num_templates)
+            for i, library in enumerate(a_air.library_list):
+                aux_list = [os.path.join(library.path, file) for file in os.listdir(library.path)] if os.path.isdir(library.path) else [library.path]
+                paths = [path for path in aux_list if utils.get_file_extension(path) in ['.pdb', '.fasta']]
                 num_msa = 0
                 num_templates = 0
-                if library.add_to_templates:
-                    template_path = f'{os.path.join(a_air.input_dir, utils.get_file_name(library.path))}.pdb'
-                    if library.positions:
-                        template_path = bioutils.copy_positions_of_pdb(path_in=library.path, path_out=template_path, positions=library.positions_list)
-                    else:
-                        shutil.copy2(library.path, template_path)
-                    bioutils.remove_hetatm(template_path, template_path)
-                    bioutils.remove_hydrogens(template_path, template_path)
-                    template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
-                        query_sequence=a_air.sequence_assembled.sequence_assembled,
-                        pdb_path=template_path,
-                        pdb_id=utils.get_file_name(library.path),
-                        chain_id='A')
-                    a_air.feature.append_new_template_features(new_template_features=template_features)
-                    num_templates = 1
+                for aux_path in paths:
+                    if library.add_to_templates:
+                        if utils.get_file_extension(aux_path) == '.fasta' and library.add_to_templates:
+                            logging.info(f'Ignoring add_to_templates to True for fasta file {aux_path}')
+                        else:
+                            template_path = f'{os.path.join(a_air.input_dir, utils.get_file_name(aux_path))}.pdb'
+                            if library.positions:
+                                template_path = bioutils.copy_positions_of_pdb(path_in=aux_path, path_out=template_path, positions=library.positions_list)
+                            else:
+                                shutil.copy2(aux_path, template_path)
+                            bioutils.remove_hetatm(template_path, template_path)
+                            bioutils.remove_hydrogens(template_path, template_path)
+                            template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
+                                query_sequence=a_air.sequence_assembled.sequence_assembled,
+                                pdb_path=template_path,
+                                pdb_id=utils.get_file_name(aux_path),
+                                chain_id='A')
+                            a_air.feature.append_new_template_features(new_template_features=template_features)
+                            num_templates += 1
 
-                if library.add_to_msa:
-                    extension = utils.get_file_extension(library.path)
-                    if extension in ['.pdb']:
-                        sequence_list = bioutils.extract_sequence_msa_from_pdb(library.path)
-                        sequence_list = list(sequence_list.values())
-                    if extension == '.fasta':
-                        sequence_list = list(bioutils.extract_sequences(library.path).values())
+                    if library.add_to_msa:
+                        extension = utils.get_file_extension(aux_path)
+                        if extension in ['.pdb']:
+                            sequence_list = bioutils.extract_sequence_msa_from_pdb(aux_path)
+                            sequence_list = list(sequence_list.values())
+                        if extension == '.fasta':
+                            sequence_list = list(bioutils.extract_sequences(aux_path).values())
 
-                    for sequence in sequence_list:
-                        seq_aux = sequence
-                        if library.positions_list:
-                            aux_library_list = copy.copy(library.positions_list)
-                            for m, pos in enumerate(aux_library_list):
-                                if pos != '-':
-                                    aux_library_list[m] = seq_aux[pos]
-                            seq_aux = aux_library_list
-                        seq_aux = ''.join(seq_aux)
-                        a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}_{utils.get_file_name(library.path)}', 1)
-                        num_msa += 1
-                library.add_information(extracted_sequences=num_msa, extracted_templates=num_templates)
+                        for sequence in sequence_list:
+                            seq_aux = sequence
+                            if library.positions_list:
+                                aux_library_list = copy.copy(library.positions_list)
+                                for m, pos in enumerate(aux_library_list):
+                                    if pos != '-':
+                                        aux_library_list[m] = seq_aux[pos]
+                                seq_aux = aux_library_list
+                            seq_aux = ''.join(seq_aux)
+                            a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}_{utils.get_file_name(aux_path)}', 1)
+                            num_msa += 1
+                library.add_information(num_msa=num_msa, num_templates=num_templates)
 
             features_list = a_air.partition_mosaic()
         else:
+            a_air.generate_output()
             features_list = [None] * a_air.mosaic
             a_air.partition_mosaic()
             logging.info('No features.pkl added, default AlphaFold2 run')

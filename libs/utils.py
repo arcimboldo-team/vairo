@@ -256,7 +256,7 @@ def parse_hinges(output: str) -> structures.Hinges:
         one_rmsd=rmsd_list[0],
         middle_rmsd=rmsd_list[len(rmsd_list) // 2],
         min_rmsd=min(rmsd_list),
-        overlap=file1 if file1 < file2 else file2,
+        overlap=file1 if file1 > file2 else file2,
         groups=residues_list)
     return hinges_result
 

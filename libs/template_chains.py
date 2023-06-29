@@ -59,19 +59,24 @@ class TemplateChainsList:
         chain1, code1 = utils.get_chain_and_number(pdb_path)
         pdb_dirname = os.path.dirname(pdb_path)
         for template_chain in self.template_chains_list:
-            if pdb_dirname == os.path.dirname(
-                    template_chain.path) and chain1 == template_chain.chain and code1 == template_chain.code:
-                return template_chain
+            #if there is alignment, we check the directory too, because it can be from different alignments
+            if pdb_dirname == os.path.dirname(template_chain.path) and chain1 == template_chain.chain and code1 == template_chain.code:
+                return template_chain           
         return None
 
     def get_old_sequence(self, pdb_path: str) -> str:
         template_chain = self.get_template_chain(pdb_path)
-        return template_chain.sequence_before_changes
+        if template_chain is not None:
+            return template_chain.sequence_before_changes
+        else:
+            return None
 
     def get_changes(self, pdb_path: str) -> List:
         template_chain = self.get_template_chain(pdb_path)
-        return template_chain.changed_residues, template_chain.fasta_residues, template_chain.deleted_residues
-
+        if template_chain is not None:
+            return template_chain.changed_residues, template_chain.fasta_residues, template_chain.deleted_residues
+        else:
+            return None
     def get_number_chains(self) -> int:
         return len({(chain_template.chain, chain_template.code) for chain_template in self.template_chains_list})
 

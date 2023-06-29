@@ -60,12 +60,12 @@ class FeaturesInput:
     msa_delete: List[int]
     sequence: str
     positions: List[int]
-    extracted_sequences: int = dataclasses.field(default=0)
-    extracted_templates: int = dataclasses.field(default=0)
+    num_msa: int = dataclasses.field(default=0)
+    num_templates: int = dataclasses.field(default=0)
 
-    def add_information(self, extracted_sequences: int = 0, extracted_templates: int = 0):
-        self.extracted_sequences = extracted_sequences
-        self.extracted_templates = extracted_templates
+    def add_information(self, num_msa: int = 0, num_templates: int = 0):
+        self.num_msa = num_msa
+        self.num_templates = num_templates
 
 @dataclasses.dataclass
 class Library:
@@ -75,12 +75,12 @@ class Library:
     add_to_templates: bool
     positions: Dict
     positions_list: List[str]
-    extracted_sequences: int = dataclasses.field(default=0)
-    extracted_templates: int = dataclasses.field(default=0)
+    num_msa: int = dataclasses.field(default=0)
+    num_templates: int = dataclasses.field(default=0)
 
-    def add_information(self, extracted_sequences: int = 0, extracted_templates: int = 0):
-        self.extracted_sequences = extracted_sequences
-        self.extracted_templates = extracted_templates
+    def add_information(self, num_msa: int = 0, num_templates: int = 0):
+        self.num_msa = num_msa
+        self.num_templates = num_templates
 
 @dataclasses.dataclass(frozen=True)
 class AlignmentDatabase:

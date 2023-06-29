@@ -151,21 +151,20 @@ class SequenceAssembled:
 
     def partition(self, number_partitions: int, overlap: int) -> List[Tuple[int, int]]:
         # Slice string in chunks of size
-        length = len(self.sequence_assembled)
         if number_partitions == 1:
-            return [(0, length)]
+            return [(0, self.length)]
         elif len(self.sequence_list_expanded) == 1:
-            reminder = length % number_partitions
+            reminder = self.length % number_partitions
             chunk_list = []
-            size = int((length - reminder) / number_partitions)
-            for chunk in range(0, length - reminder, size):
+            size = int((self.length - reminder) / number_partitions)
+            for chunk in range(0, self.length - reminder, size):
                 chunk_list.append((chunk, size + chunk + overlap))
             last_element = chunk_list[-1]
             chunk_list[-1] = (last_element[0], last_element[1] + reminder - overlap)
             return chunk_list
         else:
             length_list = [sequence.length for sequence in self.sequence_list_expanded]
-            aprox_length = length / number_partitions
+            aprox_length = self.length / number_partitions
             actual_partition = 0
             partitions = collections.defaultdict(list)
             for i, element in enumerate(length_list):
@@ -191,7 +190,7 @@ class SequenceAssembled:
                 if i == 0:
                     chunk_list.append((int(starting_position), int(end_position + overlap / 2)))
                 elif i == number_partitions - 1:
-                    chunk_list.append((int(starting_position - overlap / 2), int(length)))
+                    chunk_list.append((int(starting_position - overlap / 2), int(self.length)))
                 else:
                     chunk_list.append((int(starting_position - overlap / 2), int(end_position + overlap / 2)))
                 starting_position = end_position

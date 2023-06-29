@@ -130,11 +130,6 @@ class OutputAir:
         # Sort list of ranked by pLDDT
         self.ranked_list.sort(key=lambda x: x.plddt, reverse=True)
         
-        
-        
-        
-        
-        
         shutil.copy2(self.ranked_list[0].path, self.ranked_list[0].split_path)
         results = [items for items in combinations(self.ranked_list, r=2)]
         for result in results:

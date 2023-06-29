@@ -37,7 +37,6 @@ class StructureAir:
         self.cluster_templates_msa: int
         self.cluster_templates_msa_delete: List[int]
         self.cluster_templates_sequence: str
-        self.libraries: List[structures.Library] = []
         self.glycines: int
         self.template_positions_list: List[List] = []
         self.reference: Union[template.Template, None]
@@ -52,6 +51,7 @@ class StructureAir:
         self.state: int = 0
         self.features_input: List[structures.FeaturesInput] = []
         self.features_list: List[features.Features] = []
+        self.library_list: List[structures.Library] = []
         self.chunk_list: List[int] = []
 
         self.mode = utils.get_input_value(name='mode', section='global', input_dict=parameters_dict)
@@ -76,6 +76,7 @@ class StructureAir:
         utils.create_dir(self.experimental_dir, delete_if_exists=True)
         utils.delete_old_rankeds(self.output_dir)
         utils.delete_old_html(self.output_dir)
+
 
         self.af2_dbs_path = utils.get_input_value(name='af2_dbs_path', section='global', input_dict=parameters_dict)
         if not os.path.exists(self.af2_dbs_path):
@@ -127,6 +128,7 @@ class StructureAir:
             path = utils.get_input_value(name='path', section='append_library', input_dict=library)
             aligned = utils.get_input_value(name='aligned', section='append_library', input_dict=library)
             add_to_msa = utils.get_input_value(name='add_to_msa', section='append_library', input_dict=library)
+            add_to_templates = utils.get_input_value(name='add_to_templates', section='append_library', input_dict=library)
             positions = utils.get_input_value(name='positions', section='append_library', input_dict=library)
             positions_list = None
             if positions:
@@ -144,19 +146,11 @@ class StructureAir:
                                 positions_list[pos_aux - 1] = pos_lib_exp[i] - 1
 
             if os.path.exists(path):
-                aux_list = [os.path.join(path, file) for file in os.listdir(path)] if os.path.isdir(path) else [path]
-                for aux_path in aux_list:
-                    add_to_templates = utils.get_input_value(name='add_to_templates', section='append_library',
-                                                             input_dict=library)
-                    if utils.get_file_extension(aux_path) == '.fasta' and add_to_templates:
-                        logging.info(f'Ignoring add_to_templates to True for fasta file {aux_path}')
-                        add_to_templates = False
-                    if utils.get_file_extension(aux_path) in ['.pdb', '.fasta']:
-                        self.libraries.append(structures.Library(path=aux_path, aligned=aligned,
-                                                                 add_to_msa=add_to_msa,
-                                                                 add_to_templates=add_to_templates,
-                                                                 positions=positions,
-                                                                 positions_list=positions_list))
+                self.library_list.append(structures.Library(path=path, aligned=aligned,
+                                                        add_to_msa=add_to_msa,
+                                                        add_to_templates=add_to_templates,
+                                                        positions=positions,
+                                                        positions_list=positions_list))
             else:
                 raise Exception(f'Path {path} does not exist. Check the input append_library parameter.')
 
@@ -273,10 +267,35 @@ class StructureAir:
 
         if self.cluster_list:
             render_dict['cluster_list'] = self.cluster_list
-
+        
         if self.feature:
-            render_dict['num_msa'] = self.feature.get_msa_length()
-            render_dict['num_templates'] = self.feature.get_templates_length()
+            if self.mode != 'naive':
+                info_input_list = []
+                sum_msa = 1
+                sum_templates = 0
+                normal_input = {'num_templates': 0, 'num_msa': 0, 'type': 'user input'}
+                for template in self.templates_list:
+                    if template.add_to_msa:
+                        normal_input['num_msa'] += 1
+                    if template.add_to_templates:
+                        normal_input['num_templates'] += 1
+                sum_msa += normal_input['num_msa']
+                sum_templates += normal_input['num_templates']
+                info_input_list.append(normal_input)
+                for library in self.library_list:
+                    info_input_list.append({'num_templates': library.num_templates, 'num_msa': library.num_msa, 'type': 'library', 'path': library.path})
+                    sum_msa += library.num_msa
+                    sum_templates += library.num_templates
+                for feature in self.features_input:
+                    info_input_list.append({'num_templates': feature.num_templates, 'num_msa': feature.num_msa, 'type': 'features', 'path': feature.path})
+                    sum_msa += feature.num_msa
+                    sum_templates += feature.num_templates                
+                render_dict['info_input'] = info_input_list
+                render_dict['num_msa'] = sum_msa
+                render_dict['num_templates'] = sum_templates
+            else:
+                render_dict['num_msa'] = self.feature.get_msa_length()
+                render_dict['num_templates'] = self.feature.get_templates_length()
 
         if self.output.ranked_list:
             render_dict['table'] = {}
@@ -671,9 +690,9 @@ class StructureAir:
                         f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
                 if self.cluster_templates_sequence is not None:
                     f_out.write(f'cluster_templates_sequence: {self.cluster_templates_sequence}\n')
-            if self.libraries:
+            if self.library_list:
                 f_out.write(f'\nappend_library:\n')
-                for library in self.libraries:
+                for library in self.library_list:
                     f_out.write('-')
                     f_out.write(f' path: {library.path}\n')
                     f_out.write(f'  aligned: {library.aligned}\n')

@@ -638,13 +638,14 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
                     selected_for = 'local changes'
                 elif result.middle_rmsd < threshold_rmsd_ss and result.decreasing_rmsd_middle > threshold_decrease:
                     selected_for = 'secondary structure changes'
-                elif result.min_rmsd < threshold_rmsd_domains and result.decreasing_rmsd_middle > threshold_decrease:
+                elif result.min_rmsd < threshold_rmsd_domains and result.decreasing_rmsd_total > threshold_decrease:
                     selected_for = 'domain changes'
                 elif result.min_rmsd < threshold_minimum:
                     selected_for = 'equivalence'
-                if selected_for is not None and selected_group not in groups_names or len(groups_names[group[0]]) > len(groups_names[selected_group]):
-                    logging.info(f'{key2} into group {key1} because of {selected_for}')
-                    selected_group = group[0]
+                if selected_for is not None:
+                    if selected_group not in groups_names or len(groups_names[group[0]]) > len(groups_names[selected_group]):
+                        logging.info(f'{key2} into group {key1} because of {selected_for}')
+                        selected_group = group[0]
         groups_names[selected_group].append(key1)
     groups_names = [values for values in groups_names.values() if len(values) > 1]
 
@@ -816,17 +817,17 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
             res1 = sequence1[i]
             res2 = sequence2[i]
             if res1 == res2:
-                return_list.append('0')
+                return_list.append(6)
             elif res2 == '-':
-                return_list.append('-')
+                return_list.append(0)
             elif get_group(res1) == get_group(res2):
-                return_list.append('0.4')
+                return_list.append(4)
             else:
-                return_list.append('0.7')
+                return_list.append(2)
             if res1 != res2:
                 changes_dict[i] = res2
         else:
-            return_list.append('-')
+            return_list.append(0)
 
     return return_list, changes_dict
 

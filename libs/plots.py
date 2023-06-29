@@ -1,3 +1,4 @@
+import math
 import os
 from matplotlib.lines import Line2D
 
@@ -14,10 +15,23 @@ MATPLOTLIB_FONT = 14
 plt.set_loglevel('WARNING')
 
 
-def generate_minor_ticks(ax_list: List[int]) -> List[int]:
+def scale_values(input_list: List[int]) -> List[int]:
+    max_value = max(input_list)
+    new_list = []
+    for value in input_list:
+        if value <= 0:
+            new_value = 0
+        elif value >= max_value:
+            new_value = 1
+        else:
+            new_value = round(math.log(value + 1) / math.log(max_value + 1), 2)
+        new_list.append(new_value)
+    return new_list
+
+def generate_minor_ticks(ax_list: List[int], step: int) -> List[int]:
     ax_list = sorted(ax_list)
     minor_ticks = []
-    for i in range(0, len(ax_list) - 1, 2):
+    for i in range(0, len(ax_list) - 1, step):
         current_num = ax_list[i]
         next_num = ax_list[i + 1]
         step = (next_num - current_num) / 6  # Divide by 6 to get 5 numbers between each pair
@@ -140,7 +154,7 @@ def plot_sequence(plot_path: str, a_air):
     ax.tick_params('both', length=10, which='major')
     ax.tick_params('both', length=5, which='minor')
 
-    ax.set_xticks(generate_minor_ticks(list(ax.get_xticks())), minor=True)
+    ax.set_xticks(generate_minor_ticks(list(ax.get_xticks()), step=2), minor=True)
     ax.set_xticklabels(labels=ax.get_xticks(), rotation=45)
     ax.set_xlim(0, len(a_air.sequence_assembled.sequence_assembled))
     ax.set_yticks([])
@@ -155,13 +169,17 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
     color_seq = '#2e75b6'
     color_link = '#7f7f7f'
     fig, ax = plt.subplots(1, figsize=(16, 2))
+    
+    ax1 = ax.twiny()
+    ax1.xaxis.set_ticks_position('bottom')
+    ax1.spines[['right', 'top', 'left']].set_visible(False)
+
     legend_elements = []
     
     number_of_templates = 1
     total_length = len(a_air.sequence_assembled.sequence_assembled)
     msa_found = False
     templates_found = False
-
 
     mutated_residues = a_air.sequence_assembled.get_mutated_residues_list()
     for i in mutated_residues:
@@ -202,19 +220,19 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             features_search = a_air.feature.get_msa_by_name(name)
             aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
                                                           features_search)
-            aligned_sequence = [1 if align == '-' else float(align) for align in aligned_sequence]
             add_sequences = np.add(aligned_sequence, add_sequences)
         add_sequences = [aligned / len(names) for aligned in add_sequences]
-
+        new_sequences = scale_values(add_sequences)
+        new_sequences = [1-value for value in new_sequences]
         if plot_type == 'both':
             name = 'MSA'
         else:
             name = 'Percentage'
-        for i in range(1, len(add_sequences)):
+        for i in range(1, len(new_sequences)):
             msa_found = True
-            if add_sequences[i - 1] != 1:
-                ax.barh(name, 1, left=i, height=0.5, color=str(add_sequences[i - 1]), zorder=2)
-    
+            if new_sequences[i - 1] != 1:
+                ax.barh(name, 1, left=i, height=0.5, color=str(new_sequences[i - 1]), zorder=2)
+
     if plot_type != 'msa' or len(names) <= 20:
         if plot_type != 'msa':
             names = a_air.feature.get_names_templates()
@@ -264,24 +282,24 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             if features_search is not None:
                 aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
                                                               features_search)
-
                 for i in range(1, len(features_search)):
-                    if aligned_sequence[i - 1] != '-':
+                    if aligned_sequence[i - 1] != 0:
+                        aux_aligned = 1-aligned_sequence[i - 1]/6
                         if i in changed_residues:
                             ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='yellow', zorder=3)
                         elif i in changed_fasta:
                             ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red', zorder=3)
                         else:
                             ax.barh(template_name, 1, left=i, height=0.25, align='edge', zorder=3,
-                                    color=str(aligned_sequence[i - 1]))
+                                    color=str(aux_aligned))
                         ax.barh(template_name, 1, left=i, height=0.1, align='edge', zorder=3,
-                                color=str(aligned_sequence[i - 1]))
-                        ax.barh(template_name, 1, left=i, height=0.5, zorder=2, color=str(aligned_sequence[i - 1]))
+                                color=str(aux_aligned))
+                        ax.barh(template_name, 1, left=i, height=0.5, zorder=2, color=str(aux_aligned))
 
     if number_of_templates == 1:
-        index = 1.5
+        index = 2.1
     elif number_of_templates == 2:
-        index = number_of_templates
+        index = number_of_templates * 1.2
     elif number_of_templates == 3:
         index = number_of_templates * 0.85
     elif number_of_templates == 4:
@@ -295,7 +313,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
 
     lines_leg = [Line2D([0], [0], color=color_seq, linewidth=3), Line2D([0], [0], color=color_link, linewidth=3, linestyle='dashed')]
     lines_leg_lab = ['Query Sequence', 'Linker']
-    fig.legend(lines_leg, lines_leg_lab, loc="lower left", bbox_to_anchor=(0.75, 0), ncol=2, frameon=False)
+    fig.legend(lines_leg, lines_leg_lab, loc="lower left", bbox_to_anchor=(0.70, 0), ncol=2, frameon=False)
 
     fig.set_size_inches(16, index)
     plt.setp([ax.get_xticklines()], color='k')
@@ -306,14 +324,16 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
     color_msa = '#d7e9cb'
     color_sequence = '#fbf7e6'
     if number_of_templates == 1:
-        ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
+        ax.axhspan(-0.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_sequence)
     else:
         if plot_type == 'both':
             ax.axhspan(-0.5, 0.5, facecolor='0.5', zorder=1, color=color_sequence)
             if msa_found:
-                ax.axhspan(0.5, 1.5, facecolor='0.5', zorder=1, color=color_msa)
                 if templates_found:
+                    ax.axhspan(0.5, 1.5, facecolor='0.5', zorder=1, color=color_msa)
                     ax.axhspan(1.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_template)
+                else:
+                    ax.axhspan(0.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_msa)
             elif templates_found:
                 ax.axhspan(0.5, ax.get_ylim()[1], facecolor='0.5', zorder=1, color=color_template)
         elif plot_type == 'msa':
@@ -337,16 +357,42 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
     ax.set_xticks(list(ax.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i in
                                            range(a_air.sequence_assembled.total_copies)])
 
-    ax.set_xticks(generate_minor_ticks(list(ax.get_xticks())), minor=True)
+    length = a_air.sequence_assembled.length
+    if length < 200:
+        partition = 50
+    elif length < 3000:
+        partition = 100
+    else:
+        partition = 200
     
-    cut_chunk = [list(tup) for tup in a_air.chunk_list]
-    cut_chunk = utils.remove_list_layer(cut_chunk)
-    ax.set_xticks(list(ax.get_xticks()) + [cut + 1 for cut in cut_chunk])
+    length = a_air.sequence_assembled.length
+    rounded_partitions_labels = []
+    rounded_partitions_aux= []
+    rounded_partitions_num = []
+    threshold = length * 0.03
+    x_ticks = list(ax.get_xticks())
+    for i in range(partition, length, partition):
+        close_to_tick = any(i>num-threshold and i<num+threshold for num in x_ticks)
+        if not close_to_tick:
+            rounded_partitions_labels.append(i)
+            rounded_partitions_aux.append(i)  
+        rounded_partitions_num.append(i)
+
+    #cut_chunk = [list(tup) for tup in a_air.chunk_list]
+    #cut_chunk = utils.remove_list_layer(cut_chunk)
+    #ax.set_xticks(list(ax.get_xticks()) + [cut + 1 for cut in cut_chunk])
     ax.set_xticklabels(ax.get_xticks(), rotation=45)
 
+    ax1.set_xticks(rounded_partitions_aux, major=True)
+    ax1.set_xticklabels(rounded_partitions_labels, rotation=45)
+    ax1.set_xticks(list(ax1.get_xticks()) + rounded_partitions_num, major=True)
+    ax1.set_xticks(generate_minor_ticks([1]+list(ax1.get_xticks()), step=1), minor=True)
+    ax1.tick_params('x', length=7, which='major', labelsize='medium')
+    ax1.tick_params('x', length=3, which='minor')
+    ax1.set_xlim(-round(ax.get_xlim()[1] - total_length) / 6, total_length + round(ax.get_xlim()[1] - total_length) / 6)
 
-    ax.tick_params('both', length=10, which='major')
-    ax.tick_params('both', length=5, which='minor')
+    ax.tick_params('x', length=10, which='major', width=2, color='red',labelsize='large')
+    ax.tick_params('x', length=5, which='minor')
 
     ax.set_xlabel('Residue number')
     ax.set_ylabel('Information')

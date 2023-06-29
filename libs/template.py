@@ -46,8 +46,7 @@ class Template:
         self.sum_prob = utils.get_input_value(name='sum_prob', section='template', input_dict=parameters_dict)
         self.legacy = utils.get_input_value(name='legacy', section='template', input_dict=parameters_dict)
         self.strict = utils.get_input_value(name='strict', section='template', input_dict=parameters_dict)
-        self.aligned = self.legacy
-        self.aligned = utils.get_input_value(name='aligned', section='template', input_dict=parameters_dict)
+        self.aligned = utils.get_input_value(name='aligned', section='template', input_dict=parameters_dict, override_default=self.legacy)
         self.template_path = f'{os.path.join(output_dir, self.pdb_id)}_template.pdb'
         self.reference = utils.get_input_value(name='reference', section='template', input_dict=parameters_dict)
         self.generate_multimer = utils.get_input_value(name='generate_multimer', section='template',
@@ -146,13 +145,23 @@ class Template:
                 sequence_assembled=sequence_assembled)
             chain_dict = bioutils.chain_splitter(aux_path)
             for i, pos in enumerate(list(positions.keys())):
-                self.results_path_position[i] = chain_dict[pos] if pos in chain_dict else None
+                if pos in chain_dict:
+                    self.results_path_position[i] = chain_dict[pos]
+                    self.template_chains_struct.from_dict_to_struct(chain_dict={pos: chain_dict[pos]},
+                                                                    alignment_dict={},
+                                                                    sequence=sequence_assembled.get_sequence_name(i),
+                                                                    change_res_list=self.change_res_struct,
+                                                                    match_restrict_list=self.match_restrict_struct)
+                else:
+                    self.results_path_position[i] = None   
 
         self.template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
             query_sequence=sequence_assembled.sequence_assembled,
             pdb_path=self.template_path,
             pdb_id=self.pdb_id,
             chain_id='A')
+
+
 
         logging.info(f'Positions of chains in the template {self.pdb_id}: {self.results_path_position}')
 
@@ -252,6 +261,7 @@ class Template:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
             except Exception as e:
                 logging.info(f'Not possible to generate multimer for {self.pdb_path}')
+
 
         self.template_chains_struct.from_dict_to_struct(chain_dict=extracted_chain_dict,
                                                         alignment_dict=alignment_chain_dict,

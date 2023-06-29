@@ -269,7 +269,7 @@
                      {{ data.mosaic }} partially overlapping fragments are predicted and merged into the structure.
                 {% endif %}
                 </p>
-                {% if data.expanded_html  %}
+                {% if data.complete_html  %}
                     <p>On this page, only the top 20 most complete and/or similar to the prediction templates are displayed. To access the full list of templates, please click the following <a href="{{data.complete_html}}" target="_blank">link</a> </p>
                 {% endif %}
                 {% if data.ranked_by_rmsd %}
@@ -320,6 +320,33 @@
                     {% endfor %}
                 {% endif %}
 
+                {% if data.info_input %}
+                    {% if data.num_msa == 0 %}
+                        <p>No sequences have been added to the MSA
+                    {% else %}
+                        <p>There is/are {{ data.num_msa }} sequence/s in the MSA
+                    {% endif %}
+                    {% if data.num_templates == 0 %}
+                        and no templates have been added to the input.
+                    {% else %}
+                        and {{ data.num_templates }} template/s has/have been used as input.
+                    {% endif %}
+                    It can be broken down in the following way:</p>
+                    <ul>
+                        <li>A copy from the query sequence: 1 sequence.</li>
+                        {% for info in data.info_input %}
+                            {% if loop.first %} 
+                                {% if info.num_templates != 0 or  info.num_msa != 0 %}     
+                                    <li> From the user input: {{ info.num_templates }} template/s and {{  info.num_msa }} sequence/s.</li>
+                                {% endif %}
+                                
+                            {% else %}
+                                <li> From {{ info.type }} {{ info.path }}: {{ info.num_templates }} template/s and {{  info.num_msa }} sequence/s.</li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+
                 {% if data.templates_list %}
                     {% for template in data.templates_list if template.change_res_list %}
                             {% if loop.first %}
@@ -367,16 +394,6 @@
             {% if 'gantt' in data %}
                 <div id="alignment" class="section-div">
                     <h2>Alignment</h2>
-                        {% if data.num_msa == 0 %}
-                            <p>There are no sequences in the MSA.
-                        {% else %}
-                            <p>There is/are {{ data.num_msa }} sequence/s in the MSA.
-                        {% endif %}
-                        {% if data.num_templates == 0 %}
-                             No templates have been used as input.</p>
-                        {% else %}
-                             {{ data.num_templates }} template/s has/have been used as input.</p>
-                        {% endif %}
                         <img style="width: 100%" src="data:image/png;base64,{{ data.gantt.plot_both }}" alt="Gantt diagram with msa and templates">
                         <p style="white-space: pre-wrap;">{{ data.gantt.legend_both }}</p>
 
