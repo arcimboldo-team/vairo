@@ -183,13 +183,13 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
 
     mutated_residues = a_air.sequence_assembled.get_mutated_residues_list()
     for i in mutated_residues:
-        ax.barh('sequence', 1, left=i + 1, align='edge', color='yellow', height=0.25, zorder=3)
+        ax.barh('sequence', 1, left=i + 1, align='edge', color='yellow', height=0.35, zorder=3)
 
     for i in range(a_air.sequence_assembled.total_copies):
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
-                left=a_air.sequence_assembled.get_starting_length(i) + 1, color=color_seq, height=0.5, zorder=2)
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, color=color_seq, height=0.7, zorder=2)
         ax.barh('sequence', a_air.sequence_assembled.get_sequence_length(i),
-                left=a_air.sequence_assembled.get_starting_length(i) + 1, align='edge', color=color_seq, height=0.1,
+                left=a_air.sequence_assembled.get_starting_length(i) + 1, align='edge', color=color_seq, height=0.23,
                 zorder=3)
         if i < a_air.sequence_assembled.total_copies - 1:
             for num in range(0, a_air.sequence_assembled.glycines, 8): 
@@ -199,7 +199,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
 
         xcenters = (a_air.sequence_assembled.get_starting_length(i) + 1) + a_air.sequence_assembled.get_sequence_length(
             i) / 2
-        ax.text(xcenters, 0, a_air.sequence_assembled.get_sequence_name(i), fontsize='xx-small', ha='center', va='center', color='white')
+        ax.text(xcenters, 0, a_air.sequence_assembled.get_sequence_name(i), fontsize='small', ha='center', va='center', color='white')
     
     if plot_type == 'msa':
         title = 'MSA'
@@ -208,7 +208,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
         title = 'TEMPLATES'
         file = os.path.join(plot_path, 'template_gantt.png')
     else:
-        title = 'TEMPLATES and MSA'
+        title = 'TEMPLATES and ALIGNED SEQUENCES (MSA)'
         file = os.path.join(plot_path, 'template_msa_gantt.png')
 
     names = a_air.feature.get_names_msa()

@@ -355,7 +355,6 @@ class StructureAir:
             render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if
                                             ranked.filtered}
 
-
             if self.templates_list:
                 render_dict['templates_list'] = self.templates_list
             if self.output.ranked_list:
@@ -397,7 +396,6 @@ class StructureAir:
         
         with open(write_output, 'w') as f_out:
             f_out.write(jinja_template.render(data=render_dict))
-       
 
     def generate_output(self):
         if self.feature and self.feature.get_templates_length() > 20:

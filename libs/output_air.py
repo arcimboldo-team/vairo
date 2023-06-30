@@ -111,7 +111,8 @@ class OutputAir:
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
-            ranked.set_compactness(bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path))
+            _, compactness = bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path)
+            ranked.set_compactness(compactness)
             _, perc = bioutils.generate_ramachandran(pdb_path=ranked.path)
             if perc is not None:
                 perc = round(perc, 2)

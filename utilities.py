@@ -5,7 +5,6 @@ import os
 import sys
 import logging
 from libs import features, bioutils, utils, structures, output_air
-from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder
 
 
 def write_features(features_path: str, output_dir: str = None):
@@ -30,15 +29,15 @@ def generate_features(query_path: str, fasta_path: str):
     write_features(path)
 
 
-def hinges(template_path: str, sequence_length: int):
+def hinges(template_path: str):
     output_path = os.path.join(template_path, 'hinges')
     os.listdir(template_path)
     templates_dict = {utils.get_file_name(path): os.path.join(template_path, path) for path in os.listdir(template_path)
                       if path.endswith('.pdb')}
 
-    hinges_analysis = structures.CCAnalysis(os.path.join(utils.get_main_path(), 'binaries')).hinges_path
+    binaries_path = structures.CCAnalysis(os.path.join(utils.get_main_path(), 'binaries'))
     templates_cluster = bioutils.hinges(paths_in=templates_dict,
-                                        hinges_path=hinges_analysis,
+                                        binaries_path=binaries_path,
                                         output_path=output_path)
 
     for i, values in enumerate(templates_cluster):

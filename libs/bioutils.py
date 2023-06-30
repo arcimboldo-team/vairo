@@ -110,7 +110,7 @@ def run_spong(pdb_in_path: str, spong_path: str) -> float:
         compactness = match.group(1)
 
     os.chdir(store_old_dir)
-    return compactness
+    return float(compactness)>=2, compactness
 
 def check_pdb(pdb: str, pdb_out_path: str) -> str:
     # Check if pdb is a path, and if it doesn't exist, download it.
@@ -547,7 +547,7 @@ def cc_and_hinges_analysis(paths_split_in: Dict, paths_nonsplit_in: Dict, binari
                            length_sequences: Dict = None) -> List:
     templates_cluster2 = []
     templates_cluster = hinges(paths_in=paths_split_in,
-                               hinges_path=binaries_path.hinges_path,
+                               binaries_path=binaries_path,
                                output_path=os.path.join(output_path, 'hinges'),
                                length_sequences=length_sequences)
 
@@ -565,7 +565,7 @@ def cc_and_hinges_analysis(paths_split_in: Dict, paths_nonsplit_in: Dict, binari
         return templates_cluster, {}
 
 
-def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences: Dict = None) -> List:
+def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: str, length_sequences: Dict = None) -> List:
     # Hinges algorithm does:
     # Check completeness and ramachandran of every template. If it is not at least 70% discard for hinges.
     # Do hinges 6 iterations in all for all the templates
@@ -600,8 +600,9 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
         completeness = True
         if length_sequences is not None and key in length_sequences:
             completeness = any(number > threshold_completeness for number in length_sequences[key])
+        compactness_decision, _ = run_spong(pdb_in_path=value, spong_path=binaries_path.spong_path)
 
-        if completeness and validate_geometry:
+        if completeness and validate_geometry and compactness_decision:
             accepted_pdbs[key] = value
             if num_residues > pdb_complete_value:
                 pdb_complete_value = num_residues
@@ -620,7 +621,7 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
     for key1, value1 in accepted_pdbs.items():
         for key2, value2 in accepted_pdbs.items():
             if key2 not in results_rmsd[key1] and key1 != key2:
-                result_hinges = run_hinges(pdb1_path=value1, pdb2_path=value2, hinges_path=hinges_path,
+                result_hinges = run_hinges(pdb1_path=value1, pdb2_path=value2, hinges_path=binaries_path.hinges_path,
                                            output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
                 results_rmsd[key1][key2] = result_hinges
                 results_rmsd[key2][key1] = result_hinges
@@ -634,13 +635,13 @@ def hinges(paths_in: Dict, hinges_path: str, output_path: str, length_sequences:
             group = utils.get_key_by_value(key2, groups_names)
             selected_for = None
             if group and result.overlap > threshold_overlap:
-                if result.one_rmsd < threshold_rmsd_local:
+                if result.one_rmsd <= threshold_rmsd_local:
                     selected_for = 'local changes'
-                elif result.middle_rmsd < threshold_rmsd_ss and result.decreasing_rmsd_middle > threshold_decrease:
+                elif result.middle_rmsd <= threshold_rmsd_ss and result.decreasing_rmsd_middle >= threshold_decrease:
                     selected_for = 'secondary structure changes'
-                elif result.min_rmsd < threshold_rmsd_domains and result.decreasing_rmsd_total > threshold_decrease:
+                elif result.min_rmsd <= threshold_rmsd_domains and result.decreasing_rmsd_total >= threshold_decrease:
                     selected_for = 'domain changes'
-                elif result.min_rmsd < threshold_minimum:
+                elif result.min_rmsd <= threshold_minimum:
                     selected_for = 'equivalence'
                 if selected_for is not None:
                     if selected_group not in groups_names or len(groups_names[group[0]]) > len(groups_names[selected_group]):
