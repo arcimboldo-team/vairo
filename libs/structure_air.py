@@ -380,7 +380,7 @@ class StructureAir:
             if self.output.experimental_dict:
                 new_dict = copy.deepcopy(self.output.experimental_dict)
                 for key, inner_dict in new_dict.items():
-                    new_dict[key] = {k: v for k, v in inner_dict.items() if k in accepted_templates}
+                    new_dict[key] = {k: v for k, v in inner_dict.items() if k in accepted_templates or k in ranked_rmsd_dict.keys()}
                 render_dict['table']['experimental_dict'] = new_dict
 
             self.output.write_tables(rmsd_dict=rmsd_dict, ranked_rmsd_dict=ranked_rmsd_dict,
