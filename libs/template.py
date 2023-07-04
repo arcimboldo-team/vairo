@@ -328,19 +328,22 @@ class Template:
                            name_list: List[str]) -> List[Optional[str]]:
 
         results_algorithm = []
-        x = 0
-        last_chain_code = None
+        code_value = 0
+        codes_dict = {}
         for template_chain in template_chains_list:
-            if last_chain_code and template_chain.get_chain_code() != last_chain_code:
-                x += 1
-            last_chain_code = template_chain.get_chain_code()
+            chain_code = template_chain.get_chain_code()
+            chain_code = f'{chain_code[0]}{chain_code[1]}'
+            if chain_code not in codes_dict:
+                codes_dict[chain_code] = code_value
+                code_value += 1
+            x = codes_dict[chain_code]
             reference_algorithm = []
             for y, target_pdb in enumerate(reference.results_path_position):
                 if y not in deleted_positions and name_list[y] == template_chain.sequence:
                     alignment = template_chain.check_alignment(stop=False)
                     if not self.strict or (self.strict and alignment):
                         reference_algorithm.append(
-                            (x, y, bioutils.pdist(query_pdb=template_chain.path, target_pdb=target_pdb), alignment))
+                            (x, y, bioutils.pdist(query_pdb=template_chain.path, target_pdb=target_pdb), alignment, template_chain.path))
 
             if reference_algorithm:
                 results_algorithm.append(reference_algorithm)
@@ -348,8 +351,8 @@ class Template:
         return_offset_list = [None] * (len(reference.results_path_position))
         best_offset_list = bioutils.calculate_auto_offset(results_algorithm,
                                                           len(return_offset_list) - len(deleted_positions))
-        for x, y, _, _ in best_offset_list:
-            return_offset_list[y] = template_chains_list[x].path
+        for x, y, _, _, path in best_offset_list:
+            return_offset_list[y] = path
 
         return return_offset_list
 

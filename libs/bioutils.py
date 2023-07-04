@@ -554,12 +554,20 @@ def cc_and_hinges_analysis(paths_split_in: Dict, paths_nonsplit_in: Dict, binari
     templates_path_list = [template_in for template_list in templates_cluster for template_in in template_list]
     num_templates = len(templates_path_list)
     templates_nonsplit_list = [paths_nonsplit_in[utils.get_file_name(template)] for template in templates_path_list]
-    if num_templates >= 5:
+    
+    templates_nonsplit_list = list(paths_nonsplit_in.values())
+
+    #if num_templates >= 5:
+    if True:
+        logging.info(f'Running ccanalysis with the following templates: {" ".join(templates_nonsplit_list)}')
         templates_cluster2, analysis_dict2 = cc_analysis(paths_in=templates_nonsplit_list,
                                                         cc_analysis_paths=binaries_path,
                                                         cc_path=os.path.join(output_path, 'ccanalysis'))
+    else:
+        logging.info('Less than 5 templates recognised by hinges. Skipping ccanalysis.')
 
-    if len(templates_cluster) > 1 and templates_cluster2:
+    #if len(templates_cluster) > 1 and templates_cluster2:
+    if templates_cluster2:
         return templates_cluster2, analysis_dict2
     else:
         return templates_cluster, {}
@@ -645,8 +653,9 @@ def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: 
                     selected_for = 'equivalence'
                 if selected_for is not None:
                     if selected_group not in groups_names or len(groups_names[group[0]]) > len(groups_names[selected_group]):
-                        logging.info(f'{key2} into group {key1} because of {selected_for}')
-                        selected_group = group[0]
+                        selected_group = group[0]   
+                    logging.info(f'{key2} into group {selected_group} because of {selected_for} with {key1}')
+
         groups_names[selected_group].append(key1)
     groups_names = [values for values in groups_names.values() if len(values) > 1]
 
@@ -1226,24 +1235,23 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
     trimmed_list = []
     for element in combinated_list:
         aux_length = length
-        element_aux = [x for x in element if x[3] is not False]
-        if len(element_aux) <= 0:
+        if len(element) <= 0:
             continue
-        elif len(element_aux) < length:
-            aux_length = len(element_aux)
-        sorted_list = sorted(element_aux, key=lambda x: x[2])[:aux_length]
-
-        min_distances = defaultdict(lambda: (float('inf'),))
+        elif len(element) < length:
+            aux_length = len(element)
+        
+        sorted_list = sorted(element, key=lambda x: x[2])
+        x_list = []
+        y_list = []
+        aux_list = []
         for tup in sorted_list:
-            x = tup[0]
-            distance = tup[2]
-            if distance < min_distances[x][0]:
-                min_distances[x] = tup
-        sorted_list = list(min_distances.values())
-
-        target_list = [target for _, target, _, _ in sorted_list]
-        if len(target_list) == len(set(target_list)):
-            trimmed_list.append(sorted_list)
+            if tup[0] not in x_list and tup[1] not in y_list:
+                aux_list.append(tup)
+                x_list.append(tup[0])
+                y_list.append(tup[1])
+            if len(aux_list) == aux_length:
+                break
+        trimmed_list.append(aux_list)
 
     if trimmed_list:
         max_length = max(len(lst) for lst in trimmed_list)
@@ -1254,7 +1262,7 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
 
     score_list = []
     for element in trimmed_list:
-        score_list.append(sum(z for _, _, z, _ in element))
+        score_list.append(sum(z for _, _, z, _, _ in element))
 
     if score_list:
         min_value = min(score_list)
