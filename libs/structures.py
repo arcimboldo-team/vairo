@@ -187,7 +187,6 @@ class Ranked:
         self.encoded: bytes
         self.compactness: float
         self.ramachandran: float
-
         self.path = ranked_path
         self.name = utils.get_file_name(ranked_path)
 

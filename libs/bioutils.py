@@ -108,8 +108,12 @@ def run_spong(pdb_in_path: str, spong_path: str) -> float:
     match = re.search(pattern, output)
     if match:
         compactness = match.group(1)
-
     os.chdir(store_old_dir)
+    try:
+        file_created = f'{os.path.join(os.path.dirname(pdb_in_path), utils.get_file_name(pdb_in_path))}new.ent'
+        os.remove(file_created)
+    except:
+        pass
     return float(compactness)>=2, compactness
 
 def check_pdb(pdb: str, pdb_out_path: str) -> str:
@@ -416,7 +420,7 @@ def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
         output_path = 'cc_analysis.in'
         if pdb2cc_path is None:
             pdb2cc_path = 'pdb2cc'
-        command_line = f'{pdb2cc_path} -n 50 "orig.*.pdb" 0 {output_path}'
+        command_line = f'{pdb2cc_path} -n 30 "orig.*.pdb" 0 {output_path}'
         p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         p.communicate()

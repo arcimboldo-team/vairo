@@ -283,7 +283,7 @@
                                     <p>Other equal structural solutions are:</p>
                                     <ul>
                                 {% endif %}
-                                    <li><span class="green"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD)</li>
+                                    <li><span class="green"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ values[0].name }})</li>
                                 {% if loop.last %}
                                     </ul>
                                 {% endif %}

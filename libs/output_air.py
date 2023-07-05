@@ -112,9 +112,9 @@ class OutputAir:
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
-            _, compactness = bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path)
+            accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path)
             ranked.set_compactness(compactness)
-            _, perc = bioutils.generate_ramachandran(pdb_path=ranked.path)
+            accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.path)
             if perc is not None:
                 perc = round(perc, 2)
             ranked.set_ramachandran(perc)
@@ -124,14 +124,23 @@ class OutputAir:
                 residues = [*range(1, sequence_assembled.length, 1)]
                 change = change_res.ChangeResidues(chain_res_dict={'A': residues}, sequence=sequence_assembled.sequence_assembled)
                 change.change_residues(path, path)
+            
+            if accepted_ramachandran and accepted_compactness and ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
+                ranked.set_filtered(True)
+                logging.info(f'Prediction {ranked.name} has been accepted.')
+            else:
+                ranked.set_filtered(False)
+                logging.info(f'Prediction {ranked.name} has been filtered.')
+            ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
 
-        # Save split path of all rankeds, taking into account the split dir
-        [ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path))) for ranked in
-         self.ranked_list]
 
-        # Sort list of ranked by pLDDT
-        self.ranked_list.sort(key=lambda x: x.plddt, reverse=True)
-        
+        sorted_ranked_list = sorted(self.ranked_list, key=lambda x: (x.filtered, x.plddt), reverse=True)
+        if not sorted_ranked_list:
+            self.ranked_list.sort(key=lambda x: x.plddt, reverse=True)
+            logging.info('There are no predictions that meet the minimum quality requirements. All predictions were filtered. Check the tables.')
+        else:
+            self.ranked_list = sorted_ranked_list
+
         shutil.copy2(self.ranked_list[0].path, self.ranked_list[0].split_path)
         results = [items for items in combinations(self.ranked_list, r=2)]
         for result in results:
@@ -149,8 +158,7 @@ class OutputAir:
 
         # Filter rankeds, split them in chains.
         for ranked in self.ranked_list:
-            if ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
-                ranked.set_filtered(True)
+            if ranked.filtered:
                 mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.split_path,
                                                          pdb_out_path=ranked.split_path,
                                                          sequence_assembled=sequence_assembled)
@@ -298,6 +306,7 @@ class OutputAir:
                                                                     ))
                 else:
                     logging.info(f'Skipping interface search as there is only one chain in pdb {ranked.split_path}')
+        
         # Superpose the experimental pdb with all the rankeds and templates
         for experimental in experimental_pdbs:
             aux_dict = {}

@@ -275,8 +275,6 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
                     if match:
                         match_split = match[0].split()[-9:]
                         text = f'\n{template_name}: Aligned={match_split[5]}({match_split[8].replace("(", "").replace(")", "")}) Evalue={match_split[2]}'
-                    else:
-                        text = f'\n{template_name}'
             legend_elements.append(text)
 
             if features_search is not None:
