@@ -22,6 +22,7 @@ class StructureAir:
         self.input_dir: str
         self.input_path: str
         self.log_path: str
+        self.log_extended_path: str
         self.binaries_path: str
         self.cluster_path: str
         self.cluster_list: List[structures.Cluster] = []
@@ -54,16 +55,18 @@ class StructureAir:
         self.library_list: List[structures.Library] = []
         self.chunk_list: List[int] = []
 
+        self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
+        self.log_path = os.path.join(self.output_dir, 'output.log')
+        self.log_extended_path = os.path.join(self.output_dir, 'output_extended.log')
+        utils.create_logger_dir(self.log_path, self.log_extended_path)
         self.mode = utils.get_input_value(name='mode', section='global', input_dict=parameters_dict)
         self.custom_features = False if self.mode == 'naive' else True
-        self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
         self.run_dir = utils.get_input_value(name='run_dir', section='global', input_dict=parameters_dict)
         if self.run_dir is None:
             self.run_dir = os.path.join(self.output_dir, 'run')
         self.input_dir = os.path.join(self.output_dir, 'input')
         self.experimental_dir: str = os.path.join(self.output_dir, 'experimental_pdbs')
         self.results_dir = os.path.join(self.run_dir, self.name_results_dir)
-        self.log_path = os.path.join(self.output_dir, 'output.log')
         self.cluster_path = os.path.join(self.output_dir, 'clustering')
         self.input_path = os.path.join(self.input_dir, 'config.yml')
         self.binaries_path = os.path.join(utils.get_main_path(), 'binaries')
@@ -114,7 +117,7 @@ class StructureAir:
                 try:
                     bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
                 except Exception as e:
-                    logging.info(
+                    logging.warn(
                         f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
@@ -479,7 +482,7 @@ class StructureAir:
         for afrun in self.afrun_list:
             ranked_list = utils.read_rankeds(input_path=afrun.results_dir)
             if not ranked_list:
-                logging.info('No ranked PDBs found')
+                logging.warn('No predictions found')
                 return
             plot_path = os.path.join(afrun.results_dir, 'plddt.png')
             plots.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
@@ -565,14 +568,14 @@ class StructureAir:
                                                                output_path=self.results_dir,
                                                                length_sequences=self.output.percentage_sequences)
         if templates_cluster:
-            logging.info(
+            logging.warn(
                 f'The templates can be grouped in {len(templates_cluster)} clusters')
             for templates in templates_cluster:
                 name_job = f'cluster_{counter}'
                 label_job = f'Cluster {counter}'
                 new_path = os.path.join(self.cluster_path, name_job)
-                logging.info(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
-                logging.info(', '.join([utils.get_file_name(template_in) for template_in in templates]))
+                logging.warn(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
+                logging.warn(', '.join([utils.get_file_name(template_in) for template_in in templates]))
                 counter += 1
                 yml_path = self.create_cluster(job_path=new_path, templates=templates)
                 bioutils.run_arcimboldo_air(yml_path=yml_path)

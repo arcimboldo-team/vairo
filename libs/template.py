@@ -119,7 +119,7 @@ class Template:
         #   - Build the new template merging all the templates.
         #   - Create features for the new template.
 
-        logging.info(f'Generating features of template {self.pdb_id}')
+        logging.debug(f'Generating features of template {self.pdb_id}')
 
         if not self.legacy:
             merge_list = []
@@ -161,9 +161,7 @@ class Template:
             pdb_id=self.pdb_id,
             chain_id='A')
 
-
-
-        logging.info(f'Positions of chains in the template {self.pdb_id}: {self.results_path_position}')
+        logging.warn(f'Positions of chains in the template {self.pdb_id}: {" | ".join(self.results_path_position)}')
 
     def apply_changes(self, chain_dict: Dict, when: str):
         # Apply changes in the pdb, change residues.
@@ -260,7 +258,7 @@ class Template:
             try:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
             except Exception as e:
-                logging.info(f'Not possible to generate multimer for {self.pdb_path}')
+                logging.warn(f'Not possible to generate multimer for {self.pdb_path}')
 
 
         self.template_chains_struct.from_dict_to_struct(chain_dict=extracted_chain_dict,
@@ -319,7 +317,7 @@ class Template:
 
         if self.template_chains_struct.get_number_chains() != sum(x is not None for x in composition_path_list) \
                 and not all(composition_path_list):
-            logging.info(f'Not all chains have been selected in the template {self.pdb_id}')
+            logging.warn(f'Not all chains have been selected in the template {self.pdb_id}')
 
         return composition_path_list
 

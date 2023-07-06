@@ -16,7 +16,7 @@ def write_features(features_path: str, output_dir: str = None):
 
 
 def print_features(features_path: str):
-    logging.info = print
+    logging.warn = print
     features.print_features_from_file(features_path)
 
 
@@ -67,9 +67,14 @@ def superposition_chains(pdb1_path: str, pdb2_path: str):
                 print(key1, i1)
 
 
+def superpose_chains(pdb1_path: str, pdb2_path: str, tmp_dir: str):
+    utils.create_dir(tmp_dir)
+    pdb1_chains_dict = bioutils.split_pdb_in_chains(pdb_in_path=pdb1_path, output_dir=tmp_dir)
+    pdb2_chains_dict = bioutils.split_pdb_in_chains(pdb_in_path=pdb2_path, output_dir=tmp_dir)        
+
+
 
 def renumber():
-
     def check_consecutive(numbers):
         # Check if the difference between each pair of consecutive numbers is equal to 1
         for i in range(len(numbers) - 1):
@@ -142,6 +147,6 @@ def renumber():
 if __name__ == "__main__":
     print('Usage: utilities.py function input')
     print('Functions: write_features, print_features')
-    logging.info = print
+    logging.warn = print
     args = sys.argv
     globals()[args[1]](*args[2:])

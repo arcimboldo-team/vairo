@@ -19,9 +19,9 @@ def print_msg_box(msg, indent=1, title=None):
         box += f'║{space}{"-" * len(title):<{width}}{space}║\n'  # underscore
     box += ''.join([f'║{space}{line:<{width}}{space}║\n' for line in lines])
     box += f'╚{"═" * (width + indent * 2)}╝'  # lower_border
-    logging.info('\n')
-    logging.info(box)
-    logging.info('\n')
+    logging.warn('\n')
+    logging.warn(box)
+    logging.warn('\n')
 
 
 def print_matrix(matrix: List):
@@ -464,9 +464,9 @@ def get_input_value(name: str, section: str, input_dict: Dict, override_default=
 def print_dict(input_dict: Dict):
     for key, value in input_dict.items():
         if isinstance(value, list):
-            logging.info(f'{key}: {" ".join(value)}')
+            logging.warn(f'{key}: {" ".join(value)}')
         else:
-            logging.info(f'{key}: {value}')
+            logging.warn(f'{key}: {value}')
 
 
 def create_logger():
@@ -481,22 +481,29 @@ def create_logger():
     logger.setLevel(logging.DEBUG)
     test = io.StringIO()
     stream_handler_ = logging.StreamHandler(test)
-    stream_handler_.setLevel(logging.INFO)
+    stream_handler_.setLevel(logging.NOTSET)
     logger.addHandler(stream_handler_)
 
     stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(logging.INFO)
+    stdout_handler.setLevel(logging.WARNING)
     logger.addHandler(stdout_handler)
 
 
-def create_logger_dir(log_path: str):
+def create_logger_dir(log_path: str, log_extended_path: str):
     # Create logger in a working directory with a specific name:
-
     logger = logging.getLogger()
     logger_data = logger.handlers[0].stream.getvalue()
     logger.removeHandler(logger.handlers[0])
+
     with open(log_path, 'w+') as f_handle:
         f_handle.write(logger_data)
+    with open(log_extended_path, 'w+') as f_handle:
+        f_handle.write(logger_data)
+
     file_handler = logging.FileHandler(log_path)
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(logging.WARNING)
     logger.addHandler(file_handler)
+
+    file_handler2 = logging.FileHandler(log_extended_path)
+    file_handler2.setLevel(logging.DEBUG)
+    logger.addHandler(file_handler2)

@@ -13,26 +13,26 @@ from libs import features, structure_air, utils, bioutils
 def main():
     try:
         utils.create_logger()
-        logging.info('')
-        logging.info('ARCIMBOLDO_AIR')
-        logging.info('--------------')
-        logging.info('')
+        logging.warn('')
+        logging.warn('ARCIMBOLDO_AIR')
+        logging.warn('--------------')
+        logging.warn('')
         try:
             input_path = os.path.abspath(sys.argv[1])
             if not os.path.isfile(input_path):
                 raise Exception
         except Exception as e:
-            logging.info('USAGE')
-            logging.info('------')
-            logging.info(open(utils.get_readme()).read())
+            logging.warn('USAGE')
+            logging.warn('------')
+            logging.warn(open(utils.get_readme()).read())
             raise SystemExit
 
-        logging.info('Starting ARCIMBOLDO_AIR...')
+        logging.warn('Starting ARCIMBOLDO_AIR...')
         if not os.path.exists(input_path):
             raise Exception(
                 'The given path for the configuration file either does not exist or you do not have the permissions to '
                 'read it')
-        logging.info(f'Reading the configuration file for ARCIMBOLDO_AIR at {input_path}')
+        logging.warn(f'Reading the configuration file for ARCIMBOLDO_AIR at {input_path}')
 
         try:
             with open(input_path) as f:
@@ -42,17 +42,16 @@ def main():
 
         utils.check_input(input_load)
         a_air = structure_air.StructureAir(parameters_dict=input_load)
-
-        utils.create_logger_dir(a_air.log_path)
         os.chdir(a_air.run_dir)
         a_air.write_input_file()
         if a_air.custom_features:
-            logging.info('Generating features.pkl for AlphaFold2')
+            logging.warn('Guided mode selected: Generating custom features.pkl for AlphaFold2')
             a_air.set_feature(
                 feature=features.Features(query_sequence=a_air.sequence_assembled.sequence_mutated_assembled))
             a_air.change_state(state=1)
             a_air.generate_output()
             for template in a_air.templates_list:
+                logging.warn(f'Reading template {template.pdb_id}')
                 if template.add_to_templates or template.add_to_msa:
                     if not template.aligned:
                         database_dir = os.path.join(a_air.run_dir, template.pdb_id)
@@ -73,12 +72,13 @@ def main():
                             glycines=a_air.glycines)
                         a_air.feature.append_row_in_msa(sequence_in=sequence_from_template,
                                                         sequence_id=template.pdb_id)
-                        logging.info(f'Sequence from template \"{template.pdb_id}\" was added to msa')
+                        logging.warn(f'     Adding the template sequence to the MSA')
                     if template.add_to_templates:
                         a_air.feature.append_new_template_features(new_template_features=template.template_features,
                                                                    custom_sum_prob=template.sum_prob)
-                    logging.info(f'Template {template.pdb_id} was added to templates')
+                        logging.warn(f'     Adding template to templates')
             for feat in a_air.features_input:
+                logging.warn(f'Reading features {feat.path}')
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
                 positions = a_air.sequence_assembled.get_range_residues(position_ini=feat.positions[0] - 1,
                                                                         position_end=feat.positions[-1] - 1)
@@ -89,13 +89,16 @@ def main():
                                                    finish=feat.keep_msa,
                                                    delete_positions=feat.msa_delete,
                                                    positions=positions)
+                    logging.warn(f'     Adding {num_msa} sequence/s to the MSA')
                 if feat.keep_templates != 0:
                     num_templates = a_air.feature.set_template_features(new_templates=feat_aux.template_features,
                                                         finish=feat.keep_templates,
                                                         positions=positions,
                                                         sequence_in=feat.sequence)
+                    logging.warn(f'     Adding {num_templates} template/s to templates')
                 feat.add_information(num_msa=num_msa, num_templates=num_templates)
             for i, library in enumerate(a_air.library_list):
+                logging.warn(f'Reading library {library.path}')
                 aux_list = [os.path.join(library.path, file) for file in os.listdir(library.path)] if os.path.isdir(library.path) else [library.path]
                 paths = [path for path in aux_list if utils.get_file_extension(path) in ['.pdb', '.fasta']]
                 num_msa = 0
@@ -103,7 +106,7 @@ def main():
                 for aux_path in paths:
                     if library.add_to_templates:
                         if utils.get_file_extension(aux_path) == '.fasta' and library.add_to_templates:
-                            logging.info(f'Ignoring add_to_templates to True for fasta file {aux_path}')
+                            logging.warn(f'Ignoring add_to_templates to True for fasta file {aux_path}')
                         else:
                             template_path = f'{os.path.join(a_air.input_dir, utils.get_file_name(aux_path))}.pdb'
                             if library.positions:
@@ -139,6 +142,10 @@ def main():
                             seq_aux = ''.join(seq_aux)
                             a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}_{utils.get_file_name(aux_path)}', 1)
                             num_msa += 1
+                if num_templates > 0:
+                    logging.warn(f'     Adding {num_templates} template/s to templates')
+                if num_msa > 0:
+                    logging.warn(f'     Adding {num_msa} sequence/s to the MSA')
                 library.add_information(num_msa=num_msa, num_templates=num_templates)
 
             features_list = a_air.partition_mosaic()
@@ -146,12 +153,12 @@ def main():
             a_air.generate_output()
             features_list = [None] * a_air.mosaic
             a_air.partition_mosaic()
-            logging.info('No features.pkl added, default AlphaFold2 run')
+            logging.warn('Naive mode selected: No custom features.pkl generated')
 
         a_air.change_state(state=2)
         a_air.generate_output()
 
-        logging.info('Start running AlphaFold2')
+        logging.warn('Start running AlphaFold2')
         a_air.run_alphafold(features_list=features_list)
         if len(features_list) > 1:
             a_air.merge_results()
@@ -175,7 +182,7 @@ def main():
                                         binaries_paths=a_air.binaries_paths)
         a_air.change_state(state=3)
         a_air.generate_output()
-        logging.info('ARCIMBOLDO_AIR has finished successfully')
+        logging.warn('ARCIMBOLDO_AIR has finished successfully')
 
     except SystemExit as e:
         sys.exit(e)
@@ -185,7 +192,7 @@ def main():
             a_air.generate_output()
         except Exception as e2:
             pass
-        logging.error('ERROR:', exc_info=True)
+        logging.warn('ERROR:', exc_info=True)
 
 
 if __name__ == "__main__":

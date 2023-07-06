@@ -1,5 +1,5 @@
 import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from Bio import SeqIO
@@ -10,6 +10,8 @@ from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
 from libs import change_res, structures, utils, plots, global_variables, sequence
 from alphafold.relax import cleanup, amber_minimize
+
+
 from libs.structures import Hinges
 from simtk import unit
 import io
@@ -171,7 +173,7 @@ def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
             handle.write(pdb_dump)
         return True
     except Exception as e:
-        logging.info(f'Something went wrong adding the CRYST1 record to the pdb at {pdb_in_path}')
+        logging.debug(f'Something went wrong adding the CRYST1 record to the pdb at {pdb_in_path}')
         return False
 
 
@@ -203,7 +205,7 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
 
 
 def extract_sequence(fasta_path: str) -> str:
-    logging.info(f'Extracting sequence from {fasta_path}')
+    logging.warn(f'Extracting sequence from {fasta_path}')
     try:
         record = SeqIO.read(fasta_path, "fasta")
     except Exception as e:
@@ -212,7 +214,7 @@ def extract_sequence(fasta_path: str) -> str:
 
 
 def extract_sequences(fasta_path: str) -> Dict:
-    logging.info(f'Extracting sequences from {fasta_path}')
+    logging.debug(f'Extracting sequences from {fasta_path}')
     records = list(SeqIO.parse(fasta_path, 'fasta'))
     return dict([(rec.id, str(rec.seq)) for rec in records])
 
@@ -251,7 +253,7 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
                 value = str(record.seq.replace("X", ""))
                 results_dict[key] = value
     except Exception as e:
-        logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
+        logging.debug('Something went wrong extracting the fasta record from the pdb at', file_path)
         pass
     return results_dict
 
@@ -304,7 +306,7 @@ def merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge: List[str], pdb_out_p
 
 
 def run_pisa(pdb_path: str) -> str:
-    logging.info(f'Generating REMARK 350 for {pdb_path} with PISA.')
+    logging.DEBUG(f'Generating REMARK 350 for {pdb_path} with PISA.')
     subprocess.Popen(['pisa', 'temp', '-analyse', pdb_path], stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE).communicate()
     pisa_output = \
@@ -334,7 +336,7 @@ def read_remark_350(pdb_path: str) -> Tuple[List[str], List[List[List[Any]]]]:
         match_end_in_last_350 = [m.end() for m in re.finditer(r'\n', pdb_text[match_last_350:])][-1]
         remark_350_text = pdb_text[match_biomolecules[0]:(match_last_350 + match_end_in_last_350)]
     else:
-        logging.info('It seem there is more than one biological assembly from REMARK 350. Only'
+        logging.DEBUG('It seem there is more than one biological assembly from REMARK 350. Only'
                      ' "BIOMOLECULE 1" will be considered for the assembly generation')
         remark_350_text = pdb_text[match_biomolecules[0]:match_biomolecules[1] - 1]
 
@@ -504,7 +506,7 @@ def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
 
     analysis = ramachandran_analysis(phi_psi_angles=phi_psi_angles)
     percentage = len(analysis) / len(phi_psi_angles) * 100
-    logging.info(
+    logging.debug(
         f'{round(percentage, 2)}% of outliers in the ramachandran analysis of {utils.get_file_name(pdb_path)}.')
     if percentage > percentage_minimum:
         return False, percentage
@@ -563,12 +565,12 @@ def cc_and_hinges_analysis(paths_split_in: Dict, paths_nonsplit_in: Dict, binari
 
     #if num_templates >= 5:
     if True:
-        logging.info(f'Running ccanalysis with the following templates: {" ".join(templates_nonsplit_list)}')
+        logging.debug(f'Running ccanalysis with the following templates: {" ".join(templates_nonsplit_list)}')
         templates_cluster2, analysis_dict2 = cc_analysis(paths_in=templates_nonsplit_list,
                                                         cc_analysis_paths=binaries_path,
                                                         cc_path=os.path.join(output_path, 'ccanalysis'))
     else:
-        logging.info('Less than 5 templates recognised by hinges. Skipping ccanalysis.')
+        logging.debug('Less than 5 templates recognised by hinges. Skipping ccanalysis.')
 
     #if len(templates_cluster) > 1 and templates_cluster2:
     if templates_cluster2:
@@ -594,7 +596,7 @@ def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: 
     threshold_minimum = 3
     threshold_decrease = 40
 
-    logging.info('Starting hinges analysis')
+    logging.debug('Starting hinges analysis')
     accepted_pdbs = {}
     uncompleted_pdbs = {}
 
@@ -622,11 +624,11 @@ def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: 
         else:
             uncompleted_pdbs[key] = value
 
-    logging.info(f'There are {len(accepted_pdbs)} complete pdbs.')
+    logging.debug(f'There are {len(accepted_pdbs)} complete pdbs.')
     if len(accepted_pdbs) < 2:
-        logging.info(f'Skipping hinges.')
+        logging.debug(f'Skipping hinges.')
         return [[values for values in paths_in.values()]]
-    logging.info(f'Using hinges to create groups.')
+    logging.debug(f'Using hinges to create groups.')
 
     # Run hinges all-against-all, store the results in a dict.
     results_rmsd = {key: {} for key in accepted_pdbs}
@@ -658,28 +660,28 @@ def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: 
                 if selected_for is not None:
                     if selected_group not in groups_names or len(groups_names[group[0]]) > len(groups_names[selected_group]):
                         selected_group = group[0]   
-                    logging.info(f'{key2} into group {selected_group} because of {selected_for} with {key1}')
+                    logging.debug(f'{key2} into group {selected_group} because of {selected_for} with {key1}')
 
         groups_names[selected_group].append(key1)
     groups_names = [values for values in groups_names.values() if len(values) > 1]
 
     if len(groups_names) > 1 or (len(groups_names) == 1 and len(groups_names[0]) > 1):
         # Return the groups that has generated
-        logging.info(f'Hinges has created {len(groups_names)} group/s:')
+        logging.debug(f'Hinges has created {len(groups_names)} group/s:')
         for i, values in enumerate(groups_names):
-            logging.info(f'Group {i}: {",".join(values)}')
+            logging.debug(f'Group {i}: {",".join(values)}')
         return [[path for key, path in paths_in.items() if key in group] for group in groups_names]
     elif len(list(results_rmsd.keys())) > 1:
         # Create two groups, more different and completes pdbs
         more_different = list(results_rmsd[utils.get_file_name(pdb_complete)].keys())[-1]
         path_diff = paths_in[more_different]
-        logging.info(f'Hinges could not create any groups')
-        logging.info(f'Creating two groups: The more completed pdb: {utils.get_file_name(pdb_complete)} '
+        logging.debug(f'Hinges could not create any groups')
+        logging.debug(f'Creating two groups: The more completed pdb: {utils.get_file_name(pdb_complete)} '
                      f'and the more different one: {more_different}')
         return [[pdb_complete], [path_diff]]
     else:
         # Return the original list of pdbs
-        logging.info('Not enough pdbs for hinges.')
+        logging.debug('Not enough pdbs for hinges.')
         return [[values for values in paths_in.values()]]
 
 
@@ -885,7 +887,7 @@ def split_chains_assembly(pdb_in_path: str,
     chains = list(set([chain.get_id() for chain in structure.get_chains()]))
 
     if len(chains) > 1:
-        logging.info(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
+        logging.debug(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
         try:
             shutil.copy2(pdb_in_path, pdb_out_path)
         except shutil.SameFileError:
@@ -989,10 +991,10 @@ def generate_multimer_chains(pdb_path: str, template_dict: Dict) -> Dict:
     chain_list, transformations_list = read_remark_350(pdb_path)
     multimer_dict = {}
 
-    logging.info(
+    logging.debug(
         'Assembly can be build using chain(s) ' + str(chain_list) + ' by applying the following transformations:')
     for matrix in transformations_list:
-        logging.info(str(matrix))
+        logging.debug(str(matrix))
 
     for chain in chain_list:
         if isinstance(template_dict[chain], list):
@@ -1059,7 +1061,7 @@ def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
         with open(pdb_out_path, 'w') as f_out:
             f_out.write(pdb_output)
     except:
-        logging.info(f'PDBFixer did not finish correctly for {utils.get_file_name(pdb_in_path)}. Skipping.')
+        logging.debug(f'PDBFixer did not finish correctly for {utils.get_file_name(pdb_in_path)}. Skipping.')
         shutil.copy2(pdb_in_path, pdb_out_path)
         pass
 
@@ -1070,7 +1072,7 @@ def run_arcimboldo_air(yml_path: str):
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
-    logging.info('ARCIMBOLDO_AIR cluster run finished successfully.')
+    logging.warn('ARCIMBOLDO_AIR cluster run finished successfully.')
 
 
 def run_openmm(pdb_in_path: str, pdb_out_path: str) -> float:
@@ -1182,7 +1184,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
         f_out.write(pisa_output)
 
     if 'NO INTERFACES FOUND' in pisa_output or 'no chains found in input file' in pisa_text:
-        logging.info(f'No interfaces found in pisa for pdb {pdb_in_path}')
+        logging.debug(f'No interfaces found in pisa for pdb {pdb_in_path}')
     else:
         interfaces_list = utils.parse_pisa_general_multimer(pisa_output)
         for interface in interfaces_list:
