@@ -158,7 +158,7 @@ def main():
         a_air.change_state(state=2)
         a_air.generate_output()
 
-        logging.warn('Start running AlphaFold2')
+        logging.warn('All input information has been processed correctly')
         a_air.run_alphafold(features_list=features_list)
         if len(features_list) > 1:
             a_air.merge_results()

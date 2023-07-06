@@ -99,7 +99,7 @@ class OutputAir:
                                            pdb_out_path=new_pdb_path,
                                            sequence_assembled=sequence_assembled)
 
-        logging.warn('Reading rankeds from the results folder')
+        logging.warn('Reading predictions from the results folder')
         self.ranked_list = utils.read_rankeds(input_path=self.results_dir)
 
         if not self.ranked_list or cluster_templates:
