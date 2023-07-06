@@ -108,7 +108,7 @@ class SequenceAssembled:
 
         if self.total_copies > 1:
             logging.warn(f'Merging {self.total_copies} sequences into one, each separeted by {self.glycines} glycines')
-        logging.warn(f'Total size of the query sequence is {self.length}')
+        logging.warn(f'Total size of the query sequence is {self.length} amino acids')
 
     def get_mutated_residues_list(self) -> List[int]:
         _, changes_dict = bioutils.compare_sequences(self.sequence_assembled, self.sequence_mutated_assembled)

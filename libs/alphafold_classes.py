@@ -41,9 +41,9 @@ class AlphaFoldRun:
         previous_path = utils.get_parent_folder(dir_path=self.results_dir)
         if self.custom_features:
             self.feature.write_pkl(os.path.join(self.results_dir, 'features.pkl'))
-        logging.warn(f'AlphaFold2 directory: {self.results_dir}')
         if self.run:
             try:
+                logging.warn(f'AlphaFold2 directory: {self.results_dir}')
                 logging.warn(f'Starting AlphaFold2: Predicting query sequence {self.fasta_path}')
                 run_alphafold.launch_alphafold2(
                     fasta_path=[self.fasta_path],

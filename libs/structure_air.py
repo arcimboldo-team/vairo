@@ -117,10 +117,11 @@ class StructureAir:
                 try:
                     bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
                 except Exception as e:
-                    logging.warn(
+                    logging.debug(
                         f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
+        logging.warn('Building query sequence')
         for parameters_sequence in utils.get_input_value(name='sequences', section='global',
                                                          input_dict=parameters_dict):
             new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
