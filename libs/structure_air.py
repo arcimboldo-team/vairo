@@ -56,6 +56,7 @@ class StructureAir:
         self.chunk_list: List[int] = []
 
         self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
+        utils.create_dir(self.output_dir)
         self.log_path = os.path.join(self.output_dir, 'output.log')
         self.log_extended_path = os.path.join(self.output_dir, 'output_extended.log')
         utils.create_logger_dir(self.log_path, self.log_extended_path)
@@ -73,7 +74,6 @@ class StructureAir:
         self.binaries_paths = structures.BinariesPath(self.binaries_path)
         self.output = output_air.OutputAir(output_dir=self.output_dir)
 
-        utils.create_dir(self.output_dir)
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
         utils.create_dir(self.experimental_dir, delete_if_exists=True)
