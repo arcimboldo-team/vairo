@@ -127,62 +127,82 @@ class OutputAir:
                 change = change_res.ChangeResidues(chain_res_dict={'A': residues}, sequence=sequence_assembled.sequence_assembled)
                 change.change_residues(path, path)
             
+            ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
+            mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.path,
+                                                    pdb_out_path=ranked.split_path,
+                                                    sequence_assembled=sequence_assembled)
+            ranked.set_mapping(mapping)
+            bioutils.remove_hydrogens(ranked.split_path, ranked.split_path)
+            ranked.set_encoded(ranked.split_path)
             if accepted_ramachandran and accepted_compactness and ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
                 ranked.set_filtered(True)
                 logging.warn(f'Prediction {ranked.name} has been accepted')
+                ranked.set_split_path(
+                    shutil.copy2(ranked.split_path, os.path.join(self.output_dir, os.path.basename(ranked.path))))
             else:
                 ranked.set_filtered(False)
                 logging.warn(f'Prediction {ranked.name} has been filtered')
-            ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
+        
+        # Superpose the experimental pdb with all the rankeds and templates
+        logging.warn('Superposing experimental pdbs with predictions and templates')       
+        ranked_pdb_list = [ranked.split_path for ranked in self.ranked_list]
+        for experimental in experimental_pdbs:
+            aux_dict = {}
+            for pdb in ranked_pdb_list + list(self.templates_dict.values()):
+                rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
+                if rmsd is not None:
+                    rmsd = round(rmsd, 2)
+                    total_residues = bioutils.get_number_residues(pdb)
+                    aux_dict[utils.get_file_name(pdb)] = structures.PdbRanked(pdb, rmsd, aligned_residues,
+                                                                                total_residues, quality_q)
+                    if pdb in ranked_pdb_list:
+                        ranked = [ranked for ranked in self.ranked_list if ranked.split_path == pdb][0]
+                        strct = structures.PdbRanked(experimental, rmsd, aligned_residues, total_residues, quality_q)
+                        ranked.add_experimental(strct)
+            self.experimental_dict[utils.get_file_name(experimental)] = aux_dict 
 
 
-        sorted_ranked_list = sorted(self.ranked_list, key=lambda x: (x.filtered, x.plddt), reverse=True)
+        # Select the best ranked
+        sorted_ranked_list = []
+        if experimental_pdbs:
+            logging.warn('Experimental pdbs found. Selecting the best prediction taking into account the qscore with the experimental pdbs') 
+            sorted_ranked_list = sorted(self.ranked_list, key=lambda ranked: (ranked.filtered, ranked.superposition_experimental[0].qscore), reverse=True)
+        else:
+            logging.warn('No experimental pdbs found. Selecting best prediction by PLDDT') 
+            sorted_ranked_list = sorted(self.ranked_list, key=lambda ranked: (ranked.filtered, ranked.plddt), reverse=True)
         if not sorted_ranked_list:
             self.ranked_list.sort(key=lambda x: x.plddt, reverse=True)
             logging.warn('There are no predictions that meet the minimum quality requirements. All predictions were filtered. Check the tables')
         else:
             self.ranked_list = sorted_ranked_list
-
+    
         reference_superpose = self.ranked_list[0].path
 
+        # Store the superposition of the experimental with the best ranked
+        for experimental in experimental_pdbs:
+            bioutils.gesamt_pdbs([reference_superpose, experimental], experimental)
+
+        #Superpose rankeds and store the superposition with the best one
         logging.warn(f'Best prediction is {self.ranked_list[0].name}')
         logging.warn('Superposing predictions and templates with the best prediction')
-        shutil.copy2(self.ranked_list[0].path, self.ranked_list[0].split_path)
         results = [items for items in combinations(self.ranked_list, r=2)]
         for result in results:
             if result[0].name == self.ranked_list[0].name:
-                rmsd, _, _ = bioutils.gesamt_pdbs([result[0].path, result[1].path], result[1].split_path)
+                rmsd, _, _ = bioutils.gesamt_pdbs([result[0].split_path, result[1].split_path], result[1].split_path)
             else:
-                rmsd, _, _ = bioutils.gesamt_pdbs([result[0].path, result[1].path])
-            if not os.path.exists(result[1].split_path):
-                shutil.copy2(result[1].path, result[1].split_path)
+                rmsd, _, _ = bioutils.gesamt_pdbs([result[0].split_path, result[1].split_path])
+
             result[0].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[1].name)
             result[1].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[0].name)
 
-        # Filter rankeds, split them in chains.
-        for ranked in self.ranked_list:
-            if ranked.filtered:
-                mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.split_path,
-                                                         pdb_out_path=ranked.split_path,
-                                                         sequence_assembled=sequence_assembled)
-                ranked.set_split_path(
-                    shutil.copy2(ranked.split_path, os.path.join(self.output_dir, os.path.basename(ranked.path))))
-            else:
-                mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.split_path,
-                                                         pdb_out_path=ranked.split_path,
-                                                         sequence_assembled=sequence_assembled)
-            ranked.set_mapping(mapping)
-            ranked.set_encoded(ranked.split_path)
-            bioutils.remove_hydrogens(ranked.split_path, ranked.split_path)
-
+        # Group rankeds by how close they are between them
         for ranked in self.ranked_list:
             if ranked.filtered:
                 found = False
                 for ranked2 in self.ranked_list:
                     if ranked2.filtered and ranked2.name != ranked.name \
                             and ranked2.name in self.group_ranked_by_rmsd_dict \
-                            and ranked.rmsd_dict[ranked2.name] is not None \
-                            and ranked.rmsd_dict[ranked2.name] <= PERCENTAGE_MAX_RMSD:
+                            and ranked.rmsd_dict.get(ranked2.name, float('inf')) <= PERCENTAGE_MAX_RMSD:
                         self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
                         found = True
                         ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
@@ -247,7 +267,7 @@ class OutputAir:
                     rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([ranked.split_path, template_path])
                     if rmsd is not None:
                         rmsd = round(rmsd, 2)
-                        ranked.add_template(structures.TemplateRanked(template, rmsd, aligned_residues, total_residues))
+                        ranked.add_template(structures.PdbRanked(template, rmsd, aligned_residues, total_residues, quality_q))
                 ranked.sort_template_rankeds()
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
@@ -258,8 +278,7 @@ class OutputAir:
             else:
                 bioutils.gesamt_pdbs([self.ranked_list[0].split_path, template_path], template_path)
 
-
-        logging.warn('Analysing energies with OpenMM, interfaces with PISA and secondary structure information with ALEPH')
+        logging.warn('Analysing energies with openMM, interfaces with PISA and secondary structure information with ALEPH')
         if sequence_assembled.total_copies == 1:
             logging.warn('Skipping interfaces generation. There is only one chain in the predictions')
 
@@ -316,7 +335,6 @@ class OutputAir:
                                                                 solvation1=float(interface['solvation1']),
                                                                 solvation2=float(interface['solvation2'])
                                                                 ))
-
 
         for template, template_path in self.templates_nonsplit_dict.items():
             frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{template}.txt')
@@ -375,21 +393,6 @@ class OutputAir:
                         core=fro_core,
                         dist_plot=shutil.copy2(plot_path, new_name)
                     )
-                    
-        logging.warn('Superposing experimental pdbs with predictions and templates')
-        # Superpose the experimental pdb with all the rankeds and templates
-        for experimental in experimental_pdbs:
-            aux_dict = {}
-            for pdb in [ranked.split_path for ranked in self.ranked_list] + list(self.templates_dict.values()):
-                rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
-                if rmsd is not None:
-                    rmsd = round(rmsd, 2)
-                    total_residues = bioutils.get_number_residues(pdb)
-                    aux_dict[utils.get_file_name(pdb)] = structures.TemplateRanked(pdb, rmsd, aligned_residues,
-                                                                                total_residues)
-            bioutils.gesamt_pdbs([reference_superpose, experimental], experimental)
-            self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
-
 
         if len(self.templates_nonsplit_dict) > 20:
             sorted_percentages = dict(sorted(self.percentage_sequences.items(), key=lambda x: sum(x[1])))
@@ -469,7 +472,7 @@ class OutputAir:
                 for keys_pdbs in self.experimental_dict.values():
                     for key, value in keys_pdbs.items():
                         data.setdefault(key, []).append(
-                            f'{value.rmsd} {value.aligned_residues} ({value.total_residues})')
+                            f'{value.rmsd} ({value.aligned_residues} of {value.total_residues}), { value.qscore }')
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())
 

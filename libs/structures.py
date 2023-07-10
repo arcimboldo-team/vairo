@@ -155,12 +155,12 @@ class Frobenius:
 
 
 @dataclasses.dataclass(frozen=True)
-class TemplateRanked:
-    template: str
+class PdbRanked:
+    pdb: str
     rmsd: float
     aligned_residues: int
     total_residues: int
-    
+    qscore: float
 
 
 class Ranked:
@@ -175,7 +175,8 @@ class Ranked:
         self.ah: int
         self.bs: int
         self.total_residues: int
-        self.superposition_templates: List[TemplateRanked] = []
+        self.superposition_templates: List[PdbRanked] = []
+        self.superposition_experimental: List[PdbRanked] = []
         self.mapping: Dict = {}
         self.potential_energy: float = None
         self.interfaces: List[Interface] = []
@@ -229,8 +230,11 @@ class Ranked:
     def set_minimized_path(self, path: str):
         self.minimized_path = path
 
-    def add_template(self, template: TemplateRanked):
+    def add_template(self, template: PdbRanked):
         self.superposition_templates.append(template)
+
+    def add_experimental(self, experimental: PdbRanked):
+        self.superposition_experimental.append(experimental)
 
     def add_interface(self, interface: Interface):
         self.interfaces.append(interface)
@@ -264,4 +268,7 @@ class Ranked:
         self.frobenius_plots.append(frobenius)
 
     def sort_template_rankeds(self):
-        self.superposition_templates.sort(key=lambda x: (x.rmsd is None, x.rmsd))
+        self.superposition_templates.sort(key=lambda x: (x.qscore is None, x.qscore), reverse=True)
+
+    def sort_experimental_rankeds(self):
+        self.superposition_experimental.sort(key=lambda x: (x.qscore is None, x.qscore), reverse=True)

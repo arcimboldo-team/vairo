@@ -80,7 +80,6 @@ class StructureAir:
         utils.delete_old_rankeds(self.output_dir)
         utils.delete_old_html(self.output_dir)
 
-
         self.af2_dbs_path = utils.get_input_value(name='af2_dbs_path', section='global', input_dict=parameters_dict)
         if not os.path.exists(self.af2_dbs_path):
             raise Exception(f'Path {self.af2_dbs_path} does not exist. Check the af2_dbs_path input parameter')
@@ -310,7 +309,7 @@ class StructureAir:
             energies_dict = {}
             interfaces_dict = {}
             frobenius_dict = {}
-            template_dict = {}
+            conclusion_dict = {}
 
             for ranked in self.output.ranked_list:
                 ranked_rmsd_dict[ranked.name] = {}
@@ -319,9 +318,6 @@ class StructureAir:
                         ranked_rmsd_dict[ranked.name][ranked.name] = 0
                     else:
                         ranked_rmsd_dict[ranked.name][ranked2.name] = ranked.rmsd_dict[ranked2.name]
-
-                if ranked.superposition_templates:
-                    template_dict.setdefault(ranked.superposition_templates[0].template, []).append(ranked.name)
 
                 plddt_dict[ranked.name] = {'plddt': ranked.plddt, 'compactness': ranked.compactness, 'ramachandran': ranked.ramachandran}
                 try:
@@ -332,14 +328,23 @@ class StructureAir:
                 if ranked.potential_energy is not None:
                     energies_dict[ranked.name] = ranked.potential_energy
 
-                if ranked.superposition_templates and any(ranked_template.template in accepted_templates for ranked_template in ranked.superposition_templates):
+
+                if ranked.superposition_experimental:
+                    conclusion_dict.setdefault(ranked.superposition_experimental[0].pdb, []).append(ranked.name)
+                    conclusion_type = 'experimental'
+                elif ranked.superposition_templates:
+                    conclusion_dict.setdefault(ranked.superposition_templates[0].pdb, []).append(ranked.name)
+                    conclusion_type = 'template'
+
+                if ranked.superposition_templates and any(ranked_template.pdb in accepted_templates for ranked_template in ranked.superposition_templates):
                     rmsd_dict[ranked.name] = {}
                     for ranked_template in ranked.superposition_templates:
-                        if ranked_template.template in accepted_templates:
-                            rmsd_dict[ranked.name][ranked_template.template] = {'rmsd': ranked_template.rmsd,
+                        if ranked_template.pdb in accepted_templates:
+                            rmsd_dict[ranked.name][ranked_template.pdb] = {'rmsd': ranked_template.rmsd,
                                                                                 'aligned_residues': ranked_template.aligned_residues,
                                                                                 'total_residues': ranked_template.total_residues
-                                                                                }
+                                                                                }                
+
                 if ranked.filtered and ranked.interfaces:
                     interfaces_list = [copy.deepcopy(interface) for interface in ranked.interfaces if interface.interface_template and any([inter.template in accepted_templates for inter in interface.interface_template])]
                     if interfaces_list:
@@ -367,8 +372,9 @@ class StructureAir:
                 render_dict['ranked_by_rmsd'] = self.output.group_ranked_by_rmsd_dict
             if self.output.template_interfaces:
                 render_dict['template_interfaces'] = self.output.template_interfaces
-            if template_dict:
-                render_dict['template_dict'] = template_dict
+            if conclusion_dict:
+                render_dict['conclusion_dict'] = conclusion_dict
+                render_dict['conclusion_type'] = conclusion_type
             if ranked_rmsd_dict:
                 render_dict['table']['ranked_rmsd_dict'] = ranked_rmsd_dict
             if secondary_dict:
@@ -381,6 +387,7 @@ class StructureAir:
                 render_dict['interfaces_dict'] = interfaces_dict
             if frobenius_dict:
                 render_dict['frobenius_dict'] = frobenius_dict
+            
             if self.output.experimental_dict:
                 new_dict = copy.deepcopy(self.output.experimental_dict)
                 for key, inner_dict in new_dict.items():

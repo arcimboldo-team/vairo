@@ -275,7 +275,10 @@
                 {% if data.ranked_by_rmsd %}
                     {% for key, values in data.ranked_by_rmsd.items() %}
                         {% if loop.first %}
-                            <p>Best result is <span class="green">{{ values[0].name }}</span> with a {{ color_plddt(values[0].plddt ) }}.
+                            <p>Best result is <span class="green">{{ values[0].name }}</span> with a {{color_plddt(values[0].plddt)}}.
+                                {% if data.ranked_list[0].superposition_experimental %}
+                                    It has been determined to be the best prediction because it has the best qscore with respect to an experimental pdb ({{ data.ranked_list[0].superposition_experimental[0].pdb }}: {{ data.ranked_list[0].superposition_experimental[0].qscore }}).
+                                {% endif %}
                                 Can be found in the following path: <a download="{{ values[0].name }}.pdb" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
                             </p>
                             {% for ranked in values if ranked.name != values[0].name %}
@@ -491,8 +494,10 @@
                                                         <img style="width: 80%" src="data:image/png;base64,{{ ranked.encoded_ang_plot  }}" alt="Frobenius angles graph">
                                                     </div>
                                                 </div>
-                                                <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
-                                            </div>
+                                                {% if data.sequence_plot  %}
+                                                    <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
+                                                {% endif %}
+                                                </div>
                                         </details>
                                     </li>
                                 {% if loop.last %}
@@ -538,7 +543,9 @@
                                                                 <p>Distance Frobenius is: {{ template.dist_coverage }}</p>
                                                                 <p>Core is: {{ template.core }} CV</p>
                                                                 <img style="width: 40%" src="data:image/png;base64,{{ template.encoded_dist_plot  }}" alt="Interface distances graph">
-                                                                <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
+                                                                {% if data.sequence_plot  %}
+                                                                    <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
+                                                                {% endif %}
                                                             </div>
                                                         </details>
                                                     </li> 
@@ -688,7 +695,7 @@
                     <button onclick="hideValues('table_energies', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
-                    <h3>Experimental pdbs with predictions and templates (RMSD (superposed residues))</h3>
+                    <h3>Experimental pdbs with predictions and templates (RMSD (superposed residues), QSCORE)</h3>
 
                     <table>
                         <tr>
@@ -704,11 +711,11 @@
                                 <td>{{ key }}</td>
                                 {% for value2 in value.values() %}
                                     {% if key2 in data.bests_dict %}
-                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
+                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }}), {{ value2.qscore }}</td>
                                     {% elif key in data.filtered_dict %}
-                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>                                
+                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }}), {{ value2.qscore }}</td>                                
                                     {% else %}
-                                        <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
+                                        <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }}), {{ value2.qscore }}</td>
                                     {% endif %} 
                                 {% endfor %}
                             </tr>
@@ -727,8 +734,11 @@
                 <h2>Conclusions</h2>
                 {% if data.bests_dict|length == 1 %}
                     <p>The best predicted model is <span class="green">{{ data.ranked_list[0].name }}</span>.
+                        {% if data.ranked_list[0].superposition_experimental %}
+                            The closest experimental is {{ data.ranked_list[0].superposition_experimental[0].pdb }} with a {{ data.ranked_list[0].superposition_experimental[0].rmsd }} RMSD</p>
+                        {% endif %}
                         {% if data.ranked_list[0].superposition_templates %}
-                            The closest template is {{ data.ranked_list[0].superposition_templates[0].template }} with a {{ data.ranked_list[0].superposition_templates[0].rmsd }} RMSD</p>
+                            The closest template is {{ data.ranked_list[0].superposition_templates[0].pdb }} with a {{ data.ranked_list[0].superposition_templates[0].rmsd }} RMSD</p>
                         {% endif %}
                 {% elif data.bests_dict|length > 1 %}
                     <p>There are {{ data.bests_dict|length }} equal best predicted models:
@@ -742,10 +752,10 @@
                 {% else %}
                     <p>Predictions could not be found.</p>
                 {% endif %}
-                {% if data.template_dict %}
-                    <p>The closest templates to the predictions are the following ones:</p>
+                {% if data.conclusion_dict %}
+                    <p>The closest {{ data.conclusion_type }} to the predictions are the following ones:</p>
                         <ul>
-                            {% for key, value in data.template_dict.items() %}
+                            {% for key, value in data.conclusion_dict.items() %}
                                 <li>{{ key }}:
                                     {% for ranked in value %}
                                         {% if ranked in data.bests_dict %}
@@ -763,7 +773,7 @@
                             {% endfor %}
                         </ul>
 
-                    {% if data.template_interfaces %}
+                    {% if data.template_interfaces and data.conclusion_type  == 'template' %}
                         {% for key, value in data.template_interfaces.items() if value %}
                         {% if loop.first %}
                             <p>Each template has the following interfaces:</p>
@@ -849,7 +859,6 @@
             console.log(button.textContent)
             button.textContent = button.textContent === "Show all predictions"? "Hide bad predictions" : "Show all predictions";
         }
-            
 
     </script>
 </html>
