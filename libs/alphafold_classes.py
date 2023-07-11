@@ -43,8 +43,8 @@ class AlphaFoldRun:
             self.feature.write_pkl(os.path.join(self.results_dir, 'features.pkl'))
         if self.run:
             try:
-                logging.warn(f'AlphaFold2 directory: {self.results_dir}')
-                logging.warn(f'Starting AlphaFold2: Predicting query sequence {self.fasta_path}')
+                logging.error(f'AlphaFold2 directory: {self.results_dir}')
+                logging.error(f'Starting AlphaFold2: Predicting query sequence {self.fasta_path}')
                 run_alphafold.launch_alphafold2(
                     fasta_path=[self.fasta_path],
                     output_dir=previous_path,
@@ -67,9 +67,9 @@ class AlphaFoldRun:
                 pass
             except:
                 raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
-            logging.warn('AlphaFold2 has finished successfully. Proceeding to analyse the results')
+            logging.error('AlphaFold2 has finished successfully. Proceeding to analyse the results')
         else:
-            logging.warn('AlphaFold2 run skipped. Proceeding to analyse the results')
+            logging.error('AlphaFold2 run skipped. Proceeding to analyse the results')
 
 
 class AlphaFoldPaths:

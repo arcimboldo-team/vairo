@@ -19,9 +19,9 @@ def print_msg_box(msg, indent=1, title=None):
         box += f'║{space}{"-" * len(title):<{width}}{space}║\n'  # underscore
     box += ''.join([f'║{space}{line:<{width}}{space}║\n' for line in lines])
     box += f'╚{"═" * (width + indent * 2)}╝'  # lower_border
-    logging.warn('\n')
-    logging.warn(box)
-    logging.warn('\n')
+    logging.error('\n')
+    logging.error(box)
+    logging.error('\n')
 
 
 def print_matrix(matrix: List):
@@ -464,9 +464,9 @@ def get_input_value(name: str, section: str, input_dict: Dict, override_default=
 def print_dict(input_dict: Dict):
     for key, value in input_dict.items():
         if isinstance(value, list):
-            logging.warn(f'{key}: {" ".join(value)}')
+            logging.error(f'{key}: {" ".join(value)}')
         else:
-            logging.warn(f'{key}: {value}')
+            logging.error(f'{key}: {value}')
 
 
 def create_logger():
@@ -485,7 +485,7 @@ def create_logger():
     logger.addHandler(stream_handler_)
 
     stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(logging.WARNING)
+    stdout_handler.setLevel(logging.ERROR)
     logger.addHandler(stdout_handler)
 
 
@@ -501,7 +501,7 @@ def create_logger_dir(log_path: str, log_extended_path: str):
         f_handle.write(logger_data)
 
     file_handler = logging.FileHandler(log_path)
-    file_handler.setLevel(logging.WARNING)
+    file_handler.setLevel(logging.ERROR)
     logger.addHandler(file_handler)
 
     file_handler2 = logging.FileHandler(log_extended_path)

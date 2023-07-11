@@ -176,7 +176,7 @@ def predict_structure(
         features_pickle_file = open(f'{output_dir}/features.pkl', "rb")
         feature_dict = pickle.load(features_pickle_file)
     else:
-        logging.warn('Starting MSA and template search')
+        logging.error('Starting MSA and template search')
         feature_dict = data_pipeline.process(
             input_fasta_path=fasta_path,
             msa_output_dir=msa_output_dir)
@@ -185,7 +185,7 @@ def predict_structure(
             pickle.dump(feature_dict, f, protocol=4)
 
     if FLAGS.stop_after_msa:
-        logging.warn('Stopping AlphaFold2 after MSA and template search')
+        logging.error('Stopping AlphaFold2 after MSA and template search')
         return
 
     timings['features'] = time.time() - t_0
@@ -194,7 +194,7 @@ def predict_structure(
     relaxed_pdbs = {}
     ranking_confidences = {}
 
-    logging.warn('Starting model prediction')
+    logging.error('Starting model prediction')
     # Run the models.
     num_models = len(model_runners)
     for model_index, (model_name, model_runner) in enumerate(model_runners.items()):
@@ -261,7 +261,7 @@ def predict_structure(
             with open(relaxed_output_path, 'w') as f:
                 f.write(relaxed_pdb_str)
 
-    logging.warn('Finished model prediction')
+    logging.error('Finished model prediction')
     # Rank by model confidence and write out relaxed PDBs in rank order.
     ranked_order = []
     for idx, (model_name, _) in enumerate(

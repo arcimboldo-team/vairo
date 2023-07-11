@@ -205,7 +205,7 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
 
 
 def extract_sequence(fasta_path: str) -> str:
-    logging.warn(f'Extracting sequence from {fasta_path}')
+    logging.error(f'Extracting sequence from {fasta_path}')
     try:
         record = SeqIO.read(fasta_path, "fasta")
     except Exception as e:
@@ -1072,7 +1072,7 @@ def run_arcimboldo_air(yml_path: str):
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
-    logging.warn('ARCIMBOLDO_AIR cluster run finished successfully.')
+    logging.error('ARCIMBOLDO_AIR cluster run finished successfully.')
 
 
 def run_openmm(pdb_in_path: str, pdb_out_path: str) -> float:

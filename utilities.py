@@ -16,7 +16,7 @@ def write_features(features_path: str, output_dir: str = None):
 
 
 def print_features(features_path: str):
-    logging.warn = print
+    logging.error = print
     features.print_features_from_file(features_path)
 
 
@@ -143,10 +143,25 @@ def renumber():
             print(f"Renumbering complete for {pdb_file}. Renumbered file saved as {utils.get_file_name(pdb_file)}.")
 
 
+def config():
+    template_str = open(f'{utils.get_main_path()}/templates/pymol_script.py', 'r').read()
+    path_str = 'test.py'
+    pdb_files = [
+        "/Users/pep/work/test/arcimboldo_air/configmin31p/ranked_0.pdb",
+        "/Users/pep/work/test/arcimboldo_air/configmin31p/ranked_1.pdb"
+    ]    
+    for i, pdb_file in enumerate(pdb_files):
+        template_str += f'\ncmd.load("{pdb_file}", "{utils.get_file_name(pdb_file)}")'
+        if i != 0:
+            template_str += f'\ncmd.disable("{utils.get_file_name(pdb_file)}")'
+
+    with open(path_str, 'w') as f_out:
+        f_out.write(template_str)
+
 
 if __name__ == "__main__":
     print('Usage: utilities.py function input')
     print('Functions: write_features, print_features')
-    logging.warn = print
+    logging.error = print
     args = sys.argv
     globals()[args[1]](*args[2:])

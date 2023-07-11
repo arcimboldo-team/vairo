@@ -120,7 +120,7 @@ class StructureAir:
                         f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
-        logging.warn('Building query sequence')
+        logging.error('Building query sequence')
         for parameters_sequence in utils.get_input_value(name='sequences', section='global',
                                                          input_dict=parameters_dict):
             new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
@@ -490,7 +490,7 @@ class StructureAir:
         for afrun in self.afrun_list:
             ranked_list = utils.read_rankeds(input_path=afrun.results_dir)
             if not ranked_list:
-                logging.warn('No predictions found')
+                logging.error('No predictions found')
                 return
             plot_path = os.path.join(afrun.results_dir, 'plddt.png')
             plots.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
@@ -576,14 +576,14 @@ class StructureAir:
                                                                output_path=self.results_dir,
                                                                length_sequences=self.output.percentage_sequences)
         if templates_cluster:
-            logging.warn(
+            logging.error(
                 f'The templates can be grouped in {len(templates_cluster)} clusters')
             for templates in templates_cluster:
                 name_job = f'cluster_{counter}'
                 label_job = f'Cluster {counter}'
                 new_path = os.path.join(self.cluster_path, name_job)
-                logging.warn(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
-                logging.warn(', '.join([utils.get_file_name(template_in) for template_in in templates]))
+                logging.error(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
+                logging.error(', '.join([utils.get_file_name(template_in) for template_in in templates]))
                 counter += 1
                 yml_path = self.create_cluster(job_path=new_path, templates=templates)
                 bioutils.run_arcimboldo_air(yml_path=yml_path)

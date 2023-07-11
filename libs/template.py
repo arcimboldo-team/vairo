@@ -161,7 +161,7 @@ class Template:
             pdb_id=self.pdb_id,
             chain_id='A')
 
-        logging.warn(f'Positions of chains in the template {self.pdb_id}: {" | ".join(self.results_path_position)}')
+        logging.error(f'Positions of chains in the template {self.pdb_id}: {" | ".join([str(element) for element in self.results_path_position])}')
 
     def apply_changes(self, chain_dict: Dict, when: str):
         # Apply changes in the pdb, change residues.
@@ -238,6 +238,10 @@ class Template:
                         template_features, mapping, identities, aligned_columns, total_columns, evalue = \
                             template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2
 
+
+                logging.info(f'Alignment results for pdb {self.pdb_id} and chain {database.chain}, with sequence {utils.get_file_name(sequence_in.fasta_path)}:')
+                logging.info(
+                    f'Aligned columns: {aligned_columns} ({total_columns}), Evalue: {evalue}, Identities: {identities}')
                 if template_features is not None:
                     g = features.Features(query_sequence=query_sequence)
                     g.append_new_template_features(new_template_features=template_features,
@@ -258,7 +262,7 @@ class Template:
             try:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
             except Exception as e:
-                logging.warn(f'Not possible to generate multimer for {self.pdb_path}')
+                logging.error(f'Not possible to generate multimer for {self.pdb_path}')
 
 
         self.template_chains_struct.from_dict_to_struct(chain_dict=extracted_chain_dict,
@@ -317,7 +321,7 @@ class Template:
 
         if self.template_chains_struct.get_number_chains() != sum(x is not None for x in composition_path_list) \
                 and not all(composition_path_list):
-            logging.warn(f'Not all chains have been selected in the template {self.pdb_id}')
+            logging.error(f'Not all chains have been selected in the template {self.pdb_id}')
 
         return composition_path_list
 

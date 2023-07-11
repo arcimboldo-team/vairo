@@ -76,7 +76,7 @@ class Features:
         return write_templates_in_features(self.template_features, output_dir, chain, print_number)
 
     def write_pkl(self, pkl_path: str):
-        logging.warn(f'Writing all input information to {pkl_path}')
+        logging.error(f'Writing all input information to {pkl_path}')
         merged_features = self.merge_features()
         with open(pkl_path, 'wb') as f_out:
             pickle.dump(merged_features, f_out, protocol=pickle.HIGHEST_PROTOCOL)
@@ -241,9 +241,9 @@ class Features:
                 new_features.append_new_template_features(template_dict)
             features_list.append(new_features)
         if len(chunk_list) > 1:
-            logging.warn(f'Query sequence and the input information has been cut into {len(features_list)} partitions with the following sizes:')
+            logging.error(f'Query sequence and the input information has been cut into {len(features_list)} partitions with the following sizes:')
             for chunk in chunk_list:
-                logging.warn(f'      - {chunk[0][0]}-{chunk[0][1]}')
+                logging.error(f'      - {chunk[0][0]}-{chunk[0][1]}')
         else:
             logging.debug(f'Query sequence has the following size: {chunk_list[0][0]}-{chunk_list[0][1]}')
         return features_list
@@ -359,7 +359,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
                  pdb_id[:10] + ':' + chain_id in detailed_lines[1]]
 
     if not hits_list:
-        logging.warn(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
+        logging.error(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
         return None, None, None, None, None, None
     detailed_lines = hits_list[0]
 
@@ -392,10 +392,6 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     aligned_columns = re.findall(r'Aligned_cols=+([0-9]+)', match[0])[0]
     total_columns = len(parsing_result.mmcif_object.chain_to_seqres[chain_id])
     evalue = re.findall(r'E-value=+(.*?) ', match[0])[0]
-
-    logging.warn(f'Alignment results:')
-    logging.warn(
-        f'Aligned columns: {aligned_columns} ({total_columns}), Evalue: {evalue}, Identities: {identities}')
 
     return template_features, mapping, identities, aligned_columns, total_columns, evalue
 
@@ -526,23 +522,23 @@ def print_features_from_file(pkl_in_path: str):
         features_dict = pickle.load(input_file)
     for key in features_dict.keys():
         try:
-            logging.warn(f'{key} {features_dict[key].shape}')
+            logging.error(f'{key} {features_dict[key].shape}')
         except Exception as e:
             pass
-    logging.warn('\n')
-    logging.warn('MSA:')
+    logging.error('\n')
+    logging.error('MSA:')
     for num, name in enumerate(features_dict['msa']):
-        logging.warn(num)
-        logging.warn('\n')
-        logging.warn(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][num].tolist()]))
-        logging.warn('\n')
+        logging.error(num)
+        logging.error('\n')
+        logging.error(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][num].tolist()]))
+        logging.error('\n')
 
-    logging.warn('TEMPLATES:')
+    logging.error('TEMPLATES:')
     for num, seq in enumerate(features_dict['template_sequence']):
-        logging.warn(f'{features_dict["template_domain_names"][num].decode("utf-8")}:\n')
+        logging.error(f'{features_dict["template_domain_names"][num].decode("utf-8")}:\n')
         for i in range(4):
-            logging.warn('\t' + ''.join(np.array_split(list(seq.decode('utf-8')), 4)[i].tolist()))
-        logging.warn('\n')
+            logging.error('\t' + ''.join(np.array_split(list(seq.decode('utf-8')), 4)[i].tolist()))
+        logging.error('\n')
 
 
 def create_features_from_file(pkl_in_path: str) -> Features:
