@@ -242,8 +242,8 @@ class Features:
             features_list.append(new_features)
         if len(chunk_list) > 1:
             logging.error(f'Query sequence and the input information has been cut into {len(features_list)} partitions with the following sizes:')
-            for chunk in chunk_list:
-                logging.error(f'      - {chunk[0][0]}-{chunk[0][1]}')
+            for start_min, start_max in chunk_list:
+                logging.error(f'      - {start_min}-{start_max}')
         else:
             logging.debug(f'Query sequence has the following size: {chunk_list[0][0]}-{chunk_list[0][1]}')
         return features_list
