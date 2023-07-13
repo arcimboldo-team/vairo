@@ -209,6 +209,12 @@
             .div-frobenius {
                 padding-left: 15px;
             }
+            pre code {
+                background-color: #eee;
+                border: 1px solid #999;
+                display: block;
+                padding: 20px;
+            }
         </style>
     </head>
     <body id="init_body">
@@ -237,6 +243,9 @@
                 {% endif %}
                 {% if 'table' in data %}
                     <li name="tables" onclick="move_to(event)" class="sub-menu">Tables</li>
+                {% endif %}
+                {% if 'pymol' in data %}
+                    <li name="pymol" onclick="move_to(event)" class="sub-menu">Pymol</li>
                 {% endif %}
                 <li name="log" onclick="move_to(event)" class="sub-menu">Log file</li>
                 <li name="conclusions" onclick="move_to(event)" class="sub-menu">Conclusions</li>
@@ -440,10 +449,10 @@
                                 </ul>
                             {% endif %}
                         {% endfor %}
-                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
                     {% endif %}
+                    <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
                     {% if 'clustering_ranked_plot' in data %}
-                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_ranked_plot }}" alt="Clustering plot">                  
+                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_ranked_plot }}" alt="Clustering plot and predictions">                  
                     {% endif %}
                 </div>
             {% endif %}
@@ -724,6 +733,27 @@
                 {% endif %}
             </div>
             {% endif %}
+            {% if 'pymol' in data %}
+                <div id="pymol" class="section-div">
+                    <h2>Pymol</h2>
+                    <p>In order to run the Pymol Script, run the following code in the terminal:</p>
+                    <pre>
+                        <code>pymol {{ data.pymol.script }} </code>
+                    </pre>
+                    {% if 'keys_dict' in data.pymol %}
+                        {% for key, value in data.pymol.keys_dict.items() %}
+                            {% if loop.first %}
+                                <p>With the following keys, it is possible to zoom in the following regions:</p>
+                                <ul>
+                            {% endif %}
+                                <li>{{ key }}: {{ value }}</li>                    
+                            {% if loop.last %}
+                                </ul>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            {% endif %} 
             <div id="log" class="section-div">
                 <h2>Log</h2>
                 <div style="padding: 10px;height:400px;width:90%;border:1px solid #000;overflow:auto;">
@@ -825,7 +855,7 @@
                         {% endfor %}
                     {% endif %}
                 {% endif %}
-            </div>  
+            </div>
             <div id="citations" class="section-div">
                 <h2>Citations</h2>
                 <p>

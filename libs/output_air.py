@@ -40,6 +40,7 @@ class OutputAir:
         self.analysis_ranked_plot_path: str = f'{self.plots_path}/cc_analysis_ranked_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
         self.html_complete_path: str = f'{output_dir}/output_complete.html'
+        self.pymol_script_path: str = f'{output_dir}/pymol_script.py'
         self.gantt_plots: structures.GanttPlot = None
         self.gantt_complete_plots: structures.GanttPlot = None
         self.ranked_list: List[structures.Ranked] = []

@@ -54,6 +54,11 @@ class StructureAir:
         self.features_list: List[features.Features] = []
         self.library_list: List[structures.Library] = []
         self.chunk_list: List[int] = []
+        self.pymol_show_list: List[str] = []
+        self.template_html_path: str
+        self.pymol_template_path: str
+        self.pymol_keys_dict: dict = {}
+
 
         self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
         utils.create_dir(self.output_dir)
@@ -73,12 +78,17 @@ class StructureAir:
         self.binaries_path = os.path.join(utils.get_main_path(), 'binaries')
         self.binaries_paths = structures.BinariesPath(self.binaries_path)
         self.output = output_air.OutputAir(output_dir=self.output_dir)
+        self.dir_templates_path = f'{utils.get_main_path()}/templates'
+        self.template_html_path = os.path.join(self.dir_templates_path, 'output.html')
+        self.pymol_template_path = os.path.join(self.dir_templates_path, 'pymol_script.py')
 
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
         utils.create_dir(self.experimental_dir, delete_if_exists=True)
         utils.delete_old_rankeds(self.output_dir)
         utils.delete_old_html(self.output_dir)
+        if os.path.exists(self.output.pymol_script_path):
+            os.remove(self.output.pymol_script_path)
 
         self.af2_dbs_path = utils.get_input_value(name='af2_dbs_path', section='global', input_dict=parameters_dict)
         if not os.path.exists(self.af2_dbs_path):
@@ -87,7 +97,10 @@ class StructureAir:
         self.glycines = utils.get_input_value(name='glycines', section='global', input_dict=parameters_dict)
         self.mosaic = utils.get_input_value(name='mosaic', section='global', input_dict=parameters_dict)
         self.small_bfd = utils.get_input_value(name='small_bfd', section='global', input_dict=parameters_dict)
-        
+        pyoml_show_str = utils.get_input_value(name='pymol_show', section='global', input_dict=parameters_dict)
+        if pyoml_show_str:
+            self.pymol_show_list = pyoml_show_str.replace(' ', '').split(',')
+
         if self.mode == 'naive':
             self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global', input_dict=parameters_dict, override_default=True)
         else:
@@ -219,8 +232,8 @@ class StructureAir:
     def render_output(self, reduced: bool):
         render_dict = {}
 
-        template_str = open(f'{utils.get_main_path()}/templates/output.html', 'r').read()
-        jinja_template = Environment(loader=FileSystemLoader(f'{utils.get_main_path()}/templates/')).from_string(
+        template_str = open(self.template_html_path, 'r').read()
+        jinja_template = Environment(loader=FileSystemLoader(self.dir_templates_path)).from_string(
             template_str)
         
         if reduced:
@@ -247,6 +260,9 @@ class StructureAir:
         with open(self.log_path, 'r') as f_in:
             render_dict['log_text'] = f_in.read()
 
+        if os.path.exists(self.output.pymol_script_path):
+            render_dict['pymol'] = {'script': self.output.pymol_script_path, 'keys_dict': self.pymol_keys_dict}
+
         if self.feature is not None:
             self.create_plot_gantt(reduced=reduced)
             if reduced:
@@ -262,14 +278,15 @@ class StructureAir:
         if os.path.exists(self.output.sequence_plot_path):
             render_dict['sequence_plot'] = utils.encode_data(input_data=self.output.sequence_plot_path)
 
-        if os.path.exists(self.output.analysis_plot_path):
-            render_dict['clustering_plot'] = utils.encode_data(input_data=self.output.analysis_plot_path)
+        if self.cluster_templates:
+            if os.path.exists(self.output.analysis_plot_path):
+                render_dict['clustering_plot'] = utils.encode_data(input_data=self.output.analysis_plot_path)
 
-        if os.path.exists(self.output.analysis_ranked_plot_path):
-            render_dict['clustering_ranked_plot'] = utils.encode_data(input_data=self.output.analysis_ranked_plot_path)
+            if os.path.exists(self.output.analysis_ranked_plot_path):
+                render_dict['clustering_ranked_plot'] = utils.encode_data(input_data=self.output.analysis_ranked_plot_path)
 
-        if self.cluster_list:
-            render_dict['cluster_list'] = self.cluster_list
+            if self.cluster_list:
+                render_dict['cluster_list'] = self.cluster_list
         
         if self.feature:
             if self.mode != 'naive':
@@ -408,13 +425,36 @@ class StructureAir:
         with open(write_output, 'w') as f_out:
             f_out.write(jinja_template.render(data=render_dict))
 
+
     def generate_output(self):
+        self.generate_pymol_script()
         if self.feature and self.feature.get_templates_length() > 20:
             self.render_output(reduced=True)
             self.render_output(reduced=False)
         else:
             self.render_output(reduced=True)
 
+
+    def generate_pymol_script(self):
+        # Read the pymol script found in the templates directory. It has the configuration
+        # Add information regarding the tempaltes and experimental pdbs
+        # Set if user has selected a specific zone to zoom
+        if self.output.ranked_list:
+            pdb_list = [ranked.split_path for ranked in self.output.ranked_list]
+            pdb_list.extend(self.experimental_pdbs)
+            template_str = open(self.pymol_template_path, 'r').read()
+            for i, pdb_path in enumerate(pdb_list):
+                template_str += f'\ncmd.load("{pdb_path}", "{utils.get_file_name(pdb_path)}")'
+                if i != 0:
+                    template_str += f'\ncmd.disable("{utils.get_file_name(pdb_path)}")'
+            
+            for i, zoom in enumerate(self.pymol_show_list, 1):
+                key = f'F{i}'
+                self.pymol_keys_dict[key] = f'Zoom into residues {zoom}'
+                template_str += f'\ncmd.set_key("{key}", lambda: cmd.zoom("resi {zoom}"))'
+            
+            with open(self.output.pymol_script_path, 'w') as f_out:
+                f_out.write(template_str)        
 
 
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:

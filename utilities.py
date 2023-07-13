@@ -56,7 +56,6 @@ def ccanalysis(template_path: str):
         output_air.plot_cc_analysis(plot_path=os.path.join(output_path, 'plot.png'), analysis_dict=analysis_dict,
                                     clusters=templates_cluster_list)
 
-
 def superposition_chains(pdb1_path: str, pdb2_path: str):
     ret_dict = bioutils.superposition_by_chains(pdb1_in_path=pdb1_path, pdb2_in_path=pdb2_path)
     for key3, i3 in ret_dict.items():
@@ -66,13 +65,10 @@ def superposition_chains(pdb1_path: str, pdb2_path: str):
             for key1, i1 in i2.items():
                 print(key1, i1)
 
-
 def superpose_chains(pdb1_path: str, pdb2_path: str, tmp_dir: str):
     utils.create_dir(tmp_dir)
     pdb1_chains_dict = bioutils.split_pdb_in_chains(pdb_in_path=pdb1_path, output_dir=tmp_dir)
     pdb2_chains_dict = bioutils.split_pdb_in_chains(pdb_in_path=pdb2_path, output_dir=tmp_dir)        
-
-
 
 def renumber():
     def check_consecutive(numbers):
@@ -142,21 +138,6 @@ def renumber():
             bioutils.copy_positions_of_pdb(pdb_file, os.path.join("/Users/pep/work/transfers/library", utils.get_file_name(pdb_file))+'.pdb', save_residues)
             print(f"Renumbering complete for {pdb_file}. Renumbered file saved as {utils.get_file_name(pdb_file)}.")
 
-
-def config():
-    template_str = open(f'{utils.get_main_path()}/templates/pymol_script.py', 'r').read()
-    path_str = 'test.py'
-    pdb_files = [
-        "/Users/pep/work/test/arcimboldo_air/configmin31p/ranked_0.pdb",
-        "/Users/pep/work/test/arcimboldo_air/configmin31p/ranked_1.pdb"
-    ]    
-    for i, pdb_file in enumerate(pdb_files):
-        template_str += f'\ncmd.load("{pdb_file}", "{utils.get_file_name(pdb_file)}")'
-        if i != 0:
-            template_str += f'\ncmd.disable("{utils.get_file_name(pdb_file)}")'
-
-    with open(path_str, 'w') as f_out:
-        f_out.write(template_str)
 
 
 if __name__ == "__main__":

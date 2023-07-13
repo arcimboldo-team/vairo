@@ -183,6 +183,11 @@ INPUT_PARAMETERS = {
             'required': False,
             'mode': ['guided'],
             'default': []
+        },
+        'pymol_show': {
+            'required': False,
+            'mode': ['naive', 'guided'],
+            'default': ''
         }
     },
     'sequence_input': {

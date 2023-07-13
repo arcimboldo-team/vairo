@@ -611,12 +611,13 @@ def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: 
         # Validate using ramachandran, check the outliers
         validate_geometry, _ = generate_ramachandran(pdb_path=value, output_path=output_path)
         # Check the query sequence vs the number of residues of the pdb
+        only_ca = check_not_only_CA(pdb_in_path=value)
         completeness = True
         if length_sequences is not None and key in length_sequences:
             completeness = any(number > threshold_completeness for number in length_sequences[key])
         compactness_decision, _ = run_spong(pdb_in_path=value, spong_path=binaries_path.spong_path)
 
-        if completeness and validate_geometry and compactness_decision:
+        if completeness and validate_geometry and compactness_decision and not only_ca:
             accepted_pdbs[key] = value
             if num_residues > pdb_complete_value:
                 pdb_complete_value = num_residues
@@ -1204,6 +1205,28 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
 
     return interface_data_list
 
+def parse_pdb_hits_hhr(hhr_text: str, pdb_name: str) -> Dict:
+    pattern = rf'>{re.escape(pdb_name)}(.*)'
+    match = re.search(pattern, hhr_text, re.MULTILINE | re.DOTALL)
+    if match:
+        protein_info = match.group(1).strip()
+        e_value = re.search(r'E-value=(\S+)', protein_info).group(1)
+        aligned_cols = re.search(r'Aligned_cols=(\d+)', protein_info).group(1)
+        identity = re.search(r'Identities=(\d+)%', protein_info).group(1)
+        total_residues = re.search(r'\((\d+)\)', protein_info).group(1)
+        return e_value, aligned_cols, identity, total_residues
+    else:
+        return None, None, None, None
+
+def check_not_only_CA(pdb_in_path: str) -> bool:
+    structure = get_structure(pdb_in_path)
+    for model in structure:
+        for chain in model:
+            for residue in chain:
+                for atom in residue:
+                    if atom.get_name() != 'CA':
+                        return False
+    return True
 
 def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict) \
         -> Dict[Any, List[Any]]:

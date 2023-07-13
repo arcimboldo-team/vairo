@@ -271,10 +271,9 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             else:
                 features_search = a_air.feature.get_sequence_by_name(name)
                 if hhr_text != '':
-                    match = re.findall(rf'(\d+ {name.upper()}.*$)', hhr_text, re.M)
-                    if match:
-                        match_split = match[0].split()[-9:]
-                        text = f'\n{template_name}: Aligned={match_split[5]}({match_split[8].replace("(", "").replace(")", "")}) Evalue={match_split[2]}'
+                    evalue, aligned, identity, total_residues = bioutils.parse_pdb_hits_hhr(hhr_text, name.upper())
+                    if evalue != None:
+                        text = f'\n{template_name}: Aligned={aligned}({total_residues}) Evalue={evalue} Identity={identity}'
             legend_elements.append(text)
 
             if features_search is not None:
