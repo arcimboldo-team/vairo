@@ -278,6 +278,9 @@ class StructureAir:
         if os.path.exists(self.output.sequence_plot_path):
             render_dict['sequence_plot'] = utils.encode_data(input_data=self.output.sequence_plot_path)
 
+        if self.output.dendogram_struct:
+            render_dict['dendogram_struct'] = self.output.dendogram_struct
+
         if self.cluster_templates:
             if os.path.exists(self.output.analysis_plot_path):
                 render_dict['clustering_plot'] = utils.encode_data(input_data=self.output.analysis_plot_path)

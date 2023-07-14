@@ -235,8 +235,13 @@
                 {% if 'clustering_plot' in data %}
                     <li name="clustering" onclick="move_to(event)" class="sub-menu">Clustering</li>                
                 {% endif %}
+                {# note: commented-out template because we no longer use this
                 {% if 'frobenius_dict' in data %}
                     <li name="frobenius_graphs" onclick="move_to(event)" class="sub-menu">Frobenius Graphs</li>                
+                {% endif %}
+                #}
+                {% if 'dendogram_struct' in data %}
+                    <li name="dendogram" onclick="move_to(event)" class="sub-menu">Dendogram</li>                
                 {% endif %}
                 {% if 'interfaces_dict' in data %}
                     <li name="interface_graphs" onclick="move_to(event)" class="sub-menu">Interface Graphs</li>                
@@ -456,6 +461,8 @@
                     {% endif %}
                 </div>
             {% endif %}
+
+            {# note: commented-out template because we no longer use this
             {% if 'frobenius_dict' in data %}
                 <div id="frobenius_graphs" class="section-div">
                     <h2>Frobenius Graphs</h2>
@@ -516,6 +523,25 @@
                         </details>
                     {% endfor %}
                 </div>
+            {% endif %}
+            #}
+            {% if 'dendogram_struct' in data %}
+                <div id="dendogram" class="section-div">
+                    <h2>Dendogram</h2>
+                    {% if data.dendogram_struct.dendogram_list %}
+                        <p>The templates have been divided in {{ data.dendogram_struct.dendogram_list | length }} clusters.</p>
+                        {% for cluster in data.dendogram_struct.dendogram_list %}
+                            {% if loop.first %}
+                                <ul>
+                            {% endif %}
+                                <li>{{ cluster | join(', ') }}</li>
+                            {% if loop.last %}
+                                </ul>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    <img style="width: 70%" src="data:image/png;base64,{{ data.dendogram_struct.encoded_dendogram_plot }}" alt="Dendogram plot">
+                </div>  
             {% endif %}
             {% if 'interfaces_dict' in data %}
                 <div id="interface_graphs" class="section-div">

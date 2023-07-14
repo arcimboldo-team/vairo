@@ -88,6 +88,11 @@ class AlignmentDatabase:
     fasta_path: str
     database_path: str
 
+@dataclasses.dataclass(frozen=True)
+class Dendogram:
+    dendogram_list: List[str]
+    dendogram_plot: str
+    encoded_dendogram_plot: bytes
 
 @dataclasses.dataclass(frozen=True)
 class Alignment:
