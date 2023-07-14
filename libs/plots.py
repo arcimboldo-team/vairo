@@ -230,8 +230,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             name = 'Percentage'
         for i in range(1, len(new_sequences)):
             msa_found = True
-            if new_sequences[i - 1] != 1:
-                ax.barh(name, 1, left=i, height=0.5, color=str(new_sequences[i - 1]), zorder=2)
+            ax.barh(name, 1, left=i, height=0.5, color=str(new_sequences[i - 1]), zorder=2)
 
     if plot_type != 'msa' or len(names) <= 20:
         if plot_type != 'msa':

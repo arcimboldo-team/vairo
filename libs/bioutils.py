@@ -306,7 +306,7 @@ def merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge: List[str], pdb_out_p
 
 
 def run_pisa(pdb_path: str) -> str:
-    logging.DEBUG(f'Generating REMARK 350 for {pdb_path} with PISA.')
+    logging.info(f'Generating REMARK 350 for {pdb_path} with PISA.')
     subprocess.Popen(['pisa', 'temp', '-analyse', pdb_path], stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE).communicate()
     pisa_output = \
@@ -336,7 +336,7 @@ def read_remark_350(pdb_path: str) -> Tuple[List[str], List[List[List[Any]]]]:
         match_end_in_last_350 = [m.end() for m in re.finditer(r'\n', pdb_text[match_last_350:])][-1]
         remark_350_text = pdb_text[match_biomolecules[0]:(match_last_350 + match_end_in_last_350)]
     else:
-        logging.DEBUG('It seem there is more than one biological assembly from REMARK 350. Only'
+        logging.info('It seem there is more than one biological assembly from REMARK 350. Only'
                      ' "BIOMOLECULE 1" will be considered for the assembly generation')
         remark_350_text = pdb_text[match_biomolecules[0]:match_biomolecules[1] - 1]
 
