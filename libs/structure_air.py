@@ -59,7 +59,6 @@ class StructureAir:
         self.pymol_template_path: str
         self.pymol_keys_dict: dict = {}
 
-
         self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
         utils.create_dir(self.output_dir)
         self.log_path = os.path.join(self.output_dir, 'output.log')
@@ -700,8 +699,7 @@ class StructureAir:
         yml_path = os.path.join(mutations_dir, 'config.yml')
         best_ranked = self.output.ranked_list[0]
         pdb_path = shutil.copy2(best_ranked.path, os.path.join(mutations_dir, 'selected.pdb'))
-        change_ala = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, self.sequence_assembled.length+1, 1)]}, resname='ALA')
-        change_ala.change_residues(pdb_path, pdb_path)
+        utils.delete_old_rankeds(self.output_dir)
         with open(yml_path, 'w') as f_out:
             f_out.write(f'mode: guided\n')
             f_out.write(f'output_dir: {mutations_dir}\n')
@@ -719,6 +717,8 @@ class StructureAir:
             f_out.write('-')
             f_out.write(f' pdb: {pdb_path}\n')
             f_out.write(f'  legacy: True\n')
+            f_out.write(f'  - All: 1-100000\n')
+            f_out.write(f'    resname: ALA\n')
         bioutils.run_arcimboldo_air(yml_path=yml_path)
         if os.path.exists(old_results_dir):
             shutil.rmtree(old_results_dir)

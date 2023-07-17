@@ -109,6 +109,7 @@ class OutputAir:
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
+            print(ranked.path)
             ranked.set_path(shutil.copy2(ranked.path, self.rankeds_nonsplit_dir))
             bioutils.remove_hydrogens(ranked.path, ranked.path)
             accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path)
