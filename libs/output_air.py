@@ -48,8 +48,8 @@ class OutputAir:
         self.experimental_dict = {}
         self.results_dir: str = ''
         self.templates_nonsplit_dir: str = ''
+        self.rankeds_nonsplit_dir: str = ''
         self.rankeds_split_dir: str = ''
-        self.rankeds_without_mutations_dir: str = ''
         self.tmp_dir: str = ''
         self.group_ranked_by_rmsd_dict: dict = {}
         self.template_interfaces: dict = {}
@@ -58,6 +58,7 @@ class OutputAir:
         self.percentage_sequences: dict = {}
         self.templates_selected: List = []
         self.dendogram_struct: structures.Dendogram = None
+        self.experimental_pdbs = []
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -65,25 +66,18 @@ class OutputAir:
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
 
-
-    def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled,
-                       feature: features.Features, experimental_pdbs: List[str], binaries_paths,
-                       cluster_templates: bool = False):
-
+    def extract_results(self, results_dir: str, feature: features.Features, binaries_paths,
+                        experimental_pdbs: List[str], sequence_assembled: sequence.SequenceAssembled):
         # Read all templates and rankeds, if there are no ranked, raise an error
         self.results_dir = results_dir
         self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
+        self.rankeds_nonsplit_dir = f'{self.results_dir}/rakeds_nonsplit'
         self.rankeds_split_dir = f'{self.results_dir}/rankeds_split'
-        self.rankeds_without_mutations_dir = f'{self.results_dir}/rankeds_without_mutations'
-        self.tmp_dir = f'{self.results_dir}/tmp'
+        self.experimental_pdbs = experimental_pdbs
 
         utils.create_dir(dir_path=self.templates_nonsplit_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.rankeds_split_dir, delete_if_exists=True)
-        utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
-        utils.create_dir(dir_path=self.rankeds_without_mutations_dir, delete_if_exists=True)
-
-        store_old_dir = os.getcwd()
-        os.chdir(self.tmp_dir)
+        utils.create_dir(dir_path=self.rankeds_nonsplit_dir, delete_if_exists=True)
 
         logging.error('Extracting the templates from the features file')
         if feature is not None:
@@ -104,9 +98,8 @@ class OutputAir:
         logging.error('Reading predictions from the results folder')
         self.ranked_list = utils.read_rankeds(input_path=self.results_dir)
 
-        if not self.ranked_list or cluster_templates:
+        if not self.ranked_list:
             logging.error('No predictions found')
-            os.chdir(store_old_dir)
             return
 
         # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
@@ -116,25 +109,20 @@ class OutputAir:
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
+            ranked.set_path(shutil.copy2(ranked.path, self.rankeds_nonsplit_dir))
+            bioutils.remove_hydrogens(ranked.path, ranked.path)
             accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path)
             ranked.set_compactness(compactness)
             accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.path)
             if perc is not None:
                 perc = round(perc, 2)
             ranked.set_ramachandran(perc)
-            if sequence_assembled.get_mutated_residues_list():
-                path = shutil.copy2(ranked.path, self.rankeds_without_mutations_dir)
-                ranked.set_without_mutations_path(path)
-                residues = [*range(1, sequence_assembled.length, 1)]
-                change = change_res.ChangeResidues(chain_res_dict={'A': residues}, sequence=sequence_assembled.sequence_assembled)
-                change.change_residues(path, path)
             
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
             mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.path,
                                                     pdb_out_path=ranked.split_path,
                                                     sequence_assembled=sequence_assembled)
             ranked.set_mapping(mapping)
-            bioutils.remove_hydrogens(ranked.split_path, ranked.split_path)
             ranked.set_encoded(ranked.split_path)
             if accepted_ramachandran and accepted_compactness and ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
                 ranked.set_filtered(True)
@@ -148,7 +136,7 @@ class OutputAir:
         # Superpose the experimental pdb with all the rankeds and templates
         logging.error('Superposing experimental pdbs with predictions and templates')       
         ranked_pdb_list = [ranked.split_path for ranked in self.ranked_list]
-        for experimental in experimental_pdbs:
+        for experimental in self.experimental_pdbs:
             aux_dict = {}
             for pdb in ranked_pdb_list + list(self.templates_dict.values()):
                 rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
@@ -163,10 +151,9 @@ class OutputAir:
                         ranked.add_experimental(strct)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict 
 
-
         # Select the best ranked
         sorted_ranked_list = []
-        if experimental_pdbs:
+        if self.experimental_pdbs:
             logging.error('Experimental pdbs found. Selecting the best prediction taking into account the qscore with the experimental pdbs') 
             sorted_ranked_list = sorted(self.ranked_list, key=lambda ranked: (ranked.filtered, ranked.superposition_experimental[0].qscore), reverse=True)
         else:
@@ -177,11 +164,20 @@ class OutputAir:
             logging.error('There are no predictions that meet the minimum quality requirements. All predictions were filtered. Check the tables')
         else:
             self.ranked_list = sorted_ranked_list
+
+
+    def analyse_output(self, binaries_paths, sequence_assembled: sequence.SequenceAssembled):
+        # Analyse the output, superpositions and everything.
+
+        self.tmp_dir = f'{self.results_dir}/tmp'
+        utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
+        store_old_dir = os.getcwd()
+        os.chdir(self.tmp_dir)
     
         reference_superpose = self.ranked_list[0].path
 
         # Store the superposition of the experimental with the best ranked
-        for experimental in experimental_pdbs:
+        for experimental in self.experimental_pdbs:
             bioutils.gesamt_pdbs([reference_superpose, experimental], experimental)
 
         #Superpose rankeds and store the superposition with the best one
@@ -217,8 +213,6 @@ class OutputAir:
                     ranked.set_rmsd(0)
                     if self.ranked_list[0].name == ranked.name:
                         ranked.set_best(True)
-
-
 
         #Use frobenius
         dendogram_file = os.path.join(self.tmp_dir, 'dendogram.txt')
@@ -303,12 +297,6 @@ class OutputAir:
                     ranked.set_potential_energy(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
                 except:
                     logging.debug(f'Not possible to calculate the energies for pdb {ranked.path}')
-                if ranked.without_mutations_path:
-                    ranked.set_without_mutations_minimized_path(os.path.join(self.rankeds_without_mutations_dir, f'{ranked.name}_minimized.pdb'))
-                    try:
-                        bioutils.run_openmm(pdb_in_path=ranked.without_mutations_path, pdb_out_path=ranked.without_mutations_minimized_path)
-                    except:
-                        logging.debug(f'Not possible to calculate the energies for pdb {ranked.without_mutations_path}')
 
                 ranked_chains_list = bioutils.get_chains(ranked.split_path)
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
