@@ -724,7 +724,7 @@ class StructureAir:
         if os.path.exists(old_results_dir):
             shutil.rmtree(old_results_dir)
         shutil.move(self.results_dir, old_results_dir)
-        if os.path.exists(old_results_dir):
+        if os.path.exists(self.results_dir):
             shutil.rmtree(self.results_dir)
         os.mkdir(self.results_dir)
         shutil.copytree(mutations_results_dir, self.results_dir)
