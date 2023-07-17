@@ -699,6 +699,7 @@ class StructureAir:
         yml_path = os.path.join(mutations_dir, 'config.yml')
         best_ranked = self.output.ranked_list[0]
         pdb_path = shutil.copy2(best_ranked.path, os.path.join(mutations_dir, 'selected.pdb'))
+
         utils.delete_old_rankeds(self.output_dir)
         with open(yml_path, 'w') as f_out:
             f_out.write(f'mode: guided\n')
@@ -723,8 +724,11 @@ class StructureAir:
         if os.path.exists(old_results_dir):
             shutil.rmtree(old_results_dir)
         shutil.move(self.results_dir, old_results_dir)
+        if os.path.exists(old_results_dir):
+            shutil.rmtree(self.results_dir)
+        os.mkdir(self.results_dir)
         shutil.copytree(mutations_results_dir, self.results_dir)
-        
+
 
     def create_cluster(self, job_path: str, templates: List[str]) -> str:
         yml_path = os.path.join(job_path, 'config.yml')

@@ -169,7 +169,6 @@ class OutputAir:
 
     def analyse_output(self, binaries_paths, sequence_assembled: sequence.SequenceAssembled):
         # Analyse the output, superpositions and everything.
-
         self.tmp_dir = f'{self.results_dir}/tmp'
         utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
         store_old_dir = os.getcwd()
