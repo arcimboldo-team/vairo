@@ -718,7 +718,7 @@ class StructureAir:
             f_out.write('-')
             f_out.write(f' pdb: {pdb_path}\n')
             f_out.write(f'  legacy: True\n')
-            f_out.write(f'  change_res: True\n')
+            f_out.write(f'  change_res:\n')
             f_out.write(f'  - All: 1-100000\n')
             f_out.write(f'    resname: ALA\n')
         bioutils.run_arcimboldo_air(yml_path=yml_path)
