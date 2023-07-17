@@ -170,10 +170,10 @@ def main():
         a_air.extract_results()
         if a_air.cluster_templates and a_air.run_af2:
             a_air.templates_clustering()
-            a_air.extract_results
+            a_air.extract_results()
         elif a_air.sequence_assembled.mutated:
             a_air.delete_mutations()
-            a_air.extract_results
+            a_air.extract_results()
         a_air.analyse_output()
 
         a_air.change_state(state=3)

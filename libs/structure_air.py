@@ -689,6 +689,7 @@ class StructureAir:
 
 
     def delete_mutations(self) -> str:
+        logging.error('Proceding to launch ARICMBOLDO_AIR in order to delete the mutations')
         mutations_dir = os.path.join(self.run_dir, 'delete_mutations')
         if os.path.exists(mutations_dir):
             shutil.rmtree(mutations_dir)
