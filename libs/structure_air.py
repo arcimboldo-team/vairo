@@ -698,16 +698,10 @@ class StructureAir:
         mutations_results_dir = os.path.join(mutations_run_dir, 'results')
         old_results_dir = os.path.join(self.run_dir, 'old_results_dir')
         yml_path = os.path.join(mutations_dir, 'config.yml')
-        features_path = os.path.join(mutations_dir,'features.pkl')
-        new_features = features.Features(self.sequence_assembled.sequence_assembled)
         best_ranked = self.output.ranked_list[0]
-        template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
-                                    query_sequence=self.sequence_assembled.sequence_assembled, 
-                                    pdb_path=best_ranked.path, 
-                                    pdb_id=best_ranked.name,
-                                    chain_id='A')
-        new_features.append_new_template_features(template_features)
-        new_features.write_pkl(features_path)
+        pdb_path = shutil.copy2(best_ranked.path, os.path.join(mutations_dir, 'selected.pdb'))
+        change_ala = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, self.sequence_assembled.length+1, 1)]}, resname='ALA')
+        change_ala.change_residues(pdb_path, pdb_path)
         with open(yml_path, 'w') as f_out:
             f_out.write(f'mode: guided\n')
             f_out.write(f'output_dir: {mutations_dir}\n')
@@ -721,16 +715,14 @@ class StructureAir:
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
-            f_out.write(f'\nfeatures:\n')
+            f_out.write(f'\ntemplates:\n')
             f_out.write('-')
-            f_out.write(f' path: {features_path}\n')
-            f_out.write(f'  keep_msa: -1\n')
-            f_out.write(f'  keep_templates: -1\n')
+            f_out.write(f' pdb: {pdb_path}\n')
+            f_out.write(f'  legacy: True\n')
         bioutils.run_arcimboldo_air(yml_path=yml_path)
         if os.path.exists(old_results_dir):
             shutil.rmtree(old_results_dir)
         shutil.move(self.results_dir, old_results_dir)
-        os.mkdir(self.results_dir)
         shutil.copytree(mutations_results_dir, self.results_dir)
         
 
