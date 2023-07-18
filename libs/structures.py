@@ -174,8 +174,6 @@ class Ranked:
         self.name: str
         self.split_path: str
         self.minimized_path: str
-        self.without_mutations_path: str = None
-        self.without_mutations_minimized_path: str = None
         self.plddt: int
         self.ah: int
         self.bs: int
@@ -198,12 +196,6 @@ class Ranked:
 
     def set_path(self, path: str):
         self.path = path
-
-    def set_without_mutations_minimized_path(self, path: str):
-        self.without_mutations_minimized_path = path
-
-    def set_without_mutations_path(self, path: str):
-        self.without_mutations_path = path
 
     def set_plddt(self, plddt: float):
         self.plddt = round(plddt)

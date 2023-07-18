@@ -120,12 +120,6 @@ class OutputAir:
             if perc is not None:
                 perc = round(perc, 2)
             ranked.set_ramachandran(perc)
-            if sequence_assembled.get_mutated_residues_list():
-                path = shutil.copy2(ranked.path, self.rankeds_without_mutations_dir)
-                ranked.set_without_mutations_path(path)
-                residues = [*range(1, sequence_assembled.length, 1)]
-                change = change_res.ChangeResidues(chain_res_dict={'A': residues}, sequence=sequence_assembled.sequence_assembled)
-                change.change_residues(path, path)
             
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
             mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.path,
@@ -306,12 +300,6 @@ class OutputAir:
                     ranked.set_potential_energy(bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
                 except:
                     logging.debug(f'Not possible to calculate the energies for pdb {ranked.path}')
-                if ranked.without_mutations_path:
-                    ranked.set_without_mutations_minimized_path(os.path.join(self.rankeds_without_mutations_dir, f'{ranked.name}_minimized.pdb'))
-                    try:
-                        bioutils.run_openmm(pdb_in_path=ranked.without_mutations_path, pdb_out_path=ranked.without_mutations_minimized_path)
-                    except:
-                        logging.debug(f'Not possible to calculate the energies for pdb {ranked.without_mutations_path}')
 
                 ranked_chains_list = bioutils.get_chains(ranked.split_path)
                 interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
