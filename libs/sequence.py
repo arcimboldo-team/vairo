@@ -80,7 +80,6 @@ class SequenceAssembled:
         self.length: str
         self.glycines: int = glycines
         self.total_copies: int = 0
-        self.mutated: bool = False
 
         self.total_copies = sum([sequence.num_of_copies for sequence in sequence_list])
         positions_to_fill = []
@@ -106,9 +105,6 @@ class SequenceAssembled:
         self.sequence_assembled = self.sequence_assembled[:-self.glycines]
         self.sequence_mutated_assembled = self.sequence_mutated_assembled[:-self.glycines]
         self.length = len(self.sequence_assembled)
-
-        if self.sequence_mutated_assembled != self.sequence_assembled:
-            self.mutated = True
 
         if self.total_copies > 1:
             logging.error(f'Merging {self.total_copies} sequences into one, each separeted by {self.glycines} glycines')

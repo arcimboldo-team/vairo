@@ -59,6 +59,7 @@ class StructureAir:
         self.pymol_template_path: str
         self.pymol_keys_dict: dict = {}
 
+
         self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
         utils.create_dir(self.output_dir)
         self.log_path = os.path.join(self.output_dir, 'output.log')
@@ -609,22 +610,6 @@ class StructureAir:
             '3': 'Finished'
         }[str(self.state)]
 
-    def extract_results(self):
-        self.output.extract_results(
-            results_dir=self.results_dir,
-            sequence_assembled=self.sequence_assembled,
-            feature=self.feature,
-            binaries_paths=self.binaries_paths,
-            experimental_pdbs=self.experimental_pdbs
-        )
-
-    def analyse_output(self):
-        self.output.analyse_output(
-            sequence_assembled=self.sequence_assembled,
-            binaries_paths=self.binaries_paths
-        )
-
-
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
@@ -688,48 +673,6 @@ class StructureAir:
             plots.plot_sequence(plot_path=self.output.sequence_plot_path, a_air=self)
 
 
-    def delete_mutations(self) -> str:
-        logging.error('Proceding to launch ARICMBOLDO_AIR in order to delete the mutations')
-        mutations_dir = os.path.join(self.run_dir, 'delete_mutations')
-        utils.create_dir(dir_path=mutations_dir, delete_if_exists=False)
-        mutations_run_dir = os.path.join(mutations_dir, os.path.basename(self.run_dir))
-        mutations_results_dir = os.path.join(mutations_run_dir, 'results')
-        old_results_dir = os.path.join(self.run_dir, 'old_results_dir')
-        yml_path = os.path.join(mutations_dir, 'config.yml')
-        best_ranked = self.output.ranked_list[0]
-        pdb_path = shutil.copy2(best_ranked.path, os.path.join(mutations_dir, 'selected.pdb'))
-
-        utils.delete_old_rankeds(self.output_dir)
-        with open(yml_path, 'w') as f_out:
-            f_out.write(f'mode: guided\n')
-            f_out.write(f'output_dir: {mutations_dir}\n')
-            f_out.write(f'run_dir: {mutations_run_dir}\n')
-            f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
-            f_out.write(f'glycines: {self.glycines}\n')
-            f_out.write(f'run_af2: {self.run_af2}\n')
-            f_out.write(f'\nsequences:\n')
-            for sequence_in in self.sequence_assembled.sequence_list:
-                f_out.write('-')
-                f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
-                f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
-                new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
-                f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
-            f_out.write(f'\ntemplates:\n')
-            f_out.write('-')
-            f_out.write(f' pdb: {pdb_path}\n')
-            f_out.write(f'  legacy: True\n')
-            f_out.write(f'  change_res:\n')
-            f_out.write(f'  - All: 1-100000\n')
-            f_out.write(f'    resname: ALA\n')
-        bioutils.run_arcimboldo_air(yml_path=yml_path)
-        if os.path.exists(old_results_dir):
-            shutil.rmtree(old_results_dir)
-        shutil.move(self.results_dir, old_results_dir)
-        if os.path.exists(self.results_dir):
-            shutil.rmtree(self.results_dir)
-        shutil.copytree(mutations_results_dir, self.results_dir)
-
-
     def create_cluster(self, job_path: str, templates: List[str]) -> str:
         yml_path = os.path.join(job_path, 'config.yml')
         features_path = os.path.join(job_path, 'features.pkl')
@@ -753,7 +696,6 @@ class StructureAir:
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
             f_out.write(f'glycines: {self.glycines}\n')
             f_out.write(f'mosaic: {self.mosaic}\n')
-            f_out.write(f'run_af2: {self.run_af2}\n')   
             if self.mosaic_partition:
                 txt_aux = []
                 for partition in self.mosaic_partition:
@@ -762,14 +704,10 @@ class StructureAir:
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
-                f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
+                f_out.write(f' fasta_path: {sequence_in.fasta_mutated_path}\n')
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
-                if sequence_in.mutations_dict.items():
-                    f_out.write(f'  mutations:\n')
-                    for residue, values in sequence_in.mutations_dict.items():
-                        f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
             f_out.write(f'\nfeatures:\n')
             f_out.write('-')
             f_out.write(f' path: {features_path}\n')
