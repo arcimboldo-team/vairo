@@ -74,13 +74,9 @@ class OutputAir:
         self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
         self.rankeds_split_dir = f'{self.results_dir}/rankeds_split'
         self.rankeds_nonsplit_dir = f'{self.results_dir}/rankeds_nonsplit'
-        self.rankeds_without_mutations_dir = f'{self.results_dir}/rankeds_without_mutations'
-        self.tmp_dir = f'{self.results_dir}/tmp'
 
         utils.create_dir(dir_path=self.templates_nonsplit_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.rankeds_split_dir, delete_if_exists=True)
-        utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
-        utils.create_dir(dir_path=self.rankeds_without_mutations_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.rankeds_nonsplit_dir, delete_if_exists=True)
 
         logging.error('Extracting the templates from the features file')
@@ -173,6 +169,9 @@ class OutputAir:
 
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, experimental_pdbs: List[str], 
                        binaries_paths):
+
+        self.tmp_dir = f'{self.results_dir}/tmp'
+        utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
 
         store_old_dir = os.getcwd()
         os.chdir(self.tmp_dir)
