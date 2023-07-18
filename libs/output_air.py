@@ -73,6 +73,7 @@ class OutputAir:
         self.results_dir = results_dir
         self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
         self.rankeds_split_dir = f'{self.results_dir}/rankeds_split'
+        self.rankeds_nonsplit_dir = f'{self.results_dir}/rankeds_nonsplit'
         self.rankeds_without_mutations_dir = f'{self.results_dir}/rankeds_without_mutations'
         self.tmp_dir = f'{self.results_dir}/tmp'
 
@@ -80,6 +81,7 @@ class OutputAir:
         utils.create_dir(dir_path=self.rankeds_split_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.rankeds_without_mutations_dir, delete_if_exists=True)
+        utils.create_dir(dir_path=self.rankeds_nonsplit_dir, delete_if_exists=True)
 
         logging.error('Extracting the templates from the features file')
         if feature is not None:
@@ -111,6 +113,7 @@ class OutputAir:
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
+            ranked.set_path(shutil.copy2(ranked.path, self.rankeds_nonsplit_dir))
             accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path)
             ranked.set_compactness(compactness)
             accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.path)
