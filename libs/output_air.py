@@ -71,7 +71,7 @@ class OutputAir:
         # Read all templates and rankeds, if there are no ranked, raise an error
         self.results_dir = results_dir
         self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
-        self.rankeds_nonsplit_dir = f'{self.results_dir}/rakeds_nonsplit'
+        self.rankeds_nonsplit_dir = f'{self.results_dir}/rankeds_nonsplit'
         self.rankeds_split_dir = f'{self.results_dir}/rankeds_split'
         self.experimental_pdbs = experimental_pdbs
 
@@ -109,7 +109,6 @@ class OutputAir:
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
-            print(ranked.path)
             ranked.set_path(shutil.copy2(ranked.path, self.rankeds_nonsplit_dir))
             bioutils.remove_hydrogens(ranked.path, ranked.path)
             accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path)

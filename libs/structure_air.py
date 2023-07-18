@@ -691,9 +691,7 @@ class StructureAir:
     def delete_mutations(self) -> str:
         logging.error('Proceding to launch ARICMBOLDO_AIR in order to delete the mutations')
         mutations_dir = os.path.join(self.run_dir, 'delete_mutations')
-        if os.path.exists(mutations_dir):
-            shutil.rmtree(mutations_dir)
-        os.mkdir(mutations_dir)
+        utils.create_dir(dir_path=mutations_dir, delete_if_exists=False)
         mutations_run_dir = os.path.join(mutations_dir, os.path.basename(self.run_dir))
         mutations_results_dir = os.path.join(mutations_run_dir, 'results')
         old_results_dir = os.path.join(self.run_dir, 'old_results_dir')
@@ -708,6 +706,7 @@ class StructureAir:
             f_out.write(f'run_dir: {mutations_run_dir}\n')
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
             f_out.write(f'glycines: {self.glycines}\n')
+            f_out.write(f'run_af2: {self.run_af2}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
@@ -754,6 +753,7 @@ class StructureAir:
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
             f_out.write(f'glycines: {self.glycines}\n')
             f_out.write(f'mosaic: {self.mosaic}\n')
+            f_out.write(f'run_af2: {self.run_af2}\n')   
             if self.mosaic_partition:
                 txt_aux = []
                 for partition in self.mosaic_partition:
