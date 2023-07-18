@@ -166,28 +166,15 @@ def main():
         if a_air.feature is None and os.path.exists(features_path):
             new_features = features.create_features_from_file(features_path)
             a_air.set_feature(new_features)
-        a_air.output.analyse_output(results_dir=a_air.results_dir,
-                                    sequence_assembled=a_air.sequence_assembled,
-                                    feature=a_air.feature,
-                                    experimental_pdbs=a_air.experimental_pdbs,
-                                    binaries_paths=a_air.binaries_paths,
-                                    cluster_templates=a_air.cluster_templates)
-        
-        if a_air.cluster_templates:
-            if a_air.run_af2:
-                a_air.templates_clustering()
-            a_air.output.analyse_output(results_dir=a_air.results_dir,
-                                        sequence_assembled=a_air.sequence_assembled,
-                                        feature=a_air.feature,
-                                        experimental_pdbs=a_air.experimental_pdbs,
-                                        binaries_paths=a_air.binaries_paths)
-        if a_air.sequence_assembled.mutated:
+
+        a_air.extract_results()
+        if a_air.cluster_templates and a_air.run_af2:
+            a_air.templates_clustering()
+            a_air.extract_results()
+        elif a_air.sequence_assembled.mutated:
             a_air.delete_mutations()
-            a_air.output.analyse_output(results_dir=a_air.results_dir,
-                                        sequence_assembled=a_air.sequence_assembled,
-                                        feature=a_air.feature,
-                                        experimental_pdbs=a_air.experimental_pdbs,
-                                        binaries_paths=a_air.binaries_paths)            
+            a_air.extract_results()
+        a_air.analyse_output()
 
         a_air.change_state(state=3)
         a_air.generate_output()

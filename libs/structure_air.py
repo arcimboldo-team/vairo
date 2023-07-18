@@ -672,6 +672,22 @@ class StructureAir:
         if self.sequence_assembled.total_copies > 1:
             plots.plot_sequence(plot_path=self.output.sequence_plot_path, a_air=self)
 
+    def extract_results(self):
+        self.output.extract_results(
+            results_dir=self.results_dir,
+            sequence_assembled=self.sequence_assembled,
+            feature=self.feature,
+            binaries_paths=self.binaries_paths,
+            experimental_pdbs=self.experimental_pdbs
+        )
+
+    def analyse_output(self):
+        self.output.analyse_output(
+            sequence_assembled=self.sequence_assembled,
+            binaries_paths=self.binaries_paths,
+            experimental_pdbs=self.experimental_pdbs
+        )
+
     def delete_mutations(self) -> str:
         logging.error('Proceding to launch ARICMBOLDO_AIR in order to delete the mutations')
         mutations_dir = os.path.join(self.run_dir, 'delete_mutations')

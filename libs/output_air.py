@@ -66,10 +66,9 @@ class OutputAir:
 
 
 
-    def analyse_output(self, results_dir: str, sequence_assembled: sequence.SequenceAssembled,
-                       feature: features.Features, experimental_pdbs: List[str], binaries_paths,
-                       cluster_templates: bool = False):
-
+    def extract_results(self, results_dir: str, feature: features.Features, binaries_paths,
+                        experimental_pdbs: List[str], sequence_assembled: sequence.SequenceAssembled):
+        
         # Read all templates and rankeds, if there are no ranked, raise an error
         self.results_dir = results_dir
         self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
@@ -81,9 +80,6 @@ class OutputAir:
         utils.create_dir(dir_path=self.rankeds_split_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.rankeds_without_mutations_dir, delete_if_exists=True)
-
-        store_old_dir = os.getcwd()
-        os.chdir(self.tmp_dir)
 
         logging.error('Extracting the templates from the features file')
         if feature is not None:
@@ -104,9 +100,8 @@ class OutputAir:
         logging.error('Reading predictions from the results folder')
         self.ranked_list = utils.read_rankeds(input_path=self.results_dir)
 
-        if not self.ranked_list or cluster_templates:
+        if not self.ranked_list:
             logging.error('No predictions found')
-            os.chdir(store_old_dir)
             return
 
         # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
@@ -177,7 +172,14 @@ class OutputAir:
             logging.error('There are no predictions that meet the minimum quality requirements. All predictions were filtered. Check the tables')
         else:
             self.ranked_list = sorted_ranked_list
-    
+
+
+    def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, experimental_pdbs: List[str], 
+                       binaries_paths):
+
+        store_old_dir = os.getcwd()
+        os.chdir(self.tmp_dir)
+
         reference_superpose = self.ranked_list[0].path
 
         # Store the superposition of the experimental with the best ranked
@@ -217,8 +219,6 @@ class OutputAir:
                     ranked.set_rmsd(0)
                     if self.ranked_list[0].name == ranked.name:
                         ranked.set_best(True)
-
-
 
         #Use frobenius
         dendogram_file = os.path.join(self.tmp_dir, 'dendogram.txt')
