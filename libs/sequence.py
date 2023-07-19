@@ -205,7 +205,7 @@ class SequenceAssembled:
                 starting_position = end_position
             return chunk_list
 
-    def get_percentages(self, path_in: str) -> List[int]:
+    def get_percentages(self, path_in: str) -> List[float]:
         structure = bioutils.get_structure(path_in)
         result_list = [0] * self.total_copies
         for residue in structure[0].get_residues():

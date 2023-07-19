@@ -1,4 +1,3 @@
-import itertools
 import logging
 import os
 import shutil
@@ -6,9 +5,8 @@ import sys
 from itertools import combinations
 from typing import Dict, List
 import pandas as pd
-
 from ALEPH.aleph.core import ALEPH
-from libs import bioutils, features, utils, sequence, structures, plots, change_res
+from libs import bioutils, features, utils, sequence, structures, plots
 
 PERCENTAGE_FILTER = 0.8
 PERCENTAGE_MAX_RMSD = 1
@@ -44,6 +42,7 @@ class OutputAir:
         self.gantt_plots: structures.GanttPlot = None
         self.gantt_complete_plots: structures.GanttPlot = None
         self.ranked_list: List[structures.Ranked] = []
+        self.templates_list: List[structures.Templates] = []
         self.output_dir: str = output_dir
         self.experimental_dict = {}
         self.results_dir: str = ''
@@ -53,9 +52,6 @@ class OutputAir:
         self.tmp_dir: str = ''
         self.group_ranked_by_rmsd_dict: dict = {}
         self.template_interfaces: dict = {}
-        self.templates_dict: dict = {}
-        self.templates_nonsplit_dict: dict = {}
-        self.percentage_sequences: dict = {}
         self.templates_selected: List = []
         self.dendogram_struct: structures.Dendogram = None
 
@@ -81,19 +77,25 @@ class OutputAir:
 
         logging.error('Extracting the templates from the features file')
         if feature is not None:
-            self.templates_nonsplit_dict = feature.write_all_templates_in_features(
+            templates_nonsplit_dict = feature.write_all_templates_in_features(
                 output_dir=self.templates_nonsplit_dir,
                 print_number=False)
+            self.templates_list = [structures.Template(path=path) for path in templates_nonsplit_dict.values()]
             
         # Split the templates with chains
-        for template, template_path in self.templates_nonsplit_dict.items():
-            self.percentage_sequences[template] = sequence_assembled.get_percentages(template_path)
-            new_pdb_path = os.path.join(self.templates_path, f'{template}.pdb')
-            self.templates_dict[template] = new_pdb_path
-            shutil.copy2(template_path, new_pdb_path)
-            bioutils.split_chains_assembly(pdb_in_path=new_pdb_path,
-                                           pdb_out_path=new_pdb_path,
+        for template in self.templates_list:
+            template.add_percentage(sequence_assembled.get_percentages(template.path))
+            template.set_split_path(os.path.join(self.templates_path, f'{template.name}.pdb'))
+            template.set_sequence_msa(list(bioutils.extract_sequence_msa_from_pdb(template.path).values())[0])
+            template.set_identity(bioutils.sequence_identity(template.sequence_msa, sequence_assembled.sequence_assembled))
+            bioutils.split_chains_assembly(pdb_in_path=template.path,
+                                           pdb_out_path=template.split_path,
                                            sequence_assembled=sequence_assembled)
+            _, compactness = bioutils.run_spong(pdb_in_path=template.path, spong_path=binaries_paths.spong_path)
+            template.set_compactness(compactness)
+            _, perc = bioutils.generate_ramachandran(pdb_path=template.path)
+            template.set_ramachandran(perc)
+
 
         logging.error('Reading predictions from the results folder')
         self.ranked_list = utils.read_rankeds(input_path=self.results_dir)
@@ -116,7 +118,6 @@ class OutputAir:
             if perc is not None:
                 perc = round(perc, 2)
             ranked.set_ramachandran(perc)
-            
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
             mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.path,
                                                     pdb_out_path=ranked.split_path,
@@ -135,20 +136,18 @@ class OutputAir:
         
         # Superpose the experimental pdb with all the rankeds and templates
         logging.error('Superposing experimental pdbs with predictions and templates')       
-        ranked_pdb_list = [ranked.split_path for ranked in self.ranked_list]
         for experimental in experimental_pdbs:
             aux_dict = {}
-            for pdb in ranked_pdb_list + list(self.templates_dict.values()):
-                rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb, experimental])
+            for pdb in self.ranked_list + self.templates_list:
+                rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb.split_path, experimental])
                 if rmsd is not None:
                     rmsd = round(rmsd, 2)
-                    total_residues = bioutils.get_number_residues(pdb)
-                    aux_dict[utils.get_file_name(pdb)] = structures.PdbRanked(pdb, rmsd, aligned_residues,
+                    total_residues = bioutils.get_number_residues(pdb.path)
+                    aux_dict[pdb.name] = structures.PdbRanked(pdb.path, rmsd, aligned_residues,
                                                                                 total_residues, quality_q)
-                    if pdb in ranked_pdb_list:
-                        ranked = [ranked for ranked in self.ranked_list if ranked.split_path == pdb][0]
+                    if pdb in self.ranked_list:
                         strct = structures.PdbRanked(experimental, rmsd, aligned_residues, total_residues, quality_q)
-                        ranked.add_experimental(strct)
+                        pdb.add_experimental(strct)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict 
 
 
@@ -170,12 +169,15 @@ class OutputAir:
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, experimental_pdbs: List[str], 
                        binaries_paths):
 
+        if not self.ranked_list:
+            return
+        
         self.tmp_dir = f'{self.results_dir}/tmp'
         utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
 
         store_old_dir = os.getcwd()
         os.chdir(self.tmp_dir)
-
+        
         reference_superpose = self.ranked_list[0].path
 
         # Store the superposition of the experimental with the best ranked
@@ -217,46 +219,42 @@ class OutputAir:
                         ranked.set_best(True)
 
         #Use frobenius
-        dendogram_file = os.path.join(self.tmp_dir, 'dendogram.txt')
-        dendogram_plot = os.path.join(self.tmp_dir, 'clustering_dendogram_angles.png')
-        if len(self.templates_nonsplit_dict) > 1:
-            logging.error('Creating dendogram and clusters with ALEPH')
-            with open(dendogram_file, 'w') as sys.stdout:
-                _, _, _, _, _, _, _, _, dendogram_list = ALEPH.frobenius(references=list(self.templates_nonsplit_dict.values()),
-                                                        targets=list(self.templates_nonsplit_dict.values()), write_plot=True,
-                                                        write_matrix=True)
-            sys.stdout = sys.__stdout__
-            if dendogram_list:
-                shutil.copy2(dendogram_plot, self.dendogram_plot_path)
-                logging.error('The groups generated by frobenius are the following ones:')
-            for i, templates in enumerate(dendogram_list):
-                logging.error(f'Group {i}: {" ".join(templates)}')
+        #templates_nonsplit_paths_list = [template.path for template in self.templates_list] 
+        #dendogram_file = os.path.join(self.tmp_dir, 'dendogram.txt')
+        #dendogram_plot = os.path.join(self.tmp_dir, 'clustering_dendogram_angles.png')
+        #if len(self.templates_list) > 1:
+        #    logging.error('Creating dendogram and clusters with ALEPH')
+        #    with open(dendogram_file, 'w') as sys.stdout:
+        #        _, _, _, _, _, _, _, _, dendogram_list = ALEPH.frobenius(references=templates_nonsplit_paths_list,
+        #                                                targets=templates_nonsplit_paths_list, write_plot=True,
+        #                                                write_matrix=True)
+        #    sys.stdout = sys.__stdout__
+        #    if dendogram_list:
+        #        shutil.copy2(dendogram_plot, self.dendogram_plot_path)
+        #        logging.error('The groups generated by frobenius are the following ones:')
+        #    for i, templates in enumerate(dendogram_list):
+        #        logging.error(f'Group {i}: {" ".join(templates)}')
 
-            self.dendogram_struct = structures.Dendogram(dendogram_list=dendogram_list,
-                                                        dendogram_plot=self.dendogram_plot_path,
-                                                        encoded_dendogram_plot=utils.encode_data(self.dendogram_plot_path))
-        else:
-            logging.error('Not possible to calculate the dendrogram with just one sample')
+        #    self.dendogram_struct = structures.Dendogram(dendogram_list=dendogram_list,
+        #                                                dendogram_plot=self.dendogram_plot_path,
+        #                                                encoded_dendogram_plot=utils.encode_data(self.dendogram_plot_path))
+        #else:
+        #    logging.error('Not possible to calculate the dendrogram with just one sample')
 
         # Generate CCANALYSIS plots, one without rankeds and another one with rankeds.
 
         logging.error('Analysing results with hinges and ccanalysis')
-        templates_cluster_list, analysis_dict = bioutils.cc_and_hinges_analysis(paths_split_in=self.templates_dict,
-                                                                                paths_nonsplit_in=self.templates_nonsplit_dict,
+        templates_cluster_list, analysis_dict = bioutils.cc_and_hinges_analysis(pdbs=self.templates_list,
                                                                                 binaries_path=binaries_paths,
-                                                                                output_path=self.results_dir,
-                                                                                length_sequences=self.percentage_sequences)
+                                                                                output_path=self.results_dir)
         if analysis_dict:
             plots.plot_cc_analysis(plot_path=self.analysis_plot_path,
                                    analysis_dict=analysis_dict,
                                    clusters=templates_cluster_list)
-        aux_split_dict = dict({ranked.name: ranked.split_path for ranked in self.ranked_list}, **self.templates_dict)
-        aux_nonsplit_dict = dict({ranked.name: ranked.path for ranked in self.ranked_list}, **self.templates_nonsplit_dict)
-        templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_and_hinges_analysis(paths_split_in=aux_split_dict,
-                                                                                              paths_nonsplit_in=aux_nonsplit_dict,
+
+        templates_cluster_ranked_list, analysis_dict_ranked = bioutils.cc_and_hinges_analysis(pdbs=self.templates_list+self.ranked_list,
                                                                                               binaries_path=binaries_paths,
-                                                                                              output_path=self.results_dir,
-                                                                                              length_sequences=self.percentage_sequences)
+                                                                                              output_path=self.results_dir)
 
         if analysis_dict_ranked:
             plots.plot_cc_analysis(plot_path=self.analysis_ranked_plot_path, analysis_dict=analysis_dict_ranked,
@@ -264,23 +262,23 @@ class OutputAir:
 
 
         # Superpose each template with all the rankeds.
-        if self.templates_dict:
+        if self.templates_list:
             for i, ranked in enumerate(self.ranked_list):
-                for template, template_path in self.templates_dict.items():
-                    total_residues = bioutils.get_number_residues(template_path)
-                    rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([ranked.split_path, template_path])
+                for template in self.templates_list:
+                    total_residues = bioutils.get_number_residues(template.path)
+                    rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([ranked.split_path, template.split_path])
                     if rmsd is not None:
                         rmsd = round(rmsd, 2)
-                        ranked.add_template(structures.PdbRanked(template, rmsd, aligned_residues, total_residues, quality_q))
+                        ranked.add_template(structures.PdbRanked(template.name, rmsd, aligned_residues, total_residues, quality_q))
                 ranked.sort_template_rankeds()
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
 
-        for template_path in self.templates_dict.values():
-            if best_ranked_dict and template_path in best_ranked_dict:
-                bioutils.gesamt_pdbs([best_ranked_dict[template_path], template_path], template_path)
+        for template in self.templates_list:
+            if best_ranked_dict and template.split_path in best_ranked_dict:
+                bioutils.gesamt_pdbs([best_ranked_dict[template.split_path], template.split_path], template.split_path)
             else:
-                bioutils.gesamt_pdbs([self.ranked_list[0].split_path, template_path], template_path)
+                bioutils.gesamt_pdbs([self.ranked_list[0].split_path, template.split_path], template.split_path)
 
         logging.error('Analysing energies with openMM, interfaces with PISA and secondary structure information with ALEPH')
         if sequence_assembled.total_copies == 1:
@@ -334,22 +332,22 @@ class OutputAir:
                                                                 solvation2=float(interface['solvation2'])
                                                                 ))
 
-        for template, template_path in self.templates_nonsplit_dict.items():
+        for template in self.templates_list:
             frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{template}.txt')
             matrices = os.path.join(self.tmp_dir, 'matrices')
-            template_matrix = os.path.join(matrices, f'{utils.get_file_name(template_path)}_ang.npy')
+            template_matrix = os.path.join(matrices, f'{utils.get_file_name(template.path)}_ang.npy')
             path_list = [ranked.path for ranked in self.ranked_list if ranked.filtered]
             with open(frobenius_file, 'w') as sys.stdout:
                 _, list_targets, list_core, _, list_frobenius_angles, list_frobenius_distances, list_plot_ang, list_plot_dist, _ = ALEPH.frobenius(
-                    references=[template_path],
+                    references=[template.path],
                     targets=list(path_list), write_plot=True,
                     write_matrix=True)
             sys.stdout = sys.__stdout__
             ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
-            template_chains_list = bioutils.get_chains(self.templates_dict[template])
+            template_chains_list = bioutils.get_chains(template.split_path)
             template_interface_list = []
             if len(template_chains_list) > 1:
-                interfaces_data_list = bioutils.find_interface_from_pisa(self.templates_dict[template],
+                interfaces_data_list = bioutils.find_interface_from_pisa(template.split_path,
                                                                         self.interfaces_path)
                 for interface in interfaces_data_list:
                     seq1_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain1"]))
@@ -357,7 +355,7 @@ class OutputAir:
                     template_interface_list.append(f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}')
                 self.template_interfaces[template] = template_interface_list
             else:
-                logging.debug(f'Skipping interface search as there is only one chain in pdb {template_path}')
+                logging.debug(f'Skipping interface search as there is only one chain in pdb {template.name}')
              
             for ranked in ranked_filtered:
                 index = list_targets.index(ranked.name)
@@ -392,10 +390,9 @@ class OutputAir:
                         dist_plot=shutil.copy2(plot_path, new_name)
                     )
 
-        if len(self.templates_nonsplit_dict) > 20:
-            sorted_percentages = dict(sorted(self.percentage_sequences.items(), key=lambda x: sum(x[1])))
-            cut_dict = dict(itertools.islice(sorted_percentages.items(), 20))
-            self.templates_selected = list(cut_dict.keys())
+        if len(self.templates_list) > 20:
+            sorted_percentages = sorted(self.templates_list, key=lambda x: sum(x.percentage_list), reverse=True)[:20]
+            self.templates_selected = [template.name for template in sorted_percentages]
             change_pos = -1
             for ranked in self.ranked_list:
                 if ranked.superposition_templates:
@@ -403,7 +400,7 @@ class OutputAir:
                         self.templates_selected[change_pos] = ranked.superposition_templates[0].template
                         change_pos -= 1
         else:
-            self.templates_selected = list(self.templates_nonsplit_dict.keys())
+            self.templates_selected = [template.name for template in self.templates_list]
 
         os.chdir(store_old_dir)
 

@@ -422,7 +422,7 @@ def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
         output_path = 'cc_analysis.in'
         if pdb2cc_path is None:
             pdb2cc_path = 'pdb2cc'
-        command_line = f'{pdb2cc_path} -n 30 "orig.*.pdb" 0 {output_path}'
+        command_line = f'{pdb2cc_path} -m -i 10 -y 0.5 "orig.*.pdb" 0 {output_path}'
         p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
         p.communicate()
@@ -549,24 +549,20 @@ def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
         os.chdir(store_old_dir)
 
 
-def cc_and_hinges_analysis(paths_split_in: Dict, paths_nonsplit_in: Dict, binaries_path: structures.BinariesPath, output_path: str,
-                           length_sequences: Dict = None) -> List:
+def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, output_path: str) -> List:
     templates_cluster2 = []
-    templates_cluster = hinges(paths_in=paths_split_in,
+    templates_cluster = hinges(pdbs=pdbs,
                                binaries_path=binaries_path,
-                               output_path=os.path.join(output_path, 'hinges'),
-                               length_sequences=length_sequences)
+                               output_path=os.path.join(output_path, 'hinges'))
 
-    templates_path_list = [template_in for template_list in templates_cluster for template_in in template_list]
-    num_templates = len(templates_path_list)
-    templates_nonsplit_list = [paths_nonsplit_in[utils.get_file_name(template)] for template in templates_path_list]
-    
-    templates_nonsplit_list = list(paths_nonsplit_in.values())
+    #pdbs_accepted_list = [template_in for template_list in templates_cluster for template_in in template_list]
+    #num_templates = len(pdbs_accepted_list)
+    pdbs_accepted_list = pdbs
 
     #if num_templates >= 5:
     if True:
-        logging.debug(f'Running ccanalysis with the following templates: {" ".join(templates_nonsplit_list)}')
-        templates_cluster2, analysis_dict2 = cc_analysis(paths_in=templates_nonsplit_list,
+        logging.debug(f'Running ccanalysis with the following templates: {" ".join([pdb.name for pdb in pdbs_accepted_list])}')
+        templates_cluster2, analysis_dict2 = cc_analysis(pdbs=pdbs_accepted_list,
                                                         cc_analysis_paths=binaries_path,
                                                         cc_path=os.path.join(output_path, 'ccanalysis'))
     else:
@@ -579,7 +575,7 @@ def cc_and_hinges_analysis(paths_split_in: Dict, paths_nonsplit_in: Dict, binari
         return templates_cluster, {}
 
 
-def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: str, length_sequences: Dict = None) -> List:
+def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, output_path: str) -> List:
     # Hinges algorithm does:
     # Check completeness and ramachandran of every template. If it is not at least 70% discard for hinges.
     # Do hinges 6 iterations in all for all the templates
@@ -595,10 +591,12 @@ def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: 
     threshold_overlap = 0.7
     threshold_minimum = 3
     threshold_decrease = 40
+    threshold_identity_upper = 90
+    threshold_identity_down = 20
 
     logging.debug('Starting hinges analysis')
-    accepted_pdbs = {}
-    uncompleted_pdbs = {}
+    accepted_pdbs = []
+    uncompleted_pdbs = []
 
     # Do the analysis of the different templates. We are going to check:
     # Completeness respect the query size sequence
@@ -606,41 +604,43 @@ def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: 
     # And the compactness
     pdb_complete = ''
     pdb_complete_value = 0
-    for key, value in paths_in.items():
-        num_residues = sum(1 for _ in get_structure(value)[0].get_residues())
+    for pdb in pdbs:
+        num_residues = sum(1 for _ in get_structure(pdb.split_path)[0].get_residues())
         # Validate using ramachandran, check the outliers
-        validate_geometry, _ = generate_ramachandran(pdb_path=value, output_path=output_path)
+        validate_geometry, _ = generate_ramachandran(pdb_path=pdb.split_path, output_path=output_path)
         # Check the query sequence vs the number of residues of the pdb
-        only_ca = check_not_only_CA(pdb_in_path=value)
+        only_ca = check_not_only_CA(pdb_in_path=pdb.split_path)
         completeness = True
-        if length_sequences is not None and key in length_sequences:
-            completeness = any(number > threshold_completeness for number in length_sequences[key])
-        compactness_decision, _ = run_spong(pdb_in_path=value, spong_path=binaries_path.spong_path)
-
-        if completeness and validate_geometry and compactness_decision and not only_ca:
-            accepted_pdbs[key] = value
+        identity = True
+        if isinstance(pdb, structures.Template) and pdb.percentage_list:
+            completeness = any(number > threshold_completeness for number in pdb.percentage_list)
+            if pdb.identity > threshold_identity_upper or pdb.identity < threshold_identity_down:
+                identity = False
+        compactness_decision, _ = run_spong(pdb_in_path=pdb.split_path, spong_path=binaries_path.spong_path)
+        if completeness and validate_geometry and compactness_decision and not only_ca and identity:
+            accepted_pdbs.append(pdb)
             if num_residues > pdb_complete_value:
                 pdb_complete_value = num_residues
-                pdb_complete = value
+                pdb_complete = pdb
         else:
-            uncompleted_pdbs[key] = value
+            uncompleted_pdbs.append(pdb)
 
     logging.debug(f'There are {len(accepted_pdbs)} complete pdbs.')
     if len(accepted_pdbs) < 2:
         logging.debug(f'Skipping hinges.')
-        return [[values for values in paths_in.values()]]
+        return [pdbs]
     logging.debug(f'Using hinges to create groups.')
 
     # Run hinges all-against-all, store the results in a dict.
-    results_rmsd = {key: {} for key in accepted_pdbs}
-    for key1, value1 in accepted_pdbs.items():
-        for key2, value2 in accepted_pdbs.items():
-            if key2 not in results_rmsd[key1] and key1 != key2:
-                result_hinges = run_hinges(pdb1_path=value1, pdb2_path=value2, hinges_path=binaries_path.hinges_path,
-                                           output_path=os.path.join(output_path, f'{key1}_{key2}.txt'))
-                results_rmsd[key1][key2] = result_hinges
-                results_rmsd[key2][key1] = result_hinges
-    groups_names = {key: [] for key in accepted_pdbs}
+    results_rmsd = {pdb.name: {} for pdb in accepted_pdbs}
+    groups_names = {pdb.name: [] for pdb in accepted_pdbs}
+    for pdb1 in accepted_pdbs:
+        for pdb2 in accepted_pdbs:
+            if pdb2.name not in results_rmsd[pdb1.name] and pdb1.name != pdb2.name:
+                result_hinges = run_hinges(pdb1_path=pdb1.split_path, pdb2_path=pdb2.split_path, hinges_path=binaries_path.hinges_path,
+                                           output_path=os.path.join(output_path, f'{pdb1.name}_{pdb2.name}.txt'))
+                results_rmsd[pdb1.name][pdb2.name] = result_hinges
+                results_rmsd[pdb2.name][pdb1.name] = result_hinges
     results_rmsd = OrderedDict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
     for key1, value in results_rmsd.items():
         results_rmsd[key1] = OrderedDict(
@@ -671,22 +671,22 @@ def hinges(paths_in: Dict, binaries_path: structures.BinariesPath, output_path: 
         logging.debug(f'Hinges has created {len(groups_names)} group/s:')
         for i, values in enumerate(groups_names):
             logging.debug(f'Group {i}: {",".join(values)}')
-        return [[path for key, path in paths_in.items() if key in group] for group in groups_names]
+        return [[pdb for pdb in pdbs if pdb.name in group] for group in groups_names]
     elif len(list(results_rmsd.keys())) > 1:
         # Create two groups, more different and completes pdbs
-        more_different = list(results_rmsd[utils.get_file_name(pdb_complete)].keys())[-1]
-        path_diff = paths_in[more_different]
+        more_different = list(results_rmsd[pdb_complete.name].keys())[-1]
+        pdb_diff = [pdb for pdb in pdbs if pdb.name == more_different][0]
         logging.debug(f'Hinges could not create any groups')
-        logging.debug(f'Creating two groups: The more completed pdb: {utils.get_file_name(pdb_complete)} '
-                     f'and the more different one: {more_different}')
-        return [[pdb_complete], [path_diff]]
+        logging.debug(f'Creating two groups: The more completed pdb: {pdb_complete.name} '
+                     f'and the more different one: {pdb_diff.name}')
+        return [[pdb_complete], [pdb_diff]]
     else:
         # Return the original list of pdbs
         logging.debug('Not enough pdbs for hinges.')
-        return [[values for values in paths_in.values()]]
+        return [pdbs]
 
 
-def cc_analysis(paths_in: List[str], cc_analysis_paths: structures.BinariesPath, cc_path: str,
+def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.BinariesPath, cc_path: str,
                 n_clusters: int = 2) -> List:
     # CC_analysis. It is mandatory to have the paths of the programs in order to run pdb2cc and ccanalysis.
     # A dictionary with the different pdbs that are going to be analysed.
@@ -696,8 +696,8 @@ def cc_analysis(paths_in: List[str], cc_analysis_paths: structures.BinariesPath,
     return_templates_cluster = [[] for _ in range(n_clusters)]
     clean_dict = {}
 
-    for index, path in enumerate(paths_in):
-        path = shutil.copy2(path, cc_path)
+    for index, pdb in enumerate(pdbs):
+        path = shutil.copy2(pdb.path, cc_path)
         # If it is a ranked, it is mandatory to change the bfactors to VALUE-70.
         # We want to evaluate the residues that have a good PLDDT
         # PDB2CC ignore the residues with bfactors below 0
@@ -751,9 +751,9 @@ def cc_analysis(paths_in: List[str], cc_analysis_paths: structures.BinariesPath,
                     conversion = [lookup_table[label] for label in kmeans.labels_]
                     # Translate the kmeans, which only has the position of the pdbs for the real pdbs.
                     for i, label in enumerate(conversion):
-                        real_path = [path for path in paths_in if utils.get_file_name(path) == list(clean_dict.keys())[i]][
+                        selected_pdb = [pdb for pdb in pdbs if pdb.name == list(clean_dict.keys())[i]][
                             0]
-                        return_templates_cluster[int(label)].append(real_path)
+                        return_templates_cluster[int(label)].append(selected_pdb)
 
     # Return the clusters, a list, where each position has a group of pdbs.
     # Also, clean_dict has the cc_analysis vectors, so is useful to create the plots.
@@ -847,6 +847,12 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
             return_list.append(0)
 
     return return_list, changes_dict
+
+def sequence_identity(seq1, seq2) -> float:
+    # Compare the identity of two sequences
+    identical_count = sum(a == b for a, b in zip(seq1, seq2))
+    identity = (identical_count / len(seq1)) * 100
+    return identity
 
 
 def read_bfactors_from_residues(pdb_path: str) -> Dict:

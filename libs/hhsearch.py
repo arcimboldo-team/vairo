@@ -2,6 +2,7 @@ import logging
 import os
 import subprocess
 import sys
+from typing import List
 import alphafold
 from libs import utils, alphafold_classes
 
@@ -48,3 +49,4 @@ def run_hhsearch(a3m_path: str, database_path: str, output_path: str) -> str:
     hhr = stdout.decode('utf-8')
 
     return hhr
+    

@@ -78,8 +78,8 @@ def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List, predic
     markers = ['.', '*', 's', 'P']
     for i, cluster in enumerate(clusters):
         text_cluster = f'Cluster {i}:'
-        for path in cluster:
-            name = utils.get_file_name(path)
+        for pdb in cluster:
+            name = pdb.name
             params = analysis_dict[name]
             if name.startswith('cluster_'):
                 color = 'red'
@@ -105,7 +105,11 @@ def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List, predic
         plt.title('TEMPLATES AND PREDICTIONS CLUSTERING')
     else:
         plt.title('TEMPLATES CLUSTERING')
-    plt.figtext(0.05, -0.15, '\n'.join(text))
+    
+    if len(text) > 6:
+        plt.figtext(0.05, -0.22, '\n'.join(text))
+    else:
+        plt.figtext(0.05, -0.15, '\n'.join(text))
     plt.savefig(plot_path, dpi=100, bbox_inches='tight')
     plt.cla()
 

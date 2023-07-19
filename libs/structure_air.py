@@ -236,12 +236,9 @@ class StructureAir:
         jinja_template = Environment(loader=FileSystemLoader(self.dir_templates_path)).from_string(
             template_str)
         
-        if reduced:
-            accepted_templates = self.output.templates_selected
-            if os.path.exists(self.output.html_complete_path):
-                render_dict['complete_html'] = self.output.html_complete_path
-        else:
-            accepted_templates = [temp for temp in self.output.templates_dict.keys()]
+        accepted_templates = self.output.templates_selected
+        if reduced and os.path.exists(self.output.html_complete_path):
+            render_dict['complete_html'] = self.output.html_complete_path
 
         render_dict['frobenius_equation'] = utils.encode_data(
             input_data=f'{utils.get_main_path()}/templates/frobenius_equation.png')
@@ -613,22 +610,21 @@ class StructureAir:
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
-        templates_cluster, _ = bioutils.cc_and_hinges_analysis(paths_split_in=self.output.templates_dict,
-                                                               paths_nonsplit_in=self.output.templates_nonsplit_dict,
+        templates_cluster, _ = bioutils.cc_and_hinges_analysis(pdbs=self.output_air.templates_list,
                                                                binaries_path=self.binaries_paths,
-                                                               output_path=self.results_dir,
-                                                               length_sequences=self.output.percentage_sequences)
+                                                               output_path=self.results_dir)
         if templates_cluster:
             logging.error(
                 f'The templates can be grouped in {len(templates_cluster)} clusters')
-            for templates in templates_cluster:
+            for cluster in templates_cluster:
+                cluster_paths = [pdb.path for pdb in cluster]
                 name_job = f'cluster_{counter}'
                 label_job = f'Cluster {counter}'
                 new_path = os.path.join(self.cluster_path, name_job)
                 logging.error(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
-                logging.error(', '.join([utils.get_file_name(template_in) for template_in in templates]))
+                logging.error(', '.join([utils.get_file_name(template_in) for template_in in cluster_paths]))
                 counter += 1
-                yml_path = self.create_cluster(job_path=new_path, templates=templates)
+                yml_path = self.create_cluster(job_path=new_path, templates=cluster_paths)
                 bioutils.run_arcimboldo_air(yml_path=yml_path)
                 rankeds = utils.read_rankeds(input_path=new_path)
                 results_path = os.path.join(new_path, os.path.basename(self.run_dir),
@@ -647,7 +643,7 @@ class StructureAir:
                                                os.path.relpath(new_path, self.output_dir),
                                                os.path.basename(self.output.html_path)),
                     rankeds={utils.get_file_name(ranked_path): ranked_path for ranked_path in rankeds_path_list},
-                    templates={utils.get_file_name(template_in): template_in for template_in in templates}
+                    templates={pdb.name: pdb.path for pdb in cluster}
                 ))
 
     def create_plot_gantt(self, reduced: bool):

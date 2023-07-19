@@ -168,11 +168,48 @@ class PdbRanked:
     qscore: float
 
 
-class Ranked:
-    def __init__(self, ranked_path: str):
+class Pdb:
+    def __init__(self, path: str):
         self.path: str
         self.name: str
         self.split_path: str
+        self.compactness: float
+        self.ramachandran: float
+        
+        self.path = path
+        self.name = utils.get_file_name(path)
+
+    def set_path(self, path: str):
+        self.path = path
+
+    def set_split_path(self, path: str):
+        self.split_path = path
+
+    def set_compactness(self, compactness: float):
+        self.compactness = compactness
+
+    def set_ramachandran(self, ramachandran: float):
+        self.ramachandran = ramachandran
+
+class Template (Pdb):
+    def __init__(self, path: str):
+        super().__init__(path=path)
+        self.percentage_list: List[float]
+        self.identity: float
+        self.sequence_msa: str
+
+    def add_percentage(self, percentage_list: List[float]):
+        self.percentage_list = percentage_list
+
+    def set_identity(self, identity: float):
+        self.identity = identity
+
+    def set_sequence_msa(self, sequence_msa: str):
+        self.sequence_msa = sequence_msa
+
+class Ranked (Pdb):
+    def __init__(self, path: str):
+        super().__init__(path=path)
         self.minimized_path: str
         self.plddt: int
         self.ah: int
@@ -189,13 +226,6 @@ class Ranked:
         self.rmsd: float
         self.rmsd_dict: Dict = {}
         self.encoded: bytes
-        self.compactness: float
-        self.ramachandran: float
-        self.path = ranked_path
-        self.name = utils.get_file_name(ranked_path)
-
-    def set_path(self, path: str):
-        self.path = path
 
     def set_plddt(self, plddt: float):
         self.plddt = round(plddt)
@@ -214,15 +244,6 @@ class Ranked:
 
     def set_mapping(self, mapping: Dict):
         self.mapping = mapping
-
-    def set_split_path(self, path: str):
-        self.split_path = path
-
-    def set_compactness(self, compactness: float):
-        self.compactness = compactness
-
-    def set_ramachandran(self, ramachandran: float):
-        self.ramachandran = ramachandran
 
     def set_minimized_path(self, path: str):
         self.minimized_path = path
