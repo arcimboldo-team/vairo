@@ -333,7 +333,7 @@ class OutputAir:
                                                                 ))
 
         for template in self.templates_list:
-            frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{template}.txt')
+            frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{template.name}.txt')
             matrices = os.path.join(self.tmp_dir, 'matrices')
             template_matrix = os.path.join(matrices, f'{utils.get_file_name(template.path)}_ang.npy')
             path_list = [ranked.path for ranked in self.ranked_list if ranked.filtered]
@@ -353,14 +353,14 @@ class OutputAir:
                     seq1_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain1"]))
                     seq2_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain2"]))
                     template_interface_list.append(f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}')
-                self.template_interfaces[template] = template_interface_list
+                self.template_interfaces[template.name] = template_interface_list
             else:
                 logging.debug(f'Skipping interface search as there is only one chain in pdb {template.name}')
              
             for ranked in ranked_filtered:
                 index = list_targets.index(ranked.name)
                 ranked.add_frobenius_plot(
-                    template=template,
+                    template=template.name,
                     dist_plot=[shutil.copy2(plot, self.frobenius_path) for plot in list_plot_dist if
                                ranked.name in os.path.basename(plot)][0],
                     ang_plot=[shutil.copy2(plot, self.frobenius_path) for plot in list_plot_ang if
@@ -381,10 +381,10 @@ class OutputAir:
                                                                                 write_plot=True,
                                                                                 title=f'Interface: {interface.name}')
                     sys.stdout = sys.__stdout__
-                    new_name = os.path.join(self.frobenius_path, f'{template}_{ranked.name}_{interface.name}.png')
+                    new_name = os.path.join(self.frobenius_path, f'{template.name}_{ranked.name}_{interface.name}.png')
                     plot_path = os.path.join(self.tmp_dir, os.path.basename(plot))
                     interface.add_frobenius_information(
-                        template=template,
+                        template=template.name,
                         dist_coverage=fro_distance,
                         core=fro_core,
                         dist_plot=shutil.copy2(plot_path, new_name)
