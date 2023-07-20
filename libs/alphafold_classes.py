@@ -4,20 +4,20 @@ import os
 from typing import Union
 
 import run_alphafold
-from libs import bioutils, features, utils
+from libs import bioutils, utils
 
 
 class AlphaFoldRun:
     def __init__(self, results_dir: str, sequence: str, custom_features: bool, cluster_templates: bool, small_bfd: bool,
                  start_chunk: int,
-                 end_chunk: int, run: bool, feature: features.Features = None):
+                 end_chunk: int, run: bool, feature = None):
         self.run_alphafold_bash: str
         self.results_dir: str
         self.fasta_path: str
         self.custom_features: bool
         self.cluster_templates: bool
         self.small_bfd: bool
-        self.feature: Union[features.Features, None] = None
+        self.feature = None
         self.start_chunk: int
         self.end_chunk: int
         self.run: bool

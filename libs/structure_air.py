@@ -610,9 +610,9 @@ class StructureAir:
     def templates_clustering(self):
         counter = 0
         utils.create_dir(self.cluster_path, delete_if_exists=False)
-        templates_cluster, _ = bioutils.cc_and_hinges_analysis(pdbs=self.output_air.templates_list,
+        templates_cluster, _ = bioutils.cc_and_hinges_analysis(pdbs=self.output.templates_list,
                                                                binaries_path=self.binaries_paths,
-                                                               output_path=self.results_dir)
+                                                               output_dir=self.results_dir)
         if templates_cluster:
             logging.error(
                 f'The templates can be grouped in {len(templates_cluster)} clusters')
@@ -683,6 +683,22 @@ class StructureAir:
             binaries_paths=self.binaries_paths,
             experimental_pdbs=self.experimental_pdbs
         )
+
+    def align_experimental_pdbs(self):
+        aligned_experimental_pdbs_list = []
+        sequence_list = [sequence.fasta_path for sequence in self.sequence_assembled.sequence_list_expanded]
+        for experimental in self.experimental_pdbs:
+            #try:
+            pdb_out_path = os.path.join(self.experimental_dir, f'{utils.get_file_name(experimental)}_aligned.pdb')
+            experimental_aligned_path = bioutils.align_pdb(pdb_in_path=experimental, pdb_out_path=pdb_out_path, sequences_list=sequence_list, databases=self.alphafold_paths)
+            if experimental_aligned_path is None:
+                raise Exception()
+            aligned_experimental_pdbs_list.append(experimental_aligned_path)
+            #except:
+            #    logging.error(f'Not possible to align experimental pdb {experimental}')
+            #    aligned_experimental_pdbs_list.append(experimental)
+            #    pass
+        self.experimental_pdbs = aligned_experimental_pdbs_list
 
     def delete_mutations(self) -> str:
         logging.error('Proceding to launch ARICMBOLDO_AIR in order to delete the mutations')

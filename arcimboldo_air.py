@@ -174,6 +174,7 @@ def main():
         elif a_air.sequence_assembled.mutated:
             a_air.delete_mutations()
             a_air.extract_results()
+        a_air.align_experimental_pdbs()
         a_air.analyse_output()
 
         a_air.change_state(state=3)

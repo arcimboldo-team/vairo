@@ -8,8 +8,9 @@ from scipy.spatial import distance
 from sklearn.cluster import KMeans
 from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
-from libs import change_res, structures, utils, plots, global_variables, sequence
+from libs import alphafold_classes, change_res, features, hhsearch, structures, utils, plots, global_variables, sequence
 from alphafold.relax import cleanup, amber_minimize
+import pandas as pd
 
 
 from libs.structures import Hinges
@@ -415,10 +416,10 @@ def get_number_residues(pdb_path: str) -> int:
     return len([res for res in Selection.unfold_entities(get_structure(pdb_path), 'R')])
 
 
-def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
+def run_pdb2cc(templates_dir: str, pdb2cc_path: str = None) -> str:
     try:
         cwd = os.getcwd()
-        os.chdir(templates_path)
+        os.chdir(templates_dir)
         output_path = 'cc_analysis.in'
         if pdb2cc_path is None:
             pdb2cc_path = 'pdb2cc'
@@ -428,7 +429,7 @@ def run_pdb2cc(templates_path: str, pdb2cc_path: str = None) -> str:
         p.communicate()
     finally:
         os.chdir(cwd)
-    return os.path.join(templates_path, output_path)
+    return os.path.join(templates_dir, output_path)
 
 
 def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = None) -> str:
@@ -475,7 +476,7 @@ def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_p
     return utils.parse_hinges(output)
 
 
-def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
+def generate_ramachandran(pdb_path, output_dir: str = None) -> bool:
     # Ramachandran analysis, it generates the angles in degrees, and it generates the plot.
     valid_residues = ["MET", "SER", "ASN", "LEU", "GLU", "LYS", "GLN", "ILE", "ALA", "ARG",
                       "HIS", "CYS", "ASP", "THR", "GLY", "TRP", "PHE", "TYR", "PRO", "VAL"]
@@ -500,8 +501,8 @@ def generate_ramachandran(pdb_path, output_path: str = None) -> bool:
 
     phi_psi_angles = np.column_stack((phi_angles, psi_angles))
 
-    if output_path is not None:
-        plots.plot_ramachandran(plot_path=os.path.join(output_path, f'{utils.get_file_name(pdb_path)}.png'),
+    if output_dir is not None:
+        plots.plot_ramachandran(plot_path=os.path.join(output_dir, f'{utils.get_file_name(pdb_path)}.png'),
                                 phi_psi_angles=phi_psi_angles)
 
     analysis = ramachandran_analysis(phi_psi_angles=phi_psi_angles)
@@ -549,11 +550,11 @@ def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
         os.chdir(store_old_dir)
 
 
-def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, output_path: str) -> List:
+def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, output_dir: str) -> List:
     templates_cluster2 = []
     templates_cluster = hinges(pdbs=pdbs,
                                binaries_path=binaries_path,
-                               output_path=os.path.join(output_path, 'hinges'))
+                               output_dir=os.path.join(output_dir, 'hinges'))
 
     #pdbs_accepted_list = [template_in for template_list in templates_cluster for template_in in template_list]
     #num_templates = len(pdbs_accepted_list)
@@ -564,7 +565,7 @@ def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures
         logging.debug(f'Running ccanalysis with the following templates: {" ".join([pdb.name for pdb in pdbs_accepted_list])}')
         templates_cluster2, analysis_dict2 = cc_analysis(pdbs=pdbs_accepted_list,
                                                         cc_analysis_paths=binaries_path,
-                                                        cc_path=os.path.join(output_path, 'ccanalysis'))
+                                                        output_dir=os.path.join(output_dir, 'ccanalysis'))
     else:
         logging.debug('Less than 5 templates recognised by hinges. Skipping ccanalysis.')
 
@@ -575,7 +576,7 @@ def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures
         return templates_cluster, {}
 
 
-def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, output_path: str) -> List:
+def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, output_dir: str) -> List:
     # Hinges algorithm does:
     # Check completeness and ramachandran of every template. If it is not at least 70% discard for hinges.
     # Do hinges 6 iterations in all for all the templates
@@ -583,7 +584,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
     # If it has generated more than one group with length > 1-> Return those groups that has generated
     # If there is no group generated -> Return the one more completed and the one more different to that template
     # Otherwise, return all the paths
-    utils.create_dir(output_path, delete_if_exists=True)
+    utils.create_dir(output_dir, delete_if_exists=True)
     threshold_completeness = 0.6
     threshold_rmsd_domains = 8
     threshold_rmsd_ss = 4.5
@@ -607,7 +608,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
     for pdb in pdbs:
         num_residues = sum(1 for _ in get_structure(pdb.split_path)[0].get_residues())
         # Validate using ramachandran, check the outliers
-        validate_geometry, _ = generate_ramachandran(pdb_path=pdb.split_path, output_path=output_path)
+        validate_geometry, _ = generate_ramachandran(pdb_path=pdb.split_path, output_dir=output_dir)
         # Check the query sequence vs the number of residues of the pdb
         only_ca = check_not_only_CA(pdb_in_path=pdb.split_path)
         completeness = True
@@ -636,35 +637,61 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
     groups_names = {pdb.name: [] for pdb in accepted_pdbs}
     for pdb1 in accepted_pdbs:
         for pdb2 in accepted_pdbs:
-            if pdb2.name not in results_rmsd[pdb1.name] and pdb1.name != pdb2.name:
+            if pdb2.name not in results_rmsd[pdb1.name]:
                 result_hinges = run_hinges(pdb1_path=pdb1.split_path, pdb2_path=pdb2.split_path, hinges_path=binaries_path.hinges_path,
-                                           output_path=os.path.join(output_path, f'{pdb1.name}_{pdb2.name}.txt'))
+                                           output_path=os.path.join(output_dir, f'{pdb1.name}_{pdb2.name}.txt'))
                 results_rmsd[pdb1.name][pdb2.name] = result_hinges
                 results_rmsd[pdb2.name][pdb1.name] = result_hinges
     results_rmsd = OrderedDict(sorted(results_rmsd.items(), key=lambda x: min(v.one_rmsd for v in x[1].values())))
-    for key1, value in results_rmsd.items():
-        results_rmsd[key1] = OrderedDict(
+    sorted_list = copy.deepcopy(results_rmsd)
+    for key1, value in sorted_list.items():
+        sorted_list[key1] = OrderedDict(
             sorted({k: v for k, v in value.items() if v is not None}.items(), key=lambda x: x[1].one_rmsd))
         selected_group = key1
-        for key2, result in results_rmsd[key1].items():
-            group = utils.get_key_by_value(key2, groups_names)
-            selected_for = None
-            if group and result.overlap > threshold_overlap:
-                if result.one_rmsd <= threshold_rmsd_local:
-                    selected_for = 'local changes'
-                elif result.middle_rmsd <= threshold_rmsd_ss and result.decreasing_rmsd_middle >= threshold_decrease:
-                    selected_for = 'secondary structure changes'
-                elif result.min_rmsd <= threshold_rmsd_domains and result.decreasing_rmsd_total >= threshold_decrease:
-                    selected_for = 'domain changes'
-                elif result.min_rmsd <= threshold_minimum:
-                    selected_for = 'equivalence'
-                if selected_for is not None:
-                    if selected_group not in groups_names or len(groups_names[group[0]]) > len(groups_names[selected_group]):
-                        selected_group = group[0]   
-                    logging.debug(f'{key2} into group {selected_group} because of {selected_for} with {key1}')
+        for key2, result in sorted_list[key1].items():
+            if key1 != key2:
+                group = utils.get_key_by_value(key2, groups_names)
+                selected_for = None
+                if group and result.overlap > threshold_overlap:
+                    if result.one_rmsd <= threshold_rmsd_local:
+                        selected_for = 'local changes'
+                    elif result.middle_rmsd <= threshold_rmsd_ss and result.decreasing_rmsd_middle >= threshold_decrease:
+                        selected_for = 'secondary structure changes'
+                    elif result.min_rmsd <= threshold_rmsd_domains and result.decreasing_rmsd_total >= threshold_decrease:
+                        selected_for = 'domain changes'
+                    elif result.min_rmsd <= threshold_minimum:
+                        selected_for = 'equivalence'
+                    if selected_for is not None:
+                        if selected_group not in groups_names or len(groups_names[group[0]]) > len(groups_names[selected_group]):
+                            selected_group = group[0]   
+                        logging.debug(f'{key2} into group {selected_group} because of {selected_for} with {key1}')
 
         groups_names[selected_group].append(key1)
     groups_names = [values for values in groups_names.values() if len(values) > 1]
+
+    tables_path = os.path.join(output_dir, 'tables.txt')
+
+    with open(tables_path, 'w') as f_in:
+        data1 = {'ranked': results_rmsd.keys()}
+        data2 = {'ranked': results_rmsd.keys()}
+        data3 = {'ranked': results_rmsd.keys()}
+        for ranked in results_rmsd.values():
+            for key, value in ranked.items():
+                data1.setdefault(key, []).append(value.one_rmsd)
+                data2.setdefault(key, []).append(value.middle_rmsd)
+                data3.setdefault(key, []).append(value.min_rmsd)
+        df = pd.DataFrame(data1)
+        f_in.write('\n\n')
+        f_in.write('Table first iteration\n')
+        f_in.write(df.to_markdown())
+        df = pd.DataFrame(data2)
+        f_in.write('\n\n')
+        f_in.write('Table middle iteration\n')
+        f_in.write(df.to_markdown())
+        df = pd.DataFrame(data3)
+        f_in.write('\n\n')
+        f_in.write('Table last iteration\n')
+        f_in.write(df.to_markdown())
 
     if len(groups_names) > 1 or (len(groups_names) == 1 and len(groups_names[0]) > 1):
         # Return the groups that has generated
@@ -686,18 +713,18 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
         return [pdbs]
 
 
-def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.BinariesPath, cc_path: str,
+def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.BinariesPath, output_dir: str,
                 n_clusters: int = 2) -> List:
     # CC_analysis. It is mandatory to have the paths of the programs in order to run pdb2cc and ccanalysis.
     # A dictionary with the different pdbs that are going to be analysed.
 
-    utils.create_dir(cc_path, delete_if_exists=True)
+    utils.create_dir(output_dir, delete_if_exists=True)
     trans_dict = {}
     return_templates_cluster = [[] for _ in range(n_clusters)]
     clean_dict = {}
 
     for index, pdb in enumerate(pdbs):
-        path = shutil.copy2(pdb.path, cc_path)
+        path = shutil.copy2(pdb.path, output_dir)
         # If it is a ranked, it is mandatory to change the bfactors to VALUE-70.
         # We want to evaluate the residues that have a good PLDDT
         # PDB2CC ignore the residues with bfactors below 0
@@ -710,17 +737,17 @@ def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.Binari
             residues_dict = read_residues_from_pdb(path)
             change = change_res.ChangeResidues(chain_res_dict=residues_dict, chain_bfactors_dict=bfactors_dict)
             change.change_bfactors(path, path)
-        new_path = os.path.join(cc_path, f'orig.{str(index)}.pdb')
-        os.rename(os.path.join(cc_path, path), new_path)
+        new_path = os.path.join(output_dir, f'orig.{str(index)}.pdb')
+        os.rename(os.path.join(output_dir, path), new_path)
         # Create a translation dictionary, with and index and the pdb name
         trans_dict[index] = utils.get_file_name(path)
     if trans_dict:
         # Write the trans dict in order to be able to trace the pdbs in the output
-        with open(os.path.join(cc_path, 'labels.txt'), 'w+') as f:
+        with open(os.path.join(output_dir, 'labels.txt'), 'w+') as f:
             for key, value in trans_dict.items():
                 f.write('%s:%s\n' % (key, value))
         # run pdb2cc
-        output_pdb2cc = run_pdb2cc(templates_path=cc_path, pdb2cc_path=cc_analysis_paths.pd2cc_path)
+        output_pdb2cc = run_pdb2cc(templates_dir=output_dir, pdb2cc_path=cc_analysis_paths.pd2cc_path)
         if os.path.exists(output_pdb2cc):
             # If pdb2cc has worked, launch cc analysis.
             output_cc = run_cc_analysis(input_path=output_pdb2cc,
@@ -1321,3 +1348,52 @@ def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain_list: List[st
     io = PDBIO()
     io.set_structure(structure)
     io.save(pdb_out_path, ChainSelector())
+
+
+def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str], databases: alphafold_classes.AlphaFoldPaths):
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        chain_dict = split_pdb_in_chains(output_dir=tmpdirname, pdb_in_path=pdb_in_path)
+        chains_aligned = []
+        if len(chain_dict) != len(sequences_list):
+            return None
+        else:
+            for i, path in enumerate(chain_dict.values()):
+                chains_aligned.append(align_chain(chain_in_path=path, chain_out_path=path, sequence_in=sequences_list[i], databases=databases))
+            merge_pdbs(list_of_paths_of_pdbs_to_merge=chains_aligned, merged_pdb_path=pdb_out_path)
+            return pdb_out_path
+        
+def align_chain(chain_in_path: str, chain_out_path: str, sequence_in: str, databases: alphafold_classes.AlphaFoldPaths) -> str:
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        fasta_path = os.path.join(tmpdirname, 'fasta.path')
+        query_sequence = extract_sequence(sequence_in)
+        seq = extract_sequence_from_file(file_path=chain_in_path)
+        aux_key = list(seq.keys())[0].replace('>', '')
+        sequence_name = aux_key.split(':')[0]
+        sequence_chain = aux_key.split(':')[1]
+        hhr_path = os.path.join(tmpdirname, f'{sequence_name}_{sequence_chain}.hhr')
+        cif_path = os.path.join(tmpdirname, f'{utils.get_file_name(chain_in_path)}.cif')
+        pdb2mmcif(pdb_in_path=chain_in_path, cif_out_path=cif_path)
+        write_sequence(sequence_name=f'{sequence_name}:{sequence_chain}', sequence_amino=list(seq.values())[0],
+                        sequence_path=fasta_path)
+        new_database = hhsearch.create_database_from_pdb(fasta_path=fasta_path,
+                                                            databases=databases,
+                                                            output_dir=tmpdirname)
+        a3m_path = hhsearch.create_a3m(fasta_path=sequence_in,
+                                        databases=databases,
+                                        output_dir=tmpdirname)
+        hhsearch.run_hhsearch(a3m_path=a3m_path,
+                            database_path=new_database,
+                            output_path=hhr_path)
+
+        template_features, mapping, identities, aligned_columns, total_columns, evalue = \
+            features.extract_template_features_from_pdb(
+                query_sequence=query_sequence,
+                hhr_path=hhr_path,
+                cif_path=cif_path,
+                chain_id=sequence_chain
+            )
+                
+        g = features.Features(query_sequence=query_sequence)
+        g.append_new_template_features(new_template_features=template_features)
+        aux_dict = g.write_all_templates_in_features(output_dir=tmpdirname, chain=sequence_chain)
+        return shutil.copy2(list(aux_dict.values())[0], chain_out_path)
