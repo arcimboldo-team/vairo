@@ -7,8 +7,8 @@ os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
+from datetime import datetime
 from libs import features, structure_air, utils, bioutils
-
 
 def main():
     try:
@@ -28,6 +28,7 @@ def main():
             raise SystemExit
 
         logging.error('Starting ARCIMBOLDO_AIR...')
+        logging.info(f'Timestamp: {datetime.now()}')
         if not os.path.exists(input_path):
             raise Exception(
                 'The given path for the configuration file either does not exist or you do not have the permissions to '
@@ -178,18 +179,20 @@ def main():
         a_air.analyse_output()
 
         a_air.change_state(state=3)
-        a_air.generate_output()
+        logging.info(f'Timestamp: {datetime.now()}')
         logging.error('ARCIMBOLDO_AIR has finished successfully')
+        a_air.generate_output()
 
     except SystemExit as e:
         sys.exit(e)
     except Exception as e:
+        logging.info(f'Timestamp: {datetime.now()}')
+        logging.error('ERROR:', exc_info=True)
         try:
             a_air.change_state(-1)
             a_air.generate_output()
         except Exception as e2:
             pass
-        logging.error('ERROR:', exc_info=True)
 
 
 if __name__ == "__main__":

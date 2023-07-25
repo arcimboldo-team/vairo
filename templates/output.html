@@ -240,9 +240,11 @@
                     <li name="frobenius_graphs" onclick="move_to(event)" class="sub-menu">Frobenius Graphs</li>                
                 {% endif %}
                 #}
+                {# note: commented-out template because we no longer use this
                 {% if 'dendogram_struct' in data %}
                     <li name="dendogram" onclick="move_to(event)" class="sub-menu">Dendogram</li>                
                 {% endif %}
+                #}
                 {% if 'interfaces_dict' in data %}
                     <li name="interface_graphs" onclick="move_to(event)" class="sub-menu">Interface Graphs</li>                
                 {% endif %}
@@ -525,6 +527,7 @@
                 </div>
             {% endif %}
             #}
+            {# note: commented-out template because we no longer use this
             {% if 'dendogram_struct' in data %}
                 <div id="dendogram" class="section-div">
                     <h2>Dendogram</h2>
@@ -543,6 +546,7 @@
                     <img style="width: 70%" src="data:image/png;base64,{{ data.dendogram_struct.encoded_dendogram_plot }}" alt="Dendogram plot">
                 </div>  
             {% endif %}
+            #}
             {% if 'interfaces_dict' in data %}
                 <div id="interface_graphs" class="section-div">
                     <h2>Interface Graphs</h2>
@@ -628,61 +632,6 @@
                     </table>
                     <button onclick="hideValues('table_average_plddt', this)">Show all predictions</button>
                 {% endif %}
-                {% if 'ranked_rmsd_dict' in data.table %}
-                    <h3>Superposition between predictions (RMSD)</h3>
-                    <table id="table_rankeds_rmsd">
-                        <tr>
-                            <th>Prediction</th>
-                            {% for key in data.table.ranked_rmsd_dict.keys() %}
-                                <th>{{ key }}</th>
-                            {% endfor %}
-                        </tr>
-                        {% for key, value in data.table.ranked_rmsd_dict.items() %}
-                            {% if key in data.bests_dict %}
-                                <tr class="green-row">
-                            {% elif key in data.filtered_dict %}
-                                <tr class="blue-row">
-                            {% else %}
-                            <tr class="hide-row" style="display:none;">
-                            {% endif %}
-                                <td>{{ key }}</td>
-                                {% for value2 in value.values() %}
-                                    <td>{{ value2 }}</td>
-                                {% endfor %}
-                            </tr>
-                        {% endfor %}
-                    </table>
-                    <button onclick="hideValues('table_rankeds_rmsd', this)">Show all predictions</button>
-                {% endif %}
-
-                {% if 'rmsd_dict' in data.table %}
-                    <h3>Superposition of predictions and templates (RMSD, superposed residues, total residues)</h3>
-                    <table id="table_templates_rmsd">
-                        <tr>
-                            <th>Prediction</th>
-                            {% for value in data.table.rmsd_dict.values() %}
-                                {% for key in value.keys() if loop.first%}            
-                                    <th>{{ key }}</th>
-                                {% endfor %}
-                            {% endfor %}
-                        </tr>
-                        {% for key, value in data.table.rmsd_dict.items() %}
-                            {% if key in data.bests_dict %}
-                                <tr class="green-row">
-                            {% elif key in data.filtered_dict %}
-                                <tr class="blue-row">
-                            {% else %}
-                            <tr class="hide-row" style="display:none;">
-                            {% endif %}
-                                <td>{{ key }}</td>
-                                {% for key2, value2 in value.items() %}
-                                    <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
-                                {% endfor %}
-                            </tr>
-                        {% endfor %}
-                    </table>
-                    <button onclick="hideValues('table_templates_rmsd', this)">Show all predictions</button>
-                {% endif %}
                 {% if 'secondary_dict' in data.table %}
                     <h3>Secondary structure percentages calculated with ALEPH</h3>
                     <table id="table_ss">
@@ -729,8 +678,62 @@
                     </table>
                     <button onclick="hideValues('table_energies', this)">Show all predictions</button>
                 {% endif %}
+                {% if 'ranked_rmsd_dict' in data.table %}
+                    <h3>Superposition between predictions (RMSD)</h3>
+                    <table id="table_rankeds_rmsd">
+                        <tr>
+                            <th>Prediction</th>
+                            {% for key in data.table.ranked_rmsd_dict.keys() %}
+                                <th>{{ key }}</th>
+                            {% endfor %}
+                        </tr>
+                        {% for key, value in data.table.ranked_rmsd_dict.items() %}
+                            {% if key in data.bests_dict %}
+                                <tr class="green-row">
+                            {% elif key in data.filtered_dict %}
+                                <tr class="blue-row">
+                            {% else %}
+                            <tr class="hide-row" style="display:none;">
+                            {% endif %}
+                                <td>{{ key }}</td>
+                                {% for value2 in value.values() %}
+                                    <td>{{ value2 }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </table>
+                    <button onclick="hideValues('table_rankeds_rmsd', this)">Show all predictions</button>
+                {% endif %}
+                {% if 'rmsd_dict' in data.table %}
+                    <h3>Superposition of predictions and templates (RMSD, superposed residues, total residues)</h3>
+                    <table id="table_templates_rmsd">
+                        <tr>
+                            <th>Prediction</th>
+                            {% for value in data.table.rmsd_dict.values() %}
+                                {% for key in value.keys() if loop.first%}            
+                                    <th>{{ key }}</th>
+                                {% endfor %}
+                            {% endfor %}
+                        </tr>
+                        {% for key, value in data.table.rmsd_dict.items() %}
+                            {% if key in data.bests_dict %}
+                                <tr class="green-row">
+                            {% elif key in data.filtered_dict %}
+                                <tr class="blue-row">
+                            {% else %}
+                            <tr class="hide-row" style="display:none;">
+                            {% endif %}
+                                <td>{{ key }}</td>
+                                {% for key2, value2 in value.items() %}
+                                    <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </table>
+                    <button onclick="hideValues('table_templates_rmsd', this)">Show all predictions</button>
+                {% endif %}
                 {% if 'experimental_dict' in data.table %}
-                    <h3>Experimental pdbs with predictions and templates (RMSD (superposed residues), QSCORE)</h3>
+                    <h3>Superposition of experimental pdbs with predictions and templates (RMSD (superposed residues), Q-Score)</h3>
 
                     <table>
                         <tr>
@@ -764,20 +767,8 @@
                     <h2>Pymol</h2>
                     <p>In order to run the Pymol Script, run the following code in the terminal:</p>
                     <pre>
-                        <code>pymol {{ data.pymol.script }} </code>
+                        <code>pymol {{ data.pymol }} </code>
                     </pre>
-                    {% if 'keys_dict' in data.pymol %}
-                        {% for key, value in data.pymol.keys_dict.items() %}
-                            {% if loop.first %}
-                                <p>With the following keys, it is possible to zoom in the following regions:</p>
-                                <ul>
-                            {% endif %}
-                                <li>{{ key }}: {{ value }}</li>                    
-                            {% if loop.last %}
-                                </ul>
-                            {% endif %}
-                        {% endfor %}
-                    {% endif %}
                 </div>
             {% endif %} 
             <div id="log" class="section-div">

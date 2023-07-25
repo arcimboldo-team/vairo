@@ -23,6 +23,7 @@ parameters:
   cluster_templates_msa (optional, int, -1): Select a specific number of sequences to add to the new features.pkl MSA (-1 to add all the sequences) from the preprocessed features.pkl MSA
   cluster_templates_msa_delete: (optional, range, None): Delete specific residues from the MSA sequences.
   cluster_templates_sequence: (optional, path, None): Replace templates sequence with sequence in path.
+  pymol_show: (optional, range, None): Select regions to zoom in the pymol session.
 
 Several sequences can be added to the query sequence. Each Fasta can have several copies and can be inserted in a specific position
 inside the query sequence. All the sequences will be concatenated using Glycines.

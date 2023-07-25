@@ -38,7 +38,7 @@ class OutputAir:
         self.analysis_ranked_plot_path: str = f'{self.plots_path}/cc_analysis_ranked_plot.png'
         self.html_path: str = f'{output_dir}/output.html'
         self.html_complete_path: str = f'{output_dir}/output_complete.html'
-        self.pymol_script_path: str = f'{output_dir}/pymol_script.py'
+        self.pymol_session_path: str = f'{output_dir}/pymol_session.pse'
         self.gantt_plots: structures.GanttPlot = None
         self.gantt_complete_plots: structures.GanttPlot = None
         self.ranked_list: List[structures.Ranked] = []
@@ -99,7 +99,7 @@ class OutputAir:
 
         logging.error('Reading predictions from the results folder')
         self.ranked_list = utils.read_rankeds(input_path=self.results_dir)
-
+        self.select_templates()
         if not self.ranked_list:
             logging.error('No predictions found')
             return
@@ -390,6 +390,11 @@ class OutputAir:
                         dist_plot=shutil.copy2(plot_path, new_name)
                     )
 
+        self.select_templates()
+        os.chdir(store_old_dir)
+
+
+    def select_templates(self):
         if len(self.templates_list) > 20:
             sorted_percentages = sorted(self.templates_list, key=lambda x: sum(x.percentage_list), reverse=True)[:20]
             self.templates_selected = [template.name for template in sorted_percentages]
@@ -400,9 +405,7 @@ class OutputAir:
                         self.templates_selected[change_pos] = ranked.superposition_templates[0].template
                         change_pos -= 1
         else:
-            self.templates_selected = [template.name for template in self.templates_list]
-
-        os.chdir(store_old_dir)
+            self.templates_selected = [template.name for template in self.templates_list]    
 
     def write_tables(self, rmsd_dict: Dict, ranked_rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict,
                      energies_dict: Dict):

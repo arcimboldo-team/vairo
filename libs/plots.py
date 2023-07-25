@@ -267,7 +267,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
                     if alignment is not None:
                         text += f'\n\tChain {alignment.database.chain}: Aligned={alignment.aligned_columns}({alignment.total_columns}) Evalue={alignment.evalue} Identities={alignment.identities}'
                     else:
-                        text += f'\n\tNo alignment'
+                        text += f'\n\tPrealigned'
 
             if plot_type == 'msa':
                 features_search = a_air.feature.get_msa_by_name(name)

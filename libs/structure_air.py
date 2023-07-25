@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, change_res, output_air, template, utils, features, sequence, structures, \
+from libs import alphafold_classes, bioutils, change_res, output_air, pymol_script, template, utils, features, sequence, structures, \
     plots
 from jinja2 import Environment, FileSystemLoader
 
@@ -57,7 +57,6 @@ class StructureAir:
         self.pymol_show_list: List[str] = []
         self.template_html_path: str
         self.pymol_template_path: str
-        self.pymol_keys_dict: dict = {}
 
 
         self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
@@ -87,8 +86,8 @@ class StructureAir:
         utils.create_dir(self.experimental_dir, delete_if_exists=True)
         utils.delete_old_rankeds(self.output_dir)
         utils.delete_old_html(self.output_dir)
-        if os.path.exists(self.output.pymol_script_path):
-            os.remove(self.output.pymol_script_path)
+        if os.path.exists(self.output.pymol_session_path):
+            os.remove(self.output.pymol_session_path)
 
         self.af2_dbs_path = utils.get_input_value(name='af2_dbs_path', section='global', input_dict=parameters_dict)
         if not os.path.exists(self.af2_dbs_path):
@@ -257,8 +256,8 @@ class StructureAir:
         with open(self.log_path, 'r') as f_in:
             render_dict['log_text'] = f_in.read()
 
-        if os.path.exists(self.output.pymol_script_path):
-            render_dict['pymol'] = {'script': self.output.pymol_script_path, 'keys_dict': self.pymol_keys_dict}
+        if os.path.exists(self.output.pymol_session_path):
+            render_dict['pymol'] = self.output.pymol_session_path
 
         if self.feature is not None:
             self.create_plot_gantt(reduced=reduced)
@@ -427,34 +426,12 @@ class StructureAir:
 
 
     def generate_output(self):
-        self.generate_pymol_script()
+        pymol_script.create_pymol_session(self)
         if self.feature and self.feature.get_templates_length() > 20:
             self.render_output(reduced=True)
             self.render_output(reduced=False)
         else:
             self.render_output(reduced=True)
-
-
-    def generate_pymol_script(self):
-        # Read the pymol script found in the templates directory. It has the configuration
-        # Add information regarding the tempaltes and experimental pdbs
-        # Set if user has selected a specific zone to zoom
-        if self.output.ranked_list:
-            pdb_list = [ranked.split_path for ranked in self.output.ranked_list]
-            pdb_list.extend(self.experimental_pdbs)
-            template_str = open(self.pymol_template_path, 'r').read()
-            for i, pdb_path in enumerate(pdb_list):
-                template_str += f'\ncmd.load("{pdb_path}", "{utils.get_file_name(pdb_path)}")'
-                if i != 0:
-                    template_str += f'\ncmd.disable("{utils.get_file_name(pdb_path)}")'
-            
-            for i, zoom in enumerate(self.pymol_show_list, 1):
-                key = f'F{i}'
-                self.pymol_keys_dict[key] = f'Zoom into residues {zoom}'
-                template_str += f'\ncmd.set_key("{key}", lambda: cmd.zoom("resi {zoom}"))'
-            
-            with open(self.output.pymol_script_path, 'w') as f_out:
-                f_out.write(template_str)        
 
 
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
@@ -688,16 +665,16 @@ class StructureAir:
         aligned_experimental_pdbs_list = []
         sequence_list = [sequence.fasta_path for sequence in self.sequence_assembled.sequence_list_expanded]
         for experimental in self.experimental_pdbs:
-            #try:
-            pdb_out_path = os.path.join(self.experimental_dir, f'{utils.get_file_name(experimental)}_aligned.pdb')
-            experimental_aligned_path = bioutils.align_pdb(pdb_in_path=experimental, pdb_out_path=pdb_out_path, sequences_list=sequence_list, databases=self.alphafold_paths)
-            if experimental_aligned_path is None:
-                raise Exception()
-            aligned_experimental_pdbs_list.append(experimental_aligned_path)
-            #except:
-            #    logging.error(f'Not possible to align experimental pdb {experimental}')
-            #    aligned_experimental_pdbs_list.append(experimental)
-            #    pass
+            try:
+                pdb_out_path = os.path.join(self.experimental_dir, f'{utils.get_file_name(experimental)}_aligned.pdb')
+                experimental_aligned_path = bioutils.align_pdb(pdb_in_path=experimental, pdb_out_path=pdb_out_path, sequences_list=sequence_list, databases=self.alphafold_paths)
+                if experimental_aligned_path is None:
+                    raise Exception()
+                aligned_experimental_pdbs_list.append(experimental_aligned_path)
+            except:
+                logging.error(f'Not possible to align experimental pdb {experimental}')
+                aligned_experimental_pdbs_list.append(experimental)
+                pass
         self.experimental_pdbs = aligned_experimental_pdbs_list
 
     def delete_mutations(self) -> str:
@@ -796,6 +773,7 @@ class StructureAir:
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
             f_out.write(f'glycines: {self.glycines}\n')
             f_out.write(f'run_af2: {self.run_af2}\n')
+            f_out.write(f'show_pymol: {",".join(map(str, self.pymol_show_list))}\n')
             if self.reference is not None:
                 f_out.write(f'reference: {self.reference.pdb_path}\n')
             if self.experimental_pdbs:
