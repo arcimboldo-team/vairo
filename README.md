@@ -1,7 +1,7 @@
 Requires HH-suite and CCP4 suite installation.
 Using AlphaFold2 and ALEPH.
 
-Usage: arcimboldo_air.py configuration.bor
+Usage: vairo.py configuration.bor
 
 The configuration.bor has to be a file with YAML format and can contain the following
 parameters:

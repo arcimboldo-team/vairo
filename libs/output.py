@@ -22,7 +22,7 @@ def get_best_ranked_by_template(cluster_list: List, ranked_list: List) -> Dict:
     return return_dict
 
 
-class OutputAir:
+class OutputStructure:
 
     def __init__(self, output_dir: str):
         self.plots_path: str = f'{output_dir}/plots'

@@ -4,7 +4,7 @@ import pickle
 import os
 import sys
 import logging
-from libs import features, bioutils, utils, structures, output_air
+from libs import features, bioutils, output, utils, structures
 
 
 def write_features(features_path: str, output_dir: str = None):
@@ -53,7 +53,7 @@ def ccanalysis(template_path: str):
     templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=templates_dict, cc_analysis_paths=cc_analysis,
                                                                  cc_path=output_path, n_clusters=2)
     if analysis_dict:
-        output_air.plot_cc_analysis(plot_path=os.path.join(output_path, 'plot.png'), analysis_dict=analysis_dict,
+        output.plot_cc_analysis(plot_path=os.path.join(output_path, 'plot.png'), analysis_dict=analysis_dict,
                                     clusters=templates_cluster_list)
 
 def superposition_chains(pdb1_path: str, pdb2_path: str):

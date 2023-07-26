@@ -3,14 +3,14 @@ import logging
 import os
 import shutil
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, change_res, output_air, pymol_script, template, utils, features, sequence, structures, \
+from libs import alphafold_classes, bioutils, change_res, output, pymol_script, template, utils, features, sequence, structures, \
     plots
 from jinja2 import Environment, FileSystemLoader
 
 MIN_RMSD_SPLIT = 5
 
 
-class StructureAir:
+class MainStructure:
 
     def __init__(self, parameters_dict: Dict):
 
@@ -48,7 +48,7 @@ class StructureAir:
         self.mosaic_partition: List[int]
         self.mosaic_seq_partition: List[int]
         self.feature: Union[features.Features, None] = None
-        self.output: output_air.OutputAir
+        self.output: output.OutputStructure
         self.state: int = 0
         self.features_input: List[structures.FeaturesInput] = []
         self.features_list: List[features.Features] = []
@@ -76,7 +76,7 @@ class StructureAir:
         self.input_path = os.path.join(self.input_dir, 'config.yml')
         self.binaries_path = os.path.join(utils.get_main_path(), 'binaries')
         self.binaries_paths = structures.BinariesPath(self.binaries_path)
-        self.output = output_air.OutputAir(output_dir=self.output_dir)
+        self.output = output.OutputStructure(output_dir=self.output_dir)
         self.dir_templates_path = f'{utils.get_main_path()}/templates'
         self.template_html_path = os.path.join(self.dir_templates_path, 'output.html')
         self.pymol_template_path = os.path.join(self.dir_templates_path, 'pymol_script.py')
@@ -598,11 +598,11 @@ class StructureAir:
                 name_job = f'cluster_{counter}'
                 label_job = f'Cluster {counter}'
                 new_path = os.path.join(self.cluster_path, name_job)
-                logging.error(f'Launching an ARCIMBOLDO_AIR job in {new_path} with the following templates:')
+                logging.error(f'Launching an VAIRO job in {new_path} with the following templates:')
                 logging.error(', '.join([utils.get_file_name(template_in) for template_in in cluster_paths]))
                 counter += 1
                 yml_path = self.create_cluster(job_path=new_path, templates=cluster_paths)
-                bioutils.run_arcimboldo_air(yml_path=yml_path)
+                bioutils.run_vairo(yml_path=yml_path)
                 rankeds = utils.read_rankeds(input_path=new_path)
                 results_path = os.path.join(new_path, os.path.basename(self.run_dir),
                                             os.path.basename(self.results_dir))
@@ -710,7 +710,7 @@ class StructureAir:
             f_out.write(f'  change_res:\n')
             f_out.write(f'  - All: 1-100000\n')
             f_out.write(f'    resname: ALA\n')
-        bioutils.run_arcimboldo_air(yml_path=yml_path)
+        bioutils.run_vairo(yml_path=yml_path)
         if os.path.exists(old_results_dir):
             shutil.rmtree(old_results_dir)
         shutil.move(self.results_dir, old_results_dir)

@@ -232,20 +232,38 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             name = 'MSA'
         else:
             name = 'Percentage'
-        for i in range(1, len(new_sequences)):
+        for i in range(len(new_sequences)):
             msa_found = True
-            ax.barh(name, 1, left=i, height=0.5, color=str(new_sequences[i - 1]), zorder=2)
+            ax.barh(name, 1, left=i+1, height=0.5, color=str(new_sequences[i]), zorder=2)
 
     if plot_type != 'msa' or len(names) <= 20:
         if plot_type != 'msa':
             names = a_air.feature.get_names_templates()
-            if reduced:
-                names = [name for name in names if name in a_air.output.templates_selected]
+        if reduced:
+            names_selected = [name for name in names if name in a_air.output.templates_selected]
+        else:
+            names_selected = names
         pdb_hits_path = os.path.join(a_air.results_dir, 'msas/pdb_hits.hhr')
         hhr_text = ''
+        add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
         if os.path.exists(pdb_hits_path):
             hhr_text = open(pdb_hits_path, 'r').read()
-        for j, name in reversed(list(enumerate(names))):
+
+        if reduced and len(names) > 20:
+            number_of_templates += 1
+            for j, name in reversed(list(enumerate(names))):
+                features_search = a_air.feature.get_sequence_by_name(name)
+                if features_search is not None:
+                    aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
+                                                                    features_search)
+                    add_sequences = np.add(aligned_sequence, add_sequences)
+            add_sequences = [aligned / len(names) for aligned in add_sequences]
+            new_sequences = scale_values(add_sequences)
+            new_sequences = [1-value for value in new_sequences]            
+            for i in range(len(add_sequences)):
+                ax.barh('Templates', 1, left=i+1, height=0.5, color=str(new_sequences[i]), zorder=2)
+
+        for j, name in reversed(list(enumerate(names_selected))):
             templates_found = True
             number_of_templates += 1
             template = a_air.get_template_by_id(name)
@@ -282,26 +300,26 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             if features_search is not None:
                 aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
                                                               features_search)
-                for i in range(1, len(features_search)):
-                    if aligned_sequence[i - 1] != 0:
-                        aux_aligned = 1-aligned_sequence[i - 1]/6
-                        if i in changed_residues:
-                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='yellow', zorder=3)
-                        elif i in changed_fasta:
-                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', color='red', zorder=3)
+                for i in range(len(features_search)):
+                    if aligned_sequence[i] != 0:
+                        aux_aligned = 1-aligned_sequence[i]/6
+                        if i+1 in changed_residues:
+                            ax.barh(template_name, 1, left=i+1, height=0.25, align='edge', color='yellow', zorder=3)
+                        elif i+1 in changed_fasta:
+                            ax.barh(template_name, 1, left=i+1, height=0.25, align='edge', color='red', zorder=3)
                         else:
-                            ax.barh(template_name, 1, left=i, height=0.25, align='edge', zorder=3,
+                            ax.barh(template_name, 1, left=i+1, height=0.25, align='edge', zorder=3,
                                     color=str(aux_aligned))
-                        ax.barh(template_name, 1, left=i, height=0.1, align='edge', zorder=3,
+                        ax.barh(template_name, 1, left=i+1, height=0.1, align='edge', zorder=3,
                                 color=str(aux_aligned))
-                        ax.barh(template_name, 1, left=i, height=0.5, zorder=2, color=str(aux_aligned))
+                        ax.barh(template_name, 1, left=i+1, height=0.5, zorder=2, color=str(aux_aligned))
 
     if number_of_templates == 1:
         index = 2.1
     elif number_of_templates == 2:
         index = number_of_templates * 1.2
     elif number_of_templates == 3:
-        index = number_of_templates * 0.85
+        index = number_of_templates * 1
     elif number_of_templates == 4:
         index = number_of_templates * 0.8
     elif number_of_templates == 5:

@@ -8,13 +8,13 @@ import sys
 import logging
 import yaml
 from datetime import datetime
-from libs import features, structure_air, utils, bioutils
+from libs import features, main_structure, utils, bioutils
 
 def main():
     try:
         utils.create_logger()
         logging.error('')
-        logging.error('ARCIMBOLDO_AIR')
+        logging.error('VAIRO')
         logging.error('--------------')
         logging.error('')
         try:
@@ -27,13 +27,13 @@ def main():
             logging.error(open(utils.get_readme()).read())
             raise SystemExit
 
-        logging.error('Starting ARCIMBOLDO_AIR...')
+        logging.error('Starting VAIRO...')
         logging.info(f'Timestamp: {datetime.now()}')
         if not os.path.exists(input_path):
             raise Exception(
                 'The given path for the configuration file either does not exist or you do not have the permissions to '
                 'read it')
-        logging.error(f'Reading the configuration file for ARCIMBOLDO_AIR at {input_path}')
+        logging.error(f'Reading the configuration file for VAIRO at {input_path}')
 
         try:
             with open(input_path) as f:
@@ -42,7 +42,7 @@ def main():
             raise Exception('It has not been possible to read the input file')
 
         utils.check_input(input_load)
-        a_air = structure_air.StructureAir(parameters_dict=input_load)
+        a_air = main_structure.MainStructure(parameters_dict=input_load)
         os.chdir(a_air.run_dir)
         a_air.write_input_file()
         if a_air.custom_features:
@@ -180,7 +180,7 @@ def main():
 
         a_air.change_state(state=3)
         logging.info(f'Timestamp: {datetime.now()}')
-        logging.error('ARCIMBOLDO_AIR has finished successfully')
+        logging.error('VAIRO has finished successfully')
         a_air.generate_output()
 
     except SystemExit as e:

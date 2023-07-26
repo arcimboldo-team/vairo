@@ -37,7 +37,7 @@ class Template:
         self.pdb_path = bioutils.check_pdb(pdb_path, pdb_out_path)
         if utils.check_ranked(os.path.basename(self.pdb_path)):
             raise Exception(f'Template {self.pdb_path} has a protected name (ranked). Please change the name before '
-                            f'continuing, as it can cause issues with the ARCIMBOLDO_AIR output.')
+                            f'continuing, as it can cause issues with the VAIRO output.')
 
         self.pdb_id = utils.get_file_name(self.pdb_path)
         self.add_to_msa = utils.get_input_value(name='add_to_msa', section='template', input_dict=parameters_dict)

@@ -1,6 +1,6 @@
 #!/bin/bash -i
 
-echo "ARCIMBOLDO_AIR INSTALLATION"
+echo "VAIRO INSTALLATION"
 echo "The script will verify the installation of all dependencies and proceed to install any remaining ones."
 
 echo 'Checking conda...'
@@ -53,7 +53,7 @@ else
     echo "The CCP4 programs cannot be found in the PATH. Please check if LSQKAB, PISA and PDBSET are present in the PATH. If the CCP4 suite is not installed, please install it from the following link: https://www.ccp4.ac.uk/"
 fi
 
-echo 'Creating ARCIMBOLDO_AIR Conda environment.'
+echo 'Creating VAIRO Conda environment.'
 read -p "Enter the Conda environment name: " env_name
 conda create -y -n "$env_name" python=3.8
 conda activate "$env_name"
@@ -84,5 +84,5 @@ patch -p0 < "$tmpfile"
 rm "$tmpfile"
 wget -q -P "${path}"/alphafold/common/ https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
 
-echo "A conda environment with the name ""$env_name"" has been created. To run ARCIMBOLDO_AIR, you must first activate the new environment (conda activate ""$env_name"") and type ARCIMBOLDO_AIR. This will run the program and show the different options for creating a job."
-echo "Before running ARCIMBOLDO_AIR, please ensure that the libraries of AlphaFold2 are installed. If they have not been installed, please download them using the following script.: https://github.com/deepmind/alphafold/blob/v2.2.4/scripts/download_all_data.sh"
+echo "A conda environment with the name ""$env_name"" has been created. To run VAIRO, you must first activate the new environment (conda activate ""$env_name"") and type VAIRO. This will run the program and show the different options for creating a job."
+echo "Before running VAIRO, please ensure that the libraries of AlphaFold2 are installed. If they have not been installed, please download them using the following script.: https://github.com/deepmind/alphafold/blob/v2.2.4/scripts/download_all_data.sh"
