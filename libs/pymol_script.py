@@ -61,10 +61,12 @@ cmd.set("display_scale_factor", '2')
                 script += f'cmd.disable("{utils.get_file_name(pdb_path)}")\n'
         for zoom in a_air.pymol_show_list:
             key = f'F{i}'
+            script += f'cmd.zoom("center", {zoom})\n'
             script += f'cmd.scene(key="{key}", action="store", message="Zoom into residues {zoom}")\n'
             script += f'cmd.scene(key="{key}", action="rename", new_key="{key}: User zoom")\n'
             i += 1
 
+    script += f'cmd.reset()\n'
     script += f'cmd.save("{a_air.output.pymol_session_path}")\n'
     script += 'cmd.quit()\n'
     pymol_script = os.path.join(a_air.run_dir, 'script_pymol.py')
