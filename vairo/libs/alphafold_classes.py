@@ -1,10 +1,7 @@
 import glob
 import logging
 import os
-from typing import Union
-
-import run_alphafold
-from libs import bioutils, utils
+from libs import bioutils, utils, run_alphafold
 
 
 class AlphaFoldRun:
