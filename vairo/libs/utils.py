@@ -497,6 +497,7 @@ def create_logger_dir(log_path: str, log_extended_path: str):
 
     with open(log_path, 'w+') as f_handle:
         f_handle.write(logger_data)
+
     with open(log_extended_path, 'w+') as f_handle:
         f_handle.write(logger_data)
 
