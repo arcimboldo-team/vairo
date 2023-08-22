@@ -426,7 +426,6 @@ class MainStructure:
 
 
     def generate_output(self):
-        pymol_script.create_pymol_session(self)
         if self.feature and self.feature.get_templates_length() > 20:
             self.render_output(reduced=True)
             self.render_output(reduced=False)

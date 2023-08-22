@@ -3,6 +3,8 @@ import copy
 import os
 import shutil
 
+from vairo.libs import pymol_script
+
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
@@ -180,6 +182,7 @@ def main():
         a_air.change_state(state=3)
         logging.error(f'Timestamp: {datetime.now()}')
         logging.error('VAIRO has finished successfully')
+        pymol_script.create_pymol_session(self)
         a_air.generate_output()
 
     except SystemExit as e:
