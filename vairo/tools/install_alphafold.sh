@@ -65,7 +65,7 @@ echo "Checking ptxas..."
 if command -v ptxas &> /dev/null; then
     echo "ptxas command is installed. Skipping cudatoolkit-dev installation."
 else
-  if conda install -y -c --quiet conda-forge "cudatoolkit-dev=11.2"; then
+  if conda install -y --quiet -c conda-forge "cudatoolkit-dev=11.2"; then
       echo "Cudatoolkit-dev installed."
   else
       echo "Conda installation of cudatoolkit-dev failed. In order to continue, download and install cudatoolkit: https://developer.nvidia.com/cuda-toolkit"

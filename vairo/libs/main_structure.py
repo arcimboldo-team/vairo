@@ -679,6 +679,8 @@ class MainStructure:
 
     def delete_mutations(self) -> str:
         logging.error('Proceding to launch ARICMBOLDO_AIR in order to delete the mutations')
+        if not self.output.ranked_list:
+            return
         mutations_dir = os.path.join(self.run_dir, 'delete_mutations')
         utils.create_dir(dir_path=mutations_dir, delete_if_exists=False)
         mutations_run_dir = os.path.join(mutations_dir, os.path.basename(self.run_dir))
