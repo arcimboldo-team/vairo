@@ -1101,7 +1101,7 @@ def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
 
 
 def run_vairo(yml_path: str):
-    vairo_path = os.path.join(utils.get_main_path(), 'vairo.py')
+    vairo_path = os.path.join(utils.get_main_path(), 'run_vairo.py')
     command_line = f'{vairo_path} {yml_path}'
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
