@@ -177,9 +177,9 @@ def main():
         a_air.align_experimental_pdbs()
         a_air.analyse_output()
         a_air.change_state(state=3)
+        pymol_script.create_pymol_session(a_air)
         logging.error(f'Timestamp: {datetime.now()}')
         logging.error('VAIRO has finished successfully')
-        pymol_script.create_pymol_session(a_air)
         a_air.generate_output()
 
     except SystemExit as e:
