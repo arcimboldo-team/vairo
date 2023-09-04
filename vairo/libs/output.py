@@ -132,8 +132,13 @@ class OutputStructure:
                     shutil.copy2(ranked.split_path, os.path.join(self.output_dir, os.path.basename(ranked.path))))
             else:
                 ranked.set_filtered(False)
-                logging.error(f'Prediction {ranked.name} has been filtered')
-        
+                logging.error(f'Prediction {ranked.name} has been filtered:')
+                if not accepted_ramachandran:
+                    logging.error(f'    Ramachandran above limit')
+                if not accepted_compactness:
+                    logging.error(f'    Compactness below limit')
+                if ranked.plddt < (PERCENTAGE_FILTER * max_plddt):
+                    logging.error(f'    PLDDT too low')
         # Superpose the experimental pdb with all the rankeds and templates
         logging.error('Superposing experimental pdbs with predictions and templates')       
         for experimental in experimental_pdbs:

@@ -556,12 +556,10 @@ def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures
                                binaries_path=binaries_path,
                                output_dir=os.path.join(output_dir, 'hinges'))
 
-    #pdbs_accepted_list = [template_in for template_list in templates_cluster for template_in in template_list]
-    #num_templates = len(pdbs_accepted_list)
-    pdbs_accepted_list = pdbs
+    pdbs_accepted_list = [template_in for template_list in templates_cluster for template_in in template_list]
+    num_templates = len(pdbs_accepted_list)
 
-    #if num_templates >= 5:
-    if True:
+    if num_templates >= 5:
         logging.debug(f'Running ccanalysis with the following templates: {" ".join([pdb.name for pdb in pdbs_accepted_list])}')
         templates_cluster2, analysis_dict2 = cc_analysis(pdbs=pdbs_accepted_list,
                                                         cc_analysis_paths=binaries_path,
@@ -620,11 +618,23 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
         compactness_decision, _ = run_spong(pdb_in_path=pdb.split_path, spong_path=binaries_path.spong_path)
         if completeness and validate_geometry and compactness_decision and not only_ca and identity:
             accepted_pdbs.append(pdb)
+            logging.debug(f'Template {pdb.name} has been accepted')
             if num_residues > pdb_complete_value:
                 pdb_complete_value = num_residues
                 pdb_complete = pdb
         else:
             uncompleted_pdbs.append(pdb)
+            logging.debug(f'Template {pdb.name} has been filtered:')
+            if not completeness:
+                logging.debug(f'    Not complete enough')
+            if not validate_geometry:
+                logging.debug(f'    Ramachandran above limit')
+            if not compactness_decision:
+                logging.debug(f'    Compactness below limit')
+            if not identity:
+                logging.debug(f'    Too low/high identity with the query sequence')
+            if only_ca:
+                logging.debug(f'    Only CA')
 
     logging.debug(f'There are {len(accepted_pdbs)} complete pdbs.')
     if len(accepted_pdbs) < 2:
