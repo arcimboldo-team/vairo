@@ -75,7 +75,7 @@ class OutputStructure:
         utils.create_dir(dir_path=self.rankeds_split_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.rankeds_nonsplit_dir, delete_if_exists=True)
 
-        logging.error('Extracting the templates from the features file')
+        logging.error('Extracting templates from the features file')
         if feature is not None:
             templates_nonsplit_dict = feature.write_all_templates_in_features(
                 output_dir=self.templates_nonsplit_dir,

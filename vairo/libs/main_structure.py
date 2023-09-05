@@ -591,7 +591,7 @@ class MainStructure:
                                                                output_dir=self.results_dir)
         if templates_cluster:
             logging.error(
-                f'The templates can be grouped in {len(templates_cluster)} clusters')
+                f'Templates can be grouped in {len(templates_cluster)} clusters')
             for cluster in templates_cluster:
                 cluster_paths = [pdb.path for pdb in cluster]
                 name_job = f'cluster_{counter}'

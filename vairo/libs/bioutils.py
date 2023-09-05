@@ -584,6 +584,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
     # Otherwise, return all the paths
     utils.create_dir(output_dir, delete_if_exists=True)
     threshold_completeness = 0.6
+    threshold_completeness2 = 0.3
     threshold_rmsd_domains = 8
     threshold_rmsd_ss = 4.5
     threshold_rmsd_local = 1.5
@@ -596,6 +597,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
     logging.debug('Starting hinges analysis')
     accepted_pdbs = []
     uncompleted_pdbs = []
+    completed_pdbs = []
 
     # Do the analysis of the different templates. We are going to check:
     # Completeness respect the query size sequence
@@ -635,11 +637,13 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
                 logging.debug(f'    Too low/high identity with the query sequence')
             if only_ca:
                 logging.debug(f'    Only CA')
+        if any(number > threshold_completeness2 for number in pdb.percentage_list):
+            completed_pdbs.append(pdb)
 
     logging.debug(f'There are {len(accepted_pdbs)} complete pdbs.')
     if len(accepted_pdbs) < 2:
         logging.debug(f'Skipping hinges.')
-        return [pdbs]
+        return [completed_pdbs]
     logging.debug(f'Using hinges to create groups.')
 
     # Run hinges all-against-all, store the results in a dict.
@@ -720,7 +724,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
     else:
         # Return the original list of pdbs
         logging.debug('Not enough pdbs for hinges.')
-        return [pdbs]
+        return [completed_pdbs]
 
 
 def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.BinariesPath, output_dir: str,

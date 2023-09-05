@@ -232,7 +232,7 @@
                 {% if 'plddt' in data %}
                     <li name="plddt" onclick="move_to(event)" class="sub-menu">PLDDT for predictions</li>
                 {% endif %}
-                {% if 'clustering_plot' in data %}
+                {% if 'cluster_list' in data %}
                     <li name="clustering" onclick="move_to(event)" class="sub-menu">Clustering</li>                
                 {% endif %}
                 {# note: commented-out template because we no longer use this
@@ -440,7 +440,7 @@
                     <img style="width: 100%" src="data:image/png;base64,{{ data.plddt }}" alt="PLDDT graph">
                 </div>
             {% endif %}
-            {% if 'clustering_plot' in data %}
+            {% if 'cluster_list' in data %}
                 <div id="clustering" class="section-div">
                     <h2>Clustering</h2>
                     {% if 'cluster_list' in data %}
@@ -457,7 +457,9 @@
                             {% endif %}
                         {% endfor %}
                     {% endif %}
-                    <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
+                    {% if 'clustering_plot' in data %}
+                        <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_plot }}" alt="Clustering plot">
+                    {% endif %}
                     {% if 'clustering_ranked_plot' in data %}
                         <img style="width: 70%" src="data:image/png;base64,{{ data.clustering_ranked_plot }}" alt="Clustering plot and predictions">                  
                     {% endif %}
