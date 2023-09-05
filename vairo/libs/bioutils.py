@@ -637,7 +637,10 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
                 logging.debug(f'    Too low/high identity with the query sequence')
             if only_ca:
                 logging.debug(f'    Only CA')
-        if any(number > threshold_completeness2 for number in pdb.percentage_list):
+        if isinstance(pdb, structures.Template) and pdb.percentage_list:
+            if any(number > threshold_completeness2 for number in pdb.percentage_list):
+                completed_pdbs.append(pdb)
+        else:
             completed_pdbs.append(pdb)
 
     logging.debug(f'There are {len(accepted_pdbs)} complete pdbs.')
