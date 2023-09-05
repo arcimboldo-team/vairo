@@ -598,7 +598,10 @@ class MainStructure:
                 label_job = f'Cluster {counter}'
                 new_path = os.path.join(self.cluster_path, name_job)
                 logging.error(f'Launching an VAIRO job in {new_path} with the following templates:')
-                logging.error(', '.join([utils.get_file_name(template_in) for template_in in cluster_paths]))
+                if len(cluster_paths) > 1:
+                    logging.error(', '.join([utils.get_file_name(template_in) for template_in in cluster_paths]))
+                else:
+                    logging.error('Without templates')
                 counter += 1
                 yml_path = self.create_cluster(job_path=new_path, templates=cluster_paths)
                 bioutils.run_vairo(yml_path=yml_path)

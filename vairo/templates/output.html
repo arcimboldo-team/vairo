@@ -451,7 +451,13 @@
                             {% if loop.first %}
                                 <ul>
                             {% endif %}
-                                <li><a href=../{{ cluster.relative_path }}>{{ cluster.label }}</a>: {{ cluster.templates | join(', ') }}</li>
+                                <li><a href=../{{ cluster.relative_path }}>{{ cluster.label }}</a>: 
+                                    {% if cluster.templates | length > 0 %}
+                                        {{ cluster.templates | join(', ') }}
+                                    {% else %}
+                                        Without templates
+                                    {% endif %}
+                                </li>
                             {% if loop.last %}
                                 </ul>
                             {% endif %}
