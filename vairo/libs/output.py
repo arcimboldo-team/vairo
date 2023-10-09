@@ -93,7 +93,7 @@ class OutputStructure:
                                            sequence_assembled=sequence_assembled)
             _, compactness = bioutils.run_spong(pdb_in_path=template.path, spong_path=binaries_paths.spong_path)
             template.set_compactness(compactness)
-            _, perc = bioutils.generate_ramachandran(pdb_path=template.path)
+            _, perc = bioutils.generate_ramachandran(pdb_path=template.split_path)
             template.set_ramachandran(perc)
 
 
@@ -114,14 +114,14 @@ class OutputStructure:
             ranked.set_path(shutil.copy2(ranked.path, self.rankeds_nonsplit_dir))
             accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path, spong_path=binaries_paths.spong_path)
             ranked.set_compactness(compactness)
-            accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.path)
-            if perc is not None:
-                perc = round(perc, 2)
-            ranked.set_ramachandran(perc)
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
             mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.path,
                                                     pdb_out_path=ranked.split_path,
                                                     sequence_assembled=sequence_assembled)
+            accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.split_path, output_dir=self.plots_path)
+            if perc is not None:
+                perc = round(perc, 2)
+            ranked.set_ramachandran(perc)
             ranked.set_mapping(mapping)
             bioutils.remove_hydrogens(ranked.split_path, ranked.split_path)
             ranked.set_encoded(ranked.split_path)

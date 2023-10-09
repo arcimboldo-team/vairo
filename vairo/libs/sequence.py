@@ -111,7 +111,7 @@ class SequenceAssembled:
             self.mutated = True
 
         if self.total_copies > 1:
-            logging.error(f'Merging {self.total_copies} sequences into one, each separeted by {self.glycines} glycines')
+            logging.error(f'Merging {self.total_copies} sequences into one, each separated by {self.glycines} glycines')
         logging.error(f'Total size of the query sequence is {self.length} amino acids')
 
     def get_mutated_residues_list(self) -> List[int]:
