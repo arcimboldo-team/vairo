@@ -46,7 +46,8 @@ class Template:
         self.sum_prob = utils.get_input_value(name='sum_prob', section='template', input_dict=parameters_dict)
         self.legacy = utils.get_input_value(name='legacy', section='template', input_dict=parameters_dict)
         self.strict = utils.get_input_value(name='strict', section='template', input_dict=parameters_dict)
-        self.aligned = utils.get_input_value(name='aligned', section='template', input_dict=parameters_dict, override_default=self.legacy)
+        self.aligned = utils.get_input_value(name='aligned', section='template', input_dict=parameters_dict,
+                                             override_default=self.legacy)
         self.template_path = f'{os.path.join(output_dir, self.pdb_id)}_template.pdb'
         self.reference = utils.get_input_value(name='reference', section='template', input_dict=parameters_dict)
         self.generate_multimer = utils.get_input_value(name='generate_multimer', section='template',
@@ -153,7 +154,7 @@ class Template:
                                                                     change_res_list=self.change_res_struct,
                                                                     match_restrict_list=self.match_restrict_struct)
                 else:
-                    self.results_path_position[i] = None   
+                    self.results_path_position[i] = None
 
         self.template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
             query_sequence=sequence_assembled.sequence_assembled,
@@ -161,7 +162,8 @@ class Template:
             pdb_id=self.pdb_id,
             chain_id='A')
 
-        logging.error(f'Positions of chains in the template {self.pdb_id}: {" | ".join([str(element) for element in self.results_path_position])}')
+        logging.error(
+            f'Positions of chains in the template {self.pdb_id}: {" | ".join([str(element) for element in self.results_path_position])}')
 
     def apply_changes(self, chain_dict: Dict, when: str):
         # Apply changes in the pdb, change residues.
@@ -204,9 +206,9 @@ class Template:
             for database in self.alignment_database:
                 # Sometimes with A3M doesn't work, so first we will try with fasta.
                 hhr_path = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}.hhr')
-                hhsearch.run_hhsearch(a3m_path=sequence_in.fasta_path,
-                                      database_path=database.database_path,
-                                      output_path=hhr_path)
+                hhsearch.run_hhalign(fasta_ref_path=sequence_in.fasta_path,
+                                     fasta_aligned_path=database.fasta_path,
+                                     output_path=hhr_path)
                 template_features, mapping, identities, aligned_columns, total_columns, evalue = \
                     features.extract_template_features_from_pdb(
                         query_sequence=query_sequence,
@@ -215,7 +217,7 @@ class Template:
                         chain_id=database.chain
                     )
 
-                if int(aligned_columns) != int(total_columns):
+                if int(aligned_columns) < int(total_columns * 0.95):
                     hhr_path2 = os.path.join(output_dir, f'{utils.get_file_name(database.fasta_path)}2.hhr')
                     if not a3m_path:
                         a3m_path = hhsearch.create_a3m(fasta_path=sequence_in.fasta_path,
@@ -225,21 +227,26 @@ class Template:
                                           database_path=database.database_path,
                                           output_path=hhr_path2)
 
-                    template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2 = \
-                        features.extract_template_features_from_pdb(
-                            query_sequence=query_sequence,
-                            hhr_path=hhr_path2,
-                            cif_path=self.cif_path,
-                            chain_id=database.chain
-                        )
+                    try:
+                        template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2 = \
+                            features.extract_template_features_from_pdb(
+                                query_sequence=query_sequence,
+                                hhr_path=hhr_path2,
+                                cif_path=self.cif_path,
+                                chain_id=database.chain
+                            )
+                    except:
+                        aligned_columns2 = 0
+                        pass
+
                     if int(aligned_columns) < int(aligned_columns2):
                         os.remove(hhr_path)
                         shutil.move(hhr_path2, hhr_path)
                         template_features, mapping, identities, aligned_columns, total_columns, evalue = \
                             template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2
 
-
-                logging.info(f'Alignment results for pdb {self.pdb_id} and chain {database.chain}, with sequence {utils.get_file_name(sequence_in.fasta_path)}:')
+                logging.info(
+                    f'Alignment results for pdb {self.pdb_id} and chain {database.chain}, with sequence {utils.get_file_name(sequence_in.fasta_path)}:')
                 logging.info(
                     f'Aligned columns: {aligned_columns} ({total_columns}), Evalue: {evalue}, Identities: {identities}')
                 if template_features is not None:
@@ -263,7 +270,6 @@ class Template:
                 extracted_chain_dict = bioutils.generate_multimer_chains(self.pdb_path, extracted_chain_dict)
             except Exception as e:
                 logging.error(f'Not possible to generate multimer for {self.pdb_path}')
-
 
         self.template_chains_struct.from_dict_to_struct(chain_dict=extracted_chain_dict,
                                                         alignment_dict=alignment_chain_dict,
@@ -345,7 +351,8 @@ class Template:
                     alignment = template_chain.check_alignment(stop=False)
                     if not self.strict or (self.strict and alignment):
                         reference_algorithm.append(
-                            (x, y, bioutils.pdist(query_pdb=template_chain.path, target_pdb=target_pdb), alignment, template_chain.path))
+                            (x, y, bioutils.pdist(query_pdb=template_chain.path, target_pdb=target_pdb), alignment,
+                             template_chain.path))
 
             if reference_algorithm:
                 results_algorithm.append(reference_algorithm)

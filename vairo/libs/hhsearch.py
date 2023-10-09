@@ -27,7 +27,9 @@ def create_database_from_pdb(fasta_path: str, databases: alphafold_classes.Alpha
         store_old_dir = os.getcwd()
         os.chdir(database_dir)
 
-        subprocess.call(['ffindex_build', '-as', f'{name}_a3m.ffdata', f'{name}_a3m.ffindex', os.path.basename(a3m_path)], stdout=subprocess.PIPE)
+        subprocess.call(
+            ['ffindex_build', '-as', f'{name}_a3m.ffdata', f'{name}_a3m.ffindex', os.path.basename(a3m_path)],
+            stdout=subprocess.PIPE)
         subprocess.call(['ffindex_apply', f'{name}_a3m.ffdata', f'{name}_a3m.ffindex', '-i',
                          f'{name}_hhm.ffindex', '-d', f'{name}_hhm.ffdata', '--', 'hhmake',
                          '-i', 'stdin', '-o', 'stdout', '-v', '0'], stdout=subprocess.PIPE)
@@ -49,4 +51,12 @@ def run_hhsearch(a3m_path: str, database_path: str, output_path: str) -> str:
     hhr = stdout.decode('utf-8')
 
     return hhr
-    
+
+
+def run_hhalign(fasta_ref_path: str, fasta_aligned_path: str, output_path: str) -> str:
+    out = subprocess.Popen(['hhalign', '-i', fasta_ref_path, '-t', fasta_aligned_path, '-o', output_path],
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdout, stderr = out.communicate()
+    hhr = stdout.decode('utf-8')
+
+    return hhr
