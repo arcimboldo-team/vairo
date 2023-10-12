@@ -143,12 +143,17 @@ class Features:
             coverage_msa = arr.argsort()[-finish:][::-1]
             coverage_msa = np.sort(coverage_msa)
         msa_dict = self.create_empty_msa_list(len(coverage_msa))
+        starting_list = [int(x) for x in self.get_names_msa() if x.isdigit()]
+        starting_id = 1
+        if starting_list:
+            starting_id = max(starting_list)+1
         for i, num in enumerate(coverage_msa):
             msa_dict['msa'][i] = new_msa['msa'][num+start]
-            msa_dict['accession_ids'][i] = str(i).encode()
+            msa_dict['accession_ids'][i] = str(starting_id).encode()
             msa_dict['deletion_matrix_int'][i] = new_msa['deletion_matrix_int'][num+start]
             msa_dict['msa_species_identifiers'][i] = new_msa['msa_species_identifiers'][num+start]
             msa_dict['num_alignments'][i] = np.zeros(new_msa['num_alignments'].shape)
+            starting_id += 1
         if positions:
             msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)
         if len(msa_dict['msa']) > 0:

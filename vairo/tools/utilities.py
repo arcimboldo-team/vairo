@@ -1,8 +1,9 @@
 #! /usr/bin/env python3
+import sys
+sys.path.append('../')
 
 import pickle
 import os
-import sys
 import logging
 from libs import features, bioutils, output, utils, structures
 
