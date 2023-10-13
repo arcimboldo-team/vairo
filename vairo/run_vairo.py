@@ -131,7 +131,7 @@ def main():
                         if extension == '.fasta':
                             sequence_list = list(bioutils.extract_sequences(aux_path).values())
 
-                        for sequence in sequence_list:
+                        for num, sequence in enumerate(sequence_list):
                             seq_aux = sequence
                             if library.positions_list:
                                 aux_library_list = copy.copy(library.positions_list)
@@ -140,7 +140,7 @@ def main():
                                         aux_library_list[m] = seq_aux[pos]
                                 seq_aux = aux_library_list
                             seq_aux = ''.join(seq_aux)
-                            a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}_{utils.get_file_name(aux_path)}', 1)
+                            a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}-{num}_{utils.get_file_name(aux_path)}', 1)
                             num_msa += 1
                 if num_templates > 0:
                     logging.error(f'     Adding {num_templates} template/s to templates')

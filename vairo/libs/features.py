@@ -63,7 +63,7 @@ class Features:
         if position:
             sequence_in = '-'*(position-1) + sequence_in + '-'*(seq_length-(position-1)-len(sequence_in))
         sequence_in = sequence_in[:seq_length]
-        sequence_array = np.array([residue_constants.HHBLITS_AA_TO_ID[res] for res in sequence_in])
+        sequence_array = np.array([residue_constants.HHBLITS_AA_TO_ID[res] for res in sequence_in])    
         self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
         self.msa_features['accession_ids'] = np.hstack([self.msa_features['accession_ids'], sequence_id.encode()])
         self.msa_features['deletion_matrix_int'] = np.vstack(
@@ -127,6 +127,14 @@ class Features:
         }
         return template_dict
 
+    def get_max_id(self) -> int:
+        starting_list = [int(x) for x in self.get_names_msa() if x.isdigit()]
+        starting_id = 1
+        if starting_list:
+            starting_id = max(starting_list)+1
+        return starting_id
+
+
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = [],
                          positions: List[int] = []) -> int:
         coverage_msa = []
@@ -143,10 +151,7 @@ class Features:
             coverage_msa = arr.argsort()[-finish:][::-1]
             coverage_msa = np.sort(coverage_msa)
         msa_dict = self.create_empty_msa_list(len(coverage_msa))
-        starting_list = [int(x) for x in self.get_names_msa() if x.isdigit()]
-        starting_id = 1
-        if starting_list:
-            starting_id = max(starting_list)+1
+        starting_id = self.get_max_id()
         for i, num in enumerate(coverage_msa):
             msa_dict['msa'][i] = new_msa['msa'][num+start]
             msa_dict['accession_ids'][i] = str(starting_id).encode()
