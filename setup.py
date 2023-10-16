@@ -118,16 +118,16 @@ setup(
     #
     #   py_modules=["my_module"],
     #
-    packages=['VAIRO', 'VAIRO.ALEPH', 'VAIRO.ALEPH.aleph',
-              'VAIRO.ALEPH.aleph.core'],
+    packages=['vairo', 'vairo.ALEPH', 'vairo.ALEPH.aleph',
+              'vairo.ALEPH.aleph.core'],
     include_package_data=True,
     package_data={  # Optional
-        'VAIRO': ['binaries/*', 'libs/*', 'templates/*', 'README.md'],
+        'vairo': ['binaries/*', 'libs/*', 'templates/*', 'README.md'],
     },
     entry_points={  # Optional
         'console_scripts': [
-            'VAIRO=VAIRO.run_vairo:main',
-            'vairo=VAIRO.run_vairo:main'
+            'VAIRO=vairo.run_vairo:main',
+            'vairo=vairo.run_vairo:main'
         ],
     },
     # This field lists other packages that your project depends on to run.
