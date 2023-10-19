@@ -1,4 +1,5 @@
 import copy
+import logging
 import os
 from typing import Union, List, Dict
 
@@ -106,9 +107,19 @@ class TemplateChainsList:
                 template_chain.match is not None and template_chain.match.check_position()]
 
     def from_dict_to_struct(self, chain_dict: Dict, alignment_dict: Dict, sequence: str, change_res_list,
-                            match_restrict_list: match_restrictions.MatchRestrictionsList):
+                            match_restrict_list: match_restrictions.MatchRestrictionsList, generate_multimer: bool = False, pdb_path: str = ''):
         # Given a dict, with all the information of a Chain (there can be more than one chain in case of multimer)
         # Read all the information, and create as many TemplateChains as paths and append them to the list.
+        
+        if not chain_dict:
+            return chain_dict
+
+        if generate_multimer:
+            try:
+                chain_dict = bioutils.generate_multimer_chains(pdb_path, chain_dict)
+            except Exception as e:
+                logging.error(f'Not possible to generate multimer for {pdb_path}')
+        print(chain_dict)
         for chain, paths in chain_dict.items():
             path_list = []
             if isinstance(paths, list):
@@ -116,8 +127,17 @@ class TemplateChainsList:
                     path_list.append(path)
             else:
                 path_list.append(paths)
+
+            chains_exist = self.get_chains_not_in_list(path_list)
+            if chains_exist:
+                path_list = [chain.path for chain in chains_exist]
+
             match_restrict_copy = copy.deepcopy(match_restrict_list)
-            match_list = match_restrict_copy.get_matches_by_chain(chain=chain)
+            if isinstance(match_restrict_copy, match_restrictions.MatchRestrictionsList):
+                match_list = match_restrict_copy.get_matches_by_chain(chain=chain)
+            else:
+                match_list = [match_restrict_copy]
+                
 
             alignment = alignment_dict.get(chain)
 
@@ -149,6 +169,7 @@ class TemplateChainsList:
                         match.residues.delete_residues_inverse(path, path)
                     match = match_list.pop(0)
                     break
+
                 # Store the sequence before changing the residues, as if we want to add it in the MSA, it would not
                 # make sense
                 sequence_before_changes = list(bioutils.extract_sequence_msa_from_pdb(path).values())[0]

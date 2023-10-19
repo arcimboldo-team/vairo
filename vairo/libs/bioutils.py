@@ -1048,18 +1048,19 @@ def generate_multimer_chains(pdb_path: str, template_dict: Dict) -> Dict:
         logging.debug(str(matrix))
 
     for chain in chain_list:
-        if isinstance(template_dict[chain], list):
-            pdb_path = template_dict[chain][0]
-        else:
-            pdb_path = template_dict[chain]
-        multimer_new_chains = []
-        for i, transformation in enumerate(transformations_list):
-            new_pdb_path = utils.replace_last_number(text=pdb_path, value=i + 1)
-            change_chain(pdb_in_path=pdb_path,
-                         pdb_out_path=new_pdb_path,
-                         rot_tra_matrix=transformation)
-            multimer_new_chains.append(new_pdb_path)
-        multimer_dict[chain] = multimer_new_chains
+        if chain in template_dict.keys():
+            if isinstance(template_dict[chain], list):
+                pdb_path = template_dict[chain][0]
+            else:
+                pdb_path = template_dict[chain]
+            multimer_new_chains = []
+            for i, transformation in enumerate(transformations_list):
+                new_pdb_path = utils.replace_last_number(text=pdb_path, value=i + 1)
+                change_chain(pdb_in_path=pdb_path,
+                            pdb_out_path=new_pdb_path,
+                            rot_tra_matrix=transformation)
+                multimer_new_chains.append(new_pdb_path)
+            multimer_dict[chain] = multimer_new_chains
 
     return multimer_dict
 
@@ -1375,42 +1376,12 @@ def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str], da
             return None
         else:
             for i, path in enumerate(chain_dict.values()):
-                chains_aligned.append(align_chain(chain_in_path=path, chain_out_path=path, sequence_in=sequences_list[i], databases=databases))
+                aligned_chain, aligned_info = hhsearch.run_hh(output_dir=tmpdirname, database_dir=tmpdirname, query_sequence_path=sequences_list[i].fasta_path, chain_in_path=path, databases=databases)
+                shutil.copy2(aligned_chain, path)
+                chains_aligned.append(path)
             merge_pdbs(list_of_paths_of_pdbs_to_merge=chains_aligned, merged_pdb_path=pdb_out_path)
             return pdb_out_path
+    
         
-def align_chain(chain_in_path: str, chain_out_path: str, sequence_in: str, databases: alphafold_classes.AlphaFoldPaths) -> str:
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        fasta_path = os.path.join(tmpdirname, 'fasta.path')
-        query_sequence = extract_sequence(sequence_in)
-        seq = extract_sequence_from_file(file_path=chain_in_path)
-        aux_key = list(seq.keys())[0].replace('>', '')
-        sequence_name = aux_key.split(':')[0]
-        sequence_chain = aux_key.split(':')[1]
-        hhr_path = os.path.join(tmpdirname, f'{sequence_name}_{sequence_chain}.hhr')
-        cif_path = os.path.join(tmpdirname, f'{utils.get_file_name(chain_in_path)}.cif')
-        pdb2mmcif(pdb_in_path=chain_in_path, cif_out_path=cif_path)
-        write_sequence(sequence_name=f'{sequence_name}:{sequence_chain}', sequence_amino=list(seq.values())[0],
-                        sequence_path=fasta_path)
-        new_database = hhsearch.create_database_from_pdb(fasta_path=fasta_path,
-                                                            databases=databases,
-                                                            output_dir=tmpdirname)
-        a3m_path = hhsearch.create_a3m(fasta_path=sequence_in,
-                                        databases=databases,
-                                        output_dir=tmpdirname)
-        hhsearch.run_hhsearch(a3m_path=a3m_path,
-                            database_path=new_database,
-                            output_path=hhr_path)
-
-        template_features, mapping, identities, aligned_columns, total_columns, evalue = \
-            features.extract_template_features_from_pdb(
-                query_sequence=query_sequence,
-                hhr_path=hhr_path,
-                cif_path=cif_path,
-                chain_id=sequence_chain
-            )
-                
-        g = features.Features(query_sequence=query_sequence)
-        g.append_new_template_features(new_template_features=template_features)
-        aux_dict = g.write_all_templates_in_features(output_dir=tmpdirname, chain=sequence_chain)
-        return shutil.copy2(list(aux_dict.values())[0], chain_out_path)
+        
+        

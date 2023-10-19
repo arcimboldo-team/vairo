@@ -83,12 +83,6 @@ class Library:
         self.num_templates = num_templates
 
 @dataclasses.dataclass(frozen=True)
-class AlignmentDatabase:
-    chain: str
-    fasta_path: str
-    database_path: str
-
-@dataclasses.dataclass(frozen=True)
 class Dendogram:
     dendogram_list: List[str]
     dendogram_plot: str
@@ -101,8 +95,8 @@ class Alignment:
     evalue: str
     identities: int
     hhr_path: str
-    database: AlignmentDatabase
     mapping: Dict
+    chain: str
 
 
 @dataclasses.dataclass(frozen=True)

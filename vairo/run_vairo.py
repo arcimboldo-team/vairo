@@ -52,19 +52,18 @@ def main():
             a_air.generate_output()
             for template in a_air.templates_list:
                 logging.error(f'Reading template {template.pdb_id}')
+                template.match_restrict_struct.update_references()
                 if template.add_to_templates or template.add_to_msa:
-                    if not template.aligned:
-                        database_dir = os.path.join(a_air.run_dir, template.pdb_id)
-                        utils.create_dir(database_dir)
-                        template.generate_database(output_dir=database_dir, databases=a_air.alphafold_paths)
-                    for sequence in a_air.sequence_assembled.sequence_list:
-                        alignment_dir = os.path.join(a_air.run_dir, sequence.name)
-                        utils.create_dir(alignment_dir)
-                        template.align(output_dir=alignment_dir, sequence_in=sequence, databases=a_air.alphafold_paths)
+                    template.alignment(run_dir=a_air.run_dir,
+                                    databases=a_air.alphafold_paths,
+                                    sequence_assembled=a_air.sequence_assembled)
+                    
                     template.generate_features(
                         output_dir=a_air.run_dir,
                         global_reference=a_air.reference,
                         sequence_assembled=a_air.sequence_assembled)
+                    
+                    
                     a_air.append_line_in_templates(template.results_path_position)
                     if template.add_to_msa:
                         sequence_from_template = template.get_old_sequence(

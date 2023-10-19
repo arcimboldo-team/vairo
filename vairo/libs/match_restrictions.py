@@ -1,5 +1,6 @@
+import copy
 from typing import Union, List
-from libs import change_res
+from libs import change_res, utils
 
 
 class MatchRestrictions:
@@ -21,6 +22,9 @@ class MatchRestrictions:
     def set_reference(self, new_reference):
         # Change the reference from pdb_id to the real Template
         self.reference = new_reference
+
+    def set_position(self, position):
+        self.position = position
 
     def check_references(self) -> bool:
         return self.reference is not None and self.reference_chain is not None
@@ -51,3 +55,22 @@ class MatchRestrictionsList:
     def get_matches_by_chain(self, chain: str) -> List[MatchRestrictions]:
         # Return all the matches for a specific chain
         return [match for match in self.match_restrict_list if match.chain == chain]
+    
+    def get_matches_by_chain_position(self, chain: str) -> List[MatchRestrictions]:
+        # Return all the matches for a specific chain
+        return [match for match in self.match_restrict_list if match.chain == chain and match.check_position() ]
+    
+    def update_references(self):
+        for match in self.match_restrict_list:
+            positions = utils.get_positions_by_chain(match.reference.results_path_position,
+                                                    match.reference_chain)     
+            for i, position in enumerate(positions):
+                if i == 1:
+                    match.set_position(positions[0])
+                else:
+                    match2 = copy.deepcopy(match)
+                    match2.set_position(position)
+                    self.match_restrict_list.append(match2)
+
+
+
