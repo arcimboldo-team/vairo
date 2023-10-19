@@ -119,7 +119,6 @@ class TemplateChainsList:
                 chain_dict = bioutils.generate_multimer_chains(pdb_path, chain_dict)
             except Exception as e:
                 logging.error(f'Not possible to generate multimer for {pdb_path}')
-        print(chain_dict)
         for chain, paths in chain_dict.items():
             path_list = []
             if isinstance(paths, list):
@@ -128,16 +127,16 @@ class TemplateChainsList:
             else:
                 path_list.append(paths)
 
-            chains_exist = self.get_chains_not_in_list(path_list)
-            if chains_exist:
-                path_list = [chain.path for chain in chains_exist]
-
             match_restrict_copy = copy.deepcopy(match_restrict_list)
             if isinstance(match_restrict_copy, match_restrictions.MatchRestrictionsList):
                 match_list = match_restrict_copy.get_matches_by_chain(chain=chain)
             else:
                 match_list = [match_restrict_copy]
-                
+                filtered_list = list(filter(lambda x: x not in [y.path for y in self.template_chains_list], path_list))
+                if filtered_list:
+                    path_list = [filtered_list[0]]
+                else:
+                    path_list = [path_list[0]]
 
             alignment = alignment_dict.get(chain)
 

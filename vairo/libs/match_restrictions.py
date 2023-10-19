@@ -62,15 +62,16 @@ class MatchRestrictionsList:
     
     def update_references(self):
         for match in self.match_restrict_list:
-            positions = utils.get_positions_by_chain(match.reference.results_path_position,
-                                                    match.reference_chain)     
-            for i, position in enumerate(positions):
-                if i == 1:
-                    match.set_position(positions[0])
-                else:
-                    match2 = copy.deepcopy(match)
-                    match2.set_position(position)
-                    self.match_restrict_list.append(match2)
+            if match.check_references():
+                positions = utils.get_positions_by_chain(match.reference.results_path_position,
+                                                        match.reference_chain)     
+                for i, position in enumerate(positions):
+                    if i == 1:
+                        match.set_position(positions[0])
+                    else:
+                        match2 = copy.deepcopy(match)
+                        match2.set_position(position)
+                        self.match_restrict_list.append(match2)
 
 
 
