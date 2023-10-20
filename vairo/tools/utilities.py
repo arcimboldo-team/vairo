@@ -68,8 +68,8 @@ def superposition_chains(pdb1_path: str, pdb2_path: str):
 
 def superpose_chains(pdb1_path: str, pdb2_path: str, tmp_dir: str):
     utils.create_dir(tmp_dir)
-    pdb1_chains_dict = bioutils.split_pdb_in_chains(pdb_in_path=pdb1_path, output_dir=tmp_dir)
-    pdb2_chains_dict = bioutils.split_pdb_in_chains(pdb_in_path=pdb2_path, output_dir=tmp_dir)        
+    pdb1_chains_dict = bioutils.split_pdb_in_chains(pdb_path=pdb1_path, output_dir=tmp_dir)
+    pdb2_chains_dict = bioutils.split_pdb_in_chains(pdb_path=pdb2_path, output_dir=tmp_dir)
 
 def renumber():
     def check_consecutive(numbers):

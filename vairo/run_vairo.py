@@ -2,12 +2,14 @@
 import copy
 import os
 import shutil
+
 os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
 from datetime import datetime
 from libs import features, main_structure, utils, bioutils, pymol_script
+
 
 def main():
     try:
@@ -55,15 +57,14 @@ def main():
                 template.match_restrict_struct.update_references()
                 if template.add_to_templates or template.add_to_msa:
                     template.alignment(run_dir=a_air.run_dir,
-                                    databases=a_air.alphafold_paths,
-                                    sequence_assembled=a_air.sequence_assembled)
-                    
+                                       databases=a_air.alphafold_paths,
+                                       sequence_assembled=a_air.sequence_assembled)
+
                     template.generate_features(
                         output_dir=a_air.run_dir,
                         global_reference=a_air.reference,
                         sequence_assembled=a_air.sequence_assembled)
-                    
-                    
+
                     a_air.append_line_in_templates(template.results_path_position)
                     if template.add_to_msa:
                         sequence_from_template = template.get_old_sequence(
@@ -85,20 +86,21 @@ def main():
                 num_templates = 0
                 if feat.keep_msa != 0:
                     num_msa = a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
-                                                   finish=feat.keep_msa,
-                                                   delete_positions=feat.msa_delete,
-                                                   positions=positions)
+                                                             finish=feat.keep_msa,
+                                                             delete_positions=feat.msa_delete,
+                                                             positions=positions)
                     logging.error(f'     Adding {num_msa} sequence/s to the MSA')
                 if feat.keep_templates != 0:
                     num_templates = a_air.feature.set_template_features(new_templates=feat_aux.template_features,
-                                                        finish=feat.keep_templates,
-                                                        positions=positions,
-                                                        sequence_in=feat.sequence)
+                                                                        finish=feat.keep_templates,
+                                                                        positions=positions,
+                                                                        sequence_in=feat.sequence)
                     logging.error(f'     Adding {num_templates} template/s to templates')
                 feat.add_information(num_msa=num_msa, num_templates=num_templates)
             for i, library in enumerate(a_air.library_list):
                 logging.error(f'Reading library {library.path}')
-                aux_list = [os.path.join(library.path, file) for file in os.listdir(library.path)] if os.path.isdir(library.path) else [library.path]
+                aux_list = [os.path.join(library.path, file) for file in os.listdir(library.path)] if os.path.isdir(
+                    library.path) else [library.path]
                 paths = [path for path in aux_list if utils.get_file_extension(path) in ['.pdb', '.fasta']]
                 num_msa = 0
                 num_templates = 0
@@ -109,7 +111,8 @@ def main():
                         else:
                             template_path = f'{os.path.join(a_air.input_dir, utils.get_file_name(aux_path))}.pdb'
                             if library.positions:
-                                template_path = bioutils.copy_positions_of_pdb(path_in=aux_path, path_out=template_path, positions=library.positions_list)
+                                template_path = bioutils.copy_positions_of_pdb(path_in=aux_path, path_out=template_path,
+                                                                               positions=library.positions_list)
                             else:
                                 shutil.copy2(aux_path, template_path)
                             bioutils.remove_hetatm(template_path, template_path)
@@ -139,7 +142,8 @@ def main():
                                         aux_library_list[m] = seq_aux[pos]
                                 seq_aux = aux_library_list
                             seq_aux = ''.join(seq_aux)
-                            a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}-{num}_{utils.get_file_name(aux_path)}', 1)
+                            a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}-{num}_{utils.get_file_name(aux_path)}',
+                                                            1)
                             num_msa += 1
                 if num_templates > 0:
                     logging.error(f'     Adding {num_templates} template/s to templates')

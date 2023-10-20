@@ -28,7 +28,6 @@ class Template:
         self.template_chains_struct: template_chains.TemplateChainsList = template_chains.TemplateChainsList()
         self.alignment_database: List[structures.AlignmentDatabase] = []
         self.selected_positions: bool = False
-        self.template_database_dir: str
 
         pdb_path = utils.get_input_value(name='pdb', section='template', input_dict=parameters_dict)
         if new_name is not None:
@@ -98,7 +97,7 @@ class Template:
         bioutils.remove_hydrogens(self.pdb_path, self.pdb_path)
         tmp_dir = os.path.join(output_dir, f'{self.pdb_id}_chains')
         utils.create_dir(tmp_dir, delete_if_exists=True)
-        self.template_chains = bioutils.split_pdb_in_chains(output_dir=tmp_dir, pdb_in_path=self.pdb_path)
+        self.template_chains = bioutils.split_pdb_in_chains(output_dir=tmp_dir, pdb_path=self.pdb_path)
         self.apply_changes(chain_dict=self.template_chains, when='before_alignment')
         aux_list = utils.dict_values_to_list(self.template_chains)
         bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
@@ -143,7 +142,7 @@ class Template:
                 pdb_in_path=self.template_path,
                 pdb_out_path=aux_path,
                 sequence_assembled=sequence_assembled)
-            chain_dict = bioutils.chain_splitter(aux_path)
+            chain_dict = bioutils.split_pdb_in_chains(pdb_path=aux_path)
             for i, pos in enumerate(list(positions.keys())):
                 if pos in chain_dict:
                     self.results_path_position[i] = chain_dict[pos]
@@ -172,43 +171,52 @@ class Template:
                     if chain in change_residues.chain_res_dict.keys():
                         change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
 
-
-    def alignment(self, run_dir: str, sequence_assembled: sequence.SequenceAssembled, databases: alphafold_classes.AlphaFoldPaths):
+    def alignment(self, run_dir: str, sequence_assembled: sequence.SequenceAssembled,
+                  databases: alphafold_classes.AlphaFoldPaths):
         if not self.aligned:
-            self.template_database_dir = os.path.join(run_dir, f'{self.pdb_id}_databases')
-            utils.create_dir(self.template_database_dir, delete_if_exists=True)
+            template_database_dir = os.path.join(run_dir, f'{self.pdb_id}_databases')
+            utils.create_dir(template_database_dir, delete_if_exists=True)
             if not self.selected_positions:
                 for sequence_in in sequence_assembled.sequence_list:
                     for chain, chain_path in self.template_chains.items():
-                        alignment_dir = os.path.join(run_dir, sequence_in.name)
-                        utils.create_dir(alignment_dir)
-                        extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_dir, database_dir=self.template_database_dir, chain_in_path=chain_path, query_sequence_path=sequence_in.fasta_path, databases=databases)
+                        alignment_chain_dir = os.path.join(sequence_in.alignment_dir, chain)
+                        utils.create_dir(alignment_chain_dir)
+                        extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
+                                                                           database_dir=template_database_dir,
+                                                                           chain_in_path=chain_path,
+                                                                           query_sequence_path=sequence_in.fasta_path,
+                                                                           databases=databases,
+                                                                           name=self.pdb_id)
                         self.template_chains_struct.from_dict_to_struct(chain_dict={chain: extracted_chain},
                                                                         alignment_dict={chain: alignment_chain},
                                                                         sequence=sequence_in.name,
                                                                         change_res_list=self.change_res_struct,
                                                                         match_restrict_list=self.match_restrict_struct,
                                                                         generate_multimer=self.generate_multimer,
-                                                                        pdb_path=self.pdb_path)            
+                                                                        pdb_path=self.pdb_path)
             else:
                 for chain, chain_path in self.template_chains.items():
                     match_list = self.match_restrict_struct.get_matches_by_chain_position(chain=chain)
                     for match in match_list:
                         sequence_in = sequence_assembled.sequence_list_expanded[match.position]
-                        alignment_dir = os.path.join(run_dir, sequence_in.name)
-                        utils.create_dir(alignment_dir)
-                        extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_dir, database_dir=self.template_database_dir, chain_in_path=chain_path, query_sequence_path=sequence_in.fasta_path, databases=databases)
+                        alignment_chain_dir = os.path.join(sequence_in.alignment_dir, chain)
+                        utils.create_dir(alignment_chain_dir)
+                        extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
+                                                                           database_dir=template_database_dir,
+                                                                           chain_in_path=chain_path,
+                                                                           query_sequence_path=sequence_in.fasta_path,
+                                                                           databases=databases,
+                                                                           name=self.pdb_id)
                         self.template_chains_struct.from_dict_to_struct(chain_dict={chain: extracted_chain},
                                                                         alignment_dict={chain: alignment_chain},
                                                                         sequence=sequence_in.name,
                                                                         change_res_list=self.change_res_struct,
                                                                         match_restrict_list=match,
                                                                         generate_multimer=self.generate_multimer,
-                                                                        pdb_path=self.pdb_path)                           
-
+                                                                        pdb_path=self.pdb_path)
 
         else:
-            extracted_chain_dict = bioutils.split_pdb_in_chains(output_dir=run_dir, pdb_in_path=self.pdb_path)
+            extracted_chain_dict = bioutils.split_pdb_in_chains(output_dir=run_dir, pdb_path=self.pdb_path)
             for sequence_in in sequence_assembled.sequence_list:
                 self.template_chains_struct.from_dict_to_struct(chain_dict=extracted_chain_dict,
                                                                 alignment_dict={},
@@ -217,7 +225,6 @@ class Template:
                                                                 match_restrict_list=self.match_restrict_struct,
                                                                 generate_multimer=self.generate_multimer,
                                                                 pdb_path=self.pdb_path)
-
 
     def sort_chains_into_positions(self, sequence_name_list: List[str], global_reference) -> List[str]:
         # Given the sequences list and if there is any global reference:
@@ -236,7 +243,6 @@ class Template:
                 composition_path_list[position] = chain_match.path
                 deleted_positions.append(position)
                 chain_match.check_alignment(stop=self.strict)
-
 
         reference = self.reference if self.reference is not None else None
         reference = global_reference if reference is None else reference

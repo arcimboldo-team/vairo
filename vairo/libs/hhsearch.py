@@ -17,7 +17,7 @@ def create_a3m(fasta_path, databases: alphafold_classes.AlphaFoldPaths, output_d
     return path
 
 
-def create_database_from_pdb(fasta_path: str, databases: alphafold_classes.AlphaFoldPaths, output_dir: str) -> str:    
+def create_database_from_pdb(fasta_path: str, databases: alphafold_classes.AlphaFoldPaths, output_dir: str) -> str:
     name = utils.get_file_name(fasta_path)
     database_dir = os.path.join(output_dir, f'{name}_database')
     data_name = os.path.join(database_dir, name)
@@ -62,26 +62,32 @@ def run_hhalign(fasta_ref_path: str, fasta_aligned_path: str, output_path: str) 
     return hhr
 
 
-def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_in_path: str, databases: alphafold_classes.AlphaFoldPaths):
+def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_in_path: str,
+           databases: alphafold_classes.AlphaFoldPaths, name: str = None):
     query_sequence = bioutils.extract_sequence(query_sequence_path)
     template_sequence = bioutils.extract_sequence_from_file(file_path=chain_in_path)
     aux_key = list(template_sequence.keys())[0].replace('>', '')
     sequence_name = aux_key.split(':')[0]
     sequence_chain = aux_key.split(':')[1]
     database_chain_dir = os.path.join(database_dir, sequence_chain)
-    cif_path = os.path.join(database_chain_dir, f'{utils.get_file_name(chain_in_path)}.cif')
-    template_fasta_path = os.path.join(database_chain_dir, f'{utils.get_file_name(chain_in_path)}.fasta')
-    hhr_path = os.path.join(output_dir, f'{utils.get_file_name(chain_in_path)}.hhr')
+
+    if name is None:
+        name = utils.get_file_name(chain_in_path)
+
+    template_fasta_path = os.path.join(database_chain_dir, f'{name}.fasta')
+    cif_path = os.path.join(output_dir, f'{name}.cif')
+    hhr_path = os.path.join(output_dir, f'{name}.hhr')
+    bioutils.pdb2mmcif(pdb_in_path=chain_in_path, cif_out_path=cif_path)
 
     if not os.path.exists(database_chain_dir):
         utils.create_dir(database_chain_dir)
-        bioutils.pdb2mmcif(pdb_in_path=chain_in_path, cif_out_path=cif_path)
-        bioutils.write_sequence(sequence_name=f'{sequence_name}:{sequence_chain}', sequence_amino=list(template_sequence.values())[0],
-                            sequence_path=template_fasta_path)
+        bioutils.write_sequence(sequence_name=f'{sequence_name}:{sequence_chain}',
+                                sequence_amino=list(template_sequence.values())[0],
+                                sequence_path=template_fasta_path)
         create_database_from_pdb(fasta_path=template_fasta_path, databases=databases, output_dir=database_chain_dir)
 
     run_hhalign(fasta_ref_path=query_sequence_path, fasta_aligned_path=template_fasta_path, output_path=hhr_path)
-    
+
     template_features, mapping, identities, aligned_columns, total_columns, evalue = \
         features.extract_template_features_from_pdb(
             query_sequence=query_sequence,
@@ -95,8 +101,8 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
         a3m_path = os.path.join(output_dir, f'{utils.get_file_name(template_fasta_path)}.a3m')
         if not os.path.exists(a3m_path):
             a3m_path = create_a3m(fasta_path=query_sequence_path,
-                                databases=databases,
-                                output_dir=output_dir)
+                                  databases=databases,
+                                  output_dir=output_dir)
         run_hhsearch(a3m_path=a3m_path, database_path=database_chain_dir, output_path=hhr_path2)
 
         try:
@@ -127,12 +133,9 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
         g.append_new_template_features(new_template_features=template_features)
         aux_dict = g.write_all_templates_in_features(output_dir=output_dir, chain=sequence_chain)
         extracted_chain_path = list(aux_dict.values())[0]
+
     alignment_chain_struct = structures.Alignment(hhr_path=hhr_path, identities=identities,
-                                                aligned_columns=aligned_columns,
-                                                total_columns=total_columns, evalue=evalue, 
-                                                mapping=mapping, chain=sequence_chain)
+                                                  aligned_columns=aligned_columns,
+                                                  total_columns=total_columns, evalue=evalue,
+                                                  mapping=mapping, chain=sequence_chain)
     return extracted_chain_path, alignment_chain_struct
-
-
-
-

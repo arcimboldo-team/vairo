@@ -135,7 +135,7 @@ class MainStructure:
         logging.error('Building query sequence')
         for parameters_sequence in utils.get_input_value(name='sequences', section='global',
                                                          input_dict=parameters_dict):
-            new_sequence = sequence.Sequence(parameters_sequence, self.input_dir)
+            new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir)
             sequence_list.append(new_sequence)
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
 

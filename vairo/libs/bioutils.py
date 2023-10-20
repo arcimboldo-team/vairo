@@ -3,7 +3,8 @@ from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 from Bio import SeqIO
-from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder, Superimposer
+from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder, \
+    Superimposer
 from scipy.spatial import distance
 from sklearn.cluster import KMeans
 from ALEPH.aleph.core import ALEPH
@@ -11,7 +12,6 @@ from alphafold.common import residue_constants
 from libs import alphafold_classes, change_res, features, hhsearch, structures, utils, plots, global_variables, sequence
 from alphafold.relax import cleanup, amber_minimize
 import pandas as pd
-
 
 from libs.structures import Hinges
 from simtk import unit
@@ -40,7 +40,6 @@ def pdb2mmcif(pdb_in_path: str, cif_out_path: str) -> str:
 
 
 def superposition_by_chains(pdb1_in_path: str, pdb2_in_path: str) -> Dict:
-
     def compare_residues(list1, list2) -> List:
         list_res = [at.get_parent().get_id()[1] for at in list2]
         return [at for at in list1 if at.get_parent().get_id()[1] in list_res]
@@ -61,12 +60,12 @@ def superposition_by_chains(pdb1_in_path: str, pdb2_in_path: str) -> Dict:
             atoms_1_aux = compare_residues(atoms_1, atoms_2)
             atoms_2 = compare_residues(atoms_2, atoms_1_aux)
             superimposer1 = Superimposer()
-            superimposer1.set_atoms(atoms_1_aux, atoms_2)            
+            superimposer1.set_atoms(atoms_1_aux, atoms_2)
             for chain3 in chains2_list:
                 name3 = f'{utils.get_file_name(pdb2_in_path)}'
                 atoms_3 = copy.deepcopy([at for at in chain3.get_atoms() if at.get_id() == 'CA'])
                 atoms_12_aux = compare_residues(atoms_1, atoms_3)
-                atoms_3 = compare_residues(atoms_3, atoms_12_aux)                    
+                atoms_3 = compare_residues(atoms_3, atoms_12_aux)
                 superimposer2 = Superimposer()
                 superimposer1.apply(atoms_3)
                 superimposer2.set_atoms(atoms_12_aux, atoms_3)
@@ -98,7 +97,7 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int,
 
 
 def run_spong(pdb_in_path: str, spong_path: str) -> float:
-    #Run Spong and return compactness
+    # Run Spong and return compactness
 
     store_old_dir = os.getcwd()
     os.chdir(os.path.dirname(pdb_in_path))
@@ -117,7 +116,8 @@ def run_spong(pdb_in_path: str, spong_path: str) -> float:
         os.remove(file_created)
     except:
         pass
-    return float(compactness)>=2, compactness
+    return float(compactness) >= 2, compactness
+
 
 def check_pdb(pdb: str, pdb_out_path: str) -> str:
     # Check if pdb is a path, and if it doesn't exist, download it.
@@ -265,12 +265,6 @@ def write_sequence(sequence_name: str, sequence_amino: str, sequence_path: str) 
         f_out.write(f'{sequence_amino}')
     return sequence_path
 
-
-def split_pdb_in_chains(output_dir: str, pdb_in_path: str) -> Dict:
-    aux_path = os.path.join(output_dir, os.path.basename(pdb_in_path))
-    shutil.copy2(pdb_in_path, aux_path)
-    chain_dict = chain_splitter(aux_path)
-    return chain_dict
 
 
 def merge_pdbs(list_of_paths_of_pdbs_to_merge: List[str], merged_pdb_path: str):
@@ -560,14 +554,15 @@ def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures
     num_templates = len(pdbs_accepted_list)
 
     if num_templates >= 5:
-        logging.debug(f'Running ccanalysis with the following templates: {" ".join([pdb.name for pdb in pdbs_accepted_list])}')
+        logging.debug(
+            f'Running ccanalysis with the following templates: {" ".join([pdb.name for pdb in pdbs_accepted_list])}')
         templates_cluster2, analysis_dict2 = cc_analysis(pdbs=pdbs_accepted_list,
-                                                        cc_analysis_paths=binaries_path,
-                                                        output_dir=os.path.join(output_dir, 'ccanalysis'))
+                                                         cc_analysis_paths=binaries_path,
+                                                         output_dir=os.path.join(output_dir, 'ccanalysis'))
     else:
         logging.debug('Less than 5 templates recognised by hinges. Skipping ccanalysis.')
 
-    #if len(templates_cluster) > 1 and templates_cluster2:
+    # if len(templates_cluster) > 1 and templates_cluster2:
     if templates_cluster2:
         return templates_cluster2, analysis_dict2
     else:
@@ -655,7 +650,8 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
     for pdb1 in accepted_pdbs:
         for pdb2 in accepted_pdbs:
             if pdb2.name not in results_rmsd[pdb1.name]:
-                result_hinges = run_hinges(pdb1_path=pdb1.split_path, pdb2_path=pdb2.split_path, hinges_path=binaries_path.hinges_path,
+                result_hinges = run_hinges(pdb1_path=pdb1.split_path, pdb2_path=pdb2.split_path,
+                                           hinges_path=binaries_path.hinges_path,
                                            output_path=os.path.join(output_dir, f'{pdb1.name}_{pdb2.name}.txt'))
                 results_rmsd[pdb1.name][pdb2.name] = result_hinges
                 results_rmsd[pdb2.name][pdb1.name] = result_hinges
@@ -679,8 +675,9 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
                     elif result.min_rmsd <= threshold_minimum:
                         selected_for = 'equivalence'
                     if selected_for is not None:
-                        if selected_group not in groups_names or len(groups_names[group[0]]) > len(groups_names[selected_group]):
-                            selected_group = group[0]   
+                        if selected_group not in groups_names or len(groups_names[group[0]]) > len(
+                                groups_names[selected_group]):
+                            selected_group = group[0]
                         logging.debug(f'{key2} into group {selected_group} because of {selected_for} with {key1}')
 
         groups_names[selected_group].append(key1)
@@ -722,7 +719,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
         pdb_diff = [pdb for pdb in pdbs if pdb.name == more_different][0]
         logging.debug(f'Hinges could not create any groups')
         logging.debug(f'Creating two groups: The more completed pdb: {pdb_complete.name} '
-                     f'and the more different one: {pdb_diff.name}')
+                      f'and the more different one: {pdb_diff.name}')
         return [[pdb_complete], [pdb_diff]]
     else:
         # Return the original list of pdbs
@@ -892,6 +889,7 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
     return return_list, changes_dict
 
+
 def sequence_identity(seq1, seq2) -> float:
     # Compare the identity of two sequences
     identical_count = sum(a == b for a, b in zip(seq1, seq2))
@@ -975,7 +973,7 @@ def split_chains_assembly(pdb_in_path: str,
     return chains_return
 
 
-def chain_splitter(pdb_path: str, chain: str = None) -> Dict:
+def split_pdb_in_chains(pdb_path: str, chain: str = None, output_dir: str = None) -> Dict:
     # Given a pdb_in and an optional chain, write one or several
     # pdbs containing each one a chain.
     # If chain is specified, only one file with the specific chain will be created
@@ -985,8 +983,11 @@ def chain_splitter(pdb_path: str, chain: str = None) -> Dict:
     structure = get_structure(pdb_path=pdb_path)
     chains = [chain.get_id() for chain in structure.get_chains()] if chain is None else [chain]
 
+    if output_dir is None:
+        output_dir = os.path.dirname(pdb_path)
+
     for chain in chains:
-        new_pdb = os.path.join(os.path.dirname(pdb_path), f'{utils.get_file_name(pdb_path)}_{chain}1.pdb')
+        new_pdb = os.path.join(output_dir, f'{utils.get_file_name(pdb_path)}_{chain}1.pdb')
 
         class ChainSelect(Select):
             def __init__(self, select_chain):
@@ -1010,7 +1011,7 @@ def generate_multimer_from_pdb(pdb_in_path: str, pdb_out_path: str):
     # Given a pdb_in, create the multimer and save it in pdb_out
 
     shutil.copy2(pdb_in_path, pdb_out_path)
-    chain_dict = chain_splitter(pdb_out_path)
+    chain_dict = split_pdb_in_chains(pdb_path=pdb_out_path)
     multimer_chain_dict = dict(sorted(generate_multimer_chains(pdb_out_path, chain_dict).items()))
     chain_name = next(iter(multimer_chain_dict))
     result_chain_dict = {}
@@ -1057,8 +1058,8 @@ def generate_multimer_chains(pdb_path: str, template_dict: Dict) -> Dict:
             for i, transformation in enumerate(transformations_list):
                 new_pdb_path = utils.replace_last_number(text=pdb_path, value=i + 1)
                 change_chain(pdb_in_path=pdb_path,
-                            pdb_out_path=new_pdb_path,
-                            rot_tra_matrix=transformation)
+                             pdb_out_path=new_pdb_path,
+                             rot_tra_matrix=transformation)
                 multimer_new_chains.append(new_pdb_path)
             multimer_dict[chain] = multimer_new_chains
 
@@ -1256,6 +1257,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
 
     return interface_data_list
 
+
 def parse_pdb_hits_hhr(hhr_text: str, pdb_name: str) -> Dict:
     pattern = rf'>{re.escape(pdb_name)}(.*)'
     match = re.search(pattern, hhr_text, re.MULTILINE | re.DOTALL)
@@ -1269,6 +1271,7 @@ def parse_pdb_hits_hhr(hhr_text: str, pdb_name: str) -> Dict:
     else:
         return None, None, None, None
 
+
 def check_not_only_CA(pdb_in_path: str) -> bool:
     structure = get_structure(pdb_in_path)
     for model in structure:
@@ -1278,6 +1281,7 @@ def check_not_only_CA(pdb_in_path: str) -> bool:
                     if atom.get_name() != 'CA':
                         return False
     return True
+
 
 def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict, domains_dict: Dict) \
         -> Dict[Any, List[Any]]:
@@ -1319,7 +1323,7 @@ def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
             continue
         elif len(element) < length:
             aux_length = len(element)
-        
+
         sorted_list = sorted(element, key=lambda x: x[2])
         x_list = []
         y_list = []
@@ -1368,20 +1372,19 @@ def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain_list: List[st
     io.save(pdb_out_path, ChainSelector())
 
 
-def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str], databases: alphafold_classes.AlphaFoldPaths):
+def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str],
+              databases: alphafold_classes.AlphaFoldPaths):
     with tempfile.TemporaryDirectory() as tmpdirname:
-        chain_dict = split_pdb_in_chains(output_dir=tmpdirname, pdb_in_path=pdb_in_path)
+        chain_dict = split_pdb_in_chains(pdb_path=pdb_in_path, output_dir=tmpdirname)
         chains_aligned = []
         if len(chain_dict) != len(sequences_list):
             return None
         else:
             for i, path in enumerate(chain_dict.values()):
-                aligned_chain, aligned_info = hhsearch.run_hh(output_dir=tmpdirname, database_dir=tmpdirname, query_sequence_path=sequences_list[i].fasta_path, chain_in_path=path, databases=databases)
+                aligned_chain, aligned_info = hhsearch.run_hh(output_dir=tmpdirname, database_dir=tmpdirname,
+                                                              query_sequence_path=sequences_list[i].fasta_path,
+                                                              chain_in_path=path, databases=databases)
                 shutil.copy2(aligned_chain, path)
                 chains_aligned.append(path)
             merge_pdbs(list_of_paths_of_pdbs_to_merge=chains_aligned, merged_pdb_path=pdb_out_path)
             return pdb_out_path
-    
-        
-        
-        

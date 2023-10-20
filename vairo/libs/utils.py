@@ -252,7 +252,8 @@ def parse_hinges(output: str) -> structures.Hinges:
 
     hinges_result = structures.Hinges(
         decreasing_rmsd_total=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
-        decreasing_rmsd_middle=(rmsd_list[0] - rmsd_list[len(rmsd_list) // 2]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
+        decreasing_rmsd_middle=(rmsd_list[0] - rmsd_list[len(rmsd_list) // 2]) / rmsd_list[0] * 100 if rmsd_list[
+                                                                                                           0] > 0 else 0,
         one_rmsd=rmsd_list[0],
         middle_rmsd=rmsd_list[len(rmsd_list) // 2],
         min_rmsd=min(rmsd_list),
@@ -408,8 +409,11 @@ def check_ranked(input_path: str) -> bool:
 def delete_old_rankeds(input_path: str):
     [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if check_ranked(path)]
 
+
 def delete_old_html(input_path: str):
-    [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if get_file_extension(path) == '.html']
+    [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if
+     get_file_extension(path) == '.html']
+
 
 def check_format(string_in):
     pattern = r"\d+-\d+"
