@@ -19,13 +19,11 @@ def create_a3m(fasta_path, databases: alphafold_classes.AlphaFoldPaths, output_d
 
 def create_database_from_pdb(fasta_path: str, databases: alphafold_classes.AlphaFoldPaths, output_dir: str) -> str:
     name = utils.get_file_name(fasta_path)
-    database_dir = os.path.join(output_dir, f'{name}_database')
-    data_name = os.path.join(database_dir, name)
-    utils.create_dir(database_dir, delete_if_exists=True)
-    a3m_path = create_a3m(fasta_path, databases, database_dir)
+    data_name = os.path.join(output_dir, name)
+    a3m_path = create_a3m(fasta_path, databases, output_dir)
     try:
         store_old_dir = os.getcwd()
-        os.chdir(database_dir)
+        os.chdir(output_dir)
 
         subprocess.call(
             ['ffindex_build', '-as', f'{name}_a3m.ffdata', f'{name}_a3m.ffindex', os.path.basename(a3m_path)],
@@ -87,15 +85,21 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
         create_database_from_pdb(fasta_path=template_fasta_path, databases=databases, output_dir=database_chain_dir)
 
     run_hhalign(fasta_ref_path=query_sequence_path, fasta_aligned_path=template_fasta_path, output_path=hhr_path)
-
-    template_features, mapping, identities, aligned_columns, total_columns, evalue = \
-        features.extract_template_features_from_pdb(
-            query_sequence=query_sequence,
-            hhr_path=hhr_path,
-            cif_path=cif_path,
-            chain_id=sequence_chain
-        )
-
+    
+    try: 
+        template_features, mapping, identities, aligned_columns, total_columns, evalue = \
+            features.extract_template_features_from_pdb(
+                query_sequence=query_sequence,
+                hhr_path=hhr_path,
+                cif_path=cif_path,
+                chain_id=sequence_chain
+            )
+    except:
+        template_features = None
+        aligned_columns = 0
+        total_columns = 100
+        pass
+    
     if int(aligned_columns) < int(total_columns * 0.95):
         hhr_path2 = os.path.join(output_dir, f'{utils.get_file_name(template_fasta_path)}2.hhr')
         a3m_path = os.path.join(output_dir, f'{utils.get_file_name(template_fasta_path)}.a3m')
@@ -103,18 +107,15 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
             a3m_path = create_a3m(fasta_path=query_sequence_path,
                                   databases=databases,
                                   output_dir=output_dir)
-        run_hhsearch(a3m_path=a3m_path, database_path=database_chain_dir, output_path=hhr_path2)
+        databases_hh_path = os.path.join(database_chain_dir, name)
+        run_hhsearch(a3m_path=a3m_path, database_path=databases_hh_path, output_path=hhr_path2)
+        template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2 = \
+            features.extract_template_features_from_pdb(
+                query_sequence=query_sequence,
+                hhr_path=hhr_path2,
+                cif_path=cif_path,
+                chain_id=sequence_chain)
 
-        try:
-            template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2 = \
-                features.extract_template_features_from_pdb(
-                    query_sequence=query_sequence,
-                    hhr_path=hhr_path2,
-                    cif_path=cif_path,
-                    chain_id=sequence_chain)
-        except:
-            aligned_columns2 = 0
-            pass
 
         if int(aligned_columns) < int(aligned_columns2):
             os.remove(hhr_path)
