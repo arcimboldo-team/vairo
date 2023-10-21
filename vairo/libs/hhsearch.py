@@ -86,21 +86,15 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
 
     run_hhalign(fasta_ref_path=query_sequence_path, fasta_aligned_path=template_fasta_path, output_path=hhr_path)
     
-    try: 
-        template_features, mapping, identities, aligned_columns, total_columns, evalue = \
-            features.extract_template_features_from_pdb(
-                query_sequence=query_sequence,
-                hhr_path=hhr_path,
-                cif_path=cif_path,
-                chain_id=sequence_chain
-            )
-    except:
-        template_features = None
-        aligned_columns = 0
-        total_columns = 100
-        pass
-    
-    if int(aligned_columns) < int(total_columns * 0.95):
+    template_features, mapping, identities, aligned_columns, total_columns, evalue = \
+        features.extract_template_features_from_pdb(
+            query_sequence=query_sequence,
+            hhr_path=hhr_path,
+            cif_path=cif_path,
+            chain_id=sequence_chain
+        )
+
+    if template_features is None or int(aligned_columns) <= int(total_columns * 0.95):
         hhr_path2 = os.path.join(output_dir, f'{utils.get_file_name(template_fasta_path)}2.hhr')
         a3m_path = os.path.join(output_dir, f'{utils.get_file_name(template_fasta_path)}.a3m')
         if not os.path.exists(a3m_path):
@@ -115,7 +109,6 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
                 hhr_path=hhr_path2,
                 cif_path=cif_path,
                 chain_id=sequence_chain)
-
 
         if int(aligned_columns) < int(aligned_columns2):
             os.remove(hhr_path)

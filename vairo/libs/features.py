@@ -370,11 +370,14 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
 
     if not hits_list:
         logging.error(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
-        return None, None, None, None, None, None
+        return None, None, None, 0, 0, 0
     detailed_lines = hits_list[0]
 
     file_id = f'{pdb_id.lower()}'
-    hit = parsers._parse_hhr_hit(detailed_lines)
+    try:
+        hit = parsers._parse_hhr_hit(detailed_lines)
+    except:
+        return None, None, None, 0, 0, 0 
     template_sequence = hit.hit_sequence.replace('-', '')
     mapping = templates._build_query_to_hit_index_mapping(
         hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
