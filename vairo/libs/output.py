@@ -42,7 +42,7 @@ class OutputStructure:
         self.gantt_plots: structures.GanttPlot = None
         self.gantt_complete_plots: structures.GanttPlot = None
         self.ranked_list: List[structures.Ranked] = []
-        self.templates_list: List[structures.Templates] = []
+        self.templates_list: List[structures.TemplateExtracted] = []
         self.output_dir: str = output_dir
         self.experimental_dict = {}
         self.results_dir: str = ''
@@ -60,40 +60,43 @@ class OutputStructure:
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
-    def extract_results(self, results_dir: str, feature: features.Features, binaries_paths,
-                        experimental_pdbs: List[str], sequence_assembled: sequence.SequenceAssembled):
+    def extract_results(self, vairo_struct):
 
         # Read all templates and rankeds, if there are no ranked, raise an error
-        self.results_dir = results_dir
+        self.results_dir = vairo_struct.results_dir
         self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
+        self.templates_split_originalseq_dir = f'{self.results_dir}/templates_split_originalseq'
         self.rankeds_split_dir = f'{self.results_dir}/rankeds_split'
         self.rankeds_nonsplit_dir = f'{self.results_dir}/rankeds_nonsplit'
 
         utils.create_dir(dir_path=self.templates_nonsplit_dir, delete_if_exists=True)
+        utils.create_dir(dir_path=self.templates_split_originalseq_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.rankeds_split_dir, delete_if_exists=True)
         utils.create_dir(dir_path=self.rankeds_nonsplit_dir, delete_if_exists=True)
 
         logging.error('Extracting templates from the features file')
-        if feature is not None:
-            templates_nonsplit_dict = feature.write_all_templates_in_features(
+        if vairo_struct.feature is not None:
+            templates_nonsplit_dict = vairo_struct.feature.write_all_templates_in_features(
                 output_dir=self.templates_nonsplit_dir,
                 print_number=False)
-            self.templates_list = [structures.Template(path=path) for path in templates_nonsplit_dict.values()]
+            self.templates_list = [structures.TemplateExtracted(path=path) for path in templates_nonsplit_dict.values()]
 
         # Split the templates with chains
         for template in self.templates_list:
-            template.add_percentage(sequence_assembled.get_percentages(template.path))
+            template.add_percentage(vairo_struct.sequence_assembled.get_percentages(template.path))
             template.set_split_path(os.path.join(self.templates_path, f'{template.name}.pdb'))
             template.set_sequence_msa(list(bioutils.extract_sequence_msa_from_pdb(template.path).values())[0])
             template.set_identity(
-                bioutils.sequence_identity(template.sequence_msa, sequence_assembled.sequence_assembled))
+                bioutils.sequence_identity(template.sequence_msa, vairo_struct.sequence_assembled.sequence_assembled))
             bioutils.split_chains_assembly(pdb_in_path=template.path,
                                            pdb_out_path=template.split_path,
-                                           sequence_assembled=sequence_assembled)
-            _, compactness = bioutils.run_spong(pdb_in_path=template.path, spong_path=binaries_paths.spong_path)
+                                           sequence_assembled=vairo_struct.sequence_assembled)
+            _, compactness = bioutils.run_spong(pdb_in_path=template.path, spong_path=vairo_struct.binaries_paths.spong_path)
             template.set_compactness(compactness)
             _, perc = bioutils.generate_ramachandran(pdb_path=template.split_path)
             template.set_ramachandran(perc)
+            template_struct = vairo_struct.get_template_by_id(template.name)
+            template.set_template(template=template_struct, originalseq_path=os.path.join(self.templates_split_originalseq_dir, f'{template.name}.pdb'))
 
         logging.error('Reading predictions from the results folder')
         self.ranked_list = utils.read_rankeds(input_path=self.results_dir)
@@ -105,18 +108,18 @@ class OutputStructure:
         # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
         max_plddt = plots.plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
-                                sequence_amino=sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
+                                sequence_amino=vairo_struct.sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
             ranked.set_path(shutil.copy2(ranked.path, self.rankeds_nonsplit_dir))
             accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path,
-                                                                   spong_path=binaries_paths.spong_path)
+                                                                   spong_path=vairo_struct.binaries_paths.spong_path)
             ranked.set_compactness(compactness)
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
             mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.path,
                                                      pdb_out_path=ranked.split_path,
-                                                     sequence_assembled=sequence_assembled)
+                                                     sequence_assembled=vairo_struct.sequence_assembled)
             accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.split_path,
                                                                          output_dir=self.plots_path)
             if perc is not None:
@@ -141,7 +144,7 @@ class OutputStructure:
                     logging.error(f'    PLDDT too low')
         # Superpose the experimental pdb with all the rankeds and templates
         logging.error('Superposing experimental pdbs with predictions and templates')
-        for experimental in experimental_pdbs:
+        for experimental in vairo_struct.experimental_pdbs:
             aux_dict = {}
             for pdb in self.ranked_list + self.templates_list:
                 rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb.split_path, experimental])
@@ -157,7 +160,7 @@ class OutputStructure:
 
             # Select the best ranked
         sorted_ranked_list = []
-        if experimental_pdbs:
+        if vairo_struct.experimental_pdbs:
             logging.error(
                 'Experimental pdbs found. Selecting the best prediction taking into account the qscore with the experimental pdbs')
             sorted_ranked_list = sorted(self.ranked_list, key=lambda ranked: (
@@ -359,7 +362,7 @@ class OutputStructure:
             template_chains_list = bioutils.get_chains(template.split_path)
             template_interface_list = []
             if len(template_chains_list) > 1:
-                interfaces_data_list = bioutils.find_interface_from_pisa(template.split_path,
+                interfaces_data_list = bioutils.find_interface_from_pisa(template.originalseq_path,
                                                                          self.interfaces_path)
                 for interface in interfaces_data_list:
                     seq1_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain1"]))
@@ -417,6 +420,7 @@ class OutputStructure:
                         change_pos -= 1
         else:
             self.templates_selected = [template.name for template in self.templates_list]
+
 
     def write_tables(self, rmsd_dict: Dict, ranked_rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict,
                      energies_dict: Dict):

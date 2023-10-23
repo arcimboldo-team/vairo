@@ -3,8 +3,7 @@ import logging
 import os
 from typing import Union, List, Dict
 
-from libs import match_restrictions, utils, bioutils
-from libs.structures import Alignment
+from libs import match_restrictions, utils, bioutils, structures
 
 
 class TemplateChain:
@@ -14,7 +13,7 @@ class TemplateChain:
                  code: str,
                  sequence: str,
                  match: match_restrictions.MatchRestrictions = None,
-                 alignment: Union[None, Alignment] = None,
+                 alignment: Union[None, structures.Alignment] = None,
                  deleted_residues: List[int] = [],
                  changed_residues: List[int] = [],
                  fasta_residues: List[int] = [],
@@ -75,13 +74,14 @@ class TemplateChainsList:
     def get_changes(self, pdb_path: str) -> List:
         template_chain = self.get_template_chain(pdb_path)
         if template_chain is not None:
-            return template_chain.changed_residues, template_chain.fasta_residues, template_chain.deleted_residues
+            return template_chain.changed_residues, template_chain.fasta_residues, template_chain.deleted_residues, template_chain.sequence_before_changes
         else:
             return None
+        
     def get_number_chains(self) -> int:
         return len({(chain_template.chain, chain_template.code) for chain_template in self.template_chains_list})
 
-    def get_alignment_by_path(self, pdb_path: str) -> Alignment:
+    def get_alignment_by_path(self, pdb_path: str):
         # Search for the alignment that has the same name as the pdb_path
         template_chain = self.get_template_chain(pdb_path)
         if template_chain is not None and template_chain.alignment:

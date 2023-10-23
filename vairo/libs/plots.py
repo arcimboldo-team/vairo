@@ -278,7 +278,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
                 text = f'\n{template_name}'
 
             if template is not None:
-                changed_residues, changed_fasta, _ = template.get_changes()
+                changed_residues, changed_fasta, _, _ = template.get_changes()
                 changed_residues = bioutils.convert_residues(changed_residues, a_air.sequence_assembled)
                 changed_fasta = bioutils.convert_residues(changed_fasta, a_air.sequence_assembled)
                 for alignment in template.get_results_alignment():

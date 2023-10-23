@@ -4,10 +4,10 @@ import shutil
 import subprocess
 from typing import List
 import alphafold
-from libs import utils, alphafold_classes, bioutils, features, structures
+from libs import utils, bioutils, features, structures
 
 
-def create_a3m(fasta_path, databases: alphafold_classes.AlphaFoldPaths, output_dir: str) -> str:
+def create_a3m(fasta_path, databases, output_dir: str) -> str:
     path = os.path.join(output_dir, f'{utils.get_file_name(fasta_path)}.a3m')
     hhblits = alphafold.data.tools.hhblits.HHBlits(binary_path='hhblits',
                                                    databases=[databases.bfd_db_path, databases.uniclust30_db_path])
@@ -17,7 +17,7 @@ def create_a3m(fasta_path, databases: alphafold_classes.AlphaFoldPaths, output_d
     return path
 
 
-def create_database_from_pdb(fasta_path: str, databases: alphafold_classes.AlphaFoldPaths, output_dir: str) -> str:
+def create_database_from_pdb(fasta_path: str, databases, output_dir: str) -> str:
     name = utils.get_file_name(fasta_path)
     data_name = os.path.join(output_dir, name)
     a3m_path = create_a3m(fasta_path, databases, output_dir)
@@ -61,7 +61,7 @@ def run_hhalign(fasta_ref_path: str, fasta_aligned_path: str, output_path: str) 
 
 
 def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_in_path: str,
-           databases: alphafold_classes.AlphaFoldPaths, name: str = None):
+           databases, name: str = None):
     query_sequence = bioutils.extract_sequence(query_sequence_path)
     template_sequence = bioutils.extract_sequence_from_file(file_path=chain_in_path)
     aux_key = list(template_sequence.keys())[0].replace('>', '')

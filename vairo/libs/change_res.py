@@ -65,7 +65,6 @@ class ChangeResidues:
 
     def __change_residues(self, pdb_in_path: str, pdb_out_path: str, type: str):
         # Change residues of chains specified in chain_res_dict
-
         structure = bioutils.get_structure(pdb_in_path)
         chains_struct = bioutils.get_chains(pdb_in_path)
         chains_change = list(self.chain_res_dict.keys())

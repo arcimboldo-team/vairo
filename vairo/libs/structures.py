@@ -1,8 +1,9 @@
 import dataclasses
 import os
 import sys
+import shutil
 from typing import Dict, List
-from libs import utils
+from libs import utils, bioutils
 
 
 @dataclasses.dataclass(frozen=True)
@@ -185,12 +186,23 @@ class Pdb:
     def set_ramachandran(self, ramachandran: float):
         self.ramachandran = ramachandran
 
-class Template (Pdb):
+class TemplateExtracted (Pdb):
     def __init__(self, path: str):
         super().__init__(path=path)
         self.percentage_list: List[float]
         self.identity: float
         self.sequence_msa: str
+        self.template: str
+        self.originalseq_path: str
+
+    def set_template(self, template, originalseq_path: str):
+        self.template = template
+        self.originalseq_path = originalseq_path
+        if self.template is not None:
+            _, _, _, seq_list = self.template.get_changes()
+            bioutils.change_sequence_pdb(pdb_in_path=self.split_path, pdb_out_path=self.originalseq_path, sequence_list=seq_list)
+        else:
+            shutil.copy2(self.split_path, self.originalseq_path)
 
     def add_percentage(self, percentage_list: List[float]):
         self.percentage_list = percentage_list
@@ -223,7 +235,7 @@ class Ranked (Pdb):
 
     def set_plddt(self, plddt: float):
         self.plddt = round(plddt)
-
+    
     def set_rmsd(self, rmsd: float):
         self.rmsd = round(rmsd, 2) if rmsd is not None else rmsd
 

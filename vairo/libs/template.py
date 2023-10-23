@@ -171,6 +171,7 @@ class Template:
                     if chain in change_residues.chain_res_dict.keys():
                         change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
 
+
     def alignment(self, run_dir: str, sequence_assembled: sequence.SequenceAssembled,
                   databases: alphafold_classes.AlphaFoldPaths):
         if not self.aligned:
@@ -187,13 +188,14 @@ class Template:
                                                                            query_sequence_path=sequence_in.fasta_path,
                                                                            databases=databases,
                                                                            name=self.pdb_id)
-                        self.template_chains_struct.from_dict_to_struct(chain_dict={chain: extracted_chain},
-                                                                        alignment_dict={chain: alignment_chain},
-                                                                        sequence=sequence_in.name,
-                                                                        change_res_list=self.change_res_struct,
-                                                                        match_restrict_list=self.match_restrict_struct,
-                                                                        generate_multimer=self.generate_multimer,
-                                                                        pdb_path=self.pdb_path)
+                        if extracted_chain:
+                            self.template_chains_struct.from_dict_to_struct(chain_dict={chain: extracted_chain},
+                                                                            alignment_dict={chain: alignment_chain},
+                                                                            sequence=sequence_in.name,
+                                                                            change_res_list=self.change_res_struct,
+                                                                            match_restrict_list=self.match_restrict_struct,
+                                                                            generate_multimer=self.generate_multimer,
+                                                                            pdb_path=self.pdb_path)                            
             else:
                 for chain, chain_path in self.template_chains.items():
                     match_list = self.match_restrict_struct.get_matches_by_chain_position(chain=chain)
@@ -207,13 +209,14 @@ class Template:
                                                                            query_sequence_path=sequence_in.fasta_path,
                                                                            databases=databases,
                                                                            name=self.pdb_id)
-                        self.template_chains_struct.from_dict_to_struct(chain_dict={chain: extracted_chain},
-                                                                        alignment_dict={chain: alignment_chain},
-                                                                        sequence=sequence_in.name,
-                                                                        change_res_list=self.change_res_struct,
-                                                                        match_restrict_list=match,
-                                                                        generate_multimer=self.generate_multimer,
-                                                                        pdb_path=self.pdb_path)
+                        if extracted_chain:
+                            self.template_chains_struct.from_dict_to_struct(chain_dict={chain: extracted_chain},
+                                                                            alignment_dict={chain: alignment_chain},
+                                                                            sequence=sequence_in.name,
+                                                                            change_res_list=self.change_res_struct,
+                                                                            match_restrict_list=match,
+                                                                            generate_multimer=self.generate_multimer,
+                                                                            pdb_path=self.pdb_path)
 
         else:
             extracted_chain_dict = bioutils.split_pdb_in_chains(output_dir=run_dir, pdb_path=self.pdb_path)
@@ -331,15 +334,17 @@ class Template:
         chains_changed = []
         fasta_changed = []
         chains_deleted = []
+        old_sequence_changed = []
         for path in self.results_path_position:
             if path is not None:
-                changed, fasta, deleted = self.template_chains_struct.get_changes(path)
+                changed, fasta, deleted, old_sequence = self.template_chains_struct.get_changes(path)
             else:
-                changed, fasta, deleted = None, None, None
+                changed, fasta, deleted, old_sequence = None, None, None, None
             chains_changed.append(changed)
             fasta_changed.append(fasta)
             chains_deleted.append(deleted)
-        return chains_changed, fasta_changed, chains_deleted
+            old_sequence_changed.append(old_sequence)
+        return chains_changed, fasta_changed, chains_deleted, old_sequence_changed
 
     def get_results_alignment(self) -> List[Union[None, structures.Alignment]]:
         # Return the alignments corresponding to the positions.

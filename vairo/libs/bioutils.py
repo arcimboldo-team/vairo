@@ -1,7 +1,9 @@
-import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
 from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple, Union
+import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
 import numpy as np
+import pandas as pd
+import io
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder, \
     Superimposer
@@ -9,13 +11,10 @@ from scipy.spatial import distance
 from sklearn.cluster import KMeans
 from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
-from libs import alphafold_classes, change_res, features, hhsearch, structures, utils, plots, global_variables, sequence
 from alphafold.relax import cleanup, amber_minimize
-import pandas as pd
-
-from libs.structures import Hinges
 from simtk import unit
-import io
+from libs import alphafold_classes, change_res, hhsearch, structures, utils, plots, global_variables, sequence, structures
+
 
 
 def download_pdb(pdb_id: str, pdb_path: str) -> str:
@@ -45,10 +44,8 @@ def superposition_by_chains(pdb1_in_path: str, pdb2_in_path: str) -> Dict:
         return [at for at in list1 if at.get_parent().get_id()[1] in list_res]
 
     output_dict = {}
-    structure_1 = get_structure(pdb1_in_path)
-    structure_2 = get_structure(pdb1_in_path)
-    chains1_list = list(structure_1.get_chains())
-    chains2_list = list(structure_2.get_chains())
+    chains1_list = get_chains(pdb1_in_path)
+    chains2_list = get_chains(pdb2_in_path)
     for chain1 in chains1_list:
         name1 = f'{utils.get_file_name(pdb1_in_path)}_{chain1.id}'
         output_dict[name1] = {}
@@ -447,10 +444,10 @@ def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = No
     return f'{os.path.join(os.path.dirname(input_path), output_path)}'
 
 
-def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_path: str = None) -> Hinges:
+def run_hinges(pdb1_path: str, pdb2_path: str, hinges_path: str = None, output_path: str = None) -> structures.Hinges:
     # Run hinges from hinges_path.
     # It needs two pdbs. Return the rmsd obtained.
-    chains2_list = [chain.id for chain in get_structure(pdb2_path).get_chains()]
+    chains2_list = get_chains(pdb2_path)
     command_line = f'{hinges_path} {pdb1_path} {pdb2_path} -p {"".join(chains2_list)}'
     output = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
@@ -608,7 +605,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
         only_ca = check_not_only_CA(pdb_in_path=pdb.split_path)
         completeness = True
         identity = True
-        if isinstance(pdb, structures.Template) and pdb.percentage_list:
+        if isinstance(pdb, structures.TemplateExtracted) and pdb.percentage_list:
             completeness = any(number > threshold_completeness for number in pdb.percentage_list)
             if pdb.identity > threshold_identity_upper or pdb.identity < threshold_identity_down:
                 identity = False
@@ -632,7 +629,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
                 logging.debug(f'    Too low/high identity with the query sequence')
             if only_ca:
                 logging.debug(f'    Only CA')
-        if isinstance(pdb, structures.Template) and pdb.percentage_list:
+        if isinstance(pdb, structures.TemplateExtracted) and pdb.percentage_list:
             if any(number > threshold_completeness2 for number in pdb.percentage_list):
                 completed_pdbs.append(pdb)
         else:
@@ -932,8 +929,7 @@ def split_chains_assembly(pdb_in_path: str,
 
     structure = get_structure(pdb_path=pdb_in_path)
     chains_return = {}
-
-    chains = list(set([chain.get_id() for chain in structure.get_chains()]))
+    chains = list(set(get_chains(pdb_in_path)))
 
     if len(chains) > 1:
         logging.debug(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
@@ -973,6 +969,15 @@ def split_chains_assembly(pdb_in_path: str,
     return chains_return
 
 
+def change_sequence_pdb(pdb_in_path: str, pdb_out_path: str, sequence_list: List[str]):
+    chain_list = get_chains(pdb_in_path)
+    shutil.copy2(pdb_in_path, pdb_out_path)
+    for i, chain in enumerate(chain_list, start = 0):
+        if sequence_list[i] is not None:
+            change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(sequence_list[i])+1, 1)]}, sequence=sequence_list[i])
+            change.change_residues(pdb_in_path=pdb_out_path, pdb_out_path=pdb_out_path)
+
+
 def split_pdb_in_chains(pdb_path: str, chain: str = None, output_dir: str = None) -> Dict:
     # Given a pdb_in and an optional chain, write one or several
     # pdbs containing each one a chain.
@@ -981,7 +986,7 @@ def split_pdb_in_chains(pdb_path: str, chain: str = None, output_dir: str = None
 
     return_chain_dict = {}
     structure = get_structure(pdb_path=pdb_path)
-    chains = [chain.get_id() for chain in structure.get_chains()] if chain is None else [chain]
+    chains = get_chains(pdb_path) if chain is None else [chain]
 
     if output_dir is None:
         output_dir = os.path.dirname(pdb_path)
@@ -1228,7 +1233,6 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
     pisa_text = subprocess.Popen(['pisa', 'temp', '-analyse', pdb_in_path],
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-
     pisa_output = subprocess.Popen(['pisa', 'temp', '-list', 'interfaces'], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
 

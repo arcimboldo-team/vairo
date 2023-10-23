@@ -648,13 +648,7 @@ class MainStructure:
             plots.plot_sequence(plot_path=self.output.sequence_plot_path, a_air=self)
 
     def extract_results(self):
-        self.output.extract_results(
-            results_dir=self.results_dir,
-            sequence_assembled=self.sequence_assembled,
-            feature=self.feature,
-            binaries_paths=self.binaries_paths,
-            experimental_pdbs=self.experimental_pdbs
-        )
+        self.output.extract_results(vairo_struct=self)
 
     def analyse_output(self):
         self.output.analyse_output(
