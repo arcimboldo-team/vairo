@@ -169,7 +169,7 @@ def main():
         if a_air.feature is None and os.path.exists(features_path):
             new_features = features.create_features_from_file(features_path)
             a_air.set_feature(new_features)
-
+        a_air.align_experimental_pdbs()
         a_air.extract_results()
         if a_air.cluster_templates and a_air.run_af2:
             a_air.templates_clustering()
@@ -177,7 +177,6 @@ def main():
         elif a_air.sequence_assembled.mutated:
             a_air.delete_mutations()
             a_air.extract_results()
-        a_air.align_experimental_pdbs()
         a_air.analyse_output()
         a_air.change_state(state=3)
         pymol_script.create_pymol_session(a_air)

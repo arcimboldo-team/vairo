@@ -42,16 +42,17 @@ class OutputStructure:
         self.gantt_plots: structures.GanttPlot = None
         self.gantt_complete_plots: structures.GanttPlot = None
         self.ranked_list: List[structures.Ranked] = []
+        self.ranked_filtered_list: List[structures.Ranked] = []
         self.templates_list: List[structures.TemplateExtracted] = []
         self.output_dir: str = output_dir
         self.experimental_dict = {}
+        self.experimental_list: List[structures.ExperimentalPdb] = []
         self.results_dir: str = ''
         self.templates_nonsplit_dir: str = ''
         self.rankeds_split_dir: str = ''
         self.rankeds_without_mutations_dir: str = ''
         self.tmp_dir: str = ''
         self.group_ranked_by_rmsd_dict: dict = {}
-        self.template_interfaces: dict = {}
         self.templates_selected: List = []
         self.dendogram_struct: structures.Dendogram = None
 
@@ -61,7 +62,6 @@ class OutputStructure:
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
     def extract_results(self, vairo_struct):
-
         # Read all templates and rankeds, if there are no ranked, raise an error
         self.results_dir = vairo_struct.results_dir
         self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
@@ -117,15 +117,15 @@ class OutputStructure:
                                                                    spong_path=vairo_struct.binaries_paths.spong_path)
             ranked.set_compactness(compactness)
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
-            mapping = bioutils.split_chains_assembly(pdb_in_path=ranked.path,
-                                                     pdb_out_path=ranked.split_path,
-                                                     sequence_assembled=vairo_struct.sequence_assembled)
+            bioutils.split_chains_assembly(pdb_in_path=ranked.path,
+                                            pdb_out_path=ranked.split_path,
+                                            sequence_assembled=vairo_struct.sequence_assembled)
+
             accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.split_path,
                                                                          output_dir=self.plots_path)
             if perc is not None:
                 perc = round(perc, 2)
             ranked.set_ramachandran(perc)
-            ranked.set_mapping(mapping)
             bioutils.remove_hydrogens(ranked.split_path, ranked.split_path)
             ranked.set_encoded(ranked.split_path)
             if accepted_ramachandran and accepted_compactness and ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
@@ -145,6 +145,7 @@ class OutputStructure:
         # Superpose the experimental pdb with all the rankeds and templates
         logging.error('Superposing experimental pdbs with predictions and templates')
         for experimental in vairo_struct.experimental_pdbs:
+            self.experimental_list.append(structures.ExperimentalPdb(path=experimental))
             aux_dict = {}
             for pdb in self.ranked_list + self.templates_list:
                 rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb.split_path, experimental])
@@ -210,6 +211,12 @@ class OutputStructure:
         # Group rankeds by how close they are between them
         for ranked in self.ranked_list:
             if ranked.filtered:
+                ranked.set_minimized_path(os.path.join(self.results_dir, f'{ranked.name}_minimized.pdb'))
+                try:
+                    ranked.set_potential_energy(
+                        bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                except:
+                    logging.debug(f'Not possible to calculate the energies for pdb {ranked.path}')
                 found = False
                 for ranked2 in self.ranked_list:
                     if ranked2.filtered and ranked2.name != ranked.name \
@@ -227,6 +234,9 @@ class OutputStructure:
                     ranked.set_rmsd(0)
                     if self.ranked_list[0].name == ranked.name:
                         ranked.set_best(True)
+
+        self.ranked_filtered_list = [ranked for ranked in self.ranked_list if ranked.filtered]
+
 
         # Use frobenius
         templates_nonsplit_paths_list = [template.path for template in self.templates_list]
@@ -299,111 +309,28 @@ class OutputStructure:
             logging.error('Skipping interfaces generation. There is only one chain in the predictions')
 
         # Use aleph to generate domains and calculate secondary structure percentage
-        for ranked in self.ranked_list:
-            results_dict, domains_dict = bioutils.aleph_annotate(output_path=self.tmp_dir, pdb_path=ranked.split_path)
-            if domains_dict is None or results_dict is None:
-                break
-            ranked.set_secondary_structure(ah=results_dict['ah'], bs=results_dict['bs'],
-                                           total_residues=results_dict['number_total_residues'])
-            if ranked.filtered:
-                ranked.set_minimized_path(os.path.join(self.results_dir, f'{ranked.name}_minimized.pdb'))
-                try:
-                    ranked.set_potential_energy(
-                        bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
-                except:
-                    logging.debug(f'Not possible to calculate the energies for pdb {ranked.path}')
 
-                ranked_chains_list = bioutils.get_chains(ranked.split_path)
-                interfaces_data_list = bioutils.find_interface_from_pisa(ranked.split_path, self.interfaces_path)
-                if interfaces_data_list:
-                    deltas_list = [interface['deltaG'] for interface in interfaces_data_list]
-                    deltas_list = utils.normalize_list([deltas_list])
-                    for i, interface in enumerate(interfaces_data_list):
-                        if not interface["chain1"] in domains_dict or not interface["chain2"] in domains_dict:
-                            continue
-                        seq1_name = sequence_assembled.get_sequence_name(ranked_chains_list.index(interface["chain1"]))
-                        seq2_name = sequence_assembled.get_sequence_name(ranked_chains_list.index(interface["chain2"]))
-                        code = f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}'
-                        dimers_path = os.path.join(self.interfaces_path, f'{ranked.name}_{code}.pdb')
-                        interface['bfactor'] = deltas_list[i]
-                        if not ((float(interface['se_gain1']) < 0) and (float(interface['se_gain2']) < 0)):
-                            interface['bfactor'] = abs(max(deltas_list)) * 2
-                        extended_res_dict = bioutils.create_interface_domain(pdb_in_path=ranked.split_path,
-                                                                             pdb_out_path=dimers_path,
-                                                                             interface=interface,
-                                                                             domains_dict=domains_dict)
-                        renum_residues_list = []
-                        renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain1']],
-                                                                        mapping=ranked.mapping[interface['chain1']]))
-                        renum_residues_list.extend(utils.renum_residues(extended_res_dict[interface['chain2']],
-                                                                        mapping=ranked.mapping[interface['chain2']]))
-                        ranked.add_interface(structures.Interface(name=code,
-                                                                  res_list=renum_residues_list,
-                                                                  chain1=interface["chain1"],
-                                                                  chain2=interface["chain2"],
-                                                                  se_gain1=float(interface['se_gain1']),
-                                                                  se_gain2=float(interface['se_gain2']),
-                                                                  solvation1=float(interface['solvation1']),
-                                                                  solvation2=float(interface['solvation2'])
-                                                                  ))
-
-        for template in self.templates_list:
-            frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{template.name}.txt')
-            matrices = os.path.join(self.tmp_dir, 'matrices')
-            template_matrix = os.path.join(matrices, f'{utils.get_file_name(template.path)}_ang.npy')
-            path_list = [ranked.path for ranked in self.ranked_list if ranked.filtered]
-            with open(frobenius_file, 'w') as sys.stdout:
-                _, list_targets, list_core, _, list_frobenius_angles, list_frobenius_distances, list_plot_ang, list_plot_dist, _ = ALEPH.frobenius(
-                    references=[template.path],
-                    targets=list(path_list), write_plot=True,
-                    write_matrix=True)
-            sys.stdout = sys.__stdout__
-            ranked_filtered = [ranked for ranked in self.ranked_list if ranked.filtered]
-            template_chains_list = bioutils.get_chains(template.split_path)
-            template_interface_list = []
-            if len(template_chains_list) > 1:
-                interfaces_data_list = bioutils.find_interface_from_pisa(template.originalseq_path,
-                                                                         self.interfaces_path)
-                for interface in interfaces_data_list:
-                    seq1_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain1"]))
-                    seq2_name = sequence_assembled.get_sequence_name(template_chains_list.index(interface["chain2"]))
-                    template_interface_list.append(f'{seq1_name}{interface["chain1"]}-{seq2_name}{interface["chain2"]}')
-                self.template_interfaces[template.name] = template_interface_list
+        for pdb_in in self.ranked_filtered_list+self.experimental_list+self.templates_list:
+            if isinstance(pdb_in, structures.TemplateExtracted):
+                interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.originalseq_path, self.interfaces_path)
             else:
-                logging.debug(f'Skipping interface search as there is only one chain in pdb {template.name}')
-
-            for ranked in ranked_filtered:
-                index = list_targets.index(ranked.name)
-                ranked.add_frobenius_plot(
-                    template=template.name,
-                    dist_plot=[shutil.copy2(plot, self.frobenius_path) for plot in list_plot_dist if
-                               ranked.name in os.path.basename(plot)][0],
-                    ang_plot=[shutil.copy2(plot, self.frobenius_path) for plot in list_plot_ang if
-                              ranked.name in os.path.basename(plot)][0],
-                    dist_coverage=list_frobenius_distances[index],
-                    ang_coverage=list_frobenius_angles[index],
-                    core=list_core[index]
-                )
-                ranked_matrix = os.path.join(matrices, f'{ranked.name}_ang.npy')
-                if not template_interface_list:
-                    continue
-                for interface in ranked.interfaces:
-                    frobenius_file = os.path.join(self.frobenius_path, f'frobenius_{ranked.name}_{interface.name}.txt')
-                    with open(frobenius_file, 'w') as sys.stdout:
-                        fro_distance, fro_core, plot = ALEPH.frobenius_submatrices(path_ref=template_matrix,
-                                                                                   path_tar=ranked_matrix,
-                                                                                   residues_tar=interface.res_list,
-                                                                                   write_plot=True,
-                                                                                   title=f'Interface: {interface.name}')
-                    sys.stdout = sys.__stdout__
-                    new_name = os.path.join(self.frobenius_path, f'{template.name}_{ranked.name}_{interface.name}.png')
-                    plot_path = os.path.join(self.tmp_dir, os.path.basename(plot))
-                    interface.add_frobenius_information(
-                        template=template.name,
-                        dist_coverage=fro_distance,
-                        core=fro_core,
-                        dist_plot=shutil.copy2(plot_path, new_name)
-                    )
+                interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.split_path, self.interfaces_path)
+            if interfaces_data_list:
+                results_dict, domains_dict = bioutils.aleph_annotate(output_path=self.tmp_dir, pdb_path=pdb_in.split_path)
+                if domains_dict is None or results_dict is None:
+                    break
+                pdb_in.set_secondary_structure(ah=results_dict['ah'], bs=results_dict['bs'],
+                                            total_residues=results_dict['number_total_residues'])           
+                for i, interface in enumerate(interfaces_data_list):
+                    if not interface.chain1 in domains_dict or not interface.chain2 in domains_dict:
+                        continue
+                    code = f'{interface.chain1}-{interface.chain2}'
+                    dimers_path = os.path.join(self.interfaces_path, f'{pdb_in.name}_{code}.pdb')
+                    bioutils.create_interface_domain(pdb_in_path=pdb_in.split_path,
+                                                    pdb_out_path=dimers_path,
+                                                    interface=interface,
+                                                    domains_dict=domains_dict)
+                pdb_in.set_interfaces(interfaces_data_list)
 
         self.select_templates()
         os.chdir(store_old_dir)

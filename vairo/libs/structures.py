@@ -111,35 +111,19 @@ class GanttPlot:
 
 
 @dataclasses.dataclass(frozen=True)
-class InterfaceTemplate:
-    template: str
-    dist_coverage: float
-    core: int
-    dist_plot: str
-    encoded_dist_plot: bytes
-
-
-@dataclasses.dataclass
 class Interface:
     name: str
-    res_list: List[int]
+    res_chain1: List[int]
+    res_chain2: List[int]
     chain1: str
     chain2: str
     se_gain1: float
     se_gain2: float
     solvation1: float
     solvation2: float
-    interface_template: List[InterfaceTemplate] = dataclasses.field(default_factory=list)
-
-    def add_frobenius_information(self, template: str, dist_coverage: float, core: int, dist_plot: str):
-        interface = InterfaceTemplate(
-            template=template,
-            dist_coverage=dist_coverage,
-            dist_plot=dist_plot,
-            encoded_dist_plot=utils.encode_data(dist_plot),
-            core=core
-        )
-        self.interface_template.append(interface)
+    area: float
+    deltaG: float
+    nhb: float
 
 
 @dataclasses.dataclass(frozen=True)
@@ -170,7 +154,11 @@ class Pdb:
         self.split_path: str
         self.compactness: float
         self.ramachandran: float
-        
+        self.ah: int
+        self.bs: int
+        self.total_residues: int
+        self.interfaces: List[Interface] = []
+    
         self.path = path
         self.name = utils.get_file_name(path)
 
@@ -186,6 +174,19 @@ class Pdb:
     def set_ramachandran(self, ramachandran: float):
         self.ramachandran = ramachandran
 
+    def set_secondary_structure(self, ah: int, bs: int, total_residues: int):
+        self.ah = ah
+        self.bs = bs
+        self.total_residues = total_residues
+
+    def set_interfaces(self, interfaces: List[Interface]):
+        self.interfaces = interfaces
+
+class ExperimentalPdb (Pdb):
+    def __init__(self, path: str):
+        super().__init__(path=path)
+        self.split_path=path
+
 class TemplateExtracted (Pdb):
     def __init__(self, path: str):
         super().__init__(path=path)
@@ -199,8 +200,7 @@ class TemplateExtracted (Pdb):
         self.template = template
         self.originalseq_path = originalseq_path
         if self.template is not None:
-            _, _, _, seq_list = self.template.get_changes()
-            bioutils.change_sequence_pdb(pdb_in_path=self.split_path, pdb_out_path=self.originalseq_path, sequence_list=seq_list)
+            shutil.copy2(self.template.template_originalseq_path, self.originalseq_path)
         else:
             shutil.copy2(self.split_path, self.originalseq_path)
 
@@ -218,14 +218,9 @@ class Ranked (Pdb):
         super().__init__(path=path)
         self.minimized_path: str
         self.plddt: int
-        self.ah: int
-        self.bs: int
-        self.total_residues: int
         self.superposition_templates: List[PdbRanked] = []
         self.superposition_experimental: List[PdbRanked] = []
-        self.mapping: Dict = {}
         self.potential_energy: float = None
-        self.interfaces: List[Interface] = []
         self.frobenius_plots: List[Frobenius] = []
         self.filtered: bool = False
         self.best: bool = False
@@ -248,9 +243,6 @@ class Ranked (Pdb):
     def set_best(self, best: bool):
         self.best = best
 
-    def set_mapping(self, mapping: Dict):
-        self.mapping = mapping
-
     def set_minimized_path(self, path: str):
         self.minimized_path = path
 
@@ -260,36 +252,11 @@ class Ranked (Pdb):
     def add_experimental(self, experimental: PdbRanked):
         self.superposition_experimental.append(experimental)
 
-    def add_interface(self, interface: Interface):
-        self.interfaces.append(interface)
-
-    def set_secondary_structure(self, ah: int, bs: int, total_residues: int):
-        self.ah = ah
-        self.bs = bs
-        self.total_residues = total_residues
-
     def set_potential_energy(self, potential_energy: float):
         self.potential_energy = potential_energy
 
-    def add_interfaces_frobenius_plot(self, plot: str):
-        self.interfaces_frobenius_plot.append(plot)
-
     def set_encoded(self, path: str):
         self.encoded = utils.encode_data(path)
-
-    def add_frobenius_plot(self, template: str, dist_plot: str, ang_plot: str, dist_coverage: float,
-                           ang_coverage: float, core: float):
-        frobenius = Frobenius(
-            template=template,
-            dist_plot=dist_plot,
-            encoded_dist_plot=utils.encode_data(dist_plot),
-            ang_plot=ang_plot,
-            encoded_ang_plot=utils.encode_data(ang_plot),
-            dist_coverage=dist_coverage,
-            ang_coverage=ang_coverage,
-            core=core
-        )
-        self.frobenius_plots.append(frobenius)
 
     def sort_template_rankeds(self):
         self.superposition_templates.sort(key=lambda x: (x.qscore is None, x.qscore), reverse=True)

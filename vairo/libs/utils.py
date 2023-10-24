@@ -311,7 +311,8 @@ def parse_pisa_general_multimer(pisa_output: str) -> List:
         chain1 = line[1].replace(' ', '')
         chain2 = line[2].split()[0].replace(' ', '')
         serial = line[0][:4].replace(' ', '')
-        return_list.append({'serial': serial, 'area': area, 'deltaG': deltag, 'chain1': chain1, 'chain2': chain2})
+        nhb = line[3][15:22].replace(' ', '')
+        return_list.append({'serial': serial, 'area': area, 'deltaG': deltag, 'nhb': nhb, 'chain1': chain1, 'chain2': chain2})
 
     return return_list
 
@@ -324,9 +325,7 @@ def parse_pisa_interfaces(pisa_output: str) -> Dict:
     #   se_gain1
     #   se_gain2
     #   chain1
-    #   res_chain1
     #   chain2
-    #   res_chain2
     # }]
     # It returns a list with the interface information, each
     # interface contains the required information.

@@ -1,6 +1,7 @@
 import copy
 import logging
 import os
+import shutil
 from typing import Union, List, Dict
 
 from libs import match_restrictions, utils, bioutils, structures
@@ -10,6 +11,7 @@ class TemplateChain:
     def __init__(self,
                  chain: str,
                  path: str,
+                 path_before_changes: str,
                  code: str,
                  sequence: str,
                  match: match_restrictions.MatchRestrictions = None,
@@ -21,6 +23,7 @@ class TemplateChain:
                  ):
         self.chain = chain
         self.path = path
+        self.path_before_changes = path_before_changes
         self.code = code
         self.sequence = sequence
         self.match = match
@@ -172,6 +175,10 @@ class TemplateChainsList:
                 # Store the sequence before changing the residues, as if we want to add it in the MSA, it would not
                 # make sense
                 sequence_before_changes = list(bioutils.extract_sequence_msa_from_pdb(path).values())[0]
+                path_before_changes = os.path.join(os.path.dirname(path), f'{utils.get_file_name(path)}_originalseq.pdb')
+                if os.path.exists(path_before_changes):
+                    os.remove(path_before_changes)
+                shutil.copy2(path, path_before_changes)
                 for change in change_list:
                     change.change_residues(path, path)
 
@@ -184,6 +191,7 @@ class TemplateChainsList:
                 if not self.get_template_chain(path):
                     self.template_chains_list.append(TemplateChain(chain=chain,
                                                                    path=path,
+                                                                   path_before_changes=path_before_changes,
                                                                    code=number,
                                                                    sequence=sequence,
                                                                    match=match,

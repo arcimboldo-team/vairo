@@ -128,6 +128,7 @@ class MainStructure:
                 try:
                     bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
                 except Exception as e:
+                    print(e)
                     logging.debug(
                         f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
@@ -326,6 +327,13 @@ class MainStructure:
             interfaces_dict = {}
             frobenius_dict = {}
             conclusion_dict = {}
+            interfaces_dict = {'interfaces': [], 'pdbs': {}}
+
+            for pdb_in in self.output.ranked_filtered_list+self.output.experimental_list+self.output.templates_list:
+                interfaces_dict['pdbs'][pdb_in.name] = pdb_in.interfaces
+                for interface in pdb_in.interfaces:
+                    if interface.name not in interfaces_dict['interfaces']:
+                        interfaces_dict['interfaces'].append(interface.name)
 
             for ranked in self.output.ranked_list:
                 ranked_rmsd_dict[ranked.name] = {}
@@ -359,14 +367,8 @@ class MainStructure:
                             rmsd_dict[ranked.name][ranked_template.pdb] = {'rmsd': ranked_template.rmsd,
                                                                                 'aligned_residues': ranked_template.aligned_residues,
                                                                                 'total_residues': ranked_template.total_residues
-                                                                                }                
-
-                if ranked.filtered and ranked.interfaces:
-                    interfaces_list = [copy.deepcopy(interface) for interface in ranked.interfaces if interface.interface_template and any([inter.template in accepted_templates for inter in interface.interface_template])]
-                    if interfaces_list:
-                        for inter in interfaces_list:
-                            inter.interface_template = [int_temp for int_temp in inter.interface_template if int_temp.template in accepted_templates]
-                        interfaces_dict[ranked.name] = interfaces_list
+                                                                            }                
+                
                 if ranked.frobenius_plots:
                     new_frobenius_plots = [plts for plts in ranked.frobenius_plots if plts.template in accepted_templates]
                     if new_frobenius_plots:
@@ -377,8 +379,7 @@ class MainStructure:
                         frobenius_dict[ranked.name] = frobenius_plots_list + ordered_list
 
             render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
-            render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if
-                                            ranked.filtered}
+            render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_filtered_list}
 
             if self.templates_list:
                 render_dict['templates_list'] = self.templates_list
@@ -386,8 +387,6 @@ class MainStructure:
                 render_dict['ranked_list'] = self.output.ranked_list
             if self.output.group_ranked_by_rmsd_dict:
                 render_dict['ranked_by_rmsd'] = self.output.group_ranked_by_rmsd_dict
-            if self.output.template_interfaces:
-                render_dict['template_interfaces'] = self.output.template_interfaces
             if conclusion_dict:
                 render_dict['conclusion_dict'] = conclusion_dict
                 render_dict['conclusion_type'] = conclusion_type
@@ -399,7 +398,7 @@ class MainStructure:
                 render_dict['table']['rmsd_dict'] = rmsd_dict
             if energies_dict:
                 render_dict['table']['energies_dict'] = energies_dict
-            if interfaces_dict:
+            if interfaces_dict['interfaces']:
                 render_dict['interfaces_dict'] = interfaces_dict
             if frobenius_dict:
                 render_dict['frobenius_dict'] = frobenius_dict
@@ -662,12 +661,12 @@ class MainStructure:
         sequence_list = [sequence.fasta_path for sequence in self.sequence_assembled.sequence_list_expanded]
         for experimental in self.experimental_pdbs:
             try:
-                pdb_out_path = os.path.join(self.experimental_dir, f'{utils.get_file_name(experimental)}_aligned.pdb')
+                pdb_out_path = os.path.join(self.experimental_dir, f'{utils.get_file_name(experimental)}_experimental.pdb')
                 experimental_aligned_path = bioutils.align_pdb(pdb_in_path=experimental, pdb_out_path=pdb_out_path, sequences_list=sequence_list, databases=self.alphafold_paths)
                 if experimental_aligned_path is None:
                     raise Exception()
                 aligned_experimental_pdbs_list.append(experimental_aligned_path)
-            except:
+            except Exception as e:
                 logging.error(f'Not possible to align experimental pdb {experimental}')
                 aligned_experimental_pdbs_list.append(experimental)
                 pass

@@ -246,7 +246,7 @@
                 {% endif %}
                 #}
                 {% if 'interfaces_dict' in data %}
-                    <li name="interface_graphs" onclick="move_to(event)" class="sub-menu">Interface Graphs</li>                
+                    <li name="interface_information" onclick="move_to(event)" class="sub-menu">Interfaces</li>                
                 {% endif %}
                 {% if 'table' in data %}
                     <li name="tables" onclick="move_to(event)" class="sub-menu">Tables</li>
@@ -488,7 +488,7 @@
                     {% for key, value in data.frobenius_dict.items() %}
                         <details class="details-frobenius"
                         {% if key == data.ranked_list[0].name %}
-                         open
+                         openstruct
                         {% endif %}
                         >
                         <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
@@ -556,59 +556,82 @@
             {% endif %}
             #}
             {% if 'interfaces_dict' in data %}
-                <div id="interface_graphs" class="section-div">
-                    <h2>Interface Graphs</h2>
-                    {% for key, interfaces in data.interfaces_dict.items() %}
-                            {% for interface in interfaces %}
-                                {% if loop.first %}
-                                <details class="details-frobenius"
-                                {% if key == data.ranked_list[0].name %}
-                                 open
-                                {% endif %}
-                                >
-                                    <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
-                                    <ul style="margin: 0px 0px; padding-left: 0px">
-                                {% endif %}
-                                    {% for template in interface.interface_template if template.core > 0 %}
-                                    {% if loop.first %}
-                                        <li>
-                                            <details class="details-frobenius-in">
-                                                <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
-                                                <p> Solvation for each chain:
-                                                    <ul>
-                                                        <li style="border: none; list-style: disc;">{{ interface.chain1 }}: Solvation: {{ interface.solvation1 }}, SE gain: {{ interface.se_gain1 }}</li>
-                                                        <li style="border: none; list-style: disc;">{{ interface.chain2 }}: Solvation: {{ interface.solvation2 }}, SE gain: {{ interface.se_gain2 }}</li>
-                                                    </ul>
-                                                </p>
-                                                <p>The interface can be found in the following templates:</p>
-                                                <ul style="padding-left: 5px;">
-                                    {% endif %}
-                                                    <li style="border-top: 0px">
-                                                        <details class="details-frobenius-in">
-                                                            <summary><h4 style="display:inline">{{ template.template }}</h4></summary>
-                                                            <div class="div-frobenius">
-                                                                <p>Distance Frobenius is: {{ template.dist_coverage }}</p>
-                                                                <p>Core is: {{ template.core }} CV</p>
-                                                                <img style="width: 40%" src="data:image/png;base64,{{ template.encoded_dist_plot  }}" alt="Interface distances graph">
-                                                                {% if data.sequence_plot  %}
-                                                                    <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
-                                                                {% endif %}
-                                                            </div>
-                                                        </details>
-                                                    </li> 
-                                        {% if loop.last %}
-                                                </ul>
-                                                </details>
-                                            </li>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% if loop.last %}
-                                    </ul>
-                                    </details>
-
-                                {% endif %}
+                <div id="interface_information" class="section-div">
+                    <h2>Interface information</h2>
+                    <h3>Interfaces in predictions, experimental pdbs and templates (Area, DeltaG, nhb)</h3>
+                    <table>
+                        <tr>
+                            <th>Interfaces</th>
+                            {% for key in data.interfaces_dict.pdbs.keys() %}
+                                <th>{{ key }}</th>
                             {% endfor %}
-                    {% endfor %}
+                        </tr>
+                        {% for inter_code in data.interfaces_dict.interfaces  %}
+                            <tr>
+                                <td>{{ inter_code }}</td>
+                                {% for pdb_key, pdb_interfaces in data.interfaces_dict.pdbs.items() %}
+                                {% set ns = namespace(found_data=None) %}
+                                    {% for inter in pdb_interfaces %}
+                                        {% if inter.name == inter_code %}
+                                            {% set ns.found_data = inter.area ~ ', ' ~ inter.deltaG ~ ', ' ~ inter.nhb %}
+                                            {{ found_data }}
+                                        {%  endif %}
+                                        {{ found_data }}
+                                    {% endfor %}
+                                    <td>{{ ns.found_data }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </table>
+
+                    {% for ranked_key, ranked_interfaces in data.interfaces_dict.pdbs.items() if ranked_key in data.filtered_dict %}
+                        {% for ranked_inter in ranked_interfaces %}
+                            {% if loop.first %}
+                                <details class="details-frobenius"
+                                    {% if pdb_key == data.ranked_list[0].name %}
+                                    open
+                                    {% endif %}             
+                                >
+                                <summary class="summary-frobenius"> <h3 style="display:inline">{{ ranked_key }}</h3></summary>
+                                <ul style="margin: 0px 0px; padding-left: 0px">
+                            {% endif %}
+                            <li>
+                                <details class="details-frobenius-in">
+                                    <summary><h4 style="display:inline">{{ ranked_inter.name }}</h4></summary>
+                                    <p> Solvation for each chain:
+                                        <ul>
+                                            <li style="border: none; list-style: disc;">{{ ranked_inter.chain1 }}: Solvation: {{ ranked_inter.solvation1 }}, SE gain: {{ ranked_inter.se_gain1 }}</li>
+                                            <li style="border: none; list-style: disc;">{{ ranked_inter.chain2 }}: Solvation: {{ ranked_inter.solvation2 }}, SE gain: {{ ranked_inter.se_gain2 }}</li>
+                                        </ul>
+                                    </p>
+                            {% for template_key, template_interfaces in data.interfaces_dict.pdbs.items() if template_key not in data.filtered_dict %}
+                            {% if loop.first %}
+                                <p>The interface can be found in the following pdbs:</p>
+                                <ul style="padding-left: 5px;">
+                            {% endif %} 
+                                {% for template_inter in template_interfaces if template_inter.name == ranked_inter.name %}                               
+                                    <li style="border-top: 0px">
+                                        <details class="details-frobenius-in">
+                                            <summary><h4 style="display:inline">{{ template_key }}</h4></summary>
+                                            <div class="div-frobenius">
+                                                <li style="border: none; list-style: disc;">{{ template_inter.chain1 }}: Solvation: {{ template_inter.solvation1 }}, SE gain: {{ template_inter.se_gain1 }}</li>
+                                                <li style="border: none; list-style: disc;">{{ template_inter.chain2 }}: Solvation: {{ template_inter.solvation2 }}, SE gain: {{ template_inter.se_gain2 }}</li>                                                                    
+                                            </div>
+                                        </details>
+                                    </li> 
+                                {% endfor %}
+                            {% if loop.last %}
+                                </ul>
+                            {% endif %}
+                            {% endfor %}
+                            </details>
+                            </li>
+                            {% if loop.last %}
+                                </ul>
+                                </details>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}         
                 </div>
             {% endif %}
             {% if 'table' in data %}
@@ -742,7 +765,6 @@
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
                     <h3>Superposition of experimental pdbs with predictions and templates (RMSD (superposed residues), Q-Score)</h3>
-
                     <table>
                         <tr>
                             <th>experimental pdb</th>
@@ -827,58 +849,6 @@
                                 </li>
                             {% endfor %}
                         </ul>
-
-                    {% if data.template_interfaces and data.conclusion_type  == 'template' %}
-                        {% for key, value in data.template_interfaces.items() if value %}
-                        {% if loop.first %}
-                            <p>Each template has the following interfaces:</p>
-                            <ul>
-                        {% endif %}
-                                <li>{{ key }}:
-                                    {% for interface in value %}
-                                        {% if loop.first %}
-                                            <ul>
-                                        {% endif %}
-                                            <li>{{ interface }}
-                                                {% set interfaces_list = [] %}
-                                                {% if 'interfaces_dict' in data %}
-                                                    {% for ranked, interfaces in data.interfaces_dict.items() %}
-                                                        {% for interface2 in interfaces if interface2.name == interface %}
-                                                            {% for interfaces_template in interface2.interface_template if interfaces_template.template == key and interfaces_template.core == 0 %}
-                                                                {{ interfaces_list.append(ranked) or "" }}
-                                                            {% endfor %}
-                                                        {% endfor %}
-                                                    {% endfor %}
-                                                {%endif %}
-                                                {% if interfaces_list %}
-                                                    {% for not_interface in interfaces_list %}
-                                                        {% if loop.first %}
-                                                            : Missing in
-                                                        {% endif %}
-                                                        {% if not_interface in data.bests_dict %}
-                                                            <span class="green">{{ not_interface }}</span>
-                                                        {% elif not_interface in data.filtered_dict %}
-                                                            <span class="blue">{{ not_interface }}</span>
-                                                        {% else %}
-                                                            {{ not_interface }}
-                                                        {% endif %}
-                                                        {% if not loop.last %}
-                                                            ,
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                {% endif %}
-                                            </li>
-                                        {% if loop.last %}
-                                            </ul>
-                                        {% endif %}
-                                    {% endfor %}
-                                </li>
-                        {% if loop.last %}
-                            </ul>
-                            <p> The analysis has only been performed with those predictions that have a high pLDDT average.</p>
-                        {% endif %}
-                        {% endfor %}
-                    {% endif %}
                 {% endif %}
             </div>
             <div id="citations" class="section-div">

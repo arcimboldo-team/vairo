@@ -12,6 +12,7 @@ class Template:
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
+        self.template_originalseq_path: str
         self.template_chains: Dict
         self.generate_multimer: bool
         self.change_res_struct: change_res.ChangeResiduesList = change_res.ChangeResiduesList()
@@ -49,6 +50,7 @@ class Template:
         self.aligned = utils.get_input_value(name='aligned', section='template', input_dict=parameters_dict,
                                              override_default=self.legacy)
         self.template_path = f'{os.path.join(output_dir, self.pdb_id)}_template.pdb'
+        self.template_originalseq_path = f'{os.path.join(output_dir, self.pdb_id)}_template_originalseq.pdb'
         self.reference = utils.get_input_value(name='reference', section='template', input_dict=parameters_dict)
         self.generate_multimer = utils.get_input_value(name='generate_multimer', section='template',
                                                        input_dict=parameters_dict)
@@ -153,13 +155,27 @@ class Template:
                                                                     match_restrict_list=self.match_restrict_struct)
                 else:
                     self.results_path_position[i] = None
-
+        aux_path_list = []
+        chain_name = 'A'
+        for path in self.results_path_position:
+            if path is not None:
+                tchain = self.template_chains_struct.get_template_chain(path)
+                tchain = tchain.path_before_changes
+                bioutils.change_chain(pdb_in_path=tchain,
+                     pdb_out_path=tchain,
+                     chain=chain_name)
+            else:
+                tchain = None
+            chain_name = chr(ord(chain_name) + 1)
+            aux_path_list.append(tchain)            
+        bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_path_list,
+                            merged_pdb_path=self.template_originalseq_path) 
         self.template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
             query_sequence=sequence_assembled.sequence_assembled,
             pdb_path=self.template_path,
             pdb_id=self.pdb_id,
             chain_id='A')
-
+        
         logging.error(
             f'Positions of chains in the template {self.pdb_id}: {" | ".join([str(element) for element in self.results_path_position])}')
 

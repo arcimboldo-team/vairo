@@ -1014,8 +1014,10 @@ def split_pdb_in_chains(pdb_path: str, chain: str = None, output_dir: str = None
 
 def generate_multimer_from_pdb(pdb_in_path: str, pdb_out_path: str):
     # Given a pdb_in, create the multimer and save it in pdb_out
-
-    shutil.copy2(pdb_in_path, pdb_out_path)
+    try:
+        shutil.copy2(pdb_in_path, pdb_out_path)
+    except:
+        pass
     chain_dict = split_pdb_in_chains(pdb_path=pdb_out_path)
     multimer_chain_dict = dict(sorted(generate_multimer_chains(pdb_out_path, chain_dict).items()))
     chain_name = next(iter(multimer_chain_dict))
@@ -1248,10 +1250,22 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
             serial_output = \
                 subprocess.Popen(['pisa', 'temp', '-detail', 'interfaces', interface['serial']], stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-
-            interface_data = utils.parse_pisa_interfaces(serial_output)
-            interface_data.update(interface)
-            interface_data_list.append(interface_data)
+            interface_data = utils.parse_pisa_interfaces(serial_output)  
+            new_interface = structures.Interface(name=f'{interface_data["chain1"]}-{interface_data["chain2"]}',
+                                                res_chain1=interface_data["res_chain1"],
+                                                res_chain2=interface_data["res_chain2"],
+                                                chain1=interface_data["chain1"],
+                                                chain2=interface_data["chain2"],
+                                                se_gain1=float(interface_data['se_gain1']),
+                                                se_gain2=float(interface_data['se_gain2']),
+                                                solvation1=float(interface_data['solvation1']),
+                                                solvation2=float(interface_data['solvation2']),
+                                                area=float(interface['area']),
+                                                deltaG=float(interface['deltaG']),
+                                                nhb=int(interface['nhb']),
+                                                )            
+    
+            interface_data_list.append(new_interface)
             pisa_output_txt = os.path.join(interfaces_path,
                                            f'{utils.get_file_name(pdb_in_path)}_{interface_data["chain1"]}{interface_data["chain2"]}_interface.txt')
             with open(pisa_output_txt, 'w') as f_out:
@@ -1296,23 +1310,18 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     # Split the pdb into the chains of the interface and delete all the others residues.
     # Return the dictionary with the chains and the interface residues extended.
     add_domains_dict = {}
-    bfactors_dict = {}
-    for chain, residue in zip([interface['chain1'], interface['chain2']],
-                              [interface['res_chain1'], interface['res_chain2']]):
+    for chain, residue in zip([interface.chain1, interface.chain2],
+                              [interface.res_chain1, interface.res_chain2]):
         added_res_list = []
         [added_res_list.extend(domains) for domains in domains_dict[chain] if bool(set(residue).intersection(domains))]
         added_res_list.extend(residue)
         add_domains_dict[chain] = list(set(added_res_list))
-        bfactors_dict[chain] = [float(interface['bfactor'])] * len(add_domains_dict[chain])
 
     split_dimers_in_pdb(pdb_in_path=pdb_in_path,
                         pdb_out_path=pdb_out_path,
-                        chain_list=[interface['chain1'], interface['chain2']])
-
-    change = change_res.ChangeResidues(chain_res_dict=add_domains_dict, chain_bfactors_dict=bfactors_dict)
+                        chain_list=[interface.chain1, interface.chain2])
+    change = change_res.ChangeResidues(chain_res_dict=add_domains_dict)
     change.delete_residues_inverse(pdb_out_path, pdb_out_path)
-    # change.change_bfactors(pdb_out_path, pdb_out_path)
-
     return add_domains_dict
 
 
@@ -1386,7 +1395,7 @@ def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str],
         else:
             for i, path in enumerate(chain_dict.values()):
                 aligned_chain, aligned_info = hhsearch.run_hh(output_dir=tmpdirname, database_dir=tmpdirname,
-                                                              query_sequence_path=sequences_list[i].fasta_path,
+                                                              query_sequence_path=sequences_list[i],
                                                               chain_in_path=path, databases=databases)
                 shutil.copy2(aligned_chain, path)
                 chains_aligned.append(path)
