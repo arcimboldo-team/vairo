@@ -68,6 +68,7 @@ class FeaturesInput:
         self.num_msa = num_msa
         self.num_templates = num_templates
 
+
 @dataclasses.dataclass
 class Library:
     path: str
@@ -83,11 +84,13 @@ class Library:
         self.num_msa = num_msa
         self.num_templates = num_templates
 
+
 @dataclasses.dataclass(frozen=True)
 class Dendogram:
     dendogram_list: List[str]
     dendogram_plot: str
     encoded_dendogram_plot: bytes
+
 
 @dataclasses.dataclass(frozen=True)
 class Alignment:
@@ -110,7 +113,7 @@ class GanttPlot:
     legend_msa: str
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class Interface:
     name: str
     res_chain1: List[int]
@@ -124,6 +127,10 @@ class Interface:
     area: float
     deltaG: float
     nhb: float
+    path: str = dataclasses.field(default=None)
+
+    def set_structure(self, path: str):
+        self.path = path
 
 
 @dataclasses.dataclass(frozen=True)
@@ -158,7 +165,7 @@ class Pdb:
         self.bs: int
         self.total_residues: int
         self.interfaces: List[Interface] = []
-    
+
         self.path = path
         self.name = utils.get_file_name(path)
 
@@ -182,19 +189,21 @@ class Pdb:
     def set_interfaces(self, interfaces: List[Interface]):
         self.interfaces = interfaces
 
-class ExperimentalPdb (Pdb):
+
+class ExperimentalPdb(Pdb):
     def __init__(self, path: str):
         super().__init__(path=path)
-        self.split_path=path
+        self.split_path = path
 
-class TemplateExtracted (Pdb):
+
+class TemplateExtracted(Pdb):
     def __init__(self, path: str):
         super().__init__(path=path)
         self.percentage_list: List[float]
         self.identity: float
         self.sequence_msa: str
-        self.template: str
-        self.originalseq_path: str
+        self.template: str = ''
+        self.originalseq_path: str = ''
 
     def set_template(self, template, originalseq_path: str):
         self.template = template
@@ -213,7 +222,8 @@ class TemplateExtracted (Pdb):
     def set_sequence_msa(self, sequence_msa: str):
         self.sequence_msa = sequence_msa
 
-class Ranked (Pdb):
+
+class Ranked(Pdb):
     def __init__(self, path: str):
         super().__init__(path=path)
         self.minimized_path: str
@@ -230,7 +240,7 @@ class Ranked (Pdb):
 
     def set_plddt(self, plddt: float):
         self.plddt = round(plddt)
-    
+
     def set_rmsd(self, rmsd: float):
         self.rmsd = round(rmsd, 2) if rmsd is not None else rmsd
 

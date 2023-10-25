@@ -47,6 +47,7 @@ class OutputStructure:
         self.output_dir: str = output_dir
         self.experimental_dict = {}
         self.experimental_list: List[structures.ExperimentalPdb] = []
+        self.best_experimental: str = None
         self.results_dir: str = ''
         self.templates_nonsplit_dir: str = ''
         self.rankeds_split_dir: str = ''
@@ -91,12 +92,15 @@ class OutputStructure:
             bioutils.split_chains_assembly(pdb_in_path=template.path,
                                            pdb_out_path=template.split_path,
                                            sequence_assembled=vairo_struct.sequence_assembled)
-            _, compactness = bioutils.run_spong(pdb_in_path=template.path, spong_path=vairo_struct.binaries_paths.spong_path)
+            _, compactness = bioutils.run_spong(pdb_in_path=template.path,
+                                                spong_path=vairo_struct.binaries_paths.spong_path)
             template.set_compactness(compactness)
             _, perc = bioutils.generate_ramachandran(pdb_path=template.split_path)
             template.set_ramachandran(perc)
             template_struct = vairo_struct.get_template_by_id(template.name)
-            template.set_template(template=template_struct, originalseq_path=os.path.join(self.templates_split_originalseq_dir, f'{template.name}.pdb'))
+            template.set_template(template=template_struct,
+                                  originalseq_path=os.path.join(self.templates_split_originalseq_dir,
+                                                                f'{template.name}.pdb'))
 
         logging.error('Reading predictions from the results folder')
         self.ranked_list = utils.read_rankeds(input_path=self.results_dir)
@@ -108,7 +112,8 @@ class OutputStructure:
         # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
         max_plddt = plots.plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
-                                sequence_amino=vairo_struct.sequence_assembled.sequence_assembled, sequence_path=self.sequence_path)
+                                sequence_amino=vairo_struct.sequence_assembled.sequence_assembled,
+                                sequence_path=self.sequence_path)
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
@@ -118,8 +123,8 @@ class OutputStructure:
             ranked.set_compactness(compactness)
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
             bioutils.split_chains_assembly(pdb_in_path=ranked.path,
-                                            pdb_out_path=ranked.split_path,
-                                            sequence_assembled=vairo_struct.sequence_assembled)
+                                           pdb_out_path=ranked.split_path,
+                                           sequence_assembled=vairo_struct.sequence_assembled)
 
             accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.split_path,
                                                                          output_dir=self.plots_path)
@@ -142,6 +147,7 @@ class OutputStructure:
                     logging.error(f'    Compactness below limit')
                 if ranked.plddt < (PERCENTAGE_FILTER * max_plddt):
                     logging.error(f'    PLDDT too low')
+
         # Superpose the experimental pdb with all the rankeds and templates
         logging.error('Superposing experimental pdbs with predictions and templates')
         for experimental in vairo_struct.experimental_pdbs:
@@ -159,13 +165,12 @@ class OutputStructure:
                         pdb.add_experimental(strct)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
 
-            # Select the best ranked
-        sorted_ranked_list = []
+        # Select the best ranked
         if vairo_struct.experimental_pdbs:
             logging.error(
                 'Experimental pdbs found. Selecting the best prediction taking into account the qscore with the experimental pdbs')
             sorted_ranked_list = sorted(self.ranked_list, key=lambda ranked: (
-            ranked.filtered, ranked.superposition_experimental[0].qscore), reverse=True)
+                ranked.filtered, ranked.superposition_experimental[0].qscore), reverse=True)
         else:
             logging.error('No experimental pdbs found. Selecting best prediction by PLDDT')
             sorted_ranked_list = sorted(self.ranked_list, key=lambda ranked: (ranked.filtered, ranked.plddt),
@@ -190,6 +195,8 @@ class OutputStructure:
         os.chdir(self.tmp_dir)
 
         reference_superpose = self.ranked_list[0].path
+        if self.ranked_list[0].superposition_experimental:
+            self.best_experimental = utils.get_file_name(self.ranked_list[0].superposition_experimental[0].pdb)
 
         # Store the superposition of the experimental with the best ranked
         for experimental in experimental_pdbs:
@@ -236,7 +243,6 @@ class OutputStructure:
                         ranked.set_best(True)
 
         self.ranked_filtered_list = [ranked for ranked in self.ranked_list if ranked.filtered]
-
 
         # Use frobenius
         templates_nonsplit_paths_list = [template.path for template in self.templates_list]
@@ -310,26 +316,28 @@ class OutputStructure:
 
         # Use aleph to generate domains and calculate secondary structure percentage
 
-        for pdb_in in self.ranked_filtered_list+self.experimental_list+self.templates_list:
+        for pdb_in in self.ranked_filtered_list + self.experimental_list + self.templates_list:
             if isinstance(pdb_in, structures.TemplateExtracted):
                 interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.originalseq_path, self.interfaces_path)
             else:
                 interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.split_path, self.interfaces_path)
             if interfaces_data_list:
-                results_dict, domains_dict = bioutils.aleph_annotate(output_path=self.tmp_dir, pdb_path=pdb_in.split_path)
+                results_dict, domains_dict = bioutils.aleph_annotate(output_path=self.tmp_dir,
+                                                                     pdb_path=pdb_in.split_path)
                 if domains_dict is None or results_dict is None:
                     break
                 pdb_in.set_secondary_structure(ah=results_dict['ah'], bs=results_dict['bs'],
-                                            total_residues=results_dict['number_total_residues'])           
+                                               total_residues=results_dict['number_total_residues'])
                 for i, interface in enumerate(interfaces_data_list):
                     if not interface.chain1 in domains_dict or not interface.chain2 in domains_dict:
                         continue
                     code = f'{interface.chain1}-{interface.chain2}'
                     dimers_path = os.path.join(self.interfaces_path, f'{pdb_in.name}_{code}.pdb')
                     bioutils.create_interface_domain(pdb_in_path=pdb_in.split_path,
-                                                    pdb_out_path=dimers_path,
-                                                    interface=interface,
-                                                    domains_dict=domains_dict)
+                                                     pdb_out_path=dimers_path,
+                                                     interface=interface,
+                                                     domains_dict=domains_dict)
+                    interface.set_structure(dimers_path)
                 pdb_in.set_interfaces(interfaces_data_list)
 
         self.select_templates()
@@ -347,7 +355,6 @@ class OutputStructure:
                         change_pos -= 1
         else:
             self.templates_selected = [template.name for template in self.templates_list]
-
 
     def write_tables(self, rmsd_dict: Dict, ranked_rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict,
                      energies_dict: Dict):

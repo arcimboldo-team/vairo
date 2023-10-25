@@ -184,7 +184,7 @@ INPUT_PARAMETERS = {
             'mode': ['guided'],
             'default': []
         },
-        'pymol_show': {
+        'show_pymol': {
             'required': False,
             'mode': ['naive', 'guided'],
             'default': ''

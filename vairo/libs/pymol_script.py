@@ -3,6 +3,7 @@ import os
 import subprocess
 from libs import utils
 
+
 def create_pymol_session(a_air):
     script = """
 from pymol import cmd
@@ -55,10 +56,14 @@ cmd.set("display_scale_factor", '2')
     if a_air.output.ranked_list:
         pdb_list = [ranked.split_path for ranked in a_air.output.ranked_list]
         pdb_list.extend(a_air.experimental_pdbs)
-        for j, pdb_path in enumerate(pdb_list):
-            script += f'cmd.load("{pdb_path}", "{utils.get_file_name(pdb_path)}")\n'
+        for j, pdb_in in enumerate(a_air.output.ranked_list + a_air.output.experimental_list):
+            script += f'cmd.load("{pdb_in.split_path}", "{pdb_in.name}")\n'
             if j != 0:
-                script += f'cmd.disable("{utils.get_file_name(pdb_path)}")\n'
+                script += f'cmd.disable("{pdb_in.name}")\n'
+            for interface in pdb_in.interfaces:
+                script += f'cmd.load("{interface.path}", "{utils.get_file_name(interface.path)}")\n'
+                script += f'cmd.disable("{utils.get_file_name(interface.path)}")\n'
+
         for zoom in a_air.pymol_show_list:
             key = f'F{i}'
             script += f'cmd.zoom("center", {zoom})\n'
@@ -71,12 +76,12 @@ cmd.set("display_scale_factor", '2')
     script += 'cmd.quit()\n'
     pymol_script = os.path.join(a_air.run_dir, 'script_pymol.py')
     with open(pymol_script, 'w') as f_out:
-        f_out.write(script) 
+        f_out.write(script)
     try:
         cmd = 'which pymol'
         subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
         cmd = f'pymol -ckq {pymol_script}'
-        subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        subprocess.Popen(cmd, shell=True, env={}, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError:
         logging.error('PyMOL could not be found in the path, so a PyMOL session could not be created')
         pass

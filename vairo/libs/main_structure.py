@@ -3,7 +3,8 @@ import logging
 import os
 import shutil
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, change_res, output, pymol_script, template, utils, features, sequence, structures, \
+from libs import alphafold_classes, bioutils, change_res, output, pymol_script, template, utils, features, sequence, \
+    structures, \
     plots
 from jinja2 import Environment, FileSystemLoader
 
@@ -58,7 +59,6 @@ class MainStructure:
         self.template_html_path: str
         self.pymol_template_path: str
 
-
         self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
         utils.create_dir(self.output_dir)
         self.log_path = os.path.join(self.output_dir, 'output.log')
@@ -96,15 +96,17 @@ class MainStructure:
         self.glycines = utils.get_input_value(name='glycines', section='global', input_dict=parameters_dict)
         self.mosaic = utils.get_input_value(name='mosaic', section='global', input_dict=parameters_dict)
         self.small_bfd = utils.get_input_value(name='small_bfd', section='global', input_dict=parameters_dict)
-        pyoml_show_str = utils.get_input_value(name='pymol_show', section='global', input_dict=parameters_dict)
+        pyoml_show_str = utils.get_input_value(name='show_pymol', section='global', input_dict=parameters_dict)
         if pyoml_show_str:
             self.pymol_show_list = pyoml_show_str.replace(' ', '').split(',')
 
         if self.mode == 'naive':
-            self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global', input_dict=parameters_dict, override_default=True)
+            self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global',
+                                                           input_dict=parameters_dict, override_default=True)
         else:
-            self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global', input_dict=parameters_dict)
-        
+            self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global',
+                                                           input_dict=parameters_dict)
+
         self.cluster_templates_msa = utils.get_input_value(name='cluster_templates_msa', section='global',
                                                            input_dict=parameters_dict)
         self.cluster_templates_msa_delete = utils.expand_residues(
@@ -128,7 +130,6 @@ class MainStructure:
                 try:
                     bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
                 except Exception as e:
-                    print(e)
                     logging.debug(
                         f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
@@ -144,7 +145,8 @@ class MainStructure:
             path = utils.get_input_value(name='path', section='append_library', input_dict=library)
             aligned = utils.get_input_value(name='aligned', section='append_library', input_dict=library)
             add_to_msa = utils.get_input_value(name='add_to_msa', section='append_library', input_dict=library)
-            add_to_templates = utils.get_input_value(name='add_to_templates', section='append_library', input_dict=library)
+            add_to_templates = utils.get_input_value(name='add_to_templates', section='append_library',
+                                                     input_dict=library)
             positions = utils.get_input_value(name='positions', section='append_library', input_dict=library)
             positions_list = None
             if positions:
@@ -163,10 +165,10 @@ class MainStructure:
 
             if os.path.exists(path):
                 self.library_list.append(structures.Library(path=path, aligned=aligned,
-                                                        add_to_msa=add_to_msa,
-                                                        add_to_templates=add_to_templates,
-                                                        positions=positions,
-                                                        positions_list=positions_list))
+                                                            add_to_msa=add_to_msa,
+                                                            add_to_templates=add_to_templates,
+                                                            positions=positions,
+                                                            positions_list=positions_list))
             else:
                 raise Exception(f'Path {path} does not exist. Check the input append_library parameter.')
 
@@ -228,14 +230,13 @@ class MainStructure:
             self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
 
-
     def render_output(self, reduced: bool):
         render_dict = {}
 
         template_str = open(self.template_html_path, 'r').read()
         jinja_template = Environment(loader=FileSystemLoader(self.dir_templates_path)).from_string(
             template_str)
-        
+
         accepted_templates = self.output.templates_selected
         if reduced and os.path.exists(self.output.html_complete_path):
             render_dict['complete_html'] = self.output.html_complete_path
@@ -256,9 +257,6 @@ class MainStructure:
 
         with open(self.log_path, 'r') as f_in:
             render_dict['log_text'] = f_in.read()
-
-        if os.path.exists(self.output.pymol_session_path):
-            render_dict['pymol'] = self.output.pymol_session_path
 
         if self.feature is not None:
             self.create_plot_gantt(reduced=reduced)
@@ -283,11 +281,12 @@ class MainStructure:
                 render_dict['clustering_plot'] = utils.encode_data(input_data=self.output.analysis_plot_path)
 
             if os.path.exists(self.output.analysis_ranked_plot_path):
-                render_dict['clustering_ranked_plot'] = utils.encode_data(input_data=self.output.analysis_ranked_plot_path)
+                render_dict['clustering_ranked_plot'] = utils.encode_data(
+                    input_data=self.output.analysis_ranked_plot_path)
 
             if self.cluster_list:
                 render_dict['cluster_list'] = self.cluster_list
-        
+
         if self.feature:
             if self.mode != 'naive':
                 info_input_list = []
@@ -303,13 +302,17 @@ class MainStructure:
                 sum_templates += normal_input['num_templates']
                 info_input_list.append(normal_input)
                 for library in self.library_list:
-                    info_input_list.append({'num_templates': library.num_templates, 'num_msa': library.num_msa, 'type': 'library', 'path': library.path})
+                    info_input_list.append(
+                        {'num_templates': library.num_templates, 'num_msa': library.num_msa, 'type': 'library',
+                         'path': library.path})
                     sum_msa += library.num_msa
                     sum_templates += library.num_templates
                 for feature in self.features_input:
-                    info_input_list.append({'num_templates': feature.num_templates, 'num_msa': feature.num_msa, 'type': 'features', 'path': feature.path})
+                    info_input_list.append(
+                        {'num_templates': feature.num_templates, 'num_msa': feature.num_msa, 'type': 'features',
+                         'path': feature.path})
                     sum_msa += feature.num_msa
-                    sum_templates += feature.num_templates                
+                    sum_templates += feature.num_templates
                 render_dict['info_input'] = info_input_list
                 render_dict['num_msa'] = sum_msa
                 render_dict['num_templates'] = sum_templates
@@ -324,16 +327,17 @@ class MainStructure:
             rmsd_dict = {}
             ranked_rmsd_dict = {}
             energies_dict = {}
-            interfaces_dict = {}
             frobenius_dict = {}
             conclusion_dict = {}
-            interfaces_dict = {'interfaces': [], 'pdbs': {}}
+            interfaces_dict = {'interfaces': {}, 'pdbs': {}}
 
-            for pdb_in in self.output.ranked_filtered_list+self.output.experimental_list+self.output.templates_list:
+            for pdb_in in self.output.ranked_filtered_list + self.output.experimental_list + self.output.templates_list:
                 interfaces_dict['pdbs'][pdb_in.name] = pdb_in.interfaces
                 for interface in pdb_in.interfaces:
                     if interface.name not in interfaces_dict['interfaces']:
-                        interfaces_dict['interfaces'].append(interface.name)
+                        interfaces_dict['interfaces'][interface.name] = None
+                    if self.output.best_experimental is not None and pdb_in.name == self.output.best_experimental:
+                        interfaces_dict['interfaces'][interface.name] = interface.deltaG
 
             for ranked in self.output.ranked_list:
                 ranked_rmsd_dict[ranked.name] = {}
@@ -343,7 +347,8 @@ class MainStructure:
                     else:
                         ranked_rmsd_dict[ranked.name][ranked2.name] = ranked.rmsd_dict[ranked2.name]
 
-                plddt_dict[ranked.name] = {'plddt': ranked.plddt, 'compactness': ranked.compactness, 'ramachandran': ranked.ramachandran}
+                plddt_dict[ranked.name] = {'plddt': ranked.plddt, 'compactness': ranked.compactness,
+                                           'ramachandran': ranked.ramachandran}
                 try:
                     secondary_dict[ranked.name] = {'ah': ranked.ah, 'bs': ranked.bs,
                                                    'number_total_residues': ranked.total_residues}
@@ -352,7 +357,6 @@ class MainStructure:
                 if ranked.potential_energy is not None:
                     energies_dict[ranked.name] = ranked.potential_energy
 
-
                 if ranked.superposition_experimental:
                     conclusion_dict.setdefault(ranked.superposition_experimental[0].pdb, []).append(ranked.name)
                     conclusion_type = 'experimental'
@@ -360,17 +364,20 @@ class MainStructure:
                     conclusion_dict.setdefault(ranked.superposition_templates[0].pdb, []).append(ranked.name)
                     conclusion_type = 'template'
 
-                if ranked.superposition_templates and any(ranked_template.pdb in accepted_templates for ranked_template in ranked.superposition_templates):
+                if ranked.superposition_templates and any(
+                        ranked_template.pdb in accepted_templates for ranked_template in
+                        ranked.superposition_templates):
                     rmsd_dict[ranked.name] = {}
                     for ranked_template in ranked.superposition_templates:
                         if ranked_template.pdb in accepted_templates:
                             rmsd_dict[ranked.name][ranked_template.pdb] = {'rmsd': ranked_template.rmsd,
-                                                                                'aligned_residues': ranked_template.aligned_residues,
-                                                                                'total_residues': ranked_template.total_residues
-                                                                            }                
-                
+                                                                           'aligned_residues': ranked_template.aligned_residues,
+                                                                           'total_residues': ranked_template.total_residues
+                                                                           }
+
                 if ranked.frobenius_plots:
-                    new_frobenius_plots = [plts for plts in ranked.frobenius_plots if plts.template in accepted_templates]
+                    new_frobenius_plots = [plts for plts in ranked.frobenius_plots if
+                                           plts.template in accepted_templates]
                     if new_frobenius_plots:
                         ordered_list = sorted(new_frobenius_plots, key=lambda x: x.core, reverse=True)
                         frobenius_plots_list = [ordered_list.pop(0)]
@@ -402,11 +409,12 @@ class MainStructure:
                 render_dict['interfaces_dict'] = interfaces_dict
             if frobenius_dict:
                 render_dict['frobenius_dict'] = frobenius_dict
-            
+
             if self.output.experimental_dict:
                 new_dict = copy.deepcopy(self.output.experimental_dict)
                 for key, inner_dict in new_dict.items():
-                    new_dict[key] = {k: v for k, v in inner_dict.items() if k in accepted_templates or k in ranked_rmsd_dict.keys()}
+                    new_dict[key] = {k: v for k, v in inner_dict.items() if
+                                     k in accepted_templates or k in ranked_rmsd_dict.keys()}
                 render_dict['table']['experimental_dict'] = new_dict
 
             self.output.write_tables(rmsd_dict=rmsd_dict, ranked_rmsd_dict=ranked_rmsd_dict,
@@ -414,15 +422,20 @@ class MainStructure:
                                      energies_dict=energies_dict)
 
         render_dict['state'] = self.get_state_text()
+        render_dict['mode'] = self.mode.capitalize()
 
         if reduced:
             write_output = self.output.html_path
         else:
             write_output = self.output.html_complete_path
-        
+
+        if os.path.exists(self.output.pymol_session_path):
+            render_dict['pymol'] = self.output.pymol_session_path
+        elif self.output.ranked_list:
+            render_dict['pymol'] = None
+
         with open(write_output, 'w') as f_out:
             f_out.write(jinja_template.render(data=render_dict))
-
 
     def generate_output(self):
         if self.feature and self.feature.get_templates_length() > 20:
@@ -430,7 +443,6 @@ class MainStructure:
             self.render_output(reduced=False)
         else:
             self.render_output(reduced=True)
-
 
     def get_template_by_id(self, pdb_id: str) -> Union[template.Template, None]:
         # Return the template matching the pdb_id
@@ -626,17 +638,18 @@ class MainStructure:
 
     def create_plot_gantt(self, reduced: bool):
         gantt_plots_both, legend_both = plots.plot_gantt(plot_type='both', plot_path=self.output.plots_path,
-                                                        a_air=self, reduced=reduced)
-        gantt_plots_template, legend_template = plots.plot_gantt(plot_type='templates', plot_path=self.output.plots_path,
-                                                                a_air=self, reduced=reduced)
+                                                         a_air=self, reduced=reduced)
+        gantt_plots_template, legend_template = plots.plot_gantt(plot_type='templates',
+                                                                 plot_path=self.output.plots_path,
+                                                                 a_air=self, reduced=reduced)
         gantt_plots_msa, legend_msa = plots.plot_gantt(plot_type='msa', plot_path=self.output.plots_path, a_air=self)
 
         struct = structures.GanttPlot(plot_both=utils.encode_data(gantt_plots_both),
-                                                    legend_both=legend_both,
-                                                    plot_template=utils.encode_data(gantt_plots_template),
-                                                    legend_template=legend_template,
-                                                    plot_msa=utils.encode_data(gantt_plots_msa),
-                                                    legend_msa=legend_msa)
+                                      legend_both=legend_both,
+                                      plot_template=utils.encode_data(gantt_plots_template),
+                                      legend_template=legend_template,
+                                      plot_msa=utils.encode_data(gantt_plots_msa),
+                                      legend_msa=legend_msa)
 
         if reduced:
             self.output.gantt_plots = struct
@@ -661,8 +674,11 @@ class MainStructure:
         sequence_list = [sequence.fasta_path for sequence in self.sequence_assembled.sequence_list_expanded]
         for experimental in self.experimental_pdbs:
             try:
-                pdb_out_path = os.path.join(self.experimental_dir, f'{utils.get_file_name(experimental)}_experimental.pdb')
-                experimental_aligned_path = bioutils.align_pdb(pdb_in_path=experimental, pdb_out_path=pdb_out_path, sequences_list=sequence_list, databases=self.alphafold_paths)
+                pdb_out_path = os.path.join(self.experimental_dir,
+                                            f'{utils.get_file_name(experimental)}_experimental.pdb')
+                experimental_aligned_path = bioutils.align_pdb(pdb_in_path=experimental, pdb_out_path=pdb_out_path,
+                                                               sequences_list=sequence_list,
+                                                               databases=self.alphafold_paths)
                 if experimental_aligned_path is None:
                     raise Exception()
                 aligned_experimental_pdbs_list.append(experimental_aligned_path)
@@ -770,7 +786,8 @@ class MainStructure:
             f_out.write(f'af2_dbs_path: {self.af2_dbs_path}\n')
             f_out.write(f'glycines: {self.glycines}\n')
             f_out.write(f'run_af2: {self.run_af2}\n')
-            f_out.write(f'show_pymol: {",".join(map(str, self.pymol_show_list))}\n')
+            if self.pymol_show_list:
+                f_out.write(f'show_pymol: {",".join(map(str, self.pymol_show_list))}\n')
             if self.reference is not None:
                 f_out.write(f'reference: {self.reference.pdb_path}\n')
             if self.experimental_pdbs:
