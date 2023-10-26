@@ -164,10 +164,10 @@ class Template:
                 bioutils.change_chain(pdb_in_path=tchain,
                      pdb_out_path=tchain,
                      chain=chain_name)
+                aux_path_list.append(tchain)
             else:
                 tchain = None
             chain_name = chr(ord(chain_name) + 1)
-            aux_path_list.append(tchain)            
         bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_path_list,
                             merged_pdb_path=self.template_originalseq_path) 
         self.template_features = features.extract_template_features_from_aligned_pdb_and_sequence(

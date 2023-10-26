@@ -297,8 +297,9 @@ class OutputStructure:
                     rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([ranked.split_path, template.split_path])
                     if rmsd is not None:
                         rmsd = round(rmsd, 2)
-                        ranked.add_template(
-                            structures.PdbRanked(template.name, rmsd, aligned_residues, total_residues, quality_q))
+                    ranked.add_template(
+                        structures.PdbRanked(template.name, rmsd, aligned_residues, total_residues, quality_q))
+                    
                 ranked.sort_template_rankeds()
 
         best_ranked_dict = get_best_ranked_by_template(templates_cluster_list, self.ranked_list)
@@ -359,7 +360,6 @@ class OutputStructure:
     def write_tables(self, rmsd_dict: Dict, ranked_rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict,
                      energies_dict: Dict):
         with open(self.analysis_path, 'w') as f_in:
-
             if bool(rmsd_dict):
                 f_in.write('\n\n')
                 f_in.write('Superpositions of rankeds and templates\n')
