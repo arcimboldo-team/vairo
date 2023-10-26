@@ -167,6 +167,7 @@ class OutputStructure:
 
         # Select the best ranked
         if vairo_struct.experimental_pdbs:
+            [pdb.sort_experimental_rankeds() for pdb in self.ranked_list]
             logging.error(
                 'Experimental pdbs found. Selecting the best prediction taking into account the qscore with the experimental pdbs')
             sorted_ranked_list = sorted(self.ranked_list, key=lambda ranked: (

@@ -272,4 +272,4 @@ class Ranked(Pdb):
         self.superposition_templates.sort(key=lambda x: (x.qscore is None, x.qscore), reverse=True)
 
     def sort_experimental_rankeds(self):
-        self.superposition_experimental.sort(key=lambda x: (x.qscore is None, x.qscore), reverse=True)
+        self.superposition_experimental.sort(key=lambda x: (x.aligned_residues is None, x.aligned_residues), reverse=True)
