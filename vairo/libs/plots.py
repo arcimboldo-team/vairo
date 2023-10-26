@@ -241,7 +241,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             names = a_air.feature.get_names_templates()
         if reduced:
             names_selected = [name for name in names if name in a_air.output.templates_selected]
-        else:
+        if not reduced or not names_selected:
             names_selected = names
         pdb_hits_path = os.path.join(a_air.results_dir, 'msas/pdb_hits.hhr')
         hhr_text = ''
@@ -263,6 +263,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             for i in range(len(add_sequences)):
                 ax.barh('Templates', 1, left=i+1, height=0.5, color=str(new_sequences[i]), zorder=2)
 
+        long_names = any([name for name in names_selected if len(name) > 6])
         for j, name in reversed(list(enumerate(names_selected))):
             templates_found = True
             number_of_templates += 1
@@ -270,7 +271,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             changed_residues = []
             changed_fasta = []
 
-            if len(name) > 6:
+            if long_names:
                 template_name = f"M{j + 1}" if plot_type == "msa" else f"T{j + 1}"
                 text = f'\n{template_name} ({name})'
             else:

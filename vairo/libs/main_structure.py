@@ -97,6 +97,7 @@ class MainStructure:
         self.mosaic = utils.get_input_value(name='mosaic', section='global', input_dict=parameters_dict)
         self.small_bfd = utils.get_input_value(name='small_bfd', section='global', input_dict=parameters_dict)
         pyoml_show_str = utils.get_input_value(name='show_pymol', section='global', input_dict=parameters_dict)
+        
         if pyoml_show_str:
             self.pymol_show_list = pyoml_show_str.replace(' ', '').split(',')
 
@@ -203,18 +204,27 @@ class MainStructure:
         self.reference = utils.get_input_value(name='reference', section='global', input_dict=parameters_dict)
         templates = utils.get_input_value(name='templates', section='global', input_dict=parameters_dict)
         if templates:
-            counter = 0
+            translation_dict = {}
             for parameters_template in templates:
-                new_name = None
                 pdb = utils.get_input_value(name='pdb', section='template', input_dict=parameters_template)
-                result = self.get_template_by_id(utils.get_file_name(pdb))
-                if result is not None:
-                    counter += 1
-                    new_name = f'{result.pdb_id}_{counter}'
+                pdb_name = utils.get_file_name(pdb)
+                if pdb_name in translation_dict:
+                    translation_dict[pdb_name].append(translation_dict[pdb_name][-1]+1)
+                else:
+                    translation_dict[pdb_name] = [1]
+            for parameters_template in templates:
+                pdb = utils.get_input_value(name='pdb', section='template', input_dict=parameters_template)
+                new_name = None
+                pdb_name = utils.get_file_name(pdb)
+                if pdb_name in translation_dict and sum(translation_dict[pdb_name]) != 1:
+                    value = translation_dict[pdb_name].pop(0)
+                    new_name = f'{pdb_name}_{value}'
+
                 new_template = template.Template(parameters_dict=parameters_template, output_dir=self.run_dir,
                                                  num_of_copies=self.sequence_assembled.total_copies, new_name=new_name)
                 self.templates_list.append(new_template)
                 self.reference = new_template if new_template.pdb_id == self.reference else self.reference
+            
             [element.set_reference_templates(self) for element in self.templates_list]
             self.order_templates_with_restrictions()
             self.reference = self.templates_list[0] if self.reference is None else self.reference
