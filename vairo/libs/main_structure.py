@@ -57,7 +57,6 @@ class MainStructure:
         self.chunk_list: List[int] = []
         self.pymol_show_list: List[str] = []
         self.template_html_path: str
-        self.pymol_template_path: str
 
         self.output_dir = utils.get_input_value(name='output_dir', section='global', input_dict=parameters_dict)
         utils.create_dir(self.output_dir)
@@ -79,13 +78,13 @@ class MainStructure:
         self.output = output.OutputStructure(output_dir=self.output_dir)
         self.dir_templates_path = f'{utils.get_main_path()}/templates'
         self.template_html_path = os.path.join(self.dir_templates_path, 'output.html')
-        self.pymol_template_path = os.path.join(self.dir_templates_path, 'pymol_script.py')
 
         utils.create_dir(self.run_dir)
         utils.create_dir(self.input_dir)
         utils.create_dir(self.experimental_dir, delete_if_exists=True)
         utils.delete_old_rankeds(self.output_dir)
         utils.delete_old_html(self.output_dir)
+
         if os.path.exists(self.output.pymol_session_path):
             os.remove(self.output.pymol_session_path)
 
@@ -335,7 +334,7 @@ class MainStructure:
             plddt_dict = {}
             secondary_dict = {}
             rmsd_dict = {}
-            ranked_rmsd_dict = {}
+            ranked_qscore_dict = {}
             energies_dict = {}
             frobenius_dict = {}
             conclusion_dict = {}
@@ -350,12 +349,12 @@ class MainStructure:
                         interfaces_dict['interfaces'][interface.name] = interface.deltaG
 
             for ranked in self.output.ranked_list:
-                ranked_rmsd_dict[ranked.name] = {}
+                ranked_qscore_dict[ranked.name] = {}
                 for ranked2 in self.output.ranked_list:
                     if ranked.name == ranked2.name:
-                        ranked_rmsd_dict[ranked.name][ranked.name] = 0
+                        ranked_qscore_dict[ranked.name][ranked.name] = 0
                     else:
-                        ranked_rmsd_dict[ranked.name][ranked2.name] = ranked.rmsd_dict[ranked2.name]
+                        ranked_qscore_dict[ranked.name][ranked2.name] = ranked.qscore_dict[ranked2.name]
 
                 plddt_dict[ranked.name] = {'plddt': ranked.plddt, 'compactness': ranked.compactness,
                                            'ramachandran': ranked.ramachandran}
@@ -380,7 +379,8 @@ class MainStructure:
                     rmsd_dict[ranked.name] = {}
                     for ranked_template in ranked.superposition_templates:
                         if ranked_template.pdb in accepted_templates:
-                            rmsd_dict[ranked.name][ranked_template.pdb] = {'rmsd': ranked_template.rmsd,
+                            rmsd_dict[ranked.name][ranked_template.pdb] = {'qscore': ranked_template.qscore,
+                                                                           'rmsd': ranked_template.rmsd,
                                                                            'aligned_residues': ranked_template.aligned_residues,
                                                                            'total_residues': ranked_template.total_residues
                                                                            }
@@ -402,13 +402,13 @@ class MainStructure:
                 render_dict['templates_list'] = self.templates_list
             if self.output.ranked_list:
                 render_dict['ranked_list'] = self.output.ranked_list
-            if self.output.group_ranked_by_rmsd_dict:
-                render_dict['ranked_by_rmsd'] = self.output.group_ranked_by_rmsd_dict
+            if self.output.group_ranked_by_qscore_dict:
+                render_dict['ranked_by_qscore'] = self.output.group_ranked_by_qscore_dict
             if conclusion_dict:
                 render_dict['conclusion_dict'] = conclusion_dict
                 render_dict['conclusion_type'] = conclusion_type
-            if ranked_rmsd_dict:
-                render_dict['table']['ranked_rmsd_dict'] = ranked_rmsd_dict
+            if ranked_qscore_dict:
+                render_dict['table']['ranked_qscore_dict'] = ranked_qscore_dict
             if secondary_dict:
                 render_dict['table']['secondary_dict'] = secondary_dict
             if rmsd_dict:
@@ -424,10 +424,10 @@ class MainStructure:
                 new_dict = copy.deepcopy(self.output.experimental_dict)
                 for key, inner_dict in new_dict.items():
                     new_dict[key] = {k: v for k, v in inner_dict.items() if
-                                     k in accepted_templates or k in ranked_rmsd_dict.keys()}
+                                     k in accepted_templates or k in ranked_qscore_dict.keys()}
                 render_dict['table']['experimental_dict'] = new_dict
 
-            self.output.write_tables(rmsd_dict=rmsd_dict, ranked_rmsd_dict=ranked_rmsd_dict,
+            self.output.write_tables(rmsd_dict=rmsd_dict, ranked_qscore_dict=ranked_qscore_dict,
                                      secondary_dict=secondary_dict, plddt_dict=plddt_dict,
                                      energies_dict=energies_dict)
 

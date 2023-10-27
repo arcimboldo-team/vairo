@@ -9,7 +9,7 @@ from ALEPH.aleph.core import ALEPH
 from libs import bioutils, features, utils, sequence, structures, plots
 
 PERCENTAGE_FILTER = 0.8
-PERCENTAGE_MAX_RMSD = 1
+QSCORE_MINIMUM = 0.3
 
 
 def get_best_ranked_by_template(cluster_list: List, ranked_list: List) -> Dict:
@@ -53,7 +53,7 @@ class OutputStructure:
         self.rankeds_split_dir: str = ''
         self.rankeds_without_mutations_dir: str = ''
         self.tmp_dir: str = ''
-        self.group_ranked_by_rmsd_dict: dict = {}
+        self.group_ranked_by_qscore_dict: dict = {}
         self.templates_selected: List = []
         self.dendogram_struct: structures.Dendogram = None
 
@@ -157,7 +157,7 @@ class OutputStructure:
                 rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs(pdb_reference=pdb.split_path, pdb_superposed=experimental)
                 if rmsd is not None:
                     rmsd = round(rmsd, 2)
-                    total_residues = bioutils.get_number_residues(pdb.path)
+                    total_residues = bioutils.get_number_residues(pdb.split_path)
                     aux_dict[pdb.name] = structures.PdbRanked(pdb.path, rmsd, aligned_residues,
                                                               total_residues, quality_q)
                     if pdb in self.ranked_list:
@@ -209,12 +209,12 @@ class OutputStructure:
         results = [items for items in combinations(self.ranked_list, r=2)]
         for result in results:
             if result[0].name == self.ranked_list[0].name:
-                rmsd, _, _ = bioutils.gesamt_pdbs(pdb_reference=result[0].split_path, pdb_superposed=result[1].split_path, output_path=result[1].split_path)
+                rmsd, _, qscore = bioutils.gesamt_pdbs(pdb_reference=result[0].split_path, pdb_superposed=result[1].split_path, output_path=result[1].split_path)
             else:
-                rmsd, _, _ = bioutils.gesamt_pdbs(pdb_reference=result[0].split_path, pdb_superposed=result[1].split_path)
+                rmsd, _, qscore = bioutils.gesamt_pdbs(pdb_reference=result[0].split_path, pdb_superposed=result[1].split_path)
 
-            result[0].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[1].name)
-            result[1].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[0].name)
+            result[0].set_ranked_to_qscore_dict(qscore=qscore, ranked_name=result[1].name)
+            result[1].set_ranked_to_qscore_dict(qscore=qscore, ranked_name=result[0].name)
 
         # Group rankeds by how close they are between them
         for ranked in self.ranked_list:
@@ -228,18 +228,18 @@ class OutputStructure:
                 found = False
                 for ranked2 in self.ranked_list:
                     if ranked2.filtered and ranked2.name != ranked.name \
-                            and ranked2.name in self.group_ranked_by_rmsd_dict \
-                            and ranked.rmsd_dict.get(ranked2.name, float('inf')) <= PERCENTAGE_MAX_RMSD:
-                        self.group_ranked_by_rmsd_dict[ranked2.name].append(ranked)
+                            and ranked2.name in self.group_ranked_by_qscore_dict \
+                            and ranked.qscore_dict.get(ranked2.name, float('inf')) >= QSCORE_MINIMUM:
+                        self.group_ranked_by_qscore_dict[ranked2.name].append(ranked)
                         found = True
-                        ranked.set_rmsd(ranked2.rmsd_dict[ranked.name])
+                        ranked.set_qscore(ranked2.qscore_dict[ranked.name])
                         if self.ranked_list[0].name == ranked2.name:
                             ranked.set_best(True)
                         break
 
                 if not found:
-                    self.group_ranked_by_rmsd_dict[ranked.name] = [ranked]
-                    ranked.set_rmsd(0)
+                    self.group_ranked_by_qscore_dict[ranked.name] = [ranked]
+                    ranked.set_qscore(0)
                     if self.ranked_list[0].name == ranked.name:
                         ranked.set_best(True)
 
@@ -294,7 +294,7 @@ class OutputStructure:
         if self.templates_list:
             for i, ranked in enumerate(self.ranked_list):
                 for template in self.templates_list:
-                    total_residues = bioutils.get_number_residues(template.path)
+                    total_residues = bioutils.get_number_residues(template.split_path)
                     rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs(pdb_reference=ranked.split_path, pdb_superposed=template.split_path)
                     if rmsd is not None:
                         rmsd = round(rmsd, 2)
@@ -317,31 +317,32 @@ class OutputStructure:
             logging.error('Skipping interfaces generation. There is only one chain in the predictions')
 
         # Use aleph to generate domains and calculate secondary structure percentage
+        for pdb_in in self.ranked_list + self.experimental_list + self.templates_list:
 
-        for pdb_in in self.ranked_filtered_list + self.experimental_list + self.templates_list:
-            if isinstance(pdb_in, structures.TemplateExtracted):
-                interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.originalseq_path, self.interfaces_path)
-            else:
-                interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.split_path, self.interfaces_path)
-            if interfaces_data_list:
-                results_dict, domains_dict = bioutils.aleph_annotate(output_path=self.tmp_dir,
-                                                                     pdb_path=pdb_in.split_path)
-                if domains_dict is None or results_dict is None:
-                    break
+            results_dict, domains_dict = bioutils.aleph_annotate(output_path=self.tmp_dir, pdb_path=pdb_in.split_path)
+            if results_dict is not None:
                 pdb_in.set_secondary_structure(ah=results_dict['ah'], bs=results_dict['bs'],
-                                               total_residues=results_dict['number_total_residues'])
-                for i, interface in enumerate(interfaces_data_list):
-                    if not interface.chain1 in domains_dict or not interface.chain2 in domains_dict:
-                        continue
-                    code = f'{interface.chain1}-{interface.chain2}'
-                    dimers_path = os.path.join(self.interfaces_path, f'{pdb_in.name}_{code}.pdb')
-                    bioutils.create_interface_domain(pdb_in_path=pdb_in.split_path,
-                                                     pdb_out_path=dimers_path,
-                                                     interface=interface,
-                                                     domains_dict=domains_dict)
-                    interface.set_structure(dimers_path)
-                pdb_in.set_interfaces(interfaces_data_list)
+                                                total_residues=results_dict['number_total_residues'])
+            else:
+                pdb_in.set_secondary_structure(ah=None, bs=None, total_residues=None)
 
+            if pdb_in in self.experimental_list + self.templates_list + self.ranked_filtered_list:
+                if isinstance(pdb_in, structures.TemplateExtracted):
+                    interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.originalseq_path, self.interfaces_path)
+                else:
+                    interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.split_path, self.interfaces_path)
+                if interfaces_data_list and domains_dict is not None:
+                    for i, interface in enumerate(interfaces_data_list):
+                        if not interface.chain1 in domains_dict or not interface.chain2 in domains_dict:
+                            continue
+                        code = f'{interface.chain1}-{interface.chain2}'
+                        dimers_path = os.path.join(self.interfaces_path, f'{pdb_in.name}_{code}.pdb')
+                        bioutils.create_interface_domain(pdb_in_path=pdb_in.split_path,
+                                                        pdb_out_path=dimers_path,
+                                                        interface=interface,
+                                                        domains_dict=domains_dict)
+                        interface.set_structure(dimers_path)
+                    pdb_in.set_interfaces(interfaces_data_list)
         self.select_templates()
         os.chdir(store_old_dir)
 
@@ -358,7 +359,7 @@ class OutputStructure:
         else:
             self.templates_selected = [template.name for template in self.templates_list]
 
-    def write_tables(self, rmsd_dict: Dict, ranked_rmsd_dict: Dict, secondary_dict: Dict, plddt_dict: Dict,
+    def write_tables(self, rmsd_dict: Dict, ranked_qscore_dict: Dict, secondary_dict: Dict, plddt_dict: Dict,
                      energies_dict: Dict):
         with open(self.analysis_path, 'w') as f_in:
             if bool(rmsd_dict):
@@ -372,11 +373,11 @@ class OutputStructure:
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())
 
-            if bool(ranked_rmsd_dict):
+            if bool(ranked_qscore_dict):
                 f_in.write('\n\n')
-                f_in.write('Superposition between predictions\n')
-                data = {'ranked': ranked_rmsd_dict.keys()}
-                for ranked in ranked_rmsd_dict.values():
+                f_in.write('Superposition between predictions (QSCORE)\n')
+                data = {'ranked': ranked_qscore_dict.keys()}
+                for ranked in ranked_qscore_dict.values():
                     for key, value in ranked.items():
                         data.setdefault(key, []).append(value)
                 df = pd.DataFrame(data)

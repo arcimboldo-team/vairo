@@ -1176,9 +1176,9 @@ def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[fl
     return rmsd, nalign, quality_q
 
 
-def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None, check_chains: str = True) -> Tuple[Optional[float], Optional[str], Optional[str]]:
+def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None, check_chains: bool = True) -> Tuple[Optional[float], Optional[str], Optional[str]]:
     with tempfile.TemporaryDirectory() as tmpdirname:
-        superpose_cmd = 'gesamt' 
+        superpose_cmd = 'gesamt'
         if check_chains:
             chains_reference = get_chains(pdb_reference)
             chains_superposed = get_chains(pdb_superposed)
@@ -1198,15 +1198,15 @@ def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None
         new_path = os.path.join(tmpdirname, f'{utils.get_file_name(pdb_superposed)}_2.pdb')
         if new_path and output_path:
             shutil.copy2(new_path, output_path)
-        rmsd, quality_q, nalign = None, None, None
+        rmsd, qscore, nalign = None, None, None
         for line in superpose_output.split('\n'):
             if 'RMSD             :' in line:
                 rmsd = float(line.split()[2].strip())
             if 'Q-score          :' in line:
-                quality_q = line.split()[2].strip()
+                qscore = float(line.split()[2].strip())
             if 'Aligned residues :' in line:
-                nalign = line.split()[3].strip()
-        return rmsd, nalign, quality_q
+                nalign = int(line.split()[3].strip())
+        return rmsd, nalign, qscore
 
 
 def pdist(query_pdb: str, target_pdb: str) -> float:

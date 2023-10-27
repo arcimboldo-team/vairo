@@ -1,6 +1,7 @@
 import logging
 import os
 import subprocess
+import tempfile
 from libs import utils
 
 
@@ -74,14 +75,16 @@ cmd.set("display_scale_factor", '2')
     script += f'cmd.reset()\n'
     script += f'cmd.save("{a_air.output.pymol_session_path}")\n'
     script += 'cmd.quit()\n'
-    pymol_script = os.path.join(a_air.run_dir, 'script_pymol.py')
-    with open(pymol_script, 'w') as f_out:
-        f_out.write(script)
+
     try:
-        cmd = 'which pymol'
-        subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        cmd = f'pymol -ckq {pymol_script}'
-        subprocess.Popen(cmd, shell=True, env={}, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
-        logging.error('PyMOL could not be found in the path, so a PyMOL session could not be created')
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            pymol_script = os.path.join(tmpdirname, 'script_pymol.py')
+            with open(pymol_script, 'w+') as f_out:
+                f_out.write(script)
+            cmd = 'which pymol'
+            subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            cmd = f'pymol -ckq {pymol_script}'
+            out, err = subprocess.Popen(cmd, shell=True, env={}, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).communicate()
+    except Exception as e:
+        logging.error('Error creating a PyMOL session. PyMOL might not be in the path. Skipping.')
         pass

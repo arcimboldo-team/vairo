@@ -294,12 +294,12 @@
                 {% if data.complete_html  %}
                     <p>On this page, only the top 20 most complete and/or similar to the prediction templates are displayed. To access the full list of templates, please click the following <a href="{{data.complete_html}}" target="_blank">link</a> </p>
                 {% endif %}
-                {% if data.ranked_by_rmsd %}
-                    {% for key, values in data.ranked_by_rmsd.items() %}
+                {% if data.ranked_by_qscore %}
+                    {% for key, values in data.ranked_by_qscore.items() %}
                         {% if loop.first %}
                             <p>Best result is <span class="green">{{ values[0].name }}</span> with a {{color_plddt(values[0].plddt)}}.
                                 {% if data.ranked_list[0].superposition_experimental %}
-                                    It has been determined to be the closest prediction to an experimental pdb ({{ data.ranked_list[0].superposition_experimental[0].pdb }}: {{ data.ranked_list[0].superposition_experimental[0].qscore }}).
+                                    It has been determined to be the closest prediction to an experimental pdb ({{ data.ranked_list[0].superposition_experimental[0].pdb }}: {{ data.ranked_list[0].superposition_experimental[0].qscore }} Q-Score).
                                 {% endif %}
                                 Can be found in the following path: <a download="{{ values[0].name }}.pdb" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
                             </p>
@@ -308,7 +308,7 @@
                                     <p>Other equal structural solutions are:</p>
                                     <ul>
                                 {% endif %}
-                                    <li><span class="green"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ ranked.rmsd }} RMSD with {{ values[0].name }})</li>
+                                    <li><span class="green"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ ranked.qscore }} Q-Score with {{ values[0].name }})</li>
                                 {% if loop.last %}
                                     </ul>
                                 {% endif %}
@@ -329,9 +329,9 @@
                                                 {% endif %}
                                         {% else %}
                                                 {% if ranked.name in data.filtered_dict %}
-                                                    <li><span class="blue"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
+                                                    <li><span class="blue"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ ranked.qscore }} Q-Score with {{ key }})</li>
                                                 {% else %}
-                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
+                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ ranked.qscore }} Q-Score with {{ key }})</li>
                                                 {% endif %}
                                         {% endif %}
                                         {% if loop.last %}
@@ -722,16 +722,16 @@
                     </table>
                     <button onclick="hideValues('table_energies', this)">Show all predictions</button>
                 {% endif %}
-                {% if 'ranked_rmsd_dict' in data.table %}
-                    <h3>Superposition between predictions (RMSD)</h3>
-                    <table id="table_rankeds_rmsd">
+                {% if 'ranked_qscore_dict' in data.table %}
+                    <h3>Superposition between predictions (Q-Score)</h3>
+                    <table id="table_rankeds_qscore">
                         <tr>
                             <th>Prediction</th>
-                            {% for key in data.table.ranked_rmsd_dict.keys() %}
+                            {% for key in data.table.ranked_qscore_dict.keys() %}
                                 <th>{{ key }}</th>
                             {% endfor %}
                         </tr>
-                        {% for key, value in data.table.ranked_rmsd_dict.items() %}
+                        {% for key, value in data.table.ranked_qscore_dict.items() %}
                             {% if key in data.bests_dict %}
                                 <tr class="green-row">
                             {% elif key in data.filtered_dict %}
@@ -746,10 +746,10 @@
                             </tr>
                         {% endfor %}
                     </table>
-                    <button onclick="hideValues('table_rankeds_rmsd', this)">Show all predictions</button>
+                    <button onclick="hideValues('table_rankeds_qscore', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'rmsd_dict' in data.table %}
-                    <h3>Superposition of predictions and templates (RMSD, superposed residues, total residues)</h3>
+                    <h3>Superposition of predictions and templates (Q-Score, RMSD, superposed residues (total residues))</h3>
                     <table id="table_templates_rmsd">
                         <tr>
                             <th>Prediction</th>
@@ -769,7 +769,7 @@
                             {% endif %}
                                 <td>{{ key }}</td>
                                 {% for key2, value2 in value.items() %}
-                                    <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
+                                    <td>{{ value2.qscore }}, {{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
                                 {% endfor %}
                             </tr>
                         {% endfor %}
@@ -777,7 +777,7 @@
                     <button onclick="hideValues('table_templates_rmsd', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
-                    <h3>Superposition of experimental pdbs with predictions and templates (RMSD (superposed residues), Q-Score)</h3>
+                    <h3>Superposition of experimental pdbs with predictions and templates (Q-Score, RMSD, superposed residues (total residues))</h3>
                     <table>
                         <tr>
                             <th>experimental pdb</th>
@@ -792,11 +792,11 @@
                                 <td>{{ key }}</td>
                                 {% for value2 in value.values() %}
                                     {% if key2 in data.bests_dict %}
-                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }}), {{ value2.qscore }}</td>
+                                        <td class="blue-row">{{ value2.qscore }}, {{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
                                     {% elif key in data.filtered_dict %}
-                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }}), {{ value2.qscore }}</td>                                
+                                        <td class="blue-row">{{ value2.qscore }}, {{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>                                
                                     {% else %}
-                                        <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }}), {{ value2.qscore }}</td>
+                                        <td>{{ value2.qscore }}, {{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
                                     {% endif %} 
                                 {% endfor %}
                             </tr>

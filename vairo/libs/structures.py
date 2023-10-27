@@ -234,18 +234,18 @@ class Ranked(Pdb):
         self.frobenius_plots: List[Frobenius] = []
         self.filtered: bool = False
         self.best: bool = False
-        self.rmsd: float
-        self.rmsd_dict: Dict = {}
+        self.qscore: float
+        self.qscore_dict: Dict = {}
         self.encoded: bytes
 
     def set_plddt(self, plddt: float):
         self.plddt = round(plddt)
 
-    def set_rmsd(self, rmsd: float):
-        self.rmsd = round(rmsd, 2) if rmsd is not None else rmsd
+    def set_qscore(self, qscore: float):
+        self.qscore = round(qscore, 3) if qscore is not None else qscore
 
-    def set_ranked_to_rmsd_dict(self, rmsd: float, ranked_name: str):
-        self.rmsd_dict[ranked_name] = round(rmsd, 2) if rmsd is not None else rmsd
+    def set_ranked_to_qscore_dict(self, qscore: float, ranked_name: str):
+        self.qscore_dict[ranked_name] = round(qscore, 3) if qscore is not None else qscore
 
     def set_filtered(self, filtered: bool):
         self.filtered = filtered
