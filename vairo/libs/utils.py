@@ -1,4 +1,6 @@
 import base64, copy, errno, glob, io, json, logging, os, re, shutil, sys
+import random
+import string
 from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
@@ -511,3 +513,8 @@ def create_logger_dir(log_path: str, log_extended_path: str):
     file_handler2 = logging.FileHandler(log_extended_path)
     file_handler2.setLevel(logging.DEBUG)
     logger.addHandler(file_handler2)
+
+def generate_random_code(length: int):
+    letters = string.ascii_letters
+    random_code = ''.join(random.choice(letters) for i in range(length))
+    return random_code

@@ -298,12 +298,13 @@ def merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge: List[str], pdb_out_p
 
 
 def run_pisa(pdb_path: str) -> str:
+    tmp_name = utils.generate_random_code(6)
     logging.info(f'Generating REMARK 350 for {pdb_path} with PISA.')
-    subprocess.Popen(['pisa', 'temp', '-analyse', pdb_path], stdout=subprocess.PIPE,
+    subprocess.Popen(['pisa', tmp_name, '-analyse', pdb_path], stdout=subprocess.PIPE,
                      stderr=subprocess.PIPE).communicate()
     pisa_output = \
-        subprocess.Popen(['pisa', 'temp', '-350'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
-    erase_pisa(name='temp')
+        subprocess.Popen(['pisa', tmp_name, '-350'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()[0]
+    erase_pisa(tmp_name)
     return pisa_output.decode('utf-8')
 
 
@@ -1243,25 +1244,24 @@ def calculate_distance_pdist(res_list: List) -> List:
 
 def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Union[Dict, None]]:
     interface_data_list = []
-    name_pisa = utils.get_file_name(pdb_in_path)
+    tmp_name = utils.generate_random_code(6)
 
-    pisa_text = subprocess.Popen(['pisa', name_pisa, '-analyse', pdb_in_path],
+    pisa_text = subprocess.Popen(['pisa', tmp_name, '-analyse', pdb_in_path],
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-    pisa_output = subprocess.Popen(['pisa', name_pisa, '-list', 'interfaces'], stdout=subprocess.PIPE,
+    pisa_output = subprocess.Popen(['pisa', tmp_name, '-list', 'interfaces'], stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
 
     pisa_general_txt = os.path.join(interfaces_path, f'{utils.get_file_name(pdb_in_path)}_general_output.txt')
     with open(pisa_general_txt, 'w') as f_out:
         f_out.write(pisa_output)
-
-    if 'NO INTERFACES FOUND' in pisa_output or 'no chains found in input file' in pisa_text:
+    if pisa_output == '' or 'NO INTERFACES FOUND' in pisa_output or 'no chains found in input file' in pisa_text:
         logging.debug(f'No interfaces found in pisa for pdb {pdb_in_path}')
     else:
         interfaces_list = utils.parse_pisa_general_multimer(pisa_output)
         for interface in interfaces_list:
             serial_output = \
-                subprocess.Popen(['pisa', name_pisa, '-detail', 'interfaces', interface['serial']], stdout=subprocess.PIPE,
+                subprocess.Popen(['pisa', tmp_name, '-detail', 'interfaces', interface['serial']], stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
             interface_data = utils.parse_pisa_interfaces(serial_output)  
             new_interface = structures.Interface(name=f'{interface_data["chain1"]}-{interface_data["chain2"]}',
@@ -1284,7 +1284,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
             with open(pisa_output_txt, 'w') as f_out:
                 f_out.write(serial_output)
 
-    erase_pisa(name='temp')
+    erase_pisa(name=tmp_name)
 
     return interface_data_list
 
