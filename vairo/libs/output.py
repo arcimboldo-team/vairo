@@ -154,7 +154,7 @@ class OutputStructure:
             self.experimental_list.append(structures.ExperimentalPdb(path=experimental))
             aux_dict = {}
             for pdb in self.ranked_list + self.templates_list:
-                rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([pdb.split_path, experimental])
+                rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs(pdb_reference=pdb.split_path, pdb_superposed=experimental)
                 if rmsd is not None:
                     rmsd = round(rmsd, 2)
                     total_residues = bioutils.get_number_residues(pdb.path)
@@ -201,7 +201,7 @@ class OutputStructure:
 
         # Store the superposition of the experimental with the best ranked
         for experimental in experimental_pdbs:
-            bioutils.gesamt_pdbs([reference_superpose, experimental], experimental)
+            bioutils.gesamt_pdbs(pdb_reference=reference_superpose, pdb_superposed=experimental, output_path=experimental)
 
         # Superpose rankeds and store the superposition with the best one
         logging.error(f'Best prediction is {self.ranked_list[0].name}')
@@ -209,9 +209,9 @@ class OutputStructure:
         results = [items for items in combinations(self.ranked_list, r=2)]
         for result in results:
             if result[0].name == self.ranked_list[0].name:
-                rmsd, _, _ = bioutils.gesamt_pdbs([result[0].split_path, result[1].split_path], result[1].split_path)
+                rmsd, _, _ = bioutils.gesamt_pdbs(pdb_reference=result[0].split_path, pdb_superposed=result[1].split_path, output_path=result[1].split_path)
             else:
-                rmsd, _, _ = bioutils.gesamt_pdbs([result[0].split_path, result[1].split_path])
+                rmsd, _, _ = bioutils.gesamt_pdbs(pdb_reference=result[0].split_path, pdb_superposed=result[1].split_path)
 
             result[0].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[1].name)
             result[1].set_ranked_to_rmsd_dict(rmsd=rmsd, ranked_name=result[0].name)
@@ -295,7 +295,7 @@ class OutputStructure:
             for i, ranked in enumerate(self.ranked_list):
                 for template in self.templates_list:
                     total_residues = bioutils.get_number_residues(template.path)
-                    rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs([ranked.split_path, template.split_path])
+                    rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs(pdb_reference=ranked.split_path, pdb_superposed=template.split_path)
                     if rmsd is not None:
                         rmsd = round(rmsd, 2)
                     ranked.add_template(
@@ -307,9 +307,9 @@ class OutputStructure:
 
         for template in self.templates_list:
             if best_ranked_dict and template.split_path in best_ranked_dict:
-                bioutils.gesamt_pdbs([best_ranked_dict[template.split_path], template.split_path], template.split_path)
+                bioutils.gesamt_pdbs(pdb_reference=best_ranked_dict[template.split_path], pdb_superposed=template.split_path, output_path=template.split_path)
             else:
-                bioutils.gesamt_pdbs([self.ranked_list[0].split_path, template.split_path], template.split_path)
+                bioutils.gesamt_pdbs(pdb_reference=self.ranked_list[0].split_path, pdb_superposed=template.split_path, output_path=template.split_path)
 
         logging.error(
             'Analysing energies with openMM, interfaces with PISA and secondary structure information with ALEPH')

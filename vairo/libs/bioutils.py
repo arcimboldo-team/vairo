@@ -1176,26 +1176,37 @@ def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[fl
     return rmsd, nalign, quality_q
 
 
-def gesamt_pdbs(pdb_list: List[str], output_path: str = None) -> Tuple[Optional[float], Optional[str], Optional[str]]:
-    name_folder = 'tmp_gesamt'
-    utils.create_dir(name_folder, delete_if_exists=True)
-    superpose_input_list = ['gesamt'] + pdb_list
-    if output_path is not None:
-        superpose_input_list.extend(['-o', name_folder, '-o-d'])
-    superpose_output = subprocess.Popen(superpose_input_list, stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
-    new_path = [file for file in os.listdir(name_folder) if file == f'{utils.get_file_name(pdb_list[-1])}_2.pdb']
-    if new_path:
-        shutil.copy2(os.path.join(name_folder, new_path[-1]), output_path)
-    shutil.rmtree(name_folder)
-    rmsd, quality_q, nalign = None, None, None
-    for line in superpose_output.split('\n'):
-        if 'RMSD             :' in line:
-            rmsd = float(line.split()[2].strip())
-        if 'Q-score          :' in line:
-            quality_q = line.split()[2].strip()
-        if 'Aligned residues :' in line:
-            nalign = line.split()[3].strip()
-    return rmsd, nalign, quality_q
+def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None, check_chains: str = True) -> Tuple[Optional[float], Optional[str], Optional[str]]:
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        superpose_cmd = 'gesamt' 
+        if check_chains:
+            chains_reference = get_chains(pdb_reference)
+            chains_superposed = get_chains(pdb_superposed)
+            if all(chain in chains_reference for chain in chains_superposed):
+                logging.info(f'Superposing {pdb_reference} with {pdb_superposed}, only chains {",".join(chains_superposed)}')
+                superpose_cmd += f' {pdb_reference} -s {",".join(chains_superposed)} {pdb_superposed}'
+            else:
+                logging.info(f'Superposing {pdb_reference} with {pdb_superposed}')
+                superpose_cmd += f' {pdb_reference} {pdb_superposed}'
+
+        else:
+            superpose_cmd += f' {pdb_reference} {pdb_superposed}'
+
+        if output_path is not None:
+            superpose_cmd += f' -o {tmpdirname} -o-d'
+        superpose_output = subprocess.Popen(superpose_cmd, stdout=subprocess.PIPE, shell=True).communicate()[0].decode('utf-8')
+        new_path = os.path.join(tmpdirname, f'{utils.get_file_name(pdb_superposed)}_2.pdb')
+        if new_path and output_path:
+            shutil.copy2(new_path, output_path)
+        rmsd, quality_q, nalign = None, None, None
+        for line in superpose_output.split('\n'):
+            if 'RMSD             :' in line:
+                rmsd = float(line.split()[2].strip())
+            if 'Q-score          :' in line:
+                quality_q = line.split()[2].strip()
+            if 'Aligned residues :' in line:
+                nalign = line.split()[3].strip()
+        return rmsd, nalign, quality_q
 
 
 def pdist(query_pdb: str, target_pdb: str) -> float:
