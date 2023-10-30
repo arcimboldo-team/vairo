@@ -13,8 +13,8 @@ from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
 from alphafold.relax import cleanup, amber_minimize
 from simtk import unit
-from libs import alphafold_classes, change_res, hhsearch, structures, utils, plots, global_variables, sequence, structures
-
+from libs import alphafold_classes, change_res, hhsearch, structures, utils, plots, global_variables, sequence, \
+    structures
 
 
 def download_pdb(pdb_id: str, pdb_path: str) -> str:
@@ -89,7 +89,7 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int,
         f_in.write(f'MATCH RESIDU {fit_ini} TO {fit_end} CHAIN A \n')
         f_in.write(f'end \n')
         f_in.write(f'END-lsqkab')
-    subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    out, err =subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                      cwd=os.path.dirname(pdb_out)).communicate()
 
 
@@ -263,7 +263,6 @@ def write_sequence(sequence_name: str, sequence_amino: str, sequence_path: str) 
     return sequence_path
 
 
-
 def merge_pdbs(list_of_paths_of_pdbs_to_merge: List[str], merged_pdb_path: str):
     with open(merged_pdb_path, 'w+') as f:
         counter = 0
@@ -426,7 +425,7 @@ def run_pdb2cc(templates_dir: str, pdb2cc_path: str = None) -> str:
 
 def run_cc_analysis(input_path: str, n_clusters: int, cc_analysis_path: str = None) -> str:
     # Run cc_analysis from cc_analysis_path and store the results in output_path
-    # The number cluster to obtain is determinated by n_clusters.
+    # The number cluster to obtain is determined by n_clusters.
     # It will read all the pdb files from input_path and store the results inside the output_path
     # I change the directory so everything is stored inside the input_path
 
@@ -973,9 +972,10 @@ def split_chains_assembly(pdb_in_path: str,
 def change_sequence_pdb(pdb_in_path: str, pdb_out_path: str, sequence_list: List[str]):
     chain_list = get_chains(pdb_in_path)
     shutil.copy2(pdb_in_path, pdb_out_path)
-    for i, chain in enumerate(chain_list, start = 0):
+    for i, chain in enumerate(chain_list, start=0):
         if sequence_list[i] is not None:
-            change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(sequence_list[i])+1, 1)]}, sequence=sequence_list[i])
+            change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(sequence_list[i]) + 1, 1)]},
+                                               sequence=sequence_list[i])
             change.change_residues(pdb_in_path=pdb_out_path, pdb_out_path=pdb_out_path)
 
 
@@ -1177,14 +1177,16 @@ def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[fl
     return rmsd, nalign, quality_q
 
 
-def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None, check_chains: bool = True) -> Tuple[Optional[float], Optional[str], Optional[str]]:
+def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None, check_chains: bool = True) -> Tuple[
+    Optional[float], Optional[str], Optional[str]]:
     with tempfile.TemporaryDirectory() as tmpdirname:
         superpose_cmd = 'gesamt'
         if check_chains:
             chains_reference = get_chains(pdb_reference)
             chains_superposed = get_chains(pdb_superposed)
             if all(chain in chains_reference for chain in chains_superposed):
-                logging.info(f'Superposing {pdb_reference} with {pdb_superposed}, only chains {",".join(chains_superposed)}')
+                logging.info(
+                    f'Superposing {pdb_reference} with {pdb_superposed}, only chains {",".join(chains_superposed)}')
                 superpose_cmd += f' {pdb_reference} -s {",".join(chains_superposed)} {pdb_superposed}'
             else:
                 logging.info(f'Superposing {pdb_reference} with {pdb_superposed}')
@@ -1195,7 +1197,8 @@ def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None
 
         if output_path is not None:
             superpose_cmd += f' -o {tmpdirname} -o-d'
-        superpose_output = subprocess.Popen(superpose_cmd, stdout=subprocess.PIPE, shell=True).communicate()[0].decode('utf-8')
+        superpose_output = subprocess.Popen(superpose_cmd, stdout=subprocess.PIPE, shell=True).communicate()[0].decode(
+            'utf-8')
         new_path = os.path.join(tmpdirname, f'{utils.get_file_name(pdb_superposed)}_2.pdb')
         if new_path and output_path:
             shutil.copy2(new_path, output_path)
@@ -1261,23 +1264,24 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
         interfaces_list = utils.parse_pisa_general_multimer(pisa_output)
         for interface in interfaces_list:
             serial_output = \
-                subprocess.Popen(['pisa', tmp_name, '-detail', 'interfaces', interface['serial']], stdout=subprocess.PIPE,
+                subprocess.Popen(['pisa', tmp_name, '-detail', 'interfaces', interface['serial']],
+                                 stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
-            interface_data = utils.parse_pisa_interfaces(serial_output)  
+            interface_data = utils.parse_pisa_interfaces(serial_output)
             new_interface = structures.Interface(name=f'{interface_data["chain1"]}-{interface_data["chain2"]}',
-                                                res_chain1=interface_data["res_chain1"],
-                                                res_chain2=interface_data["res_chain2"],
-                                                chain1=interface_data["chain1"],
-                                                chain2=interface_data["chain2"],
-                                                se_gain1=float(interface_data['se_gain1']),
-                                                se_gain2=float(interface_data['se_gain2']),
-                                                solvation1=float(interface_data['solvation1']),
-                                                solvation2=float(interface_data['solvation2']),
-                                                area=float(interface['area']),
-                                                deltaG=float(interface['deltaG']),
-                                                nhb=int(interface['nhb']),
-                                                )            
-    
+                                                 res_chain1=interface_data["res_chain1"],
+                                                 res_chain2=interface_data["res_chain2"],
+                                                 chain1=interface_data["chain1"],
+                                                 chain2=interface_data["chain2"],
+                                                 se_gain1=float(interface_data['se_gain1']),
+                                                 se_gain2=float(interface_data['se_gain2']),
+                                                 solvation1=float(interface_data['solvation1']),
+                                                 solvation2=float(interface_data['solvation2']),
+                                                 area=float(interface['area']),
+                                                 deltaG=float(interface['deltaG']),
+                                                 nhb=int(interface['nhb']),
+                                                 )
+
             interface_data_list.append(new_interface)
             pisa_output_txt = os.path.join(interfaces_path,
                                            f'{utils.get_file_name(pdb_in_path)}_{interface_data["chain1"]}{interface_data["chain2"]}_interface.txt')

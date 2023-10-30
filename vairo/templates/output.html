@@ -315,7 +315,7 @@
                             {% endfor %}
                         {% else %}
                             {% if loop.index == 2 %}
-                                <p>Other successful predictions can be grouped in {{ data.ranked_by_rmsd|length - 1 }} structurally consistent sets:</p>
+                                <p>Other successful predictions can be grouped in {{ data.ranked_by_qscore|length - 1 }} structurally consistent sets:</p>
                                 <ul>
                                 {% endif %}
                                 <li>{{ key }} group:</li>

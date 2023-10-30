@@ -96,7 +96,7 @@ class MainStructure:
         self.mosaic = utils.get_input_value(name='mosaic', section='global', input_dict=parameters_dict)
         self.small_bfd = utils.get_input_value(name='small_bfd', section='global', input_dict=parameters_dict)
         pyoml_show_str = utils.get_input_value(name='show_pymol', section='global', input_dict=parameters_dict)
-        
+
         if pyoml_show_str:
             self.pymol_show_list = pyoml_show_str.replace(' ', '').split(',')
 
@@ -208,7 +208,7 @@ class MainStructure:
                 pdb = utils.get_input_value(name='pdb', section='template', input_dict=parameters_template)
                 pdb_name = utils.get_file_name(pdb)
                 if pdb_name in translation_dict:
-                    translation_dict[pdb_name].append(translation_dict[pdb_name][-1]+1)
+                    translation_dict[pdb_name].append(translation_dict[pdb_name][-1] + 1)
                 else:
                     translation_dict[pdb_name] = [1]
             for parameters_template in templates:
@@ -223,7 +223,7 @@ class MainStructure:
                                                  num_of_copies=self.sequence_assembled.total_copies, new_name=new_name)
                 self.templates_list.append(new_template)
                 self.reference = new_template if new_template.pdb_id == self.reference else self.reference
-            
+
             [element.set_reference_templates(self) for element in self.templates_list]
             self.order_templates_with_restrictions()
             self.reference = self.templates_list[0] if self.reference is None else self.reference
@@ -627,6 +627,7 @@ class MainStructure:
                 yml_path = self.create_cluster(job_path=new_path, templates=cluster_paths)
                 bioutils.run_vairo(yml_path=yml_path)
                 rankeds = utils.read_rankeds(input_path=new_path)
+
                 results_path = os.path.join(new_path, os.path.basename(self.run_dir),
                                             os.path.basename(self.results_dir))
                 rankeds_path_list = []
@@ -635,6 +636,7 @@ class MainStructure:
                     nonsplit_path = os.path.join(results_path, f'{ranked.name}.pdb')
                     new_name = f'{name_job}_{ranked.name}.pdb'
                     shutil.copy2(nonsplit_path, os.path.join(self.results_dir, new_name))
+
                 self.cluster_list.append(structures.Cluster(
                     name=name_job,
                     label=label_job,
