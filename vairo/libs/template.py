@@ -162,20 +162,18 @@ class Template:
                 tchain = self.template_chains_struct.get_template_chain(path)
                 tchain = tchain.path_before_changes
                 bioutils.change_chain(pdb_in_path=tchain,
-                     pdb_out_path=tchain,
-                     chain=chain_name)
+                                      pdb_out_path=tchain,
+                                      chain=chain_name)
                 aux_path_list.append(tchain)
-            else:
-                tchain = None
             chain_name = chr(ord(chain_name) + 1)
         bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_path_list,
-                            merged_pdb_path=self.template_originalseq_path) 
+                            merged_pdb_path=self.template_originalseq_path)
         self.template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
             query_sequence=sequence_assembled.sequence_assembled,
             pdb_path=self.template_path,
             pdb_id=self.pdb_id,
             chain_id='A')
-        
+
         logging.error(
             f'Positions of chains in the template {self.pdb_id}: {" | ".join([str(element) for element in self.results_path_position])}')
 
@@ -186,7 +184,6 @@ class Template:
                 for chain, path in chain_dict.items():
                     if chain in change_residues.chain_res_dict.keys():
                         change_residues.change_residues(pdb_in_path=path, pdb_out_path=path)
-
 
     def alignment(self, run_dir: str, sequence_assembled: sequence.SequenceAssembled,
                   databases: alphafold_classes.AlphaFoldPaths):
@@ -211,7 +208,7 @@ class Template:
                                                                             change_res_list=self.change_res_struct,
                                                                             match_restrict_list=self.match_restrict_struct,
                                                                             generate_multimer=self.generate_multimer,
-                                                                            pdb_path=self.pdb_path)                            
+                                                                            pdb_path=self.pdb_path)
             else:
                 for chain, chain_path in self.template_chains.items():
                     match_list = self.match_restrict_struct.get_matches_by_chain_position(chain=chain)

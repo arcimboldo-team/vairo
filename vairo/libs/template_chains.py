@@ -142,7 +142,6 @@ class TemplateChainsList:
                     path_list = [path_list[0]]
 
             alignment = alignment_dict.get(chain)
-
             for path in path_list:
                 change_res_copy = copy.deepcopy(change_res_list)
                 change_list = change_res_copy.get_changes_by_chain(chain=chain, when='after_alignment')
