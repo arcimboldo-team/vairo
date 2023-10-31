@@ -51,7 +51,6 @@ cmd.set("nonbonded_as_cylinders", 'on')
 cmd.set("nb_spheres_quality", '3')
 cmd.set("alignment_as_cylinders", 'on')
 cmd.set("dot_as_spheres", 'on')
-cmd.set("display_scale_factor", '2')
 """
     i = 1
     if a_air.output.ranked_list:
@@ -85,9 +84,6 @@ cmd.set("display_scale_factor", '2')
             subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             cmd = f'pymol -ckq {pymol_script}'
             out, err = subprocess.Popen(cmd, shell=True, env={}, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).communicate()
-            print(script)
-            print(out)
-            print(err)
     except Exception as e:
         logging.error('Error creating a PyMOL session. PyMOL might not be in the path. Skipping.')
         pass

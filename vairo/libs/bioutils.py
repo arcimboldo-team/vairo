@@ -89,7 +89,7 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int,
         f_in.write(f'MATCH RESIDU {fit_ini} TO {fit_end} CHAIN A \n')
         f_in.write(f'end \n')
         f_in.write(f'END-lsqkab')
-    out, err =subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                      cwd=os.path.dirname(pdb_out)).communicate()
 
 
