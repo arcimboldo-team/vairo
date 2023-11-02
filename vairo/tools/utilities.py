@@ -77,6 +77,10 @@ def superpose_chains(pdb1_path: str, pdb2_path: str, tmp_dir: str):
     pdb2_chains_dict = bioutils.split_pdb_in_chains(pdb_path=pdb2_path, output_dir=tmp_dir)
 
 
+def run_minimize(pdb1_path: str, pdb2_path: str):
+    bioutils.run_openmm(pdb1_path, pdb2_path)
+
+
 def renumber():
     def check_consecutive(numbers):
         # Check if the difference between each pair of consecutive numbers is equal to 1

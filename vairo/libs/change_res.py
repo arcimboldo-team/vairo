@@ -70,12 +70,13 @@ class ChangeResidues:
         chains_change = list(self.chain_res_dict.keys())
         chains_inter = set(chains_struct).intersection(chains_change)
         atoms_del_list = []
-        res_del_list = []
+        res_del_dict = {}
         for chain in chains_inter:
+            res_del_dict[chain] = []
             for res in structure[0][chain].get_residues():
                 if (type == 'delete_inverse' and bioutils.get_resseq(res) not in self.chain_res_dict[chain]) or (
                         type == 'delete' and bioutils.get_resseq(res) in self.chain_res_dict[chain]):
-                    res_del_list.append(bioutils.get_resseq(res))
+                    res_del_dict[chain].append(res.id)
                 if type == 'change':
                     if bioutils.get_resseq(res) in self.chain_res_dict[chain]:
                         if self.resname is not None:
@@ -93,20 +94,21 @@ class ChangeResidues:
                     for atom in res:
                         atom.set_bfactor(bfactor)
 
+        for key_chain, residue_list in res_del_dict.items():
+            chain = structure[0][key_chain]
+            [chain.detach_child(id) for id in residue_list]
+
         class AtomSelect(Select):
             def accept_atom(self, atom):
                 return not atom.get_serial_number() in atoms_del_list
-
-        class ResidueSelect(Select):
-            def accept_residue(self, residue):
-                return not bioutils.get_resseq(residue) in res_del_list
 
         io = PDBIO()
         io.set_structure(structure)
         if atoms_del_list:
             io.save(pdb_out_path, select=AtomSelect())
         else:
-            io.save(pdb_out_path, select=ResidueSelect())
+            io.save(pdb_out_path)
+
 
 
 class ChangeResiduesList:

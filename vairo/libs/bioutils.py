@@ -1329,6 +1329,7 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     add_domains_dict = {}
     for chain, residue in zip([interface.chain1, interface.chain2],
                               [interface.res_chain1, interface.res_chain2]):
+
         added_res_list = []
         [added_res_list.extend(domains) for domains in domains_dict[chain] if bool(set(residue).intersection(domains))]
         added_res_list.extend(residue)
@@ -1339,6 +1340,7 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
                         chain_list=[interface.chain1, interface.chain2])
     change = change_res.ChangeResidues(chain_res_dict=add_domains_dict)
     change.delete_residues_inverse(pdb_out_path, pdb_out_path)
+
     return add_domains_dict
 
 
