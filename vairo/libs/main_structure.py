@@ -611,8 +611,7 @@ class MainStructure:
                                                                binaries_path=self.binaries_paths,
                                                                output_dir=self.results_dir)
         if templates_cluster:
-            logging.error(
-                f'Templates can be grouped in {len(templates_cluster)} clusters')
+            logging.error(f'Templates can be grouped in {len(templates_cluster)} clusters')
             for cluster in templates_cluster:
                 cluster_paths = [pdb.path for pdb in cluster]
                 name_job = f'cluster_{counter}'
@@ -631,11 +630,20 @@ class MainStructure:
                 results_path = os.path.join(new_path, os.path.basename(self.run_dir),
                                             os.path.basename(self.results_dir))
                 rankeds_path_list = []
+
                 for ranked in rankeds:
                     rankeds_path_list.append(ranked.path)
-                    nonsplit_path = os.path.join(results_path, f'{ranked.name}.pdb')
-                    new_name = f'{name_job}_{ranked.name}.pdb'
-                    shutil.copy2(nonsplit_path, os.path.join(self.results_dir, new_name))
+                    nonsplit_filename = f'{ranked.name}.pdb'
+                    if len(templates_cluster) > 1:
+                        new_name = f'{name_job}_{ranked.name}.pdb'
+                        shutil.copy2(os.path.join(results_path, nonsplit_filename),
+                                     os.path.join(self.results_dir, new_name))
+                    else:
+                        shutil.copy2(os.path.join(results_path, nonsplit_filename), self.results_dir)
+
+                if len(templates_cluster) <= 1:
+                    features_file_path = os.path.join(results_path, 'features.pkl')
+                    self.set_feature(features.create_features_from_file(features_file_path))
 
                 self.cluster_list.append(structures.Cluster(
                     name=name_job,

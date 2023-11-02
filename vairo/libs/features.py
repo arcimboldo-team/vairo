@@ -61,9 +61,9 @@ class Features:
     def append_row_in_msa(self, sequence_in: str, sequence_id: str, position: int = None):
         seq_length = len(self.msa_features['msa'][0])
         if position:
-            sequence_in = '-'*(position-1) + sequence_in + '-'*(seq_length-(position-1)-len(sequence_in))
+            sequence_in = '-' * (position - 1) + sequence_in + '-' * (seq_length - (position - 1) - len(sequence_in))
         sequence_in = sequence_in[:seq_length]
-        sequence_array = np.array([residue_constants.HHBLITS_AA_TO_ID[res] for res in sequence_in])    
+        sequence_array = np.array([residue_constants.HHBLITS_AA_TO_ID[res] for res in sequence_in])
         self.msa_features['msa'] = np.vstack([self.msa_features['msa'], sequence_array])
         self.msa_features['accession_ids'] = np.hstack([self.msa_features['accession_ids'], sequence_id.encode()])
         self.msa_features['deletion_matrix_int'] = np.vstack(
@@ -131,21 +131,21 @@ class Features:
         starting_list = [int(x) for x in self.get_names_msa() if x.isdigit()]
         starting_id = 1
         if starting_list:
-            starting_id = max(starting_list)+1
+            starting_id = max(starting_list) + 1
         return starting_id
-
 
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = [],
                          positions: List[int] = []) -> int:
         coverage_msa = []
-        if positions and len(new_msa['msa']) > 0 and positions[1]-positions[0]+1 != len(new_msa['msa'][0]):
-            raise Exception('Select the positions of the features.pkl. The features.pkl msa is smaller than the query sequence')
+        if positions and len(new_msa['msa']) > 0 and positions[1] - positions[0] + 1 != len(new_msa['msa'][0]):
+            raise Exception(
+                'Select the positions of the features.pkl. The features.pkl msa is smaller than the query sequence')
         for i in range(start, len(new_msa['msa'])):
             if delete_positions:
                 new_msa = delete_residues_msa(msa=new_msa, position=i, delete_positions=delete_positions)
             coverage_msa.append(len([residue for residue in new_msa['msa'][i] if residue != 21]))
         if finish == -1:
-            coverage_msa = list(range(0, len(new_msa['msa'])-start))
+            coverage_msa = list(range(0, len(new_msa['msa']) - start))
         else:
             arr = np.array(coverage_msa)
             coverage_msa = arr.argsort()[-finish:][::-1]
@@ -153,10 +153,10 @@ class Features:
         msa_dict = self.create_empty_msa_list(len(coverage_msa))
         starting_id = self.get_max_id()
         for i, num in enumerate(coverage_msa):
-            msa_dict['msa'][i] = new_msa['msa'][num+start]
+            msa_dict['msa'][i] = new_msa['msa'][num + start]
             msa_dict['accession_ids'][i] = str(starting_id).encode()
-            msa_dict['deletion_matrix_int'][i] = new_msa['deletion_matrix_int'][num+start]
-            msa_dict['msa_species_identifiers'][i] = new_msa['msa_species_identifiers'][num+start]
+            msa_dict['deletion_matrix_int'][i] = new_msa['deletion_matrix_int'][num + start]
+            msa_dict['msa_species_identifiers'][i] = new_msa['msa_species_identifiers'][num + start]
             msa_dict['num_alignments'][i] = np.zeros(new_msa['num_alignments'].shape)
             starting_id += 1
         if positions:
@@ -191,9 +191,9 @@ class Features:
         aux_dict = copy.deepcopy(msa_dict)
         for i in range(len(msa_dict['msa'])):
             msa_dict['msa'][i] = np.full(len(self.query_sequence), 21)
-            msa_dict['msa'][i][expand[0]:expand[1]+1] = aux_dict['msa'][i]
+            msa_dict['msa'][i][expand[0]:expand[1] + 1] = aux_dict['msa'][i]
             msa_dict['deletion_matrix_int'][i] = np.full(len(self.query_sequence), 0)
-            msa_dict['deletion_matrix_int'][i][expand[0]:expand[1]+1] = aux_dict['deletion_matrix_int'][i]
+            msa_dict['deletion_matrix_int'][i][expand[0]:expand[1] + 1] = aux_dict['deletion_matrix_int'][i]
             msa_dict['msa_species_identifiers'][i] = aux_dict['msa_species_identifiers'][i]
         return msa_dict
 
@@ -202,20 +202,21 @@ class Features:
         for i in range(len(template_dict['template_all_atom_positions'])):
             template_dict['template_all_atom_positions'][i] = np.zeros(
                 (len(self.query_sequence), residue_constants.atom_type_num, 3))
-            template_dict['template_all_atom_positions'][i][expand[0]:expand[1]+1] = \
+            template_dict['template_all_atom_positions'][i][expand[0]:expand[1] + 1] = \
                 aux_dict['template_all_atom_positions'][i]
             template_dict['template_all_atom_masks'][i] = np.zeros(
                 (len(self.query_sequence), residue_constants.atom_type_num))
-            template_dict['template_all_atom_masks'][i][expand[0]:expand[1]+1] = aux_dict['template_all_atom_masks'][i]
+            template_dict['template_all_atom_masks'][i][expand[0]:expand[1] + 1] = aux_dict['template_all_atom_masks'][
+                i]
             template_dict['template_aatype'][i] = residue_constants.sequence_to_onehot('A' * len(self.query_sequence),
                                                                                        residue_constants.HHBLITS_AA_TO_ID)
-            template_dict['template_aatype'][i][expand[0]:expand[1]+1] = aux_dict['template_aatype'][i]
+            template_dict['template_aatype'][i][expand[0]:expand[1] + 1] = aux_dict['template_aatype'][i]
             seq_aux = list(('-' * len(self.query_sequence)))
-            seq_aux[expand[0]:expand[1]+1] = aux_dict['template_sequence'][i].decode()
+            seq_aux[expand[0]:expand[1] + 1] = aux_dict['template_sequence'][i].decode()
             template_dict['template_sequence'][i] = ''.join(seq_aux).encode()
 
             template_dict['template_domain_names'][i] = aux_dict['template_domain_names'][i]
-            template_dict['template_sum_probs'][i][expand[0]:expand[1]+1] = aux_dict['template_sum_probs'][i]
+            template_dict['template_sum_probs'][i][expand[0]:expand[1] + 1] = aux_dict['template_sum_probs'][i]
         return template_dict
 
     def slicing_features(self, chunk_list: List) -> List:
@@ -229,10 +230,11 @@ class Features:
             new_features = Features(query_sequence=sequence_in[start_min:start_max])
             msa_dict = self.create_empty_msa_list(self.get_msa_length() - 1)
             for i in range(0, self.get_msa_length() - 1):
-                msa_dict['msa'][i] = self.msa_features['msa'][i+1][start_min:start_max]
+                msa_dict['msa'][i] = self.msa_features['msa'][i + 1][start_min:start_max]
                 msa_dict['accession_ids'][i] = str(i).encode()
-                msa_dict['deletion_matrix_int'][i] = self.msa_features['deletion_matrix_int'][i+1][start_min:start_max]
-                msa_dict['msa_species_identifiers'][i] = self.msa_features['msa_species_identifiers'][i+1]
+                msa_dict['deletion_matrix_int'][i] = self.msa_features['deletion_matrix_int'][i + 1][
+                                                     start_min:start_max]
+                msa_dict['msa_species_identifiers'][i] = self.msa_features['msa_species_identifiers'][i + 1]
                 msa_dict['num_alignments'][i] = np.zeros(self.msa_features['num_alignments'].shape)
             if len(msa_dict['msa']) > 0:
                 new_features.append_row_in_msa_from_features(msa_dict)
@@ -251,7 +253,8 @@ class Features:
                 new_features.append_new_template_features(template_dict)
             features_list.append(new_features)
         if len(chunk_list) > 1:
-            logging.error(f'Query sequence and the input information has been cut into {len(features_list)} partitions with the following sizes:')
+            logging.error(
+                f'Query sequence and the input information has been cut into {len(features_list)} partitions with the following sizes:')
             for start_min, start_max in chunk_list:
                 logging.error(f'      - {start_min}-{start_max}')
         else:
@@ -377,7 +380,7 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
     try:
         hit = parsers._parse_hhr_hit(detailed_lines)
     except:
-        return None, None, None, 0, 0, 0 
+        return None, None, None, 0, 0, 0
     template_sequence = hit.hit_sequence.replace('-', '')
     mapping = templates._build_query_to_hit_index_mapping(
         hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
