@@ -37,7 +37,7 @@ class MainStructure:
         self.small_bfd: bool
         self.cluster_templates: bool
         self.cluster_templates_msa: int
-        self.cluster_templates_msa_delete: List[int]
+        self.cluster_templates_msa_mask: List[int]
         self.cluster_templates_sequence: str
         self.glycines: int
         self.template_positions_list: List[List] = []
@@ -109,8 +109,8 @@ class MainStructure:
 
         self.cluster_templates_msa = utils.get_input_value(name='cluster_templates_msa', section='global',
                                                            input_dict=parameters_dict)
-        self.cluster_templates_msa_delete = utils.expand_residues(
-            utils.get_input_value(name='cluster_templates_msa_delete', section='global', input_dict=parameters_dict))
+        self.cluster_templates_msa_mask = utils.expand_residues(
+            utils.get_input_value(name='cluster_templates_msa_mask', section='global', input_dict=parameters_dict))
 
         self.cluster_templates_sequence = bioutils.check_sequence_path(
             utils.get_input_value(name='cluster_templates_sequence', section='global', input_dict=parameters_dict))
@@ -181,8 +181,8 @@ class MainStructure:
                 keep_msa=utils.get_input_value(name='keep_msa', section='features', input_dict=parameters_features),
                 keep_templates=utils.get_input_value(name='keep_templates', section='features',
                                                      input_dict=parameters_features),
-                msa_delete=utils.expand_residues(
-                    utils.get_input_value(name='msa_delete', section='features', input_dict=parameters_features)),
+                msa_mask=utils.expand_residues(
+                    utils.get_input_value(name='msa_mask', section='features', input_dict=parameters_features)),
                 positions=utils.expand_residues(positions),
                 sequence=bioutils.check_sequence_path(
                     utils.get_input_value(name='sequence', section='features', input_dict=parameters_features))
@@ -756,7 +756,7 @@ class MainStructure:
         total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
         if self.cluster_templates_msa != 0:
             new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa,
-                                          delete_positions=self.cluster_templates_msa_delete)
+                                          delete_positions=self.cluster_templates_msa_mask)
         new_features.write_pkl(features_path)
 
         with open(yml_path, 'w') as f_out:
@@ -814,9 +814,9 @@ class MainStructure:
             f_out.write(f'cluster_templates: {self.cluster_templates}\n')
             if self.cluster_templates:
                 f_out.write(f'cluster_templates_msa: {self.cluster_templates_msa}\n')
-                if self.cluster_templates_msa_delete:
+                if self.cluster_templates_msa_mask:
                     f_out.write(
-                        f'cluster_templates_msa_delete: {",".join(map(str, self.cluster_templates_msa_delete))}\n')
+                        f'cluster_templates_msa_mask: {",".join(map(str, self.cluster_templates_msa_mask))}\n')
                 if self.cluster_templates_sequence is not None:
                     f_out.write(f'cluster_templates_sequence: {self.cluster_templates_sequence}\n')
             if self.library_list:
@@ -841,8 +841,8 @@ class MainStructure:
                     f_out.write(f' path: {feat.path}\n')
                     f_out.write(f'  keep_msa: {feat.keep_msa}\n')
                     f_out.write(f'  keep_templates: {feat.keep_templates}\n')
-                    if feat.msa_delete:
-                        f_out.write(f'  msa_delete: {",".join(map(str, feat.msa_delete))}\n')
+                    if feat.msa_mask:
+                        f_out.write(f'  msa_mask: {",".join(map(str, feat.msa_mask))}\n')
                     if feat.positions:
                         f_out.write(f'  positions: {",".join(map(str, feat.positions))}\n')
                     if feat.sequence is not None:

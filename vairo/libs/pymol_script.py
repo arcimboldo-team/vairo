@@ -63,7 +63,6 @@ cmd.set("dot_as_spheres", 'on')
             for interface in pdb_in.interfaces:
                 script += f'cmd.load("{interface.path}", "{utils.get_file_name(interface.path)}")\n'
                 script += f'cmd.disable("{utils.get_file_name(interface.path)}")\n'
-
         for zoom in a_air.pymol_show_list:
             key = f'F{i}'
             script += f'cmd.zoom("center", {zoom})\n'

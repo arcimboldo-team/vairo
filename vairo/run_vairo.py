@@ -88,7 +88,7 @@ def main():
                 if feat.keep_msa != 0:
                     num_msa = a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
                                                              finish=feat.keep_msa,
-                                                             delete_positions=feat.msa_delete,
+                                                             delete_positions=feat.msa_mask,
                                                              positions=positions)
                     logging.error(f'     Adding {num_msa} sequence/s to the MSA')
                 if feat.keep_templates != 0:

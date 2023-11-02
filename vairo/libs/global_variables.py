@@ -155,7 +155,7 @@ INPUT_PARAMETERS = {
             'mode': ['naive'],
             'default': -1
         },
-        'cluster_templates_msa_delete': {
+        'cluster_templates_msa_mask': {
             'required': False,
             'mode': ['naive'],
             'default': ''
@@ -268,7 +268,7 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': -1
         },
-        'msa_delete': {
+        'msa_mask': {
             'required': False,
             'default': ''
         },

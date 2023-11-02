@@ -58,7 +58,7 @@ class FeaturesInput:
     path: str
     keep_msa: int
     keep_templates: int
-    msa_delete: List[int]
+    msa_mask: List[int]
     sequence: str
     positions: List[int]
     num_msa: int = dataclasses.field(default=0)
