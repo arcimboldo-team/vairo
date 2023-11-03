@@ -642,6 +642,7 @@ class MainStructure:
                         shutil.copy2(os.path.join(results_path, nonsplit_filename), self.results_dir)
 
                 if len(templates_cluster) <= 1:
+                    logging.error('Only one cluster has been created, so all information will appear in the same output file.')
                     features_file_path = os.path.join(results_path, 'features.pkl')
                     self.set_feature(features.create_features_from_file(features_file_path))
 
