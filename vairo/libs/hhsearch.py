@@ -21,6 +21,10 @@ def create_database_from_pdb(fasta_path: str, databases, output_dir: str) -> str
     name = utils.get_file_name(fasta_path)
     data_name = os.path.join(output_dir, name)
     a3m_path = create_a3m(fasta_path, databases, output_dir)
+
+    if os.path.exists(f'{data_name}_cs219.ffindex'):
+        return data_name
+
     try:
         store_old_dir = os.getcwd()
         os.chdir(output_dir)
@@ -35,6 +39,7 @@ def create_database_from_pdb(fasta_path: str, databases, output_dir: str) -> str
                          f'{name}_cs219'], stdout=subprocess.PIPE)
     finally:
         os.chdir(store_old_dir)
+    
     if not os.path.exists(f'{data_name}_cs219.ffindex'):
         raise Exception(f'Could not create alignment for chain {utils.get_file_name(fasta_path)}.')
     return data_name
@@ -68,7 +73,6 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
     sequence_name = aux_key.split(':')[0]
     sequence_chain = aux_key.split(':')[1]
     database_chain_dir = os.path.join(database_dir, sequence_chain)
-    create_dir = False
 
     if name is None:
         name = utils.get_file_name(chain_in_path)
@@ -83,7 +87,6 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
         bioutils.write_sequence(sequence_name=f'{sequence_name}:{sequence_chain}',
                                 sequence_amino=list(template_sequence.values())[0],
                                 sequence_path=template_fasta_path)
-        create_dir = True
 
     run_hhalign(fasta_ref_path=query_sequence_path, fasta_aligned_path=template_fasta_path, output_path=hhr_path)
 
@@ -96,9 +99,8 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
         )
     if template_features is None or int(aligned_columns) <= int(total_columns * 0.95):
 
-        if create_dir:
-            create_database_from_pdb(fasta_path=template_fasta_path, databases=databases, output_dir=database_chain_dir)
-
+        create_database_from_pdb(fasta_path=template_fasta_path, databases=databases, output_dir=database_chain_dir)
+        
         hhr_path2 = os.path.join(output_dir, f'{utils.get_file_name(template_fasta_path)}2.hhr')
         a3m_path = os.path.join(output_dir, f'{utils.get_file_name(template_fasta_path)}.a3m')
         if not os.path.exists(a3m_path):
