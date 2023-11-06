@@ -29,7 +29,7 @@
                 font-size:16px;
             }
 
-            #interface_graphs ul li {
+            #interface_information ul li {
                 list-style: none;
             }
 
@@ -49,6 +49,10 @@
                 color: blue;
             }
 
+            .black {
+                color: black;
+            }
+
             .hide-row{
             }
 
@@ -61,72 +65,72 @@
             }
 
             #container-main {
-            display: inline-block;
-            margin-left: 140px;
-            margin-top: 40px;
-            max-width: 88%;
+                display: inline-block;
+                margin-left: 140px;
+                margin-top: 40px;
+                max-width: 88%;
             }
 
             #sidebar {
-            width: 120px;
-            height: 100%;
-            position: fixed;
-            background: #31393c;
+                width: 120px;
+                height: 100%;
+                position: fixed;
+                background: #31393c;
             }
 
             #header {
-            padding: 0 15px;
-            position: fixed;
-            left: 0;
-            right: 0;
-            z-index: 1002;
-            background: #2176ff;
-            border-bottom: 1px solid #33a1fd;
-            color: #FFFFFF;
-            text-align: center;
+                padding: 0 15px;
+                position: fixed;
+                left: 0;
+                right: 0;
+                z-index: 1002;
+                background: #2176ff;
+                border-bottom: 1px solid #33a1fd;
+                color: #FFFFFF;
+                text-align: center;
             }
 
             h1 {
-            margin-top: 5px;
-            margin-bottom: 5px;
+                margin-top: 5px;
+                margin-bottom: 5px;
             }
 
             h2 {
-            margin-top: 20px;
+                margin-top: 20px;
             }
 
             h4 {
-            margin-top: 20px;
-            margin-bottom: 0px;
+                margin-top: 20px;
+                margin-bottom: 0px;
             }
 
             ul.sidebar-menu , ul.sidebar-menu li ul.sub{
-            margin: -2px 0 0;
-            padding: 0;
+                margin: -2px 0 0;
+                padding: 0;
             }
 
             ul.sidebar-menu {
-            margin-top: 75px;
+                margin-top: 75px;
             }
 
             ul.sidebar-menu li ul.sub li{
-            background: #31393c;
-            margin-bottom: 0;
-            margin-left: 0;
-            margin-right: 0;
+                background: #31393c;
+                margin-bottom: 0;
+                margin-left: 0;
+                margin-right: 0;
             }
 
             ul.sidebar-menu li ul.sub li{
-            font-size: 14px;
-            padding: 6px 0;
-            line-height: 35px;
-            height: 35px;
-            color: #aeb2b7;
+                font-size: 14px;
+                padding: 6px 0;
+                line-height: 35px;
+                height: 35px;
+                color: #aeb2b7;
             }
 
             ul.sidebar-menu li ul.sub li:hover {
-            color: white;
-            background: transparent;
+                color: white;
+                background: transparent;
             }
 
             ul.sidebar-menu li ul.sub li.active{
@@ -150,11 +154,12 @@
                 background: #767B7D;
                 color: #fff;
                 display: block;
-            }color_plddt
+            }
 
             .section-div{
                 padding-top: 35px;
             }
+
             .btn {
                 display: inline-block;
                 text-align: center;
@@ -246,7 +251,7 @@
                 {% endif %}
                 #}
                 {% if 'interfaces_dict' in data %}
-                    <li name="interface_graphs" onclick="move_to(event)" class="sub-menu">Interface Graphs</li>                
+                    <li name="interface_information" onclick="move_to(event)" class="sub-menu">Interfaces</li>                
                 {% endif %}
                 {% if 'table' in data %}
                     <li name="tables" onclick="move_to(event)" class="sub-menu">Tables</li>
@@ -268,6 +273,7 @@
             </p>            
             <div id="summary" class="section-div">
                 <h2>Summary</h2>
+                <p>Mode: {{ data.mode }}</p>
                 <p>State: {{ data.state }}</p>
                 <p></p>
                 {% if data.custom_features %}
@@ -285,15 +291,18 @@
                      {{ data.mosaic }} partially overlapping fragments are predicted and merged into the structure.
                 {% endif %}
                 </p>
+                {% if data.cluster_list | length == 1 %}
+                    <p>Only one cluster was determinated and created, all information will be displayed in this output file.</p>
+                {% endif %}
                 {% if data.complete_html  %}
                     <p>On this page, only the top 20 most complete and/or similar to the prediction templates are displayed. To access the full list of templates, please click the following <a href="{{data.complete_html}}" target="_blank">link</a> </p>
                 {% endif %}
-                {% if data.ranked_by_rmsd %}
-                    {% for key, values in data.ranked_by_rmsd.items() %}
+                {% if data.ranked_by_qscore %}
+                    {% for key, values in data.ranked_by_qscore.items() %}
                         {% if loop.first %}
                             <p>Best result is <span class="green">{{ values[0].name }}</span> with a {{color_plddt(values[0].plddt)}}.
                                 {% if data.ranked_list[0].superposition_experimental %}
-                                    It has been determined to be the best prediction because it has the best qscore with respect to an experimental pdb ({{ data.ranked_list[0].superposition_experimental[0].pdb }}: {{ data.ranked_list[0].superposition_experimental[0].qscore }}).
+                                    It has been determined to be the closest prediction to an experimental pdb ({{ data.ranked_list[0].superposition_experimental[0].pdb }}: {{ data.ranked_list[0].superposition_experimental[0].qscore }} Q-Score).
                                 {% endif %}
                                 Can be found in the following path: <a download="{{ values[0].name }}.pdb" href=data:text/plain;base64,{{ values[0].encoded }}>{{ values[0].path }}</a>
                             </p>
@@ -302,14 +311,14 @@
                                     <p>Other equal structural solutions are:</p>
                                     <ul>
                                 {% endif %}
-                                    <li><span class="green"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ values[0].name }})</li>
+                                    <li><span class="green"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ ranked.qscore }} Q-Score with {{ values[0].name }})</li>
                                 {% if loop.last %}
                                     </ul>
                                 {% endif %}
                             {% endfor %}
                         {% else %}
                             {% if loop.index == 2 %}
-                                <p>Other successful predictions can be grouped in {{ data.ranked_by_rmsd|length - 1 }} structurally consistent sets:</p>
+                                <p>Other successful predictions can be grouped in {{ data.ranked_by_qscore|length - 1 }} structurally consistent sets:</p>
                                 <ul>
                                 {% endif %}
                                 <li>{{ key }} group:</li>
@@ -317,15 +326,15 @@
                                         {% if loop.first %}
                                             <ul>
                                                 {% if ranked.name in data.filtered_dict %}
-                                                    <li><span class="blue"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
+                                                    <li><span class="blue"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
                                                 {% else %}
-                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
+                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ color_plddt(ranked.plddt) }})</li>
                                                 {% endif %}
                                         {% else %}
                                                 {% if ranked.name in data.filtered_dict %}
-                                                    <li><span class="blue"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
+                                                    <li><span class="blue"> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ ranked.qscore }} Q-Score with {{ key }})</li>
                                                 {% else %}
-                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.path }}</a> ({{ ranked.rmsd }} RMSD with {{ key }})</li>
+                                                    <li><span> {{ ranked.name }}</span>: <a download="{{ ranked.name }}.pdb" href=data:text/plain;base64,{{ ranked.encoded }}> {{ ranked.split_path }}</a> ({{ ranked.qscore }} Q-Score with {{ key }})</li>
                                                 {% endif %}
                                         {% endif %}
                                         {% if loop.last %}
@@ -488,7 +497,7 @@
                     {% for key, value in data.frobenius_dict.items() %}
                         <details class="details-frobenius"
                         {% if key == data.ranked_list[0].name %}
-                         open
+                         openstruct
                         {% endif %}
                         >
                         <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
@@ -523,7 +532,7 @@
                                                 {% if data.sequence_plot  %}
                                                     <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
                                                 {% endif %}
-                                                </div>
+                                            </div>
                                         </details>
                                     </li>
                                 {% if loop.last %}
@@ -556,58 +565,88 @@
             {% endif %}
             #}
             {% if 'interfaces_dict' in data %}
-                <div id="interface_graphs" class="section-div">
-                    <h2>Interface Graphs</h2>
-                    {% for key, interfaces in data.interfaces_dict.items() %}
-                            {% for interface in interfaces %}
-                                {% if loop.first %}
-                                <details class="details-frobenius"
-                                {% if key == data.ranked_list[0].name %}
-                                 open
-                                {% endif %}
-                                >
-                                    <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
-                                    <ul style="margin: 0px 0px; padding-left: 0px">
-                                {% endif %}
-                                    {% for template in interface.interface_template if template.core > 0 %}
-                                    {% if loop.first %}
-                                        <li>
-                                            <details class="details-frobenius-in">
-                                                <summary><h4 style="display:inline">{{ interface.name }}</h4></summary>
-                                                <p> Solvation for each chain:
-                                                    <ul>
-                                                        <li style="border: none; list-style: disc;">{{ interface.chain1 }}: Solvation: {{ interface.solvation1 }}, SE gain: {{ interface.se_gain1 }}</li>
-                                                        <li style="border: none; list-style: disc;">{{ interface.chain2 }}: Solvation: {{ interface.solvation2 }}, SE gain: {{ interface.se_gain2 }}</li>
-                                                    </ul>
-                                                </p>
-                                                <p>The interface can be found in the following templates:</p>
-                                                <ul style="padding-left: 5px;">
-                                    {% endif %}
-                                                    <li style="border-top: 0px">
-                                                        <details class="details-frobenius-in">
-                                                            <summary><h4 style="display:inline">{{ template.template }}</h4></summary>
-                                                            <div class="div-frobenius">
-                                                                <p>Distance Frobenius is: {{ template.dist_coverage }}</p>
-                                                                <p>Core is: {{ template.core }} CV</p>
-                                                                <img style="width: 40%" src="data:image/png;base64,{{ template.encoded_dist_plot  }}" alt="Interface distances graph">
-                                                                {% if data.sequence_plot  %}
-                                                                    <img style="width: 80%" src="data:image/png;base64,{{ data.sequence_plot  }}" alt="Sequence plot">
-                                                                {% endif %}
-                                                            </div>
-                                                        </details>
-                                                    </li> 
-                                        {% if loop.last %}
-                                                </ul>
-                                                </details>
-                                            </li>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% if loop.last %}
-                                    </ul>
-                                    </details>
-
-                                {% endif %}
+                <div id="interface_information" class="section-div">
+                    <h2>Interface information</h2>
+                    <h3>Interfaces in predictions, experimental pdbs and templates (Area, DeltaG, nhb)</h3>
+                    <table>
+                        <tr>
+                            <th>Interfaces</th>
+                            {% for key in data.interfaces_dict.pdbs.keys() %}
+                                <th>{{ key }}</th>
                             {% endfor %}
+                        </tr>
+                        {% for inter_code in data.interfaces_dict.interfaces.keys()  %}
+                            <tr>
+                                <td>{{ inter_code }}</td>
+                                {% for pdb_key, pdb_interfaces in data.interfaces_dict.pdbs.items() %}
+                                {% set ns = namespace(found_data=None, inter_color='black') %}
+                                    {% for inter in pdb_interfaces %}
+                                        {% if inter.name == inter_code %}
+                                            {% if data.interfaces_dict.interfaces[inter.name] != None %}
+                                                {% if inter.deltaG <= data.interfaces_dict.interfaces[inter.name] %}
+                                                    {% set ns.inter_color = 'green' %}
+                                                {% elif inter.deltaG > data.interfaces_dict.interfaces[inter.name] %}
+                                                    {% set ns.inter_color = 'blue' %}
+                                                {% endif %}
+                                            {% endif %}
+                                            {% set ns.found_data = inter.area ~ ', ' ~ inter.deltaG ~ ', ' ~ inter.nhb %}
+                                        {%  endif %}
+                                    {% endfor %}
+                                    <td><span class={{ns.inter_color}}>{{ ns.found_data }}</span></td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </table>
+                    <br>
+                    <br>
+                    {% for ranked_key, ranked_interfaces in data.interfaces_dict.pdbs.items() if ranked_key in data.filtered_dict %}
+                        {% for ranked_inter in ranked_interfaces %}
+                            {% if loop.first %}
+                                <details class="details-frobenius"
+                                    {% if ranked_key == data.ranked_list[0].name %}
+                                    open
+                                    {% endif %}             
+                                >
+                                <summary class="summary-frobenius"> <h3 style="display:inline">{{ ranked_key }}</h3></summary>
+                                <ul style="margin: 0px 0px; padding-left: 0px">
+                            {% endif %}
+                            <li>
+                                <details class="details-frobenius-in">
+                                    <summary><h4 style="display:inline">{{ ranked_inter.name }}</h4></summary>
+                                    <p> Solvation for each chain:
+                                        <ul>
+                                            <li style="border: none; list-style: disc;">{{ ranked_inter.chain1 }}: Solvation: {{ ranked_inter.solvation1 }}, SE gain: {{ ranked_inter.se_gain1 }}</li>
+                                            <li style="border: none; list-style: disc;">{{ ranked_inter.chain2 }}: Solvation: {{ ranked_inter.solvation2 }}, SE gain: {{ ranked_inter.se_gain2 }}</li>
+                                        </ul>
+                                    </p>
+                            {% for template_key, template_interfaces in data.interfaces_dict.pdbs.items() if template_key not in data.filtered_dict %}
+                                {% set outer_loop = loop%}
+                                {% for template_inter in template_interfaces if template_inter.name == ranked_inter.name %}
+                                    {% if outer_loop.first %}
+                                        <p>The interface can be found in the following pdbs:</p>
+                                        <ul style="padding-left: 5px;">
+                                    {% endif %}
+                                    <li style="border-top: 0px">
+                                        <details class="details-frobenius-in">
+                                            <summary><h4 style="display:inline">{{ template_key }}</h4></summary>
+                                            <div class="div-frobenius">
+                                                <li style="border: none; list-style: disc;">{{ template_inter.chain1 }}: Solvation: {{ template_inter.solvation1 }}, SE gain: {{ template_inter.se_gain1 }}</li>
+                                                <li style="border: none; list-style: disc;">{{ template_inter.chain2 }}: Solvation: {{ template_inter.solvation2 }}, SE gain: {{ template_inter.se_gain2 }}</li>                                                                    
+                                            </div>
+                                        </details>
+                                    </li>
+                                    {% if outer_loop.last %}
+                                        </ul>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                            </details>
+                            </li>
+                            {% if loop.last %}
+                                </ul>
+                                </details>
+                            {% endif %}
+                        {% endfor %}
                     {% endfor %}
                 </div>
             {% endif %}
@@ -686,16 +725,16 @@
                     </table>
                     <button onclick="hideValues('table_energies', this)">Show all predictions</button>
                 {% endif %}
-                {% if 'ranked_rmsd_dict' in data.table %}
-                    <h3>Superposition between predictions (RMSD)</h3>
-                    <table id="table_rankeds_rmsd">
+                {% if 'ranked_qscore_dict' in data.table %}
+                    <h3>Superposition between predictions (Q-Score)</h3>
+                    <table id="table_rankeds_qscore">
                         <tr>
                             <th>Prediction</th>
-                            {% for key in data.table.ranked_rmsd_dict.keys() %}
+                            {% for key in data.table.ranked_qscore_dict.keys() %}
                                 <th>{{ key }}</th>
                             {% endfor %}
                         </tr>
-                        {% for key, value in data.table.ranked_rmsd_dict.items() %}
+                        {% for key, value in data.table.ranked_qscore_dict.items() %}
                             {% if key in data.bests_dict %}
                                 <tr class="green-row">
                             {% elif key in data.filtered_dict %}
@@ -710,10 +749,10 @@
                             </tr>
                         {% endfor %}
                     </table>
-                    <button onclick="hideValues('table_rankeds_rmsd', this)">Show all predictions</button>
+                    <button onclick="hideValues('table_rankeds_qscore', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'rmsd_dict' in data.table %}
-                    <h3>Superposition of predictions and templates (RMSD, superposed residues, total residues)</h3>
+                    <h3>Superposition of predictions and templates (Q-Score, RMSD, superposed residues (total residues))</h3>
                     <table id="table_templates_rmsd">
                         <tr>
                             <th>Prediction</th>
@@ -733,7 +772,7 @@
                             {% endif %}
                                 <td>{{ key }}</td>
                                 {% for key2, value2 in value.items() %}
-                                    <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
+                                    <td>{{ value2.qscore }}, {{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
                                 {% endfor %}
                             </tr>
                         {% endfor %}
@@ -741,8 +780,7 @@
                     <button onclick="hideValues('table_templates_rmsd', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
-                    <h3>Superposition of experimental pdbs with predictions and templates (RMSD (superposed residues), Q-Score)</h3>
-
+                    <h3>Superposition of experimental pdbs with predictions and templates (Q-Score, RMSD, superposed residues (total residues))</h3>
                     <table>
                         <tr>
                             <th>experimental pdb</th>
@@ -757,11 +795,11 @@
                                 <td>{{ key }}</td>
                                 {% for value2 in value.values() %}
                                     {% if key2 in data.bests_dict %}
-                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }}), {{ value2.qscore }}</td>
+                                        <td class="blue-row">{{ value2.qscore }}, {{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
                                     {% elif key in data.filtered_dict %}
-                                        <td class="blue-row">{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }}), {{ value2.qscore }}</td>                                
+                                        <td class="blue-row">{{ value2.qscore }}, {{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>                                
                                     {% else %}
-                                        <td>{{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }}), {{ value2.qscore }}</td>
+                                        <td>{{ value2.qscore }}, {{ value2.rmsd }} ({{ value2.aligned_residues }} of {{ value2.total_residues }})</td>
                                     {% endif %} 
                                 {% endfor %}
                             </tr>
@@ -773,12 +811,16 @@
             {% if 'pymol' in data %}
                 <div id="pymol" class="section-div">
                     <h2>Pymol</h2>
-                    <p>In order to run the Pymol Script, run the following code in the terminal:</p>
-                    <pre>
-                        <code>pymol {{ data.pymol }} </code>
-                    </pre>
+                    {% if data.pymol != None %}
+                        <p>In order to run the Pymol Script, run the following code in the terminal:</p>
+                        <pre>
+                            <code>pymol {{ data.pymol }} </code>
+                        </pre>
+                    {% else %}
+                        <p>No PyMOL installation was detected, and consequently, no PyMOL session was created. Please ensure that PyMOL is correctly installed. Additionally, verify that it can be called using its designated name in the console.</p>
+                    {% endif %}
                 </div>
-            {% endif %} 
+            {% endif %}
             <div id="log" class="section-div">
                 <h2>Log</h2>
                 <div style="padding: 10px;height:400px;width:90%;border:1px solid #000;overflow:auto;">
@@ -827,58 +869,6 @@
                                 </li>
                             {% endfor %}
                         </ul>
-
-                    {% if data.template_interfaces and data.conclusion_type  == 'template' %}
-                        {% for key, value in data.template_interfaces.items() if value %}
-                        {% if loop.first %}
-                            <p>Each template has the following interfaces:</p>
-                            <ul>
-                        {% endif %}
-                                <li>{{ key }}:
-                                    {% for interface in value %}
-                                        {% if loop.first %}
-                                            <ul>
-                                        {% endif %}
-                                            <li>{{ interface }}
-                                                {% set interfaces_list = [] %}
-                                                {% if 'interfaces_dict' in data %}
-                                                    {% for ranked, interfaces in data.interfaces_dict.items() %}
-                                                        {% for interface2 in interfaces if interface2.name == interface %}
-                                                            {% for interfaces_template in interface2.interface_template if interfaces_template.template == key and interfaces_template.core == 0 %}
-                                                                {{ interfaces_list.append(ranked) or "" }}
-                                                            {% endfor %}
-                                                        {% endfor %}
-                                                    {% endfor %}
-                                                {%endif %}
-                                                {% if interfaces_list %}
-                                                    {% for not_interface in interfaces_list %}
-                                                        {% if loop.first %}
-                                                            : Missing in
-                                                        {% endif %}
-                                                        {% if not_interface in data.bests_dict %}
-                                                            <span class="green">{{ not_interface }}</span>
-                                                        {% elif not_interface in data.filtered_dict %}
-                                                            <span class="blue">{{ not_interface }}</span>
-                                                        {% else %}
-                                                            {{ not_interface }}
-                                                        {% endif %}
-                                                        {% if not loop.last %}
-                                                            ,
-                                                        {% endif %}
-                                                    {% endfor %}
-                                                {% endif %}
-                                            </li>
-                                        {% if loop.last %}
-                                            </ul>
-                                        {% endif %}
-                                    {% endfor %}
-                                </li>
-                        {% if loop.last %}
-                            </ul>
-                            <p> The analysis has only been performed with those predictions that have a high pLDDT average.</p>
-                        {% endif %}
-                        {% endfor %}
-                    {% endif %}
                 {% endif %}
             </div>
             <div id="citations" class="section-div">

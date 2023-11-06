@@ -21,9 +21,9 @@ parameters:
   mosaic_seq_partition (optional, range, None): Split the sequence by the number of sequences.
   cluster_templates (optional, bool, false, true if naive): Cluster templates from preprocessed features.pkl
   cluster_templates_msa (optional, int, -1): Select a specific number of sequences to add to the new features.pkl MSA (-1 to add all the sequences) from the preprocessed features.pkl MSA
-  cluster_templates_msa_delete: (optional, range, None): Delete specific residues from the MSA sequences.
+  cluster_templates_msa_mask: (optional, range, None): Delete specific residues from the MSA sequences.
   cluster_templates_sequence: (optional, path, None): Replace templates sequence with sequence in path.
-  pymol_show: (optional, range, None): Select regions to zoom in the pymol session.
+  show_pymol: (optional, range, None): Select regions to zoom in the pymol session.
 
 Several sequences can be added to the query sequence. Each Fasta can have several copies and can be inserted in a specific position
 inside the query sequence. All the sequences will be concatenated using Glycines.
@@ -49,7 +49,7 @@ features:
 - path: (mandatory, string): Path to features.pkl
   keep_msa: (optional, int, -1): Keep the msa of the features.pkl 
   keep_templates: (optional, int, -1): Keep the templates of the features.pkl
-  msa_delete: (optional, range, None): Delete specific residues from the MSA sequences.
+  msa_mask: (optional, range, None): Delete specific residues from the MSA sequences.
   sequence: (optional, path, None): Replace templates sequence with sequence in path.
   positions: (optional, range, None): Insert the features.pkl in a specific region inside the query sequence.
 

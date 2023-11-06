@@ -1,4 +1,6 @@
 import base64, copy, errno, glob, io, json, logging, os, re, shutil, sys
+import random
+import string
 from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
@@ -252,7 +254,8 @@ def parse_hinges(output: str) -> structures.Hinges:
 
     hinges_result = structures.Hinges(
         decreasing_rmsd_total=(rmsd_list[0] - rmsd_list[-1]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
-        decreasing_rmsd_middle=(rmsd_list[0] - rmsd_list[len(rmsd_list) // 2]) / rmsd_list[0] * 100 if rmsd_list[0] > 0 else 0,
+        decreasing_rmsd_middle=(rmsd_list[0] - rmsd_list[len(rmsd_list) // 2]) / rmsd_list[0] * 100 if rmsd_list[
+                                                                                                           0] > 0 else 0,
         one_rmsd=rmsd_list[0],
         middle_rmsd=rmsd_list[len(rmsd_list) // 2],
         min_rmsd=min(rmsd_list),
@@ -310,7 +313,8 @@ def parse_pisa_general_multimer(pisa_output: str) -> List:
         chain1 = line[1].replace(' ', '')
         chain2 = line[2].split()[0].replace(' ', '')
         serial = line[0][:4].replace(' ', '')
-        return_list.append({'serial': serial, 'area': area, 'deltaG': deltag, 'chain1': chain1, 'chain2': chain2})
+        nhb = line[3][15:22].replace(' ', '')
+        return_list.append({'serial': serial, 'area': area, 'deltaG': deltag, 'nhb': nhb, 'chain1': chain1, 'chain2': chain2})
 
     return return_list
 
@@ -323,9 +327,7 @@ def parse_pisa_interfaces(pisa_output: str) -> Dict:
     #   se_gain1
     #   se_gain2
     #   chain1
-    #   res_chain1
     #   chain2
-    #   res_chain2
     # }]
     # It returns a list with the interface information, each
     # interface contains the required information.
@@ -408,8 +410,11 @@ def check_ranked(input_path: str) -> bool:
 def delete_old_rankeds(input_path: str):
     [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if check_ranked(path)]
 
+
 def delete_old_html(input_path: str):
-    [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if get_file_extension(path) == '.html']
+    [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if
+     get_file_extension(path) == '.html']
+
 
 def check_format(string_in):
     pattern = r"\d+-\d+"
@@ -508,3 +513,8 @@ def create_logger_dir(log_path: str, log_extended_path: str):
     file_handler2 = logging.FileHandler(log_extended_path)
     file_handler2.setLevel(logging.DEBUG)
     logger.addHandler(file_handler2)
+
+def generate_random_code(length: int):
+    letters = string.ascii_letters
+    random_code = ''.join(random.choice(letters) for i in range(length))
+    return random_code

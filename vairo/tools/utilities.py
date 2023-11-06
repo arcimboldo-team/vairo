@@ -1,11 +1,14 @@
 #! /usr/bin/env python3
+import shutil
 import sys
-sys.path.append('../')
-
+from pathlib import Path
 import pickle
 import os
 import logging
-from libs import features, bioutils, output, utils, structures
+
+sys.path.append('/cri4/pep/Programs/vairo')
+
+from vairo.libs import features, bioutils, output, utils, structures, change_res
 
 
 def write_features(features_path: str, output_dir: str = None):
@@ -55,7 +58,8 @@ def ccanalysis(template_path: str):
                                                                  cc_path=output_path, n_clusters=2)
     if analysis_dict:
         output.plot_cc_analysis(plot_path=os.path.join(output_path, 'plot.png'), analysis_dict=analysis_dict,
-                                    clusters=templates_cluster_list)
+                                clusters=templates_cluster_list)
+
 
 def superposition_chains(pdb1_path: str, pdb2_path: str):
     ret_dict = bioutils.superposition_by_chains(pdb1_in_path=pdb1_path, pdb2_in_path=pdb2_path)
@@ -66,10 +70,16 @@ def superposition_chains(pdb1_path: str, pdb2_path: str):
             for key1, i1 in i2.items():
                 print(key1, i1)
 
+
 def superpose_chains(pdb1_path: str, pdb2_path: str, tmp_dir: str):
     utils.create_dir(tmp_dir)
-    pdb1_chains_dict = bioutils.split_pdb_in_chains(pdb_in_path=pdb1_path, output_dir=tmp_dir)
-    pdb2_chains_dict = bioutils.split_pdb_in_chains(pdb_in_path=pdb2_path, output_dir=tmp_dir)        
+    pdb1_chains_dict = bioutils.split_pdb_in_chains(pdb_path=pdb1_path, output_dir=tmp_dir)
+    pdb2_chains_dict = bioutils.split_pdb_in_chains(pdb_path=pdb2_path, output_dir=tmp_dir)
+
+
+def run_minimize(pdb1_path: str, pdb2_path: str):
+    bioutils.run_openmm(pdb1_path, pdb2_path)
+
 
 def renumber():
     def check_consecutive(numbers):
@@ -78,7 +88,6 @@ def renumber():
             if numbers[i + 1] - numbers[i] != 1:
                 return False
         return True
-
 
     # Specify the folder path containing the PDB files
     folder_path = "/Users/pep/work/transfers/clusters_lib"
@@ -108,8 +117,8 @@ def renumber():
                         cys_count += 1
                         if cys_count == 1:
                             try:
-                                list_cys = [residues[j+i] for i in range(-5, 2)]
-                                list_cys = [bioutils.get_resseq(res)-1 for res in list_cys]
+                                list_cys = [residues[j + i] for i in range(-5, 2)]
+                                list_cys = [bioutils.get_resseq(res) - 1 for res in list_cys]
                                 if check_consecutive(list_cys):
                                     save_residues.extend(list_cys)
                                 else:
@@ -119,8 +128,8 @@ def renumber():
                                 pass
                         if cys_count == 2:
                             try:
-                                list_cys = [residues[j+i] for i in range(-5, 3)]
-                                list_cys = [bioutils.get_resseq(res)-1 for res in list_cys]
+                                list_cys = [residues[j + i] for i in range(-5, 3)]
+                                list_cys = [bioutils.get_resseq(res) - 1 for res in list_cys]
                                 if check_consecutive(list_cys):
                                     save_residues.extend(list_cys)
                                     if utils.get_file_name(pdb_file)[:4] not in list_pdbs:
@@ -130,15 +139,63 @@ def renumber():
                                     raise Exception
                             except:
                                 pass
-                
 
         if save_pdb:
             print(save_residues)
             if len(save_residues) != 15:
                 raise Exception
-            bioutils.copy_positions_of_pdb(pdb_file, os.path.join("/Users/pep/work/transfers/library", utils.get_file_name(pdb_file))+'.pdb', save_residues)
+            bioutils.copy_positions_of_pdb(pdb_file, os.path.join("/Users/pep/work/transfers/library",
+                                                                  utils.get_file_name(pdb_file)) + '.pdb',
+                                           save_residues)
             print(f"Renumbering complete for {pdb_file}. Renumbered file saved as {utils.get_file_name(pdb_file)}.")
 
+
+def merge_pdbs(pdb1_path: str, pdb2_path: str, inf_ini, inf_end, inm_ini, inm_end):
+    MIN_RMSD_SPLIT = 5
+
+    best_rankeds_dir = os.path.join(os.getcwd(), 'merged_pdb')
+    utils.create_dir(best_rankeds_dir, delete_if_exists=True)
+    aux_pdb1_path = os.path.join(best_rankeds_dir, 'pdb1_trimmed.pdb')
+    merge_pdbs_list = [aux_pdb1_path]
+    shutil.copy2(pdb1_path, best_rankeds_dir)
+    shutil.copy2(pdb2_path, best_rankeds_dir)
+
+    pdb_out = os.path.join(best_rankeds_dir, 'superposed.pdb')
+    delta_out = os.path.join(best_rankeds_dir, 'deltas.dat')
+
+    bioutils.run_lsqkab(pdb_inf_path=pdb1_path,
+                        pdb_inm_path=pdb2_path,
+                        fit_ini=inf_ini,
+                        fit_end=inf_end,
+                        match_ini=inm_ini,
+                        match_end=inm_end,
+                        pdb_out=pdb_out,
+                        delta_out=delta_out
+                        )
+    best_list = []
+    best_min = MIN_RMSD_SPLIT
+    with open(delta_out, 'r') as f_in:
+        lines = f_in.readlines()
+        lines = [line.replace('CA', '').split() for line in lines]
+        for deltas in zip(lines, lines[1:], lines[2:], lines[3:]):
+            deltas_sum = sum([float(delta[0]) for delta in deltas])
+            if deltas_sum <= best_min:
+                best_list = deltas
+                best_min = deltas_sum
+
+    if not best_list:
+        raise Exception('RMSD minimum requirements not met in order to merge the results in mosaic mode.')
+
+    inf_cut = int(best_list[1][3])
+    inm_cut = int(best_list[2][1])
+    delete_residues = change_res.ChangeResidues(
+        chain_res_dict={'A': [*range(inf_cut + 1, 10000 + 1, 1)]})
+    delete_residues.delete_residues(pdb_in_path=pdb1_path, pdb_out_path=aux_pdb1_path)
+    delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
+    delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
+    merge_pdbs_list.append(pdb_out)
+    bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
+                                     pdb_out_path=os.path.join(best_rankeds_dir, 'merged.pdb'))
 
 
 if __name__ == "__main__":

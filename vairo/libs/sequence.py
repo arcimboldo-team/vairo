@@ -8,7 +8,7 @@ from alphafold.common import residue_constants
 
 
 class Sequence:
-    def __init__(self, parameters_dict: Dict, input_dir: str):
+    def __init__(self, parameters_dict: Dict, input_dir: str, run_dir: str):
         self.fasta_path: str
         self.fasta_mutated_path: str
         self.sequence: str
@@ -18,6 +18,7 @@ class Sequence:
         self.num_of_copies: int
         self.positions: List[int] = []
         self.mutations_dict: Dict = {}
+        self.alignment_dir: str
 
         fasta_path = utils.get_input_value(name='fasta_path', section='sequence', input_dict=parameters_dict)
         positions = utils.get_input_value(name='positions', section='sequence', input_dict=parameters_dict)
@@ -67,7 +68,11 @@ class Sequence:
 
         mutated_name = f'{self.name}_mutated'
         self.fasta_mutated_path = os.path.join(input_dir, f'{mutated_name}.fasta')
-        bioutils.write_sequence(sequence_name=mutated_name, sequence_amino=self.sequence_mutated, sequence_path=self.fasta_mutated_path)
+        bioutils.write_sequence(sequence_name=mutated_name, sequence_amino=self.sequence_mutated,
+                                sequence_path=self.fasta_mutated_path)
+
+        self.alignment_dir = os.path.join(run_dir, self.name)
+        utils.create_dir(self.alignment_dir, delete_if_exists=True)
 
 
 class SequenceAssembled:

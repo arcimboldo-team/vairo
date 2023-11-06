@@ -1,8 +1,9 @@
 import dataclasses
 import os
 import sys
+import shutil
 from typing import Dict, List
-from libs import utils
+from libs import utils, bioutils
 
 
 @dataclasses.dataclass(frozen=True)
@@ -57,7 +58,7 @@ class FeaturesInput:
     path: str
     keep_msa: int
     keep_templates: int
-    msa_delete: List[int]
+    msa_mask: List[int]
     sequence: str
     positions: List[int]
     num_msa: int = dataclasses.field(default=0)
@@ -66,6 +67,7 @@ class FeaturesInput:
     def add_information(self, num_msa: int = 0, num_templates: int = 0):
         self.num_msa = num_msa
         self.num_templates = num_templates
+
 
 @dataclasses.dataclass
 class Library:
@@ -82,17 +84,13 @@ class Library:
         self.num_msa = num_msa
         self.num_templates = num_templates
 
-@dataclasses.dataclass(frozen=True)
-class AlignmentDatabase:
-    chain: str
-    fasta_path: str
-    database_path: str
 
 @dataclasses.dataclass(frozen=True)
 class Dendogram:
     dendogram_list: List[str]
     dendogram_plot: str
     encoded_dendogram_plot: bytes
+
 
 @dataclasses.dataclass(frozen=True)
 class Alignment:
@@ -101,8 +99,8 @@ class Alignment:
     evalue: str
     identities: int
     hhr_path: str
-    database: AlignmentDatabase
     mapping: Dict
+    chain: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -115,36 +113,24 @@ class GanttPlot:
     legend_msa: str
 
 
-@dataclasses.dataclass(frozen=True)
-class InterfaceTemplate:
-    template: str
-    dist_coverage: float
-    core: int
-    dist_plot: str
-    encoded_dist_plot: bytes
-
-
 @dataclasses.dataclass
 class Interface:
     name: str
-    res_list: List[int]
+    res_chain1: List[int]
+    res_chain2: List[int]
     chain1: str
     chain2: str
     se_gain1: float
     se_gain2: float
     solvation1: float
     solvation2: float
-    interface_template: List[InterfaceTemplate] = dataclasses.field(default_factory=list)
+    area: float
+    deltaG: float
+    nhb: float
+    path: str = dataclasses.field(default=None)
 
-    def add_frobenius_information(self, template: str, dist_coverage: float, core: int, dist_plot: str):
-        interface = InterfaceTemplate(
-            template=template,
-            dist_coverage=dist_coverage,
-            dist_plot=dist_plot,
-            encoded_dist_plot=utils.encode_data(dist_plot),
-            core=core
-        )
-        self.interface_template.append(interface)
+    def set_structure(self, path: str):
+        self.path = path
 
 
 @dataclasses.dataclass(frozen=True)
@@ -175,7 +161,11 @@ class Pdb:
         self.split_path: str
         self.compactness: float
         self.ramachandran: float
-        
+        self.ah: int
+        self.bs: int
+        self.total_residues: int
+        self.interfaces: List[Interface] = []
+
         self.path = path
         self.name = utils.get_file_name(path)
 
@@ -191,12 +181,37 @@ class Pdb:
     def set_ramachandran(self, ramachandran: float):
         self.ramachandran = ramachandran
 
-class Template (Pdb):
+    def set_secondary_structure(self, ah: int, bs: int, total_residues: int):
+        self.ah = ah
+        self.bs = bs
+        self.total_residues = total_residues
+
+    def set_interfaces(self, interfaces: List[Interface]):
+        self.interfaces = interfaces
+
+
+class ExperimentalPdb(Pdb):
+    def __init__(self, path: str):
+        super().__init__(path=path)
+        self.split_path = path
+
+
+class TemplateExtracted(Pdb):
     def __init__(self, path: str):
         super().__init__(path=path)
         self.percentage_list: List[float]
         self.identity: float
         self.sequence_msa: str
+        self.template: str = ''
+        self.originalseq_path: str = ''
+
+    def set_template(self, template, originalseq_path: str):
+        self.template = template
+        self.originalseq_path = originalseq_path
+        if self.template is not None:
+            shutil.copy2(self.template.template_originalseq_path, self.originalseq_path)
+        else:
+            shutil.copy2(self.split_path, self.originalseq_path)
 
     def add_percentage(self, percentage_list: List[float]):
         self.percentage_list = percentage_list
@@ -207,43 +222,36 @@ class Template (Pdb):
     def set_sequence_msa(self, sequence_msa: str):
         self.sequence_msa = sequence_msa
 
-class Ranked (Pdb):
+
+class Ranked(Pdb):
     def __init__(self, path: str):
         super().__init__(path=path)
         self.minimized_path: str
         self.plddt: int
-        self.ah: int
-        self.bs: int
-        self.total_residues: int
         self.superposition_templates: List[PdbRanked] = []
         self.superposition_experimental: List[PdbRanked] = []
-        self.mapping: Dict = {}
         self.potential_energy: float = None
-        self.interfaces: List[Interface] = []
         self.frobenius_plots: List[Frobenius] = []
         self.filtered: bool = False
         self.best: bool = False
-        self.rmsd: float
-        self.rmsd_dict: Dict = {}
+        self.qscore: float
+        self.qscore_dict: Dict = {}
         self.encoded: bytes
 
     def set_plddt(self, plddt: float):
         self.plddt = round(plddt)
 
-    def set_rmsd(self, rmsd: float):
-        self.rmsd = round(rmsd, 2) if rmsd is not None else rmsd
+    def set_qscore(self, qscore: float):
+        self.qscore = round(qscore, 3) if qscore is not None else qscore
 
-    def set_ranked_to_rmsd_dict(self, rmsd: float, ranked_name: str):
-        self.rmsd_dict[ranked_name] = round(rmsd, 2) if rmsd is not None else rmsd
+    def set_ranked_to_qscore_dict(self, qscore: float, ranked_name: str):
+        self.qscore_dict[ranked_name] = round(qscore, 3) if qscore is not None else qscore
 
     def set_filtered(self, filtered: bool):
         self.filtered = filtered
 
     def set_best(self, best: bool):
         self.best = best
-
-    def set_mapping(self, mapping: Dict):
-        self.mapping = mapping
 
     def set_minimized_path(self, path: str):
         self.minimized_path = path
@@ -254,39 +262,14 @@ class Ranked (Pdb):
     def add_experimental(self, experimental: PdbRanked):
         self.superposition_experimental.append(experimental)
 
-    def add_interface(self, interface: Interface):
-        self.interfaces.append(interface)
-
-    def set_secondary_structure(self, ah: int, bs: int, total_residues: int):
-        self.ah = ah
-        self.bs = bs
-        self.total_residues = total_residues
-
     def set_potential_energy(self, potential_energy: float):
         self.potential_energy = potential_energy
 
-    def add_interfaces_frobenius_plot(self, plot: str):
-        self.interfaces_frobenius_plot.append(plot)
-
     def set_encoded(self, path: str):
         self.encoded = utils.encode_data(path)
-
-    def add_frobenius_plot(self, template: str, dist_plot: str, ang_plot: str, dist_coverage: float,
-                           ang_coverage: float, core: float):
-        frobenius = Frobenius(
-            template=template,
-            dist_plot=dist_plot,
-            encoded_dist_plot=utils.encode_data(dist_plot),
-            ang_plot=ang_plot,
-            encoded_ang_plot=utils.encode_data(ang_plot),
-            dist_coverage=dist_coverage,
-            ang_coverage=ang_coverage,
-            core=core
-        )
-        self.frobenius_plots.append(frobenius)
 
     def sort_template_rankeds(self):
         self.superposition_templates.sort(key=lambda x: (x.qscore is None, x.qscore), reverse=True)
 
     def sort_experimental_rankeds(self):
-        self.superposition_experimental.sort(key=lambda x: (x.qscore is None, x.qscore), reverse=True)
+        self.superposition_experimental.sort(key=lambda x: (x.aligned_residues is None, x.aligned_residues), reverse=True)

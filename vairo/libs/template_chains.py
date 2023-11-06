@@ -1,19 +1,21 @@
 import copy
+import logging
 import os
+import shutil
 from typing import Union, List, Dict
 
-from libs import match_restrictions, utils, bioutils
-from libs.structures import Alignment
+from libs import match_restrictions, utils, bioutils, structures
 
 
 class TemplateChain:
     def __init__(self,
                  chain: str,
                  path: str,
+                 path_before_changes: str,
                  code: str,
                  sequence: str,
                  match: match_restrictions.MatchRestrictions = None,
-                 alignment: Union[None, Alignment] = None,
+                 alignment: Union[None, structures.Alignment] = None,
                  deleted_residues: List[int] = [],
                  changed_residues: List[int] = [],
                  fasta_residues: List[int] = [],
@@ -21,6 +23,7 @@ class TemplateChain:
                  ):
         self.chain = chain
         self.path = path
+        self.path_before_changes = path_before_changes
         self.code = code
         self.sequence = sequence
         self.match = match
@@ -74,13 +77,14 @@ class TemplateChainsList:
     def get_changes(self, pdb_path: str) -> List:
         template_chain = self.get_template_chain(pdb_path)
         if template_chain is not None:
-            return template_chain.changed_residues, template_chain.fasta_residues, template_chain.deleted_residues
+            return template_chain.changed_residues, template_chain.fasta_residues, template_chain.deleted_residues, template_chain.sequence_before_changes
         else:
             return None
+        
     def get_number_chains(self) -> int:
         return len({(chain_template.chain, chain_template.code) for chain_template in self.template_chains_list})
 
-    def get_alignment_by_path(self, pdb_path: str) -> Alignment:
+    def get_alignment_by_path(self, pdb_path: str):
         # Search for the alignment that has the same name as the pdb_path
         template_chain = self.get_template_chain(pdb_path)
         if template_chain is not None and template_chain.alignment:
@@ -106,9 +110,18 @@ class TemplateChainsList:
                 template_chain.match is not None and template_chain.match.check_position()]
 
     def from_dict_to_struct(self, chain_dict: Dict, alignment_dict: Dict, sequence: str, change_res_list,
-                            match_restrict_list: match_restrictions.MatchRestrictionsList):
+                            match_restrict_list: match_restrictions.MatchRestrictionsList, generate_multimer: bool = False, pdb_path: str = ''):
         # Given a dict, with all the information of a Chain (there can be more than one chain in case of multimer)
         # Read all the information, and create as many TemplateChains as paths and append them to the list.
+        
+        if not chain_dict:
+            return chain_dict
+
+        if generate_multimer:
+            try:
+                chain_dict = bioutils.generate_multimer_chains(pdb_path, chain_dict)
+            except Exception as e:
+                logging.error(f'Not possible to generate multimer for {pdb_path}')
         for chain, paths in chain_dict.items():
             path_list = []
             if isinstance(paths, list):
@@ -116,11 +129,19 @@ class TemplateChainsList:
                     path_list.append(path)
             else:
                 path_list.append(paths)
+
             match_restrict_copy = copy.deepcopy(match_restrict_list)
-            match_list = match_restrict_copy.get_matches_by_chain(chain=chain)
+            if isinstance(match_restrict_copy, match_restrictions.MatchRestrictionsList):
+                match_list = match_restrict_copy.get_matches_by_chain(chain=chain)
+            else:
+                match_list = [match_restrict_copy]
+                filtered_list = list(filter(lambda x: x not in [y.path for y in self.template_chains_list], path_list))
+                if filtered_list:
+                    path_list = [filtered_list[0]]
+                else:
+                    path_list = [path_list[0]]
 
             alignment = alignment_dict.get(chain)
-
             for path in path_list:
                 change_res_copy = copy.deepcopy(change_res_list)
                 change_list = change_res_copy.get_changes_by_chain(chain=chain, when='after_alignment')
@@ -149,9 +170,14 @@ class TemplateChainsList:
                         match.residues.delete_residues_inverse(path, path)
                     match = match_list.pop(0)
                     break
+
                 # Store the sequence before changing the residues, as if we want to add it in the MSA, it would not
                 # make sense
                 sequence_before_changes = list(bioutils.extract_sequence_msa_from_pdb(path).values())[0]
+                path_before_changes = os.path.join(os.path.dirname(path), f'{utils.get_file_name(path)}_originalseq.pdb')
+                if os.path.exists(path_before_changes):
+                    os.remove(path_before_changes)
+                shutil.copy2(path, path_before_changes)
                 for change in change_list:
                     change.change_residues(path, path)
 
@@ -164,6 +190,7 @@ class TemplateChainsList:
                 if not self.get_template_chain(path):
                     self.template_chains_list.append(TemplateChain(chain=chain,
                                                                    path=path,
+                                                                   path_before_changes=path_before_changes,
                                                                    code=number,
                                                                    sequence=sequence,
                                                                    match=match,

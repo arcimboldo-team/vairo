@@ -1,7 +1,9 @@
 import logging
 import os
 import subprocess
+import tempfile
 from libs import utils
+
 
 def create_pymol_session(a_air):
     script = """
@@ -49,16 +51,19 @@ cmd.set("nonbonded_as_cylinders", 'on')
 cmd.set("nb_spheres_quality", '3')
 cmd.set("alignment_as_cylinders", 'on')
 cmd.set("dot_as_spheres", 'on')
-cmd.set("display_scale_factor", '2')
 """
     i = 1
     if a_air.output.ranked_list:
         pdb_list = [ranked.split_path for ranked in a_air.output.ranked_list]
         pdb_list.extend(a_air.experimental_pdbs)
-        for j, pdb_path in enumerate(pdb_list):
-            script += f'cmd.load("{pdb_path}", "{utils.get_file_name(pdb_path)}")\n'
+        for j, pdb_in in enumerate(a_air.output.ranked_list + a_air.output.experimental_list):
+            script += f'cmd.load("{pdb_in.split_path}", "{pdb_in.name}")\n'
             if j != 0:
-                script += f'cmd.disable("{utils.get_file_name(pdb_path)}")\n'
+                script += f'cmd.disable("{pdb_in.name}")\n'
+            for interface in pdb_in.interfaces:
+                script += f'cmd.load("{interface.path}", "{utils.get_file_name(interface.path)}")\n'
+                script += f'cmd.disable("{utils.get_file_name(interface.path)}")\n'
+        pdb_list.extend([template.split_path for template in a_air.output.templates_list])
         for zoom in a_air.pymol_show_list:
             key = f'F{i}'
             script += f'cmd.zoom("center", {zoom})\n'
@@ -69,14 +74,16 @@ cmd.set("display_scale_factor", '2')
     script += f'cmd.reset()\n'
     script += f'cmd.save("{a_air.output.pymol_session_path}")\n'
     script += 'cmd.quit()\n'
-    pymol_script = os.path.join(a_air.run_dir, 'script_pymol.py')
-    with open(pymol_script, 'w') as f_out:
-        f_out.write(script) 
+
     try:
-        cmd = 'which pymol'
-        subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        cmd = f'pymol -ckq {pymol_script}'
-        subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-    except subprocess.CalledProcessError:
-        logging.error('PyMOL could not be found in the path, so a PyMOL session could not be created')
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            pymol_script = os.path.join(tmpdirname, 'script_pymol.py')
+            with open(pymol_script, 'w+') as f_out:
+                f_out.write(script)
+            cmd = 'which pymol'
+            subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+            cmd = f'pymol -ckq {pymol_script}'
+            out, err = subprocess.Popen(cmd, shell=True, env={}, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).communicate()
+    except Exception as e:
+        logging.error('Error creating a PyMOL session. PyMOL might not be in the path. Skipping.')
         pass
