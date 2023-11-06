@@ -1200,8 +1200,11 @@ def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None
         superpose_output = subprocess.Popen(superpose_cmd, stdout=subprocess.PIPE, shell=True).communicate()[0].decode(
             'utf-8')
         new_path = os.path.join(tmpdirname, f'{utils.get_file_name(pdb_superposed)}_2.pdb')
-        if new_path and output_path:
+
+        if os.path.exists(new_path) and output_path:
             shutil.copy2(new_path, output_path)
+        elif not os.path.exists(new_path):
+            logging.info(f'Not possible to superpose {pdb_reference} with {pdb_superposed}')
         rmsd, qscore, nalign = None, None, None
         for line in superpose_output.split('\n'):
             if 'RMSD             :' in line:
