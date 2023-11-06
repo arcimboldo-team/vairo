@@ -46,7 +46,7 @@ class AlphaFoldRun:
                     fasta_path=[self.fasta_path],
                     output_dir=previous_path,
                     data_dir=alphafold_paths.af2_dbs_path,
-                    max_template_date='2022-10-10',
+                    max_template_date='2023-10-10',
                     model_preset='monomer',
                     uniref90_database_path=alphafold_paths.uniref90_db_path,
                     mgnify_database_path=alphafold_paths.mgnify_db_path,

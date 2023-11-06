@@ -54,16 +54,17 @@ cmd.set("dot_as_spheres", 'on')
 """
     i = 1
     if a_air.output.ranked_list:
-        pdb_list = [ranked.split_path for ranked in a_air.output.ranked_list]
-        pdb_list.extend(a_air.experimental_pdbs)
-        for j, pdb_in in enumerate(a_air.output.ranked_list + a_air.output.experimental_list):
+        pdb_list = [ranked for ranked in a_air.output.ranked_list if ranked.filtered]
+        pdb_list.extend(a_air.output.experimental_list)
+        pdb_list.extend(a_air.output.templates_list)
+        for j, pdb_in in enumerate(pdb_list):
             script += f'cmd.load("{pdb_in.split_path}", "{pdb_in.name}")\n'
             if j != 0:
                 script += f'cmd.disable("{pdb_in.name}")\n'
             for interface in pdb_in.interfaces:
                 script += f'cmd.load("{interface.path}", "{utils.get_file_name(interface.path)}")\n'
                 script += f'cmd.disable("{utils.get_file_name(interface.path)}")\n'
-        pdb_list.extend([template.split_path for template in a_air.output.templates_list])
+
         for zoom in a_air.pymol_show_list:
             key = f'F{i}'
             script += f'cmd.zoom("center", {zoom})\n'
@@ -83,7 +84,8 @@ cmd.set("dot_as_spheres", 'on')
             cmd = 'which pymol'
             subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
             cmd = f'pymol -ckq {pymol_script}'
-            out, err = subprocess.Popen(cmd, shell=True, env={}, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT).communicate()
+            out, err = subprocess.Popen(cmd, shell=True, env={}, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.STDOUT).communicate()
     except Exception as e:
         logging.error('Error creating a PyMOL session. PyMOL might not be in the path. Skipping.')
         pass

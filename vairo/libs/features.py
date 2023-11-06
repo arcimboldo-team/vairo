@@ -169,14 +169,23 @@ class Features:
         finish = len(new_templates['template_sequence']) if finish == -1 else finish
         template_dict = self.create_empty_template_list(finish)
         for i in range(0, finish):
-            index = self.get_index_by_name(name=new_templates['template_domain_names'][i].decode())
-            if index is None:
-                template_dict['template_all_atom_positions'][i] = new_templates['template_all_atom_positions'][i]
-                template_dict['template_all_atom_masks'][i] = new_templates['template_all_atom_masks'][i]
-                template_dict['template_aatype'][i] = new_templates['template_aatype'][i]
-                template_dict['template_sequence'][i] = new_templates['template_sequence'][i]
-                template_dict['template_domain_names'][i] = new_templates['template_domain_names'][i]
-                template_dict['template_sum_probs'][i] = new_templates['template_sum_probs'][i]
+            template_name = new_templates['template_domain_names'][i].decode()
+            index = self.get_index_by_name(name=template_name)
+            if index is not None:
+                j = 1
+                while True:
+                    new_name = f'{template_name}_{j}'
+                    index2 = self.get_index_by_name(name=new_name)
+                    if index2 is None:
+                        template_name = new_name
+                        break
+                    j += 1
+            template_dict['template_all_atom_positions'][i] = new_templates['template_all_atom_positions'][i]
+            template_dict['template_all_atom_masks'][i] = new_templates['template_all_atom_masks'][i]
+            template_dict['template_aatype'][i] = new_templates['template_aatype'][i]
+            template_dict['template_sequence'][i] = new_templates['template_sequence'][i]
+            template_dict['template_domain_names'][i] = template_name.encode()
+            template_dict['template_sum_probs'][i] = new_templates['template_sum_probs'][i]
 
         if len(template_dict['template_all_atom_positions']) > 0:
             if sequence_in is not None:
@@ -209,6 +218,7 @@ class Features:
                 i]
             template_dict['template_aatype'][i] = residue_constants.sequence_to_onehot('A' * len(self.query_sequence),
                                                                                        residue_constants.HHBLITS_AA_TO_ID)
+
             template_dict['template_aatype'][i][expand[0]:expand[1] + 1] = aux_dict['template_aatype'][i]
             seq_aux = list(('-' * len(self.query_sequence)))
             seq_aux[expand[0]:expand[1] + 1] = aux_dict['template_sequence'][i].decode()

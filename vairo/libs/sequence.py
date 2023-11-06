@@ -173,8 +173,7 @@ class SequenceAssembled:
             size = int((self.length - reminder) / number_partitions)
             for chunk in range(0, self.length - reminder, size):
                 chunk_list.append((chunk, size + chunk + overlap))
-            last_element = chunk_list[-1]
-            chunk_list[-1] = (last_element[0], last_element[1] + reminder - overlap)
+            chunk_list[-1] = (chunk_list[-1][0], self.length)
             return chunk_list
         else:
             length_list = [sequence.length for sequence in self.sequence_list_expanded]

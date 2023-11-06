@@ -1,4 +1,5 @@
 import copy
+import itertools
 import logging
 import os
 import shutil
@@ -524,7 +525,8 @@ class MainStructure:
         utils.create_dir(best_rankeds_dir, delete_if_exists=True)
 
         best_ranked_list = []
-        for afrun in self.afrun_list:
+        for j, afrun in enumerate(self.afrun_list):
+            best_ranked_list.append([])
             ranked_list = utils.read_rankeds(input_path=afrun.results_dir)
             if not ranked_list:
                 logging.error('No predictions found')
@@ -533,61 +535,68 @@ class MainStructure:
             plots.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
             ranked_list.sort(key=lambda x: x.plddt, reverse=True)
 
-            new_ranked_path = os.path.join(best_rankeds_dir,
-                                           f'ranked_{afrun.start_chunk + 1}-{afrun.end_chunk}.pdb')
-            shutil.copy2(ranked_list[0].path, new_ranked_path)
-            ranked_list[0].set_path(path=new_ranked_path)
-            best_ranked_list.append(ranked_list[0])
+            # Select the two bests rankeds, I don't think a superposition would help here.
+            for i in range(2):
+                new_ranked_path = os.path.join(best_rankeds_dir,
+                                               f'ranked_{afrun.start_chunk + 1}-{afrun.end_chunk}_v{i}.pdb')
+                shutil.copy2(ranked_list[i].path, new_ranked_path)
+                ranked_list[i].set_path(path=new_ranked_path)
+                best_ranked_list[j].append(ranked_list[i])
 
-        inf_path = best_ranked_list[0].path
-        merge_pdbs_list = [inf_path]
-        for i, ranked in enumerate(best_ranked_list[1:]):
-            len_sequence = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
+        if best_ranked_list:
+            combinations = list(itertools.product(*best_ranked_list))
+            for num, combination in enumerate(combinations):
+                inf_path = combination[0].path
+                merge_pdbs_list = [inf_path]
+                for i, ranked in enumerate(combination[1:]):
+                    len_sequence = len(bioutils.extract_sequence(self.afrun_list[i].fasta_path))
 
-            if self.mosaic_partition:
-                self.mosaic_overlap = self.mosaic_partition[i][1] - self.mosaic_partition[i + 1][0] + 1
+                    if self.mosaic_partition:
+                        self.mosaic_overlap = self.mosaic_partition[i][1] - self.mosaic_partition[i + 1][0] + 1
 
-            inf_ini = len_sequence - self.mosaic_overlap + 1
-            inf_end = len_sequence
-            inm_ini = 1
-            inm_end = self.mosaic_overlap
-            pdb_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_superposed.pdb')
-            delta_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_deltas.dat')
-            bioutils.run_lsqkab(pdb_inf_path=inf_path,
-                                pdb_inm_path=ranked.path,
-                                fit_ini=inf_ini,
-                                fit_end=inf_end,
-                                match_ini=inm_ini,
-                                match_end=inm_end,
-                                pdb_out=pdb_out,
-                                delta_out=delta_out
-                                )
-            best_list = []
-            best_min = MIN_RMSD_SPLIT
-            with open(delta_out, 'r') as f_in:
-                lines = f_in.readlines()
-                lines = [line.replace('CA', '').split() for line in lines]
-                for deltas in zip(lines, lines[1:], lines[2:], lines[3:]):
-                    deltas_sum = sum([float(delta[0]) for delta in deltas])
-                    if deltas_sum <= best_min:
-                        best_list = deltas
-                        best_min = deltas_sum
+                    inf_ini = len_sequence - self.mosaic_overlap + 1
+                    inf_end = len_sequence
+                    inm_ini = 1
+                    inm_end = self.mosaic_overlap
+                    pdb_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_{num}-{i}_superposed.pdb')
+                    delta_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_{num}-{i}_deltas.dat')
+                    bioutils.run_lsqkab(pdb_inf_path=inf_path,
+                                        pdb_inm_path=ranked.path,
+                                        fit_ini=inf_ini,
+                                        fit_end=inf_end,
+                                        match_ini=inm_ini,
+                                        match_end=inm_end,
+                                        pdb_out=pdb_out,
+                                        delta_out=delta_out
+                                        )
+                    best_list = []
+                    best_min = MIN_RMSD_SPLIT
+                    with open(delta_out, 'r') as f_in:
+                        lines = f_in.readlines()
+                        lines = [line.replace('CA', '').split() for line in lines]
+                        for deltas in zip(lines, lines[1:], lines[2:], lines[3:]):
+                            deltas_sum = sum([float(delta[0]) for delta in deltas])
+                            if deltas_sum <= best_min:
+                                best_list = deltas
+                                best_min = deltas_sum
 
-            if not best_list:
-                raise Exception('RMSD minimum requirements not met in order to merge the results in mosaic mode.')
+                    if not best_list:
+                        logging.error('RMSD minimum requirements not met in order to merge the results in mosaic mode')
+                        break
 
-            inf_cut = int(best_list[1][3])
-            inm_cut = int(best_list[2][1])
-            delete_residues = change_res.ChangeResidues(
-                chain_res_dict={'A': [*range(inf_cut + 1, len_sequence + 1, 1)]})
-            delete_residues.delete_residues(pdb_in_path=inf_path, pdb_out_path=inf_path)
-            delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
-            delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
-            merge_pdbs_list.append(pdb_out)
-            inf_path = pdb_out
+                    inf_cut = int(best_list[1][3])
+                    inm_cut = int(best_list[2][1])
+                    delete_residues = change_res.ChangeResidues(
+                        chain_res_dict={'A': [*range(inf_cut + 1, len_sequence + 1, 1)]})
+                    delete_residues.delete_residues(pdb_in_path=inf_path, pdb_out_path=inf_path)
+                    delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
+                    delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
+                    merge_pdbs_list.append(pdb_out)
+                    inf_path = pdb_out
 
-        bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
-                                         pdb_out_path=os.path.join(self.results_dir, 'ranked_0.pdb'))
+                if len(merge_pdbs_list) == len(combination):
+                    bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
+                                                     pdb_out_path=os.path.join(self.results_dir, f'ranked_{num}.pdb'))
 
     def set_feature(self, feature: features.Features):
         self.feature = feature
@@ -642,7 +651,8 @@ class MainStructure:
                         shutil.copy2(os.path.join(results_path, nonsplit_filename), self.results_dir)
 
                 if len(templates_cluster) <= 1:
-                    logging.error('Only one cluster has been created, so all information will appear in the same output file.')
+                    logging.error(
+                        'Only one cluster has been created, so all information will appear in the same output file.')
                     features_file_path = os.path.join(results_path, 'features.pkl')
                     self.set_feature(features.create_features_from_file(features_file_path))
 
