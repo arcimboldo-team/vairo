@@ -1105,7 +1105,7 @@ def remove_hydrogens(pdb_in_path: str, pdb_out_path: str):
     for residue in structure[0].get_residues():
         atoms = residue.get_unpacked_list()
         for atom in atoms:
-            if atom.element not in ['N', 'C', 'O', 'S']:
+            if atom.element not in ['N', 'C', 'O', 'S'] and atom in residue.get_unpacked_list():
                 residue.detach_child(atom.get_id())
 
     # Save the edited structure to a new PDB file
