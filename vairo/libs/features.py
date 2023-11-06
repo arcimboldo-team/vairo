@@ -88,11 +88,10 @@ class Features:
         return [x.decode() for x in self.msa_features['accession_ids']]
 
     def get_msa_by_name(self, name: str) -> Union[str, None]:
-        index = np.flatnonzero(
-            np.core.defchararray.find(name.encode(), self.msa_features['accession_ids']) != -1)
-        if len(index) > 1:
+        index = np.where(self.msa_features['accession_ids'] == name.encode())[0]
+        if index:
             return (''.join(
-                [residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][index[-1]].tolist()]))
+                [residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][index[0]].tolist()]))
         return None
 
     def get_index_by_name(self, name: str) -> Union[int, None]:

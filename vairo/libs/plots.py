@@ -219,17 +219,14 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
     names = a_air.feature.get_names_msa()
     names = [name for name in names if name != '']
     np.set_printoptions(threshold=np.inf)
-
     if ((len(names) > 20 and plot_type == 'msa') or plot_type == 'both') and len(names) > 0:
         number_of_templates += 1
         add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
         for name in names:
             features_search = a_air.feature.get_msa_by_name(name)
-            print(features_search)
             aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
                                                              features_search)
             add_sequences = np.add(aligned_sequence, add_sequences)
-            print(add_sequences)
 
         add_sequences = [aligned / len(names) for aligned in add_sequences]
         new_sequences = scale_values(add_sequences)
