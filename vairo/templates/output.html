@@ -381,15 +381,16 @@
                                 <p>The following changes have been made to the sequence of the templates:</p>
                                     <ul>
                             {% endif %}
-                            <li> {{ template.pdb_id }}:
-                                <ul>
+                            {% if template.change_res_list  %}
+                                <li> {{ template.pdb_id }}:
+                                    <ul>
+                            {% endif %}
                         {% for change in template.change_res_struct.change_residues_list %}
                                     <li>
                                         {% if change.when == 'before_alignment'  %}
                                             Before alignment
                                         {% else %}
-                                            After alignment
-                                            of the templates, sequence has been replaced with
+                                            After alignment of the templates, sequence has been replaced with
                                         {% endif %}
                                         {% if change.resname is not none  %}
                                             {{ change.resname }}
@@ -408,8 +409,10 @@
                                 </ul>
                             </li>
                         {% endif %}
+                        {% if loop.last %}
+                                        </ul>
+                        {% endif %}
                     {% endfor %}
-                    </ul>
                 {% endif %}
 
             </div>
