@@ -267,7 +267,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             for i in range(len(add_sequences)):
                 ax.barh('Templates', 1, left=i + 1, height=0.5, color=str(new_sequences[i]), zorder=2)
 
-        long_names = any([name for name in names_selected if len(name) > 6])
+        long_names = any([name for name in names_selected if len(name) > 7])
         for j, name in reversed(list(enumerate(names_selected))):
             templates_found = True
             number_of_templates += 1
@@ -298,8 +298,9 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
                 features_search = a_air.feature.get_sequence_by_name(name)
                 if hhr_text != '':
                     evalue, aligned, identity, total_residues = bioutils.parse_pdb_hits_hhr(hhr_text, name.upper())
-                    if evalue != None:
-                        text = f'\n{template_name}: Aligned={aligned}({total_residues}) Evalue={evalue} Identity={identity}'
+                    if evalue is not None:
+                        text += f' Aligned={aligned}({total_residues}) Evalue={evalue} Identity={identity}'
+
             legend_elements.append(text)
 
             if features_search is not None:
