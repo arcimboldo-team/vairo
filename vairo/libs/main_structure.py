@@ -505,10 +505,11 @@ class MainStructure:
                 sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[
                                  self.chunk_list[i][0]:self.chunk_list[i][1]]
             run_af2 = False if self.mode == 'guided' and self.cluster_templates else self.run_af2
+            stop_after_msa = True if self.mode == 'naive' else False
             afrun = alphafold_classes.AlphaFoldRun(results_dir=path,
                                                    sequence=sequence_chunk,
                                                    custom_features=self.custom_features,
-                                                   cluster_templates=self.cluster_templates,
+                                                   stop_after_msa=stop_after_msa,
                                                    small_bfd=self.small_bfd,
                                                    start_chunk=self.chunk_list[i][0],
                                                    end_chunk=self.chunk_list[i][1],
@@ -776,6 +777,8 @@ class MainStructure:
         if self.cluster_templates_msa != 0:
             new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa,
                                           delete_positions=self.cluster_templates_msa_mask)
+
+        new_features.select_msa_templates(sequence_assembled=self.sequence_assembled)
         new_features.write_pkl(features_path)
 
         with open(yml_path, 'w') as f_out:

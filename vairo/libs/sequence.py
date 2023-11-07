@@ -150,8 +150,9 @@ class SequenceAssembled:
     def get_position_by_residue_number(self, res_num: int) -> int:
         # Get the number of a residue. Return the position of the sequence it belongs
         for i in range(0, self.total_copies):
-            if res_num - 1 <= self.get_finishing_length(i):
+            if self.get_starting_length(i) <= res_num-1 <= self.get_finishing_length(i):
                 return i
+        return None
 
     def get_real_residue_number(self, i: int, residue: int) -> int:
         # Given a position (i) and a residue, get the residue number without being split in chains
@@ -213,8 +214,21 @@ class SequenceAssembled:
         structure = bioutils.get_structure(path_in)
         result_list = [0] * self.total_copies
         for residue in structure[0].get_residues():
-            i = self.get_position_by_residue_number(bioutils.get_resseq(residue))
-            result_list[i] += 1
+            pos = self.get_position_by_residue_number(bioutils.get_resseq(residue))
+            if pos is not None:
+                result_list[pos] += 1
         for i, num in enumerate(result_list):
             result_list[i] = result_list[i] / self.get_sequence_length(i)
         return result_list
+
+    def get_percentage_sequence(self, sequence_in: str) -> List[float]:
+        result_list = [0] * self.total_copies
+        perc_list = [0] * self.total_copies
+        for i, residue in enumerate(sequence_in, start=1):
+            if residue != 21 and residue != '-':
+                pos = self.get_position_by_residue_number(i)
+                if pos is not None:
+                    result_list[pos] += 1
+        for i, num in enumerate(result_list):
+            perc_list[i] = result_list[i] / self.get_sequence_length(i)
+        return result_list, perc_list

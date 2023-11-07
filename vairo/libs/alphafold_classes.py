@@ -5,14 +5,14 @@ from libs import bioutils, utils, run_alphafold
 
 
 class AlphaFoldRun:
-    def __init__(self, results_dir: str, sequence: str, custom_features: bool, cluster_templates: bool, small_bfd: bool,
+    def __init__(self, results_dir: str, sequence: str, custom_features: bool, stop_after_msa: bool, small_bfd: bool,
                  start_chunk: int,
                  end_chunk: int, run: bool, feature = None):
         self.run_alphafold_bash: str
         self.results_dir: str
         self.fasta_path: str
         self.custom_features: bool
-        self.cluster_templates: bool
+        self.stop_after_msa: bool
         self.small_bfd: bool
         self.feature = None
         self.start_chunk: int
@@ -21,7 +21,7 @@ class AlphaFoldRun:
 
         self.feature = feature
         self.custom_features = custom_features
-        self.cluster_templates = cluster_templates
+        self.stop_after_msa = stop_after_msa
         self.small_bfd = small_bfd
         self.results_dir = results_dir
         self.start_chunk = start_chunk
@@ -58,7 +58,7 @@ class AlphaFoldRun:
                     small_bfd_database_path=alphafold_paths.small_bfd_path,
                     small_bfd=self.small_bfd,
                     read_features_pkl=self.custom_features,
-                    stop_after_msa=self.cluster_templates)
+                    stop_after_msa=self.stop_after_msa)
 
             except SystemExit as e:
                 pass

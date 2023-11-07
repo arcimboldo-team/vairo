@@ -81,13 +81,11 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
     cif_path = os.path.join(output_dir, f'{name}.cif')
     hhr_path = os.path.join(output_dir, f'{name}.hhr')
     bioutils.pdb2mmcif(pdb_in_path=chain_in_path, cif_out_path=cif_path)
-
     if not os.path.exists(database_chain_dir):
         utils.create_dir(database_chain_dir)
         bioutils.write_sequence(sequence_name=f'{sequence_name}:{sequence_chain}',
                                 sequence_amino=list(template_sequence.values())[0],
                                 sequence_path=template_fasta_path)
-
     run_hhalign(fasta_ref_path=query_sequence_path, fasta_aligned_path=template_fasta_path, output_path=hhr_path)
 
     template_features, mapping, identities, aligned_columns, total_columns, evalue = \
@@ -95,18 +93,21 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
             query_sequence=query_sequence,
             hhr_path=hhr_path,
             cif_path=cif_path,
+            sequence_id=sequence_name,
             chain_id=sequence_chain
         )
     if template_features is None or int(aligned_columns) <= int(total_columns * 0.95):
 
         create_database_from_pdb(fasta_path=template_fasta_path, databases=databases, output_dir=database_chain_dir)
         
-        hhr_path2 = os.path.join(output_dir, f'{utils.get_file_name(template_fasta_path)}2.hhr')
-        a3m_path = os.path.join(output_dir, f'{utils.get_file_name(template_fasta_path)}.a3m')
+        hhr_path2 = os.path.join(output_dir, f'{name}2.hhr')
+        a3m_path = os.path.join(output_dir, f'{utils.get_file_name(query_sequence_path)}.a3m')
+
         if not os.path.exists(a3m_path):
             a3m_path = create_a3m(fasta_path=query_sequence_path,
                                   databases=databases,
                                   output_dir=output_dir)
+
         databases_hh_path = os.path.join(database_chain_dir, name)
         run_hhsearch(a3m_path=a3m_path, database_path=databases_hh_path, output_path=hhr_path2)
         template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2 = \
@@ -114,6 +115,7 @@ def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_i
                 query_sequence=query_sequence,
                 hhr_path=hhr_path2,
                 cif_path=cif_path,
+                sequence_id=sequence_name,
                 chain_id=sequence_chain)
 
         if int(aligned_columns) < int(aligned_columns2):

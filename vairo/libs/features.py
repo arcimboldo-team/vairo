@@ -58,6 +58,24 @@ class Features:
         self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape,
                                                       len(self.msa_features['msa']))
 
+    def delete_templates(self, rows_to_delete: List):
+        self.template_features['template_all_atom_positions'] = np.delete(self.template_features['template_all_atom_positions'], rows_to_delete, axis=0)
+        self.template_features['template_all_atom_masks'] = np.delete(self.template_features['template_all_atom_masks'], rows_to_delete, axis=0)
+        self.template_features['template_aatype'] = np.delete(self.template_features['template_aatype'], rows_to_delete, axis=0)
+        self.template_features['template_sequence'] = np.delete(self.template_features['template_sequence'], rows_to_delete, axis=0)
+        self.template_features['template_domain_names'] = np.delete(self.template_features['template_domain_names'], np.array(rows_to_delete), axis=0)
+        self.template_features['template_sum_probs'] = np.delete(self.template_features['template_sum_probs'], rows_to_delete, axis=0)
+
+    def delete_msas(self, rows_to_delete: List):
+        self.msa_features['msa'] = np.delete(self.msa_features['msa'], rows_to_delete, axis=0)
+        self.msa_features['accession_ids'] = np.delete(self.msa_features['accession_ids'], rows_to_delete, axis=0)
+        self.msa_features['deletion_matrix_int'] = np.delete(self.msa_features['deletion_matrix_int'], rows_to_delete,
+                                                             axis=0)
+        self.msa_features['msa_species_identifiers'] = np.delete(self.msa_features['msa_species_identifiers'],
+                                                                 rows_to_delete, axis=0)
+        self.msa_features['num_alignments'] = np.full(self.msa_features['num_alignments'].shape,
+                                                      len(self.msa_features['msa']))
+
     def append_row_in_msa(self, sequence_in: str, sequence_id: str, position: int = None):
         seq_length = len(self.msa_features['msa'][0])
         if position:
@@ -149,7 +167,7 @@ class Features:
             arr = np.array(coverage_msa)
             coverage_msa = arr.argsort()[-finish:][::-1]
             coverage_msa = np.sort(coverage_msa)
-        msa_dict = self.create_empty_msa_list(len(coverage_msa))
+        msa_dict = create_empty_msa_list(len(coverage_msa))
         starting_id = self.get_max_id()
         for i, num in enumerate(coverage_msa):
             msa_dict['msa'][i] = new_msa['msa'][num + start]
@@ -167,7 +185,7 @@ class Features:
     def set_template_features(self, new_templates: Dict, finish: int = -1, positions: List[int] = [],
                               sequence_in: str = None) -> int:
         finish = len(new_templates['template_sequence']) if finish == -1 else finish
-        template_dict = self.create_empty_template_list(finish)
+        template_dict = create_empty_template_list(finish)
         for i in range(0, finish):
             template_name = new_templates['template_domain_names'][i].decode()
             index = self.get_index_by_name(name=template_name)
@@ -237,7 +255,7 @@ class Features:
         features_list = []
         for start_min, start_max in chunk_list:
             new_features = Features(query_sequence=sequence_in[start_min:start_max])
-            msa_dict = self.create_empty_msa_list(self.get_msa_length() - 1)
+            msa_dict = create_empty_msa_list(self.get_msa_length() - 1)
             for i in range(0, self.get_msa_length() - 1):
                 msa_dict['msa'][i] = self.msa_features['msa'][i + 1][start_min:start_max]
                 msa_dict['accession_ids'][i] = str(i).encode()
@@ -247,7 +265,7 @@ class Features:
                 msa_dict['num_alignments'][i] = np.zeros(self.msa_features['num_alignments'].shape)
             if len(msa_dict['msa']) > 0:
                 new_features.append_row_in_msa_from_features(msa_dict)
-            template_dict = self.create_empty_template_list((self.get_templates_length()))
+            template_dict = create_empty_template_list((self.get_templates_length()))
             for i in range(0, self.get_templates_length()):
                 template_dict['template_all_atom_positions'][i] = self.template_features['template_all_atom_positions'][
                                                                       i][start_min:start_max]
@@ -270,26 +288,53 @@ class Features:
             logging.debug(f'Query sequence has the following size: {chunk_list[0][0]}-{chunk_list[0][1]}')
         return features_list
 
-    def create_empty_msa_list(self, length: int) -> Dict:
-        msa_dict = {
-            'msa': [None] * length,
-            'accession_ids': [None] * length,
-            'deletion_matrix_int': [None] * length,
-            'msa_species_identifiers': [None] * length,
-            'num_alignments': [None] * length
-        }
-        return msa_dict
+    def select_msa_templates(self, sequence_assembled):
+        # Trim the templates that has a 50% percentage of it in the glycines part
+        # Trim the msa sequences that has a 50% percentage of it in the glycines part
+        minimum_percentage = 0.50
+        delete_msa = []
+        for i in range(0, self.get_msa_length()):
+            sequence_in = self.msa_features['msa'][i]
+            res_num, perc = sequence_assembled.get_percentage_sequence(sequence_in)
+            if sum(res_num) < len(sequence_in) * minimum_percentage:
+                delete_msa.append(i)
+        if delete_msa:
+            logging.debug(f'{len(delete_msa)} sequences filtered from the MSA due to not enough sequence coverage')
+            self.delete_msas(delete_msa)
+        delete_templates = []
+        for i in range(0, self.get_templates_length()):
+            sequence_in = self.template_features['template_sequence'][i].decode()
+            res_num, perc = sequence_assembled.get_percentage_sequence(sequence_in)
+            if sum(res_num) < len(sequence_in)*minimum_percentage:
+                logging.debug(f'Template {self.template_features["template_domain_names"][i].decode()} has been filtered:')
+                logging.debug(f'    Not enough sequence coverage')
+                delete_templates.append(i)
 
-    def create_empty_template_list(self, length: int) -> Dict:
-        template_dict = {
-            'template_all_atom_positions': [None] * length,
-            'template_all_atom_masks': [None] * length,
-            'template_aatype': [None] * length,
-            'template_sequence': [None] * length,
-            'template_domain_names': [None] * length,
-            'template_sum_probs': [None] * length
-        }
-        return template_dict
+        if delete_templates:
+            self.delete_templates(delete_templates)
+
+
+def create_empty_msa_list(length: int) -> Dict:
+    msa_dict = {
+        'msa': [None] * length,
+        'accession_ids': [None] * length,
+        'deletion_matrix_int': [None] * length,
+        'msa_species_identifiers': [None] * length,
+        'num_alignments': [None] * length
+    }
+    return msa_dict
+
+
+def create_empty_template_list(length: int) -> Dict:
+    template_dict = {
+        'template_all_atom_positions': [None] * length,
+        'template_all_atom_masks': [None] * length,
+        'template_aatype': [None] * length,
+        'template_sequence': [None] * length,
+        'template_domain_names': [None] * length,
+        'template_sum_probs': [None] * length
+    }
+    return template_dict
 
 
 def delete_residues_msa(msa: Dict, position: int, delete_positions: List[int]) -> Dict:
@@ -367,7 +412,7 @@ def empty_template_features(query_sequence):
     return template_features
 
 
-def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain_id) -> List[str]:
+def extract_template_features_from_pdb(query_sequence: str, hhr_path: str, cif_path: str, sequence_id: str, chain_id: str) -> List[str]:
     pdb_id = utils.get_file_name(cif_path)
     hhr_text = open(hhr_path, 'r').read()
     matches = re.finditer(r'No\s+\d+', hhr_text)
@@ -378,18 +423,19 @@ def extract_template_features_from_pdb(query_sequence, hhr_path, cif_path, chain
         detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
     hits_list = [detailed_lines for detailed_lines in detailed_lines_list if
-                 pdb_id[:10] + ':' + chain_id in detailed_lines[1]]
+                 sequence_id + ':' + chain_id in detailed_lines[1]]
 
     if not hits_list:
-        logging.error(f'No hits in the alignment of the chain {chain_id}. Skipping chain.')
+        logging.error(f'No hits in the alignment of the chain {chain_id}.')
         return None, None, None, 0, 0, 0
     detailed_lines = hits_list[0]
 
-    file_id = f'{pdb_id.lower()}'
     try:
         hit = parsers._parse_hhr_hit(detailed_lines)
     except:
         return None, None, None, 0, 0, 0
+
+    file_id = f'{pdb_id.lower()}'
     template_sequence = hit.hit_sequence.replace('-', '')
     mapping = templates._build_query_to_hit_index_mapping(
         hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,

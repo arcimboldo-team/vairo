@@ -171,7 +171,7 @@ def main():
             a_air.set_feature(new_features)
         a_air.align_experimental_pdbs()
         a_air.extract_results()
-        if a_air.cluster_templates and a_air.run_af2:
+        if a_air.mode == 'naive' and a_air.run_af2:
             a_air.templates_clustering()
             a_air.extract_results()
         elif a_air.sequence_assembled.mutated:

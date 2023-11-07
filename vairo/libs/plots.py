@@ -218,7 +218,6 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
 
     names = a_air.feature.get_names_msa()
     names = [name for name in names if name != '']
-    np.set_printoptions(threshold=np.inf)
     if ((len(names) > 20 and plot_type == 'msa') or plot_type == 'both') and len(names) > 0:
         number_of_templates += 1
         add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
