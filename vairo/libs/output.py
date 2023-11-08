@@ -85,6 +85,9 @@ class OutputStructure:
         # Split the templates with chains
         for template in self.templates_list:
             template.add_percentage(vairo_struct.sequence_assembled.get_percentages(template.path))
+            if sum(template.percentage_list) == 0:
+                logging.debug('Template {template.name} does not have any sequence coverage. Skipping')
+                continue
             template.set_split_path(os.path.join(self.templates_path, f'{template.name}.pdb'))
             template.set_sequence_msa(list(bioutils.extract_sequence_msa_from_pdb(template.path).values())[0])
             template.set_identity(
@@ -101,6 +104,9 @@ class OutputStructure:
             template.set_template(template=template_struct,
                                   originalseq_path=os.path.join(self.templates_split_originalseq_dir,
                                                                 f'{template.name}.pdb'))
+
+        #Delete templates with percentage to 0
+        self.templates_list = [template for template in self.templates_list if sum(template.percentage_list) != 0]
 
         logging.error('Reading predictions from the results folder')
         self.ranked_list = utils.read_rankeds(input_path=self.results_dir)

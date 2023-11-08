@@ -6,8 +6,9 @@ import pickle
 import os
 import logging
 
-sys.path.append('/cri4/pep/Programs/vairo')
-
+current_directory = os.path.dirname(os.path.abspath(__file__))
+target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
+sys.path.append(target_directory)
 from vairo.libs import features, bioutils, output, utils, structures, change_res
 
 

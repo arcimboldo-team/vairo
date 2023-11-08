@@ -497,7 +497,10 @@ def generate_ramachandran(pdb_path, output_dir: str = None) -> bool:
                                 phi_psi_angles=phi_psi_angles)
 
     analysis = ramachandran_analysis(phi_psi_angles=phi_psi_angles)
-    percentage = len(analysis) / len(phi_psi_angles) * 100
+    if len(phi_psi_angles) > 0:
+        percentage = len(analysis) / len(phi_psi_angles) * 100
+    else:
+        percentage = 0
     logging.debug(
         f'{round(percentage, 2)}% of outliers in the ramachandran analysis of {utils.get_file_name(pdb_path)}.')
     if percentage > percentage_minimum:
