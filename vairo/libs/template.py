@@ -364,6 +364,11 @@ class Template:
         return [self.template_chains_struct.get_alignment_by_path(path) if path is not None else None for path
                 in self.results_path_position]
 
+    def get_chain_by_position(self) -> str:
+        # Return the chain used in the results path position. If there is any, if not, return None
+        return [utils.get_chain_and_number(path)[0] if path is not None else None for path
+                in self.results_path_position]
+
     def __repr__(self):
         # Print class
         return f' \

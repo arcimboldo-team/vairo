@@ -347,19 +347,18 @@
                         {% endif %}
                     {% endfor %}
                 {% endif %}
-
+                {% if data.num_msa == 0 %}
+                    <p>No sequences have been added to the MSA
+                {% else %}
+                    <p>There is/are {{ data.num_msa }} sequence/s in the MSA
+                {% endif %}
+                {% if data.num_templates == 0 %}
+                    and no templates have been added to the input.
+                {% else %}
+                    and {{ data.num_templates }} template/s that has/have been used as input.
+                {% endif %}<p/>
                 {% if data.info_input %}
-                    {% if data.num_msa == 0 %}
-                        <p>No sequences have been added to the MSA
-                    {% else %}
-                        <p>There is/are {{ data.num_msa }} sequence/s in the MSA
-                    {% endif %}
-                    {% if data.num_templates == 0 %}
-                        and no templates have been added to the input.
-                    {% else %}
-                        and {{ data.num_templates }} template/s has/have been used as input.
-                    {% endif %}
-                    It can be broken down in the following way:</p>
+                    <p>It can be broken down in the following way:</p>
                     <ul>
                         <li>A copy from the query sequence: 1 sequence.</li>
                         {% for info in data.info_input %}
@@ -377,15 +376,17 @@
 
                 {% if data.templates_list %}
                     {% for template in data.templates_list if template.change_res_struct.change_residues_list %}
-                            {% if loop.first %}
-                                <p>The following changes have been made to the sequence of the templates:</p>
-                                    <ul>
-                            {% endif %}
-                            {% if template.change_res_list  %}
-                                <li> {{ template.pdb_id }}:
-                                    <ul>
-                            {% endif %}
+                        {% if loop.first %}
+                            <p>The following changes have been made to the sequence of the templates:</p>
+                            <ul>
+                        {% endif %}
+
                         {% for change in template.change_res_struct.change_residues_list %}
+
+                            {% if loop.first  %}
+                                <li> {{ template.pdb_id }}:
+                                <ul>
+                            {% endif %}
                                     <li>
                                         {% if change.when == 'before_alignment'  %}
                                             Before alignment
@@ -404,11 +405,11 @@
                                         {% endfor %}
                                         </ul>
                                     </li>
-                        {% endfor %}
-                        {% if template.change_res_list  %}
+                            {% if loop.last  %}
                                 </ul>
                             </li>
-                        {% endif %}
+                            {% endif %}
+                        {% endfor %}
                         {% if loop.last %}
                                         </ul>
                         {% endif %}

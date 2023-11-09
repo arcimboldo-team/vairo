@@ -285,11 +285,14 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
                 changed_residues, changed_fasta, _, _ = template.get_changes()
                 changed_residues = bioutils.convert_residues(changed_residues, a_air.sequence_assembled)
                 changed_fasta = bioutils.convert_residues(changed_fasta, a_air.sequence_assembled)
-                for alignment in template.get_results_alignment():
+                chains = template.get_chain_by_position()
+                for i, alignment in enumerate(template.get_results_alignment()):
                     if alignment is not None:
                         text += f'\n\tChain {alignment.chain}: Aligned={alignment.aligned_columns}({alignment.total_columns}) Evalue={alignment.evalue} Identities={alignment.identities}'
+                    elif alignment is None and template.aligned and chains[i] is not None:
+                        text += f'\n\tChain {chains[i]}: Prealigned'
                     else:
-                        text += f'\n\tPrealigned'
+                        text += f'\n\tNot used'
 
             if plot_type == 'msa':
                 features_search = a_air.feature.get_msa_by_name(name)

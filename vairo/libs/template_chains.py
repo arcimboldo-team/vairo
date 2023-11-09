@@ -62,9 +62,10 @@ class TemplateChainsList:
         chain1, code1 = utils.get_chain_and_number(pdb_path)
         pdb_dirname = os.path.dirname(pdb_path)
         for template_chain in self.template_chains_list:
-            #if there is alignment, we check the directory too, because it can be from different alignments
-            if pdb_dirname == os.path.dirname(template_chain.path) and chain1 == template_chain.chain and code1 == template_chain.code:
-                return template_chain           
+            # if there is alignment, we check the directory too, because it can be from different alignments
+            if pdb_dirname == os.path.dirname(
+                    template_chain.path) and chain1 == template_chain.chain and code1 == template_chain.code:
+                return template_chain
         return None
 
     def get_old_sequence(self, pdb_path: str) -> str:
@@ -80,7 +81,7 @@ class TemplateChainsList:
             return template_chain.changed_residues, template_chain.fasta_residues, template_chain.deleted_residues, template_chain.sequence_before_changes
         else:
             return None
-        
+
     def get_number_chains(self) -> int:
         return len({(chain_template.chain, chain_template.code) for chain_template in self.template_chains_list})
 
@@ -110,10 +111,11 @@ class TemplateChainsList:
                 template_chain.match is not None and template_chain.match.check_position()]
 
     def from_dict_to_struct(self, chain_dict: Dict, alignment_dict: Dict, sequence: str, change_res_list,
-                            match_restrict_list: match_restrictions.MatchRestrictionsList, generate_multimer: bool = False, pdb_path: str = ''):
+                            match_restrict_list: match_restrictions.MatchRestrictionsList,
+                            generate_multimer: bool = False, pdb_path: str = ''):
         # Given a dict, with all the information of a Chain (there can be more than one chain in case of multimer)
         # Read all the information, and create as many TemplateChains as paths and append them to the list.
-        
+
         if not chain_dict:
             return chain_dict
 
@@ -174,7 +176,8 @@ class TemplateChainsList:
                 # Store the sequence before changing the residues, as if we want to add it in the MSA, it would not
                 # make sense
                 sequence_before_changes = list(bioutils.extract_sequence_msa_from_pdb(path).values())[0]
-                path_before_changes = os.path.join(os.path.dirname(path), f'{utils.get_file_name(path)}_originalseq.pdb')
+                path_before_changes = os.path.join(os.path.dirname(path),
+                                                   f'{utils.get_file_name(path)}_originalseq.pdb')
                 if os.path.exists(path_before_changes):
                     os.remove(path_before_changes)
                 shutil.copy2(path, path_before_changes)
