@@ -615,13 +615,13 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
         compactness_decision, _ = run_spong(pdb_in_path=pdb.split_path, spong_path=binaries_path.spong_path)
         if completeness and validate_geometry and compactness_decision and not only_ca and identity:
             accepted_pdbs.append(pdb)
-            logging.debug(f'Template {pdb.name} has been accepted')
+            logging.debug(f'PDB {pdb.name} has been accepted')
             if num_residues > pdb_complete_value:
                 pdb_complete_value = num_residues
                 pdb_complete = pdb
         else:
             uncompleted_pdbs.append(pdb)
-            logging.debug(f'Template {pdb.name} has been filtered:')
+            logging.debug(f'PDB {pdb.name} has been filtered:')
             if not completeness:
                 logging.debug(f'    Not complete enough')
             if not validate_geometry:

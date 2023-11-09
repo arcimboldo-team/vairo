@@ -285,7 +285,7 @@ class Features:
             for start_min, start_max in chunk_list:
                 logging.error(f'      - {start_min}-{start_max}')
         else:
-            logging.debug(f'Query sequence has the following size: {chunk_list[0][0]}-{chunk_list[0][1]}')
+            logging.error(f'Query sequence has the following size: {chunk_list[0][0]}-{chunk_list[0][1]}')
         return features_list
 
     def select_msa_templates(self, sequence_assembled):
@@ -299,15 +299,15 @@ class Features:
             if sum(res_num) < len(sequence_in) * minimum_percentage:
                 delete_msa.append(i)
         if delete_msa:
-            logging.debug(f'{len(delete_msa)} sequences filtered from the MSA due to not enough sequence coverage')
+            logging.error(f'{len(delete_msa)} sequences filtered from the MSA due to not enough sequence coverage')
             self.delete_msas(delete_msa)
         delete_templates = []
         for i in range(0, self.get_templates_length()):
             sequence_in = self.template_features['template_sequence'][i].decode()
             res_num, perc = sequence_assembled.get_percentage_sequence(sequence_in)
             if sum(res_num) < len(sequence_in)*minimum_percentage:
-                logging.debug(f'Template {self.template_features["template_domain_names"][i].decode()} has been filtered:')
-                logging.debug(f'    Not enough sequence coverage')
+                logging.error(f'Template {self.template_features["template_domain_names"][i].decode()} has been filtered:')
+                logging.error(f'    Not enough sequence coverage')
                 delete_templates.append(i)
 
         if delete_templates:
