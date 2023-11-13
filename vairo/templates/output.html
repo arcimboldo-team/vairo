@@ -583,7 +583,7 @@
                             <tr>
                                 <td>{{ inter_code }}</td>
                                 {% for pdb_key, pdb_interfaces in data.interfaces_dict.pdbs.items() %}
-                                {% set ns = namespace(found_data=None, inter_color='black') %}
+                                    {% set ns = namespace(found_data=None, inter_color='black') %}
                                     {% for inter in pdb_interfaces %}
                                         {% if inter.name == inter_code %}
                                             {% if data.interfaces_dict.interfaces[inter.name] != None %}
@@ -596,6 +596,7 @@
                                             {% set ns.found_data = inter.area ~ ', ' ~ inter.deltaG ~ ', ' ~ inter.nhb %}
                                         {%  endif %}
                                     {% endfor %}
+
                                     <td><span class={{ns.inter_color}}>{{ ns.found_data }}</span></td>
                                 {% endfor %}
                             </tr>
@@ -624,10 +625,12 @@
                                             <li style="border: none; list-style: disc;">{{ ranked_inter.chain2 }}: Solvation: {{ ranked_inter.solvation2 }}, SE gain: {{ ranked_inter.se_gain2 }}</li>
                                         </ul>
                                     </p>
+
+                            {% set counter_loop = namespace(counter_loop=0) %}
                             {% for template_key, template_interfaces in data.interfaces_dict.pdbs.items() if template_key not in data.filtered_dict %}
-                                {% set outer_loop = loop %}
                                 {% for template_inter in template_interfaces if template_inter.name == ranked_inter.name %}
-                                    {% if outer_loop.first %}
+                                    {% if counter_loop.counter_loop == 0 %}
+                                        {% set counter_loop.counter_loop = 1 %}
                                         <p>The interface can be found in the following pdbs:</p>
                                         <ul style="padding-left: 5px;">
                                     {% endif %}
@@ -640,11 +643,12 @@
                                             </div>
                                         </details>
                                     </li>
-                                    {% if outer_loop.last %}
-                                        </ul>
-                                    {% endif %}
+
                                 {% endfor %}
                             {% endfor %}
+                            {% if counter_loop != 0 %}
+                                </ul>
+                            {% endif %}
                             </details>
                             </li>
                             {% set ns.counter_loop = ns.counter_loop + 1 %}
@@ -889,7 +893,7 @@
                 <h2>Support</h2>
                 <p>
                 For online documentation and tutorials visit <a href="http://chango.ibmb.csic.es">www.chango.ibmb.csic.es</a><br/>
-                For developer support send an email to <a href="mailto:bugs-borges@ibmb.csic.es">bugs-borges@ibmb.csic.es</a><br/> 
+                For developer support send an email to <a href="mailto:bugs-borges@ibmb.csic.es">bugs-borges@ibmb.csic.es</a><br/>
                 Crystallographic Methods Group <br/> 
                 <a href="http://www.ibmb.csic.es/">Molecular Biology Institute of Barcelona </a></p>
             </div>

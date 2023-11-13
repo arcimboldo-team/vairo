@@ -349,6 +349,13 @@ class MainStructure:
                     if self.output.best_experimental is not None and pdb_in.name == self.output.best_experimental:
                         interfaces_dict['interfaces'][interface.name] = interface.deltaG
 
+            #if self.best_experimental is not None:
+            #    num_interfaces = len(interfaces_dict['pdbs'][utils.get_file_name(self.output.best_experimental)])
+            #else:
+            #    num_interfaces = len(interfaces_dict['pdbs'][utils.get_file_name(self.output.ranked_list[0])])
+            #render_dict['num_interfaces'] = num_interfaces
+            #print(num_interfaces)
+
             for ranked in self.output.ranked_list:
                 ranked_qscore_dict[ranked.name] = {}
                 for ranked2 in self.output.ranked_list:
@@ -395,6 +402,7 @@ class MainStructure:
                         if ordered_list:
                             frobenius_plots_list.append(ordered_list.pop())
                         frobenius_dict[ranked.name] = frobenius_plots_list + ordered_list
+
 
             render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
             render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_filtered_list}
