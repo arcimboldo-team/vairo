@@ -30,6 +30,7 @@ def main():
 
         logging.error('Starting VAIRO...')
         logging.error(f'Timestamp: {datetime.now()}')
+        utils.check_external_programs()
         if not os.path.exists(input_path):
             raise Exception(
                 'The given path for the configuration file either does not exist or you do not have the permissions to '

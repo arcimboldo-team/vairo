@@ -935,7 +935,6 @@
                 var cells = rows[i].getElementsByTagName("td");
                 var isEmpty = true;
                 for (var j = 1; j < cells.length; j++) {
-                    alert(cells[j].style.display)
                     if (cells[j].querySelector('span').textContent !== "None" && cells[j].style.display !== "none") {
                         isEmpty = false;
                         break;

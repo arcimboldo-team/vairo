@@ -1,6 +1,7 @@
 import base64, copy, errno, glob, io, json, logging, os, re, shutil, sys
 import random
 import string
+import subprocess
 from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
@@ -9,6 +10,22 @@ from sklearn import preprocessing
 from libs import structures
 from libs.global_variables import INPUT_PARAMETERS
 
+
+def check_external_programs():
+    try:
+        cmd = 'which gesamt'
+        subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    except:
+        raise Exception('The CCP4 programs cannot be found in the PATH. Please check if LSQKAB, PISA and PDBSET are '
+                        'present in the PATH. If the CCP4 suite is not installed, please install it from the '
+                        'following link: https://www.ccp4.ac.uk/')
+
+    try:
+        cmd = 'which maxit'
+        subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    except:
+        raise Exception('MAXIT cannot be found in the PATH. In order to continue, download and install maxit ('
+                        'https://sw-tools.rcsb.org/apps/MAXIT/index.html).')
 
 def print_msg_box(msg, indent=1, title=None):
     lines = msg.split('\n')
