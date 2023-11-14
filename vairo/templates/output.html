@@ -572,11 +572,15 @@
                 <div id="interface_information" class="section-div">
                     <h2>Interface information</h2>
                     <h3>Interfaces in predictions, experimental pdbs and templates (Area, DeltaG, nhb)</h3>
-                    <table>
+                    <table id="interface_table">
                         <tr>
                             <th>Interfaces</th>
-                            {% for key in data.interfaces_dict.pdbs.keys() %}
-                                <th>{{ key }}</th>
+                            {% for pdb_key, pdb_interfaces in data.interfaces_dict.pdbs.items() %}
+                                {% if pdb_interfaces|length >= data.num_interfaces or pdb_key in data.filtered_dict %}
+                                    <th>{{ pdb_key }}</th>
+                                {% else %}
+                                    <th class="hide-row" style="display:none;">{{ pdb_key }}</th>
+                                {% endif %}
                             {% endfor %}
                         </tr>
                         {% for inter_code in data.interfaces_dict.interfaces.keys()  %}
@@ -596,12 +600,16 @@
                                             {% set ns.found_data = inter.area ~ ', ' ~ inter.deltaG ~ ', ' ~ inter.nhb %}
                                         {%  endif %}
                                     {% endfor %}
-
-                                    <td><span class={{ns.inter_color}}>{{ ns.found_data }}</span></td>
+                                    {% if pdb_interfaces|length >= data.num_interfaces or pdb_key in data.filtered_dict %}
+                                        <td><span class={{ns.inter_color}}>{{ ns.found_data }}</span></td>
+                                    {% else %}
+                                        <td class="hide-row" style="display:none;"><span class={{ns.inter_color}}>{{ ns.found_data }}</span></td>
+                                    {% endif %}
                                 {% endfor %}
                             </tr>
                         {% endfor %}
                     </table>
+                    <button onclick="hideInterfaces('interface_table', this)">Show all interfaces</button>
                     <br>
                     <br>
                     {% for ranked_key, ranked_interfaces in data.interfaces_dict.pdbs.items() if ranked_key in data.filtered_dict %}
@@ -638,8 +646,10 @@
                                         <details class="details-frobenius-in">
                                             <summary><h4 style="display:inline">{{ template_key }}</h4></summary>
                                             <div class="div-frobenius">
-                                                <li style="border: none; list-style: disc;">{{ template_inter.chain1 }}: Solvation: {{ template_inter.solvation1 }}, SE gain: {{ template_inter.se_gain1 }}</li>
-                                                <li style="border: none; list-style: disc;">{{ template_inter.chain2 }}: Solvation: {{ template_inter.solvation2 }}, SE gain: {{ template_inter.se_gain2 }}</li>                                                                    
+                                                <ul>
+                                                    <li style="border: none; list-style: disc;">{{ template_inter.chain1 }}: Solvation: {{ template_inter.solvation1 }}, SE gain: {{ template_inter.se_gain1 }}</li>
+                                                    <li style="border: none; list-style: disc;">{{ template_inter.chain2 }}: Solvation: {{ template_inter.solvation2 }}, SE gain: {{ template_inter.se_gain2 }}</li>
+                                                </ul>
                                             </div>
                                         </details>
                                     </li>
@@ -736,7 +746,7 @@
                     <button onclick="hideValues('table_energies', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'ranked_qscore_dict' in data.table %}
-                    <h3>Superposition between predictions (Q-Score)</h3>
+                    <h3>Superposition between predictions (Q-Score(%))</h3>
                     <table id="table_rankeds_qscore">
                         <tr>
                             <th>Prediction</th>
@@ -750,7 +760,7 @@
                             {% elif key in data.filtered_dict %}
                                 <tr class="blue-row">
                             {% else %}
-                            <tr class="hide-row" style="display:none;">
+                                <tr class="hide-row" style="display:none;">
                             {% endif %}
                                 <td>{{ key }}</td>
                                 {% for value2 in value.values() %}
@@ -762,7 +772,7 @@
                     <button onclick="hideValues('table_rankeds_qscore', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'rmsd_dict' in data.table %}
-                    <h3>Superposition of predictions and templates (Q-Score, RMSD, superposed residues (total residues))</h3>
+                    <h3>Superposition of predictions and templates (Q-Score (%), RMSD (<span>&#8491;</span>), superposed residues (total residues))</h3>
                     <table id="table_templates_rmsd">
                         <tr>
                             <th>Prediction</th>
@@ -790,7 +800,7 @@
                     <button onclick="hideValues('table_templates_rmsd', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
-                    <h3>Superposition of experimental pdbs with predictions and templates (Q-Score, RMSD, superposed residues (total residues))</h3>
+                    <h3>Superposition of experimental pdbs with predictions and templates (Q-Score (%), RMSD (<span>&#8491;</span>), superposed residues (total residues))</h3>
                     <table>
                         <tr>
                             <th>experimental pdb</th>
@@ -893,13 +903,17 @@
                 <h2>Support</h2>
                 <p>
                 For online documentation and tutorials visit <a href="http://chango.ibmb.csic.es">www.chango.ibmb.csic.es</a><br/>
-                For developer support send an email to <a href="mailto:bugs-borges@ibmb.csic.es">bugs-borges@ibmb.csic.es</a><br/>
+                For developer support email <a href="mailto:bugs-borges@ibmb.csic.es">bugs-borges@ibmb.csic.es</a><br/>
                 Crystallographic Methods Group <br/> 
                 <a href="http://www.ibmb.csic.es/">Molecular Biology Institute of Barcelona </a></p>
             </div>
         </section>
     </body>
     <script>
+        window.onload = function () {
+            hideEmptyRows('interface_table');
+        };
+
         function move_to(e){
             window.location.hash = e.target.getAttribute("name");
         }
@@ -911,9 +925,39 @@
                 var element = elements[i];
                 element.style.display = element.style.display === "none" ? "" : "none";
             }
-            console.log(button.textContent)
-            button.textContent = button.textContent === "Show all predictions"? "Hide bad predictions" : "Show all predictions";
+            button.textContent = button.textContent === "Show all predictions"? "Hide bad predictions": "Show all predictions";
         }
 
+        function hideEmptyRows(tableId){
+            var table = document.getElementById(tableId, this);
+            var rows = table.getElementsByTagName("tr");
+            for (var i = 1; i < rows.length; i++) {
+                var cells = rows[i].getElementsByTagName("td");
+                var isEmpty = true;
+                for (var j = 1; j < cells.length; j++) {
+                    alert(cells[j].style.display)
+                    if (cells[j].querySelector('span').textContent !== "None" && cells[j].style.display !== "none") {
+                        isEmpty = false;
+                        break;
+                    }
+                }
+                if (isEmpty) {
+                    for (var j = 0; j < cells.length; j++) {
+                        cells[j].classList.add("hide-row");
+                        cells[j].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        function hideInterfaces(tableId, button) {
+            var table = document.getElementById(tableId, this);
+            var elements = table.getElementsByClassName("hide-row");
+            for (var i = 0; i < elements.length; i++) {
+                var element = elements[i];
+                element.style.display = element.style.display === "none" ? "" : "none";
+            }
+            button.textContent = button.textContent === "Show all interfaces"? "Hide interfaces": "Show all interfaces";
+        }
     </script>
 </html>

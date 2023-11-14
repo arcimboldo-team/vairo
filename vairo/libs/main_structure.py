@@ -349,12 +349,11 @@ class MainStructure:
                     if self.output.best_experimental is not None and pdb_in.name == self.output.best_experimental:
                         interfaces_dict['interfaces'][interface.name] = interface.deltaG
 
-            #if self.best_experimental is not None:
-            #    num_interfaces = len(interfaces_dict['pdbs'][utils.get_file_name(self.output.best_experimental)])
-            #else:
-            #    num_interfaces = len(interfaces_dict['pdbs'][utils.get_file_name(self.output.ranked_list[0])])
-            #render_dict['num_interfaces'] = num_interfaces
-            #print(num_interfaces)
+            if self.output.best_experimental is not None:
+                num_interfaces = len(interfaces_dict['pdbs'][self.output.best_experimental])
+            else:
+                num_interfaces = len(interfaces_dict['pdbs'][self.output.ranked_list[0].name])
+            render_dict['num_interfaces'] = num_interfaces
 
             for ranked in self.output.ranked_list:
                 ranked_qscore_dict[ranked.name] = {}
@@ -402,7 +401,6 @@ class MainStructure:
                         if ordered_list:
                             frobenius_plots_list.append(ordered_list.pop())
                         frobenius_dict[ranked.name] = frobenius_plots_list + ordered_list
-
 
             render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
             render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_filtered_list}
@@ -567,8 +565,10 @@ class MainStructure:
                     inf_end = len_sequence
                     inm_ini = 1
                     inm_end = self.mosaic_overlap
-                    pdb_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_{num}-{i}_superposed.pdb')
-                    delta_out = os.path.join(best_rankeds_dir, f'{utils.get_file_name(ranked.path)}_{num}-{i}_deltas.dat')
+                    pdb_out = os.path.join(best_rankeds_dir,
+                                           f'{utils.get_file_name(ranked.path)}_{num}-{i}_superposed.pdb')
+                    delta_out = os.path.join(best_rankeds_dir,
+                                             f'{utils.get_file_name(ranked.path)}_{num}-{i}_deltas.dat')
                     bioutils.run_lsqkab(pdb_inf_path=inf_path,
                                         pdb_inm_path=ranked.path,
                                         fit_ini=inf_ini,
