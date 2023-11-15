@@ -233,7 +233,7 @@ class OutputStructure:
                 ranked.set_minimized_path(os.path.join(self.results_dir, f'{ranked.name}_minimized.pdb'))
                 try:
                     ranked.set_potential_energy(
-                        bioutils.run_openmm(pdb_in_path=ranked.path, pdb_out_path=ranked.minimized_path))
+                        bioutils.run_openmm(pdb_in_path=ranked.split_path, pdb_out_path=ranked.minimized_path))
                 except:
                     logging.debug(f'Not possible to calculate the energies for pdb {ranked.path}')
                 found = False

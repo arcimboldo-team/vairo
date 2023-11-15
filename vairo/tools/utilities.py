@@ -79,7 +79,8 @@ def superpose_chains(pdb1_path: str, pdb2_path: str, tmp_dir: str):
 
 
 def run_minimize(pdb1_path: str, pdb2_path: str):
-    print(bioutils.run_openmm(pdb1_path, pdb2_path))
+    bioutils.remove_hetatm(pdb1_path, pdb2_path)
+    print(bioutils.run_openmm(pdb2_path, pdb2_path))
 
 
 def renumber():
