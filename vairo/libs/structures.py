@@ -165,6 +165,7 @@ class Pdb:
         self.bs: int
         self.total_residues: int
         self.interfaces: List[Interface] = []
+        self.accepted_interfaces: bool = False
 
         self.path = path
         self.name = utils.get_file_name(path)
@@ -188,6 +189,9 @@ class Pdb:
 
     def set_interfaces(self, interfaces: List[Interface]):
         self.interfaces = interfaces
+
+    def set_accepted_interfaces(self, value: bool):
+        self.accepted_interfaces = value
 
 
 class ExperimentalPdb(Pdb):
@@ -272,4 +276,5 @@ class Ranked(Pdb):
         self.superposition_templates.sort(key=lambda x: (x.qscore is None, x.qscore), reverse=True)
 
     def sort_experimental_rankeds(self):
-        self.superposition_experimental.sort(key=lambda x: (x.aligned_residues is None, x.aligned_residues), reverse=True)
+        self.superposition_experimental.sort(key=lambda x: (x.aligned_residues is None, x.aligned_residues),
+                                             reverse=True)

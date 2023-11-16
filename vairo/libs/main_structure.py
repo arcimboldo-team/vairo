@@ -349,11 +349,7 @@ class MainStructure:
                     if self.output.best_experimental is not None and pdb_in.name == self.output.best_experimental:
                         interfaces_dict['interfaces'][interface.name] = interface.deltaG
 
-            if self.output.best_experimental is not None:
-                num_interfaces = len(interfaces_dict['pdbs'][self.output.best_experimental])
-            else:
-                num_interfaces = len(interfaces_dict['pdbs'][self.output.ranked_list[0].name])
-            render_dict['num_interfaces'] = num_interfaces
+            render_dict['num_interfaces'] = self.output.num_interfaces
 
             for ranked in self.output.ranked_list:
                 ranked_qscore_dict[ranked.name] = {}

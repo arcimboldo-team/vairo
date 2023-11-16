@@ -56,6 +56,7 @@ class OutputStructure:
         self.group_ranked_by_qscore_dict: dict = {}
         self.templates_selected: List = []
         self.dendogram_struct: structures.Dendogram = None
+        self.num_interfaces: int = 0
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -105,7 +106,7 @@ class OutputStructure:
                                   originalseq_path=os.path.join(self.templates_split_originalseq_dir,
                                                                 f'{template.name}.pdb'))
 
-        #Delete templates with percentage to 0
+        # Delete templates with percentage to 0
         self.templates_list = [template for template in self.templates_list if sum(template.percentage_list) != 0]
 
         logging.error('Reading predictions from the results folder')
@@ -359,6 +360,23 @@ class OutputStructure:
                                                              domains_dict=domains_dict)
                             interface.set_structure(dimers_path)
                         pdb_in.set_interfaces(interfaces_data_list)
+
+        if sequence_assembled.total_copies > 1:
+            if self.best_experimental is not None:
+                exp = [experimental for experimental in self.experimental_list if experimental.name == self.best_experimental][0]
+                self.num_interfaces = len(exp.interfaces)
+                exp.set_accepted_interfaces(True)
+            else:
+                self.num_interfaces = len(self.output.ranked_list[0].interfaces)
+
+            self.ranked_list[0].set_accepted_interfaces(True)
+            for ranked in self.ranked_list[1:]:
+                if len(ranked.interfaces) >= self.num_interfaces:
+                    ranked.set_accepted_interfaces(True)
+
+
+
+
         self.select_templates()
         os.chdir(store_old_dir)
 

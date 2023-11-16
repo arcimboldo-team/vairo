@@ -51,28 +51,66 @@ cmd.set("nonbonded_as_cylinders", 'on')
 cmd.set("nb_spheres_quality", '3')
 cmd.set("alignment_as_cylinders", 'on')
 cmd.set("dot_as_spheres", 'on')
+cmd.set("valence", 'off')
 """
     i = 1
     if a_air.output.ranked_list:
-        pdb_list = [ranked for ranked in a_air.output.ranked_list if ranked.filtered]
-        pdb_list.extend(a_air.output.experimental_list)
+        pdb_list = [a_air.output.ranked_list[0]]
+        pdb_list.extend([experimental for experimental in a_air.output.experimental_list if
+                         experimental.name == a_air.output.best_experimental])
+        pdb_list.extend([ranked for ranked in a_air.output.ranked_list[1:] if ranked.filtered])
+        pdb_list.extend([experimental for experimental in a_air.output.experimental_list if
+                         experimental.name != a_air.output.best_experimental])
         pdb_list.extend(a_air.output.templates_list)
-        for j, pdb_in in enumerate(pdb_list):
+
+        for pdb_in in pdb_list:
             script += f'cmd.load("{pdb_in.split_path}", "{pdb_in.name}")\n'
-            if j != 0:
-                script += f'cmd.disable("{pdb_in.name}")\n'
-            for interface in pdb_in.interfaces:
-                script += f'cmd.load("{interface.path}", "{utils.get_file_name(interface.path)}")\n'
-                script += f'cmd.disable("{utils.get_file_name(interface.path)}")\n'
+            if pdb_in in a_air.output.ranked_list:
+                script += (f'cmd.spectrum(expression="b", palette="rainbow_rev", selection="{pdb_in.name}", minimum=0, '
+                           f'maximum=100)\n')
+            elif pdb_in in a_air.output.experimental_list:
+                script += f'cmd.color("gray70", "{pdb_in.name}")\n'
+            script += f'cmd.show_as("cartoon", "{pdb_in.name}")\n'
+
+            if pdb_in.accepted_interfaces:
+                for interface in pdb_in.interfaces:
+                    script += f'cmd.load("{interface.path}", "{utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.show_as("sticks", "{utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("yelloworange", "{utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("gray", "elem H and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("blue", "elem N and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("red", "elem O and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("orange", "elem S and {utils.get_file_name(interface.path)}")\n'
+
+        script += f'cmd.reset()\n'
+
+        if a_air.output.ranked_list[0].interfaces:
+            for interface in a_air.output.ranked_list[0].interfaces:
+                script += f'cmd.disable("*")\n'
+                script += f'cmd.enable("{a_air.output.ranked_list[0].name}")\n'
+                script += f'cmd.enable("{utils.get_file_name(interface.path)}")\n'
+                script += f'cmd.orient("{a_air.output.ranked_list[0].name}")\n'
+                script += f'cmd.zoom("{utils.get_file_name(interface.path)}")\n'
+                script += (f'cmd.scene(key="{i}: {interface.name} interface", action="store", message="Zoom '
+                           f'into interface {interface.name}")\n')
+                i += 1
 
         for zoom in a_air.pymol_show_list:
-            key = f'F{i}'
             script += f'cmd.zoom("center", {zoom})\n'
-            script += f'cmd.scene(key="{key}", action="store", message="Zoom into residues {zoom}")\n'
-            script += f'cmd.scene(key="{key}", action="rename", new_key="{key}: User zoom")\n'
+            script += f'cmd.scene(key="{i}: Residues {zoom}", action="store", message="Zoom into residues {zoom}")\n'
             i += 1
 
-    script += f'cmd.reset()\n'
+    script += f'cmd.disable("*")\n'
+    script += f'cmd.enable("{a_air.output.ranked_list[0].name}")\n'
+    script += f'cmd.enable("{a_air.output.best_experimental}")\n'
+    script += f'cmd.orient("{a_air.output.ranked_list[0].name}")\n'
+    script += (f'cmd.scene(key="{i}: Reset best prediction (and experimental)", action="store", message="Reset best '
+               f'prediction (and experimental)")\n')
+
+    script += f'cmd.disable("*")\n'
+    script += f'cmd.enable("{a_air.output.ranked_list[0].name}")\n'
+    script += f'cmd.enable("{a_air.output.best_experimental}")\n'
+    script += f'cmd.orient("{a_air.output.ranked_list[0].name}")\n'
     script += f'cmd.save("{a_air.output.pymol_session_path}")\n'
     script += 'cmd.quit()\n'
 
