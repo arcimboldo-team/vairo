@@ -13,7 +13,7 @@ from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
 from alphafold.relax import cleanup, amber_minimize
 from simtk import unit
-from libs import alphafold_classes, change_res, hhsearch, structures, utils, plots, global_variables, sequence, \
+from libs import change_res, hhsearch, structures, utils, plots, global_variables, sequence, \
     structures
 
 
@@ -1411,7 +1411,7 @@ def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain_list: List[st
 
 
 def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str],
-              databases: alphafold_classes.AlphaFoldPaths):
+              databases):
     with tempfile.TemporaryDirectory() as tmpdirname:
         chain_dict = split_pdb_in_chains(pdb_path=pdb_in_path, output_dir=tmpdirname)
         chains_aligned = []
@@ -1419,7 +1419,7 @@ def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str],
             return None
         else:
             for i, path in enumerate(chain_dict.values()):
-                aligned_chain, aligned_info = hhsearch.run_hh(output_dir=tmpdirname, database_dir=tmpdirname,
+                aligned_chain, _ = hhsearch.run_hh(output_dir=tmpdirname, database_dir=tmpdirname,
                                                               query_sequence_path=sequences_list[i],
                                                               chain_in_path=path, databases=databases)
                 shutil.copy2(aligned_chain, path)

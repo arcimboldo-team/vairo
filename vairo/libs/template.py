@@ -84,6 +84,7 @@ class Template:
                 change_list = utils.expand_residues(residues_match_list)
                 new_dict = {chain_match: change_list}
                 residues = change_res.ChangeResidues(chain_res_dict=new_dict)
+                
             position = utils.get_input_value(name='position', section='match', input_dict=parameters_match_dict)
             if position != -1:
                 position = position - 1
