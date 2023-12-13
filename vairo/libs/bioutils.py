@@ -889,6 +889,27 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
     return return_list, changes_dict
 
+def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
+    match = 6
+    gap = 0
+    group_match = 4
+    mismatch = 2
+    return_list = []
+    changes_dict = {}
+    for i, (res1, res2) in enumerate(itertools.zip_longest(sequence1, sequence2, fillvalue='-')):
+        if res1 == '-' or res2 == '-':
+            return_list.append(gap)
+        elif res1 == res2 :
+            return_list.append(match)            
+        elif get_group(res1) == get_group(res2):
+            return_list.append(group_match)
+        else:
+            return_list.append(mismatch)
+        if res1 != res2:
+            changes_dict[i] = res2
+
+    return return_list, changes_dict
+
 
 def sequence_identity(seq1, seq2) -> float:
     # Compare the identity of two sequences
@@ -1350,48 +1371,46 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     return add_domains_dict
 
 
+
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
     if length <= 0:
         return []
+
     combinated_list = list(itertools.product(*input_list))
+    trimmed_list = [sorted(element, key=lambda x: x[2])[:min(len(element), length)] for element in combinated_list if element]
+
+
+
+
+def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
+    if length <= 0:
+        return []
     trimmed_list = []
-    for element in combinated_list:
-        aux_length = length
-        if len(element) <= 0:
+    for element in itertools.product(*input_list):
+        if not element:
             continue
-        elif len(element) < length:
-            aux_length = len(element)
 
         sorted_list = sorted(element, key=lambda x: x[2])
-        x_list = []
-        y_list = []
-        aux_list = []
+        aux_list, x_list, y_list = [], set(), set()
         for tup in sorted_list:
             if tup[0] not in x_list and tup[1] not in y_list:
                 aux_list.append(tup)
-                x_list.append(tup[0])
-                y_list.append(tup[1])
-            if len(aux_list) == aux_length:
+                x_list.add(tup[0])
+                y_list.add(tup[1])
+            if len(aux_list) == min(length, len(element)):
                 break
         trimmed_list.append(aux_list)
 
-    if trimmed_list:
-        max_length = max(len(lst) for lst in trimmed_list)
-    else:
+    if not trimmed_list:
         return []
 
+    max_length = max(len(lst) for lst in trimmed_list)
     trimmed_list = [lst for lst in trimmed_list if len(lst) == max_length]
-
-    score_list = []
-    for element in trimmed_list:
-        score_list.append(sum(z for _, _, z, _, _ in element))
-
-    if score_list:
-        min_value = min(score_list)
-        min_index = score_list.index(min_value)
-        return trimmed_list[min_index]
-    else:
+    score_list = [sum(z for _, _, z, _, _ in element) for element in trimmed_list]
+    if not score_list:
         return []
+    min_score_index = min(range(len(score_list)), key=score_list.__getitem__)
+    return trimmed_list[min_score_index]
 
 
 def split_dimers_in_pdb(pdb_in_path: str, pdb_out_path: str, chain_list: List[str]):

@@ -187,6 +187,7 @@ def main():
         logging.error(f'Timestamp: {datetime.now()}')
         logging.error('VAIRO has finished successfully')
         a_air.generate_output()
+        a_air.feature.rewrite_with_extra_info(path=features_path, query_seq=a_air.sequence_assembled.sequence_mutated_assembled)
 
     except SystemExit as e:
         sys.exit(e)

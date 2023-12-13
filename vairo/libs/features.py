@@ -25,6 +25,11 @@ class Features:
                                                                  num_res=len(self.query_sequence))
         self.msa_features = empty_msa_features(query_sequence=self.query_sequence)
         self.template_features = empty_template_features(query_sequence=self.query_sequence)
+        self.extra_info = {'msa_coverage': [], 
+                           'templates_coverage': [], 
+                           'num_msa': 0, 
+                           'num_templates:': 0
+                           }
 
     def append_new_template_features(self, new_template_features: Dict, custom_sum_prob: int = None) -> Dict:
         self.template_features['template_all_atom_positions'] = np.vstack(
@@ -131,7 +136,7 @@ class Features:
 
     def merge_features(self) -> Dict[Any, Any]:
         logging.debug(f'Merging sequence, msa and template features!')
-        return {**self.sequence_features, **self.msa_features, **self.template_features}
+        return {**self.sequence_features, **self.msa_features, **self.template_features, **self.extra_info}
 
     def get_template_by_index(self, index: int) -> Dict:
         template_dict = {
@@ -312,6 +317,15 @@ class Features:
 
         if delete_templates:
             self.delete_templates(delete_templates)
+
+    def rewrite_with_extra_info(self, path: str, query_seq: str):
+        self.extra_info['num_msa'] = self.get_msa_length()
+        self.extra_info['num_templates'] = self.get_templates_length()
+        seq_templates = [seq.decode() for seq in self.template_features['template_sequence']]
+        self.extra_info['templates_coverage'] = utils.calculate_coverage(query_seq=query_seq, sequences=seq_templates)
+        seq_msa = [''.join(residue_constants.ID_TO_HHBLITS_AA[res] for res in msa.tolist()) for msa in self.msa_features['msa']]
+        self.extra_info['msa_coverage'] = utils.calculate_coverage(query_seq=query_seq, sequences=seq_msa)
+        self.write_pkl(pkl_path=path)
 
 
 def create_empty_msa_list(length: int) -> Dict:
@@ -610,6 +624,12 @@ def print_features_from_file(pkl_in_path: str):
         for i in range(4):
             logging.error('\t' + ''.join(np.array_split(list(seq.decode('utf-8')), 4)[i].tolist()))
         logging.error('\n')
+
+    logging.error('INFORMATION:')
+    keys = ['num_msa', 'num_templates', 'msa_coverage', 'templates_coverage']
+    for key in keys:
+        if key in features_dict:
+            logging.error(f"{key}: {features_dict[key]}")
 
 
 def create_features_from_file(pkl_in_path: str) -> Features:

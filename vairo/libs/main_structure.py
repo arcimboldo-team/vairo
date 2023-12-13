@@ -534,8 +534,7 @@ class MainStructure:
             if not ranked_list:
                 logging.error('No predictions found')
                 return
-            plot_path = os.path.join(afrun.results_dir, 'plddt.png')
-            plots.plot_plddt(plot_path=plot_path, ranked_list=ranked_list)
+            [ranked.set_plddt() for ranked in ranked_list]
             ranked_list.sort(key=lambda x: x.plddt, reverse=True)
 
             # Select the two bests rankeds, I don't think a superposition would help here.

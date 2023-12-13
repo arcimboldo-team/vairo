@@ -1,4 +1,5 @@
 import base64, copy, errno, glob, io, json, logging, os, re, shutil, sys
+import math
 import random
 import string
 import subprocess
@@ -6,10 +7,34 @@ from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+import numpy as np
 from sklearn import preprocessing
-from libs import structures
+from libs import structures, bioutils
 from libs.global_variables import INPUT_PARAMETERS
 
+
+def scale_values(input_list: List[int]) -> List[int]:
+    max_value = max(input_list)
+    new_list = []
+    for value in input_list:
+        if value <= 0:
+            new_value = 0
+        elif value >= max_value:
+            new_value = 1
+        else:
+            new_value = round(math.log(value + 1) / math.log(max_value + 1), 2)
+        new_list.append(new_value)
+    return new_list
+
+def calculate_coverage(query_seq: str, sequences: List[str]):
+    add_sequences = np.zeros(len(query_seq))
+    for seq in sequences:
+        aligned_sequence, _ = bioutils.compare_sequences(query_seq, seq)
+        add_sequences += np.array(aligned_sequence)
+    add_sequences /= len(sequences)
+    new_sequences = scale_values(add_sequences)
+    new_sequences = [1 - i for i in new_sequences]
+    return new_sequences
 
 def check_external_programs():
     try:

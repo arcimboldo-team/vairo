@@ -1,5 +1,6 @@
 import dataclasses
 import os
+import statistics
 import sys
 import shutil
 from typing import Dict, List
@@ -158,7 +159,7 @@ class Pdb:
     def __init__(self, path: str):
         self.path: str
         self.name: str
-        self.split_path: str
+        self.split_path: str = None
         self.compactness: float
         self.ramachandran: float
         self.ah: int
@@ -192,6 +193,7 @@ class Pdb:
 
     def set_accepted_interfaces(self, value: bool):
         self.accepted_interfaces = value
+
 
 
 class ExperimentalPdb(Pdb):
@@ -242,8 +244,14 @@ class Ranked(Pdb):
         self.qscore_dict: Dict = {}
         self.encoded: bytes
 
-    def set_plddt(self, plddt: float):
-        self.plddt = round(plddt)
+    def set_plddt(self):
+        if self.split_path is not None:
+            split = bioutils.read_bfactors_from_residues(pdb_path=self.split_path)
+        else:
+            split = bioutils.read_bfactors_from_residues(pdb_path=self.path)
+        split = [item for sublist in split.values() for item in sublist]
+        plddt_list = [value for value in split if value is not None]
+        self.plddt = round(statistics.mean(map(float, plddt_list)), 2)
 
     def set_qscore(self, qscore: float):
         self.qscore = round(qscore, 3) if qscore is not None else qscore

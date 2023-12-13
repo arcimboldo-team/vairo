@@ -1,28 +1,12 @@
-import math
 import os
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
-import numpy as np
 import statistics
 from libs import bioutils, utils
 from typing import Dict, List
 
 MATPLOTLIB_FONT = 14
 plt.set_loglevel('WARNING')
-
-
-def scale_values(input_list: List[int]) -> List[int]:
-    max_value = max(input_list)
-    new_list = []
-    for value in input_list:
-        if value <= 0:
-            new_value = 0
-        elif value >= max_value:
-            new_value = 1
-        else:
-            new_value = round(math.log(value + 1) / math.log(max_value + 1), 2)
-        new_list.append(new_value)
-    return new_list
 
 
 def generate_minor_ticks(ax_list: List[int], step: int) -> List[int]:
@@ -50,14 +34,13 @@ def plot_ramachandran(plot_path: str, phi_psi_angles: List[List[float]]):
     plt.cla()
 
 
-def plot_plddt(plot_path: str, ranked_list: List) -> float:
+def plot_plddt(plot_path: str, ranked_list: List):
     plt.figure(figsize=(18, 6))
     plt.rcParams.update({'font.size': MATPLOTLIB_FONT})
     for ranked in ranked_list:
         return_dict = bioutils.read_bfactors_from_residues(pdb_path=ranked.path)
         plddt_list = [value for value in list(return_dict.values())[0] if value is not None]
         res_list = [int(item) for item in range(1, len(plddt_list) + 1)]
-        ranked.set_plddt(round(statistics.mean(map(float, plddt_list)), 2))
         plt.plot(res_list, plddt_list, label=ranked.name)
     plt.legend(loc='upper right')
     plt.xlabel('residue number')
@@ -65,8 +48,6 @@ def plot_plddt(plot_path: str, ranked_list: List) -> float:
     plt.ylim(0, 100)
     plt.savefig(plot_path, dpi=100)
     plt.cla()
-    max_plddt = max([ranked.plddt for ranked in ranked_list])
-    return max_plddt
 
 
 def plot_cc_analysis(plot_path: str, analysis_dict: Dict, clusters: List, predictions: bool = False):
@@ -220,16 +201,9 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
     names = [name for name in names if name != '']
     if ((len(names) > 20 and plot_type == 'msa') or plot_type == 'both') and len(names) > 0:
         number_of_templates += 1
-        add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
-        for name in names:
-            features_search = a_air.feature.get_msa_by_name(name)
-            aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
-                                                             features_search)
-            add_sequences = np.add(aligned_sequence, add_sequences)
+        sequences_msa = [a_air.feature.get_msa_by_name(name) for name in names]
+        new_sequences = utils.calculate_coverage(query_seq=a_air.sequence_assembled.sequence_mutated_assembled, sequences=sequences_msa)
 
-        add_sequences = [aligned / len(names) for aligned in add_sequences]
-        new_sequences = scale_values(add_sequences)
-        new_sequences = [1 - value for value in new_sequences]
         if plot_type == 'both':
             name = 'MSA'
         else:
@@ -247,22 +221,15 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
             names_selected = names
         pdb_hits_path = os.path.join(a_air.results_dir, 'msas/pdb_hits.hhr')
         hhr_text = ''
-        add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
         if os.path.exists(pdb_hits_path):
             hhr_text = open(pdb_hits_path, 'r').read()
 
         if reduced and len(names) > 20:
             number_of_templates += 1
-            for j, name in reversed(list(enumerate(names))):
-                features_search = a_air.feature.get_sequence_by_name(name)
-                if features_search is not None:
-                    aligned_sequence, _ = bioutils.compare_sequences(
-                        a_air.sequence_assembled.sequence_mutated_assembled,
-                        features_search)
-                    add_sequences = np.add(aligned_sequence, add_sequences)
-            add_sequences = [aligned / len(names) for aligned in add_sequences]
-            new_sequences = scale_values(add_sequences)
-            new_sequences = [1 - value for value in new_sequences]
+            sequences_templates = [a_air.feature.get_sequence_by_name(name) for name in reversed(list(enumerate(names))) if a_air.feature.get_sequence_by_name(name) is not None]
+            new_sequences = utils.calculate_coverage(query_seq=a_air.sequence_assembled.sequence_mutated_assembled, sequences=sequences_templates)
+            add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
+
             for i in range(len(add_sequences)):
                 ax.barh('Templates', 1, left=i + 1, height=0.5, color=str(new_sequences[i]), zorder=2)
 

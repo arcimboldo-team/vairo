@@ -117,7 +117,6 @@ class OutputStructure:
             return
 
         # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
-        max_plddt = plots.plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
                                 sequence_amino=vairo_struct.sequence_assembled.sequence_assembled,
                                 sequence_path=self.sequence_path)
@@ -132,7 +131,12 @@ class OutputStructure:
             bioutils.split_chains_assembly(pdb_in_path=ranked.path,
                                            pdb_out_path=ranked.split_path,
                                            sequence_assembled=vairo_struct.sequence_assembled)
+            ranked.set_plddt()
 
+        plots.plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
+        max_plddt = max([ranked.plddt for ranked in self.ranked_list])
+        
+        for ranked in self.ranked_list:
             accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.split_path,
                                                                          output_dir=self.plots_path)
             if perc is not None:
@@ -367,15 +371,12 @@ class OutputStructure:
                 self.num_interfaces = len(exp.interfaces)
                 exp.set_accepted_interfaces(True)
             else:
-                self.num_interfaces = len(self.output.ranked_list[0].interfaces)
+                self.num_interfaces = len(self.ranked_list[0].interfaces)
 
             self.ranked_list[0].set_accepted_interfaces(True)
             for ranked in self.ranked_list[1:]:
                 if len(ranked.interfaces) >= self.num_interfaces:
                     ranked.set_accepted_interfaces(True)
-
-
-
 
         self.select_templates()
         os.chdir(store_old_dir)

@@ -356,7 +356,7 @@
                     and no templates have been added to the input.
                 {% else %}
                     and {{ data.num_templates }} template/s that has/have been used as input.
-                {% endif %}<p/>
+                {% endif %}</p>
                 {% if data.info_input %}
                     <p>It can be broken down in the following way:</p>
                     <ul>
@@ -656,13 +656,13 @@
 
                                 {% endfor %}
                             {% endfor %}
-                            {% if counter_loop != 0 %}
+                            {% if counter_loop.counter_loop != 0 %}
                                 </ul>
                             {% endif %}
                             </details>
                             </li>
                             {% set ns.counter_loop = ns.counter_loop + 1 %}
-                             {% if ns.length_loop == ns.counter_loop %}
+                            {% if ns.length_loop == ns.counter_loop %}
                                 </ul>
                                 </details>
                             {% endif %}
