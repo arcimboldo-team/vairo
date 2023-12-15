@@ -319,12 +319,21 @@ class Features:
             self.delete_templates(delete_templates)
 
     def rewrite_with_extra_info(self, path: str, query_seq: str):
-        self.extra_info['num_msa'] = self.get_msa_length()
-        self.extra_info['num_templates'] = self.get_templates_length()
-        seq_templates = [seq.decode() for seq in self.template_features['template_sequence']]
-        self.extra_info['templates_coverage'] = utils.calculate_coverage(query_seq=query_seq, sequences=seq_templates)
-        seq_msa = [''.join(residue_constants.ID_TO_HHBLITS_AA[res] for res in msa.tolist()) for msa in self.msa_features['msa']]
-        self.extra_info['msa_coverage'] = utils.calculate_coverage(query_seq=query_seq, sequences=seq_msa)
+        try:
+            self.extra_info['num_templates'] = self.get_templates_length()
+            seq_templates = [seq.decode() for seq in self.template_features['template_sequence']]
+            self.extra_info['templates_coverage'] = utils.calculate_coverage(query_seq=query_seq, sequences=seq_templates)
+        except:
+            self.extra_info['num_templates'] = 0
+            self.extra_info['templates_coverage'] = [1] * len(query_seq)
+
+        try:
+            self.extra_info['num_msa'] = self.get_msa_length()-1
+            seq_msa = [''.join(residue_constants.ID_TO_HHBLITS_AA[res] for res in msa.tolist()) for msa in self.msa_features['msa'][1:]]
+            self.extra_info['msa_coverage'] = utils.calculate_coverage(query_seq=query_seq, sequences=seq_msa)
+        except:
+            self.extra_info['num_msa'] = 0
+            self.extra_info['msa_coverage'] = [1] * len(query_seq)
         self.write_pkl(pkl_path=path)
 
 
