@@ -248,7 +248,7 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
                 key = f'>{record.id.replace("????", utils.get_file_name(file_path)[:10])}'
-                value = str(record.seq.replace("X", ""))
+                value = str(record.seq.replace("X", "-"))
                 results_dict[key] = value
     except Exception as e:
         logging.debug('Something went wrong extracting the fasta record from the pdb at', file_path)

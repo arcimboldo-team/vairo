@@ -1,10 +1,16 @@
 #! /usr/bin/env python3
+import re
 import shutil
 import sys
 from pathlib import Path
 import pickle
 import os
 import logging
+import tempfile
+
+import numpy as np
+from alphafold.common import residue_constants
+from alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_identifiers
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
@@ -199,6 +205,67 @@ def merge_pdbs(pdb1_path: str, pdb2_path: str, inf_ini, inf_end, inm_ini, inm_en
     bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
                                      pdb_out_path=os.path.join(best_rankeds_dir, 'merged.pdb'))
 
+
+def align_pdb(hhr_path: str, pdb_path: str, fasta_path: str):
+    query_sequence = bioutils.extract_sequence(fasta_path=fasta_path)
+    output_dir = os.path.join(os.getcwd(), 'templates')
+    cif_path = os.path.join(output_dir, f'{utils.get_file_name(pdb_path)}.cif')
+    pdb_path = os.path.abspath(pdb_path)
+
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    os.mkdir(output_dir)
+    
+    chain_dict = bioutils.split_pdb_in_chains(pdb_path=pdb_path)
+    results_list = []
+    for chain, path in chain_dict.items():
+        bioutils.pdb2mmcif(pdb_in_path=path, cif_out_path=cif_path)
+        pdb_id = utils.get_file_name(pdb_path).upper()
+        hhr_text = open(hhr_path, 'r').read()
+        matches = re.finditer(r'No\s+\d+', hhr_text)
+        matches_positions = [match.start() for match in matches] + [len(hhr_text)]
+
+        detailed_lines_list = []
+        for i in range(len(matches_positions) - 1):
+            detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
+
+        hits_list = [detailed_lines for detailed_lines in detailed_lines_list if
+                    pdb_id in detailed_lines[1]]
+
+        detailed_lines = hits_list[0]
+
+        try:
+            hit = parsers._parse_hhr_hit(detailed_lines)
+        except:
+            return None, None, None, 0, 0, 0
+
+        template_sequence = hit.hit_sequence.replace('-', '')
+        mapping = templates._build_query_to_hit_index_mapping(
+            hit.query, hit.hit_sequence, hit.indices_hit, hit.indices_query,
+            query_sequence)
+        mmcif_string = open(cif_path).read()
+        parsing_result = mmcif_parsing.parse(file_id=pdb_id, mmcif_string=mmcif_string)
+        template_features, _ = templates._extract_template_features(
+            mmcif_object=parsing_result.mmcif_object,
+            pdb_id=pdb_id,
+            mapping=mapping,
+            template_sequence=template_sequence,
+            query_sequence=query_sequence,
+            template_chain_id=chain,
+            kalign_binary_path='kalign')
+        
+        template_features['template_sum_probs'] = np.array([[hit.sum_probs]])
+        template_features['template_aatype'] = np.array([template_features['template_aatype']])
+        template_features['template_all_atom_masks'] = np.array([template_features['template_all_atom_masks']])
+        template_features['template_all_atom_positions'] = np.array([template_features['template_all_atom_positions']])
+        template_features['template_domain_names'] = np.array([template_features['template_domain_names']])
+        template_features['template_sequence'] = np.array([template_features['template_sequence']])
+        features.write_templates_in_features(template_features=template_features, output_dir=output_dir)
+        result_pdb = os.path.join(output_dir, f'{pdb_id}_{chain}1.pdb')
+        bioutils.change_chain(pdb_in_path=result_pdb, pdb_out_path=result_pdb, chain=chain)
+        results_list.append(result_pdb)
+    
+    bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=results_list, merged_pdb_path='result.pdb')
 
 if __name__ == "__main__":
     print('Usage: utilities.py function input')
