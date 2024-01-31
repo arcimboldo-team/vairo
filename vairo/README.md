@@ -50,7 +50,7 @@ features:
   keep_msa: (optional, int, -1): Keep the msa of the features.pkl 
   keep_templates: (optional, int, -1): Keep the templates of the features.pkl
   msa_mask: (optional, range, None): Delete specific residues from the MSA sequences.
-  sequence: (optional, path, None): Replace templates sequence with sequence in path.
+  sequence: (optional, path, None): Replace template sequence with sequence in path.
   positions: (optional, range, None): Insert the features.pkl in a specific region inside the query sequence.
 
 Templates can be added to the templates section inside the features.pkl, as well as their sequence to the msa, it is possible to add as many templates as the user requires:

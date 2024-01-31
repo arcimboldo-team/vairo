@@ -12,7 +12,6 @@ cmd.set("bg_rgb", "0xffffff")
 cmd.set("antialias", '2')
 cmd.set("ribbon_sampling", '10')
 cmd.set("hash_max", '220')
-cmd.set("surface_quality", '4')
 cmd.set("dash_length", '0.10000')
 cmd.set("dash_gap", '0.30000')
 cmd.set("cartoon_sampling", '14')
@@ -28,7 +27,6 @@ cmd.set("sculpt_vdw_weight", '0.45000')
 cmd.set("sculpt_field_mask", '2047')
 cmd.set("ray_shadow", 'off')
 cmd.set("auto_color_next", '2')
-cmd.set("max_threads", '4')
 cmd.set("button_mode_name", '3-Button Viewing')
 cmd.set("mouse_selection_mode", '2')
 cmd.set("cartoon_nucleic_acid_mode", '2')
@@ -38,7 +36,6 @@ cmd.set("cartoon_ladder_color", 'cyan')
 cmd.set("cartoon_nucleic_acid_color", 'cyan')
 cmd.set("ray_trace_mode", '1')
 cmd.set("sculpt_min_weight", '2.25000')
-cmd.set("surface_negative_color", 'grey50')
 cmd.set("mesh_negative_color", 'grey30')
 cmd.set("ray_transparency_oblique_power", '1.00000')
 cmd.set("movie_quality", '60')
@@ -76,11 +73,27 @@ cmd.set("valence", 'off')
                 for interface in pdb_in.interfaces:
                     script += f'cmd.load("{interface.path}", "{utils.get_file_name(interface.path)}")\n'
                     script += f'cmd.show_as("sticks", "{utils.get_file_name(interface.path)}")\n'
-                    script += f'cmd.color("yelloworange", "{utils.get_file_name(interface.path)}")\n'
-                    script += f'cmd.color("gray", "elem H and {utils.get_file_name(interface.path)}")\n'
-                    script += f'cmd.color("blue", "elem N and {utils.get_file_name(interface.path)}")\n'
-                    script += f'cmd.color("red", "elem O and {utils.get_file_name(interface.path)}")\n'
-                    script += f'cmd.color("orange", "elem S and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.show("surface", "{utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.set("transparency", "0.50000")\n'
+                    script += f'cmd.color("lime", "resn ALA and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("density", "resn ARG and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("deepsalmon", "resn ASN and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("warmpink", "resn ASP and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("paleyellow", "resn CYS and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("tv_red", "resn GLN and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("ruby", "resn GLU and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("slate", "resn HIS and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("forest", "resn ILE and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("smudge", "resn LEU and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("deepblue", "resn LYS and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("sand", "resn MET and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("gray40", "resn PHE and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("gray20", "resn PRO and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("tv_orange", "resn SER and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("brown", "resn THR and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("palegreen", "resn TRP and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("wheat", "resn TYR and {utils.get_file_name(interface.path)}")\n'
+                    script += f'cmd.color("pink", "resn VAL and {utils.get_file_name(interface.path)}")\n'
 
         script += f'cmd.reset()\n'
 
