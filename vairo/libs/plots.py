@@ -226,7 +226,7 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
 
         if reduced and len(names) > 20:
             number_of_templates += 1
-            sequences_templates = [a_air.feature.get_sequence_by_name(name) for name in reversed(list(enumerate(names))) if a_air.feature.get_sequence_by_name(name) is not None]
+            sequences_templates = [a_air.feature.get_sequence_by_name(name[1]) for name in reversed(list(enumerate(names))) if a_air.feature.get_sequence_by_name(name[1]) is not None]
             new_sequences = utils.calculate_coverage(query_seq=a_air.sequence_assembled.sequence_mutated_assembled, sequences=sequences_templates)
             add_sequences = [0] * len(a_air.sequence_assembled.sequence_assembled)
 
