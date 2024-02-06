@@ -507,7 +507,7 @@ class MainStructure:
                 sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[
                                  self.chunk_list[i][0]:self.chunk_list[i][1]]
             run_af2 = False if self.mode == 'guided' and self.cluster_templates else self.run_af2
-            stop_after_msa = True if self.mode == 'naive' else False
+            stop_after_msa = True if self.mode == 'naive' and self.cluster_templates else False
             afrun = alphafold_classes.AlphaFoldRun(results_dir=path,
                                                    sequence=sequence_chunk,
                                                    custom_features=self.custom_features,

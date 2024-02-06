@@ -1227,7 +1227,7 @@ def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None
 
         if os.path.exists(new_path) and output_path:
             shutil.copy2(new_path, output_path)
-        elif not os.path.exists(new_path):
+        elif not os.path.exists(new_path) and output_path:
             logging.info(f'Not possible to superpose {pdb_reference} with {pdb_superposed}')
         rmsd, qscore, nalign = None, None, None
         for line in superpose_output.split('\n'):

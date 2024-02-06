@@ -170,8 +170,8 @@ def main():
         if a_air.feature is None and os.path.exists(features_path):
             new_features = features.create_features_from_file(features_path)
             a_air.set_feature(new_features)
-        a_air.align_experimental_pdbs()
-        if a_air.mode == 'naive' and a_air.run_af2:
+        #a_air.align_experimental_pdbs()
+        if a_air.mode == 'naive' and a_air.run_af2 and a_air.cluster_templates:
             a_air.feature.select_msa_templates(sequence_assembled=a_air.sequence_assembled)
             a_air.extract_results()
             a_air.templates_clustering()
