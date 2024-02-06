@@ -388,8 +388,8 @@ class OutputStructure:
             change_pos = -1
             for ranked in self.ranked_list:
                 if ranked.superposition_templates:
-                    if not ranked.superposition_templates[0].template in self.templates_selected:
-                        self.templates_selected[change_pos] = ranked.superposition_templates[0].template
+                    if not ranked.superposition_templates[0].pdb in self.templates_selected:
+                        self.templates_selected[change_pos] = ranked.superposition_templates[0].pdb
                         change_pos -= 1
         else:
             self.templates_selected = [template.name for template in self.templates_list]
