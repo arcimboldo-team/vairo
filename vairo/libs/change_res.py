@@ -79,15 +79,17 @@ class ChangeResidues:
                     res_del_dict[chain].append(res.id)
                 if type == 'change':
                     if bioutils.get_resseq(res) in self.chain_res_dict[chain]:
+                        name = None
                         if self.resname is not None:
                             name = self.resname
-                        elif self.sequence is not None:
+                        elif self.sequence is not None and len(self.sequence) > bioutils.get_resseq(res) - 1:
                             name = utils.get_key_by_value(value=self.sequence[bioutils.get_resseq(res) - 1],
                                                           search_dict=residue_constants.restype_3to1)[0]
-                        for atom in res:
-                            res.resname = name
-                            if not atom.name in residue_constants.residue_atoms[res.resname]:
-                                atoms_del_list.append(atom.get_serial_number())
+                        if name is not None:
+                            for atom in res:
+                                res.resname = name
+                                if not atom.name in residue_constants.residue_atoms[res.resname]:
+                                    atoms_del_list.append(atom.get_serial_number())
                 if type == 'change_bfactors':
                     res_bfactor_index = self.chain_res_dict[chain].index(bioutils.get_resseq(res))
                     bfactor = self.chain_bfactors_dict[chain][res_bfactor_index]
@@ -108,7 +110,6 @@ class ChangeResidues:
             io.save(pdb_out_path, select=AtomSelect())
         else:
             io.save(pdb_out_path)
-
 
 
 class ChangeResiduesList:
