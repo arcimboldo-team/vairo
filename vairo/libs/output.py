@@ -201,7 +201,7 @@ class OutputStructure:
         if not self.ranked_list:
             return
 
-        self.tmp_dir = f'{self.results_dir}/tmp'
+        self.tmp_dir = os.path.join(self.results_dir, 'temp')
         utils.create_dir(dir_path=self.tmp_dir, delete_if_exists=True)
 
         store_old_dir = os.getcwd()

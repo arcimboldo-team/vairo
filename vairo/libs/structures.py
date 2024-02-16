@@ -190,10 +190,12 @@ class Pdb:
 
     def set_interfaces(self, interfaces: List[Interface]):
         self.interfaces = interfaces
-
+        
     def set_accepted_interfaces(self, value: bool):
         self.accepted_interfaces = value
 
+    def get_interfaces_with_path(self) -> List[Interface]:
+        return [interface for interface in self.interfaces if interface.path is not None]
 
 
 class ExperimentalPdb(Pdb):

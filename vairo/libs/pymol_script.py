@@ -70,7 +70,7 @@ cmd.set("valence", 'off')
             script += f'cmd.show_as("cartoon", "{pdb_in.name}")\n'
 
             if pdb_in.accepted_interfaces:
-                for interface in pdb_in.interfaces:
+                for interface in pdb_in.get_interfaces_with_path():
                     script += f'cmd.load("{interface.path}", "{utils.get_file_name(interface.path)}")\n'
                     script += f'cmd.show_as("sticks", "{utils.get_file_name(interface.path)}")\n'
                     script += f'cmd.show("surface", "{utils.get_file_name(interface.path)}")\n'
@@ -97,8 +97,8 @@ cmd.set("valence", 'off')
 
         script += f'cmd.reset()\n'
 
-        if a_air.output.ranked_list[0].interfaces:
-            for interface in a_air.output.ranked_list[0].interfaces:
+        if a_air.output.ranked_list[0].get_interfaces_with_path():
+            for interface in a_air.output.ranked_list[0].get_interfaces_with_path():
                 script += f'cmd.disable("*")\n'
                 script += f'cmd.enable("{a_air.output.ranked_list[0].name}")\n'
                 script += f'cmd.enable("{utils.get_file_name(interface.path)}")\n'
