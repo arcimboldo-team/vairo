@@ -190,7 +190,7 @@ class Pdb:
 
     def set_interfaces(self, interfaces: List[Interface]):
         self.interfaces = interfaces
-        
+
     def set_accepted_interfaces(self, value: bool):
         self.accepted_interfaces = value
 

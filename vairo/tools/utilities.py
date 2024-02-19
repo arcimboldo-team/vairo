@@ -2,20 +2,17 @@
 import re
 import shutil
 import sys
-from pathlib import Path
 import pickle
 import os
 import logging
-import tempfile
 
 import numpy as np
-from alphafold.common import residue_constants
-from alphafold.data import parsers, templates, mmcif_parsing, pipeline, msa_identifiers
+from alphafold.data import parsers, templates, mmcif_parsing
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
 sys.path.append(target_directory)
-from vairo.libs import features, bioutils, output, utils, structures, change_res
+from vairo.libs import features, bioutils, plots, utils, structures, change_res
 
 
 def write_features(features_path: str, output_dir: str = None):
@@ -58,14 +55,14 @@ def hinges(template_path: str):
 def ccanalysis(template_path: str):
     output_path = os.path.join(template_path, 'ccanalysis')
     os.listdir(template_path)
-    templates_dict = {utils.get_file_name(path): os.path.join(template_path, path) for path in os.listdir(template_path)
-                      if path.endswith('.pdb')}
-    cc_analysis = structures.CCAnalysis(os.path.join(utils.get_main_path(), 'binaries'))
-    templates_cluster_list, analysis_dict = bioutils.cc_analysis(paths_in=templates_dict, cc_analysis_paths=cc_analysis,
-                                                                 cc_path=output_path, n_clusters=2)
+    templates_list = [structures.Pdb(os.path.join(template_path, path)) for path in os.listdir(template_path)
+                      if path.endswith('.pdb')]
+    binaries_path = structures.BinariesPath(os.path.join(utils.get_main_path(), 'binaries'))
+    templates_cluster_list, analysis_dict = bioutils.cc_analysis(pdbs=templates_list, cc_analysis_paths=binaries_path,
+                                                                 output_dir=output_path, n_clusters=2)
     if analysis_dict:
-        output.plot_cc_analysis(plot_path=os.path.join(output_path, 'plot.png'), analysis_dict=analysis_dict,
-                                clusters=templates_cluster_list)
+        plots.plot_cc_analysis(plot_path=os.path.join(output_path, 'plot.png'), analysis_dict=analysis_dict,
+                               clusters=templates_cluster_list)
 
 
 def superposition_chains(pdb1_path: str, pdb2_path: str):
@@ -215,7 +212,7 @@ def align_pdb(hhr_path: str, pdb_path: str, fasta_path: str):
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
     os.mkdir(output_dir)
-    
+
     chain_dict = bioutils.split_pdb_in_chains(pdb_path=pdb_path)
     results_list = []
     for chain, path in chain_dict.items():
@@ -230,7 +227,7 @@ def align_pdb(hhr_path: str, pdb_path: str, fasta_path: str):
             detailed_lines_list.append(hhr_text[matches_positions[i]:matches_positions[i + 1]].split('\n')[:-3])
 
         hits_list = [detailed_lines for detailed_lines in detailed_lines_list if
-                    pdb_id in detailed_lines[1]]
+                     pdb_id in detailed_lines[1]]
 
         detailed_lines = hits_list[0]
 
@@ -253,7 +250,7 @@ def align_pdb(hhr_path: str, pdb_path: str, fasta_path: str):
             query_sequence=query_sequence,
             template_chain_id=chain,
             kalign_binary_path='kalign')
-        
+
         template_features['template_sum_probs'] = np.array([[hit.sum_probs]])
         template_features['template_aatype'] = np.array([template_features['template_aatype']])
         template_features['template_all_atom_masks'] = np.array([template_features['template_all_atom_masks']])
@@ -264,8 +261,9 @@ def align_pdb(hhr_path: str, pdb_path: str, fasta_path: str):
         result_pdb = os.path.join(output_dir, f'{pdb_id}_{chain}1.pdb')
         bioutils.change_chain(pdb_in_path=result_pdb, pdb_out_path=result_pdb, chain=chain)
         results_list.append(result_pdb)
-    
+
     bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=results_list, merged_pdb_path='result.pdb')
+
 
 if __name__ == "__main__":
     print('Usage: utilities.py function input')

@@ -729,7 +729,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
 
 def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.BinariesPath, output_dir: str,
                 n_clusters: int = 2) -> List:
-    # CC_analysis. It is mandatory to have the paths of the programs in order to run pdb2cc and ccanalysis.
+    # CC_analysis. It is mandatory to have the paths of the programs to run pdb2cc and ccanalysis.
     # A dictionary with the different pdbs that are going to be analysed.
 
     utils.create_dir(output_dir, delete_if_exists=True)
@@ -739,7 +739,7 @@ def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.Binari
 
     for index, pdb in enumerate(pdbs):
         path = shutil.copy2(pdb.path, output_dir)
-        # If it is a ranked, it is mandatory to change the bfactors to VALUE-70.
+        # If it is ranked, it is mandatory to change the bfactors to VALUE-70.
         # We want to evaluate the residues that have a good PLDDT
         # PDB2CC ignore the residues with bfactors below 0
         if utils.check_ranked(os.path.basename(path)):
@@ -781,7 +781,7 @@ def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.Binari
                     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(points)
                     lookup_table = {}
                     counter = 0
-                    # The kmeans results has a list with all the positions belonging to the corresponding pdb.
+                    # The kmeans results have a list with all the positions belonging to the corresponding pdb.
                     # Translate the labels into groups, so they appear in sequentially (group 0 first, 1...)
                     # Otherwise they are chosen randomly.
                     for i in kmeans.labels_:
