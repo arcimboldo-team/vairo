@@ -61,7 +61,8 @@ class FeaturesInput:
     keep_templates: int
     msa_mask: List[int]
     sequence: str
-    positions: List[int]
+    positions_features: List[int]
+    positions_query: List[int]
     num_msa: int = dataclasses.field(default=0)
     num_templates: int = dataclasses.field(default=0)
 

@@ -174,9 +174,18 @@ class MainStructure:
                 raise Exception(f'Path {path} does not exist. Check the input append_library parameter.')
 
         for parameters_features in utils.get_input_value(name='features', section='global', input_dict=parameters_dict):
-            positions = utils.get_input_value(name='positions', section='features', input_dict=parameters_features)
-            if positions is None:
-                positions = f'1-{self.sequence_assembled.total_copies}'
+            positions_features = utils.get_input_value(name='positions_features', section='features', input_dict=parameters_features)
+            positions_query = utils.get_input_value(name='positions_query', section='features', input_dict=parameters_features)
+            positions_query = list(map(int, str(positions_query).replace(' ','').split(',')))
+            if positions_features is None:
+                positions_features = [[1, self.sequence_assembled.length]]
+            else:
+                positions_features = positions_features.replace(' ','').split(',')
+                positions_features = [tuple(map(int, r.split('-'))) for r in positions_features]
+
+            if len(positions_query) != len(positions_features):
+                raise Exception('The number of query positions and feature positions mismatch')
+            
             self.features_input.append(structures.FeaturesInput(
                 path=utils.get_input_value(name='path', section='features', input_dict=parameters_features),
                 keep_msa=utils.get_input_value(name='keep_msa', section='features', input_dict=parameters_features),
@@ -184,7 +193,8 @@ class MainStructure:
                                                      input_dict=parameters_features),
                 msa_mask=utils.expand_residues(
                     utils.get_input_value(name='msa_mask', section='features', input_dict=parameters_features)),
-                positions=utils.expand_residues(positions),
+                positions_features=positions_features,
+                positions_query=positions_query,
                 sequence=bioutils.check_sequence_path(
                     utils.get_input_value(name='sequence', section='features', input_dict=parameters_features))
             ))
@@ -867,8 +877,8 @@ class MainStructure:
                     f_out.write(f'  keep_templates: {feat.keep_templates}\n')
                     if feat.msa_mask:
                         f_out.write(f'  msa_mask: {",".join(map(str, feat.msa_mask))}\n')
-                    if feat.positions:
-                        f_out.write(f'  positions: {",".join(map(str, feat.positions))}\n')
+                    f_out.write(f'  positions_query: {",".join(map(str, feat.positions_query))}\n')
+                    f_out.write(f'  positions_features: {",".join(f"{start}-{end}" for start, end in feat.positions_features)}\n')
                     if feat.sequence is not None:
                         f_out.write(f'  sequence: {feat.sequence}\n')
             f_out.write(f'\nsequences:\n')

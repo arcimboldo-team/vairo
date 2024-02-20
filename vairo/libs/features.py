@@ -156,12 +156,8 @@ class Features:
             starting_id = max(starting_list) + 1
         return starting_id
 
-    def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = [],
-                         positions: List[int] = []) -> int:
+    def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1, delete_positions: List[int] = []) -> int:
         coverage_msa = []
-        if positions and len(new_msa['msa']) > 0 and positions[1] - positions[0] + 1 != len(new_msa['msa'][0]):
-            raise Exception(
-                'Select the positions of the features.pkl. The features.pkl msa is smaller than the query sequence')
         for i in range(start, len(new_msa['msa'])):
             if delete_positions:
                 new_msa = delete_residues_msa(msa=new_msa, position=i, delete_positions=delete_positions)
@@ -181,14 +177,12 @@ class Features:
             msa_dict['msa_species_identifiers'][i] = new_msa['msa_species_identifiers'][num + start]
             msa_dict['num_alignments'][i] = np.zeros(new_msa['num_alignments'].shape)
             starting_id += 1
-        if positions:
-            msa_dict = self.expand_msa(msa_dict=msa_dict, expand=positions)
+        
         if len(msa_dict['msa']) > 0:
             self.append_row_in_msa_from_features(msa_dict)
         return len(msa_dict['msa'])
 
-    def set_template_features(self, new_templates: Dict, finish: int = -1, positions: List[int] = [],
-                              sequence_in: str = None) -> int:
+    def set_template_features(self, new_templates: Dict, finish: int = -1, sequence_in: str = None) -> int:
         finish = len(new_templates['template_sequence']) if finish == -1 else finish
         template_dict = create_empty_template_list(finish)
         for i in range(0, finish):
@@ -213,77 +207,101 @@ class Features:
         if len(template_dict['template_all_atom_positions']) > 0:
             if sequence_in is not None:
                 template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
-            if positions:
-                template_dict = self.expand_template(template_dict=template_dict, expand=positions)
             self.append_new_template_features(template_dict)
         return len(template_dict['template_all_atom_positions'])
 
-    def expand_msa(self, msa_dict: Dict, expand: List[int]) -> Dict:
-        aux_dict = copy.deepcopy(msa_dict)
-        for i in range(len(msa_dict['msa'])):
+    def cut_expand_features(self, query_sequence: int, query_list: List[int], query_features: List[int]):
+        new_features = Features(query_sequence=query_sequence)
+        msa_dict = create_empty_msa_list(self.get_msa_length() - 1)
+        # We skip the first one, so thats the -1, because it is the query sequence one, and we have created
+        # another new_features with a fake query_sequence. This will be skipped in set_msa_features
+        for i in range(0, self.get_msa_length() - 1):
             msa_dict['msa'][i] = np.full(len(self.query_sequence), 21)
-            msa_dict['msa'][i][expand[0]:expand[1] + 1] = aux_dict['msa'][i]
             msa_dict['deletion_matrix_int'][i] = np.full(len(self.query_sequence), 0)
-            msa_dict['deletion_matrix_int'][i][expand[0]:expand[1] + 1] = aux_dict['deletion_matrix_int'][i]
-            msa_dict['msa_species_identifiers'][i] = aux_dict['msa_species_identifiers'][i]
-        return msa_dict
-
-    def expand_template(self, template_dict: Dict, expand: List[int]) -> Dict:
-        aux_dict = copy.deepcopy(template_dict)
-        for i in range(len(template_dict['template_all_atom_positions'])):
+            msa_dict['msa_species_identifiers'][i] = self.msa_features['msa_species_identifiers'][i+1]
+            for query_ini, feat in zip(query_list, query_features):
+                feat_ini, feat_end = feat
+                query_ini = query_ini - 1
+                feat_ini = feat_ini - 1
+                query_ini_size = query_ini+feat_end-feat_ini
+                if query_ini_size > len(query_sequence):
+                    feat_end = feat_end - (query_ini_size - len(query_sequence))
+                    query_ini_size = query_ini+feat_end-feat_ini
+                msa_dict['msa'][i][query_ini:query_ini_size] = self.msa_features['msa'][i+1][feat_ini:feat_end]
+                msa_dict['deletion_matrix_int'][i][query_ini:query_ini_size] = self.msa_features['deletion_matrix_int'][i+1][feat_ini:feat_end]
+        if len(msa_dict['msa']) > 0:
+            new_features.append_row_in_msa_from_features(msa_dict)
+        
+        template_dict = create_empty_template_list((self.get_templates_length()))
+        for i in range(0, self.get_templates_length()):
             template_dict['template_all_atom_positions'][i] = np.zeros(
-                (len(self.query_sequence), residue_constants.atom_type_num, 3))
-            template_dict['template_all_atom_positions'][i][expand[0]:expand[1] + 1] = \
-                aux_dict['template_all_atom_positions'][i]
+                (len(query_sequence), residue_constants.atom_type_num, 3))
             template_dict['template_all_atom_masks'][i] = np.zeros(
-                (len(self.query_sequence), residue_constants.atom_type_num))
-            template_dict['template_all_atom_masks'][i][expand[0]:expand[1] + 1] = aux_dict['template_all_atom_masks'][
-                i]
-            template_dict['template_aatype'][i] = residue_constants.sequence_to_onehot('A' * len(self.query_sequence),
+                (len(query_sequence), residue_constants.atom_type_num))
+            template_dict['template_aatype'][i] = residue_constants.sequence_to_onehot('A' * len(query_sequence),
                                                                                        residue_constants.HHBLITS_AA_TO_ID)
+            template_dict['template_domain_names'][i] = self.template_features['template_domain_names'][i]
+            template_dict['template_sum_probs'][i] = self.template_features['template_sum_probs'][i]
+            template_sequence = list(('-' * len(query_sequence)))
+            for query_ini, feat in zip(query_list, query_features):
+                feat_ini, feat_end = feat
+                query_ini = query_ini - 1
+                feat_ini = feat_ini - 1
+                query_ini_size = query_ini+feat_end-feat_ini
+                if query_ini_size > len(query_sequence):
+                    feat_end = feat_end - (query_ini_size - len(query_sequence))
+                    query_ini_size = query_ini+feat_end-feat_ini
+                template_dict['template_all_atom_positions'][i][query_ini:query_ini_size] = \
+                    self.template_features['template_all_atom_positions'][i][feat_ini:feat_end]
+                template_dict['template_all_atom_masks'][i][query_ini:query_ini_size] = self.template_features['template_all_atom_masks'][
+                    i][feat_ini:feat_end]
+                template_dict['template_aatype'][i][query_ini:query_ini_size] = self.template_features['template_aatype'][i][feat_ini:feat_end]
+                template_sequence[query_ini:query_ini_size] = self.template_features['template_sequence'][i].decode()[feat_ini:feat_end]
+            template_dict['template_sequence'][i] = ''.join(template_sequence).encode()
 
-            template_dict['template_aatype'][i][expand[0]:expand[1] + 1] = aux_dict['template_aatype'][i]
-            seq_aux = list(('-' * len(self.query_sequence)))
-            seq_aux[expand[0]:expand[1] + 1] = aux_dict['template_sequence'][i].decode()
-            template_dict['template_sequence'][i] = ''.join(seq_aux).encode()
+        if len(template_dict['template_all_atom_positions']) > 0:
+            new_features.append_new_template_features(template_dict)
+              
+        return new_features
+    
 
-            template_dict['template_domain_names'][i] = aux_dict['template_domain_names'][i]
-            template_dict['template_sum_probs'][i][expand[0]:expand[1] + 1] = aux_dict['template_sum_probs'][i]
-        return template_dict
+    def slice_features(self, ini: int, end: int) -> List:
+        sequence_in = (
+            ''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
+        new_features = Features(query_sequence=sequence_in[ini:end])
+        msa_dict = create_empty_msa_list(self.get_msa_length() - 1)
+        for i in range(0, self.get_msa_length() - 1):
+            msa_dict['msa'][i] = self.msa_features['msa'][i + 1][ini:end]
+            msa_dict['accession_ids'][i] = str(i).encode()
+            msa_dict['deletion_matrix_int'][i] = self.msa_features['deletion_matrix_int'][i + 1][
+                                                    ini:end]
+            msa_dict['msa_species_identifiers'][i] = self.msa_features['msa_species_identifiers'][i + 1]
+            msa_dict['num_alignments'][i] = np.zeros(self.msa_features['num_alignments'].shape)
+        if len(msa_dict['msa']) > 0:
+            new_features.append_row_in_msa_from_features(msa_dict)
+        
+        template_dict = create_empty_template_list((self.get_templates_length()))
+        for i in range(0, self.get_templates_length()):
+            template_dict['template_all_atom_positions'][i] = self.template_features['template_all_atom_positions'][
+                                                                    i][ini:end]
+            template_dict['template_all_atom_masks'][i] = self.template_features['template_all_atom_masks'][i][
+                                                            ini:end]
+            template_dict['template_aatype'][i] = self.template_features['template_aatype'][i][ini:end]
+            template_dict['template_sequence'][i] = self.template_features['template_sequence'][i][
+                                                    ini:end]
+            template_dict['template_domain_names'][i] = self.template_features['template_domain_names'][i]
+            template_dict['template_sum_probs'][i] = self.template_features['template_sum_probs'][i]
+        if len(template_dict['template_all_atom_positions']) > 0:
+            new_features.append_new_template_features(template_dict)
+        return new_features
 
     def slicing_features(self, chunk_list: List) -> List:
         # This function will generate as many features
         # as required per size. It will return a list with
         # the path of all the generated features
-        sequence_in = (
-            ''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
         features_list = []
         for start_min, start_max in chunk_list:
-            new_features = Features(query_sequence=sequence_in[start_min:start_max])
-            msa_dict = create_empty_msa_list(self.get_msa_length() - 1)
-            for i in range(0, self.get_msa_length() - 1):
-                msa_dict['msa'][i] = self.msa_features['msa'][i + 1][start_min:start_max]
-                msa_dict['accession_ids'][i] = str(i).encode()
-                msa_dict['deletion_matrix_int'][i] = self.msa_features['deletion_matrix_int'][i + 1][
-                                                     start_min:start_max]
-                msa_dict['msa_species_identifiers'][i] = self.msa_features['msa_species_identifiers'][i + 1]
-                msa_dict['num_alignments'][i] = np.zeros(self.msa_features['num_alignments'].shape)
-            if len(msa_dict['msa']) > 0:
-                new_features.append_row_in_msa_from_features(msa_dict)
-            template_dict = create_empty_template_list((self.get_templates_length()))
-            for i in range(0, self.get_templates_length()):
-                template_dict['template_all_atom_positions'][i] = self.template_features['template_all_atom_positions'][
-                                                                      i][start_min:start_max]
-                template_dict['template_all_atom_masks'][i] = self.template_features['template_all_atom_masks'][i][
-                                                              start_min:start_max]
-                template_dict['template_aatype'][i] = self.template_features['template_aatype'][i][start_min:start_max]
-                template_dict['template_sequence'][i] = self.template_features['template_sequence'][i][
-                                                        start_min:start_max]
-                template_dict['template_domain_names'][i] = self.template_features['template_domain_names'][i]
-                template_dict['template_sum_probs'][i] = self.template_features['template_sum_probs'][i]
-            if len(template_dict['template_all_atom_positions']) > 0:
-                new_features.append_new_template_features(template_dict)
-            features_list.append(new_features)
+            features_list.append(self.slice_features(start_min, start_max))
         if len(chunk_list) > 1:
             logging.error(
                 f'Query sequence and the input information has been cut into {len(features_list)} partitions with the following sizes:')
