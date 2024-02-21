@@ -27,7 +27,7 @@ parameters:
 
 Several sequences can be added to the query sequence. Each Fasta can have several copies and can be inserted in a specific position
 inside the query sequence. All the sequences will be concatenated using Glycines.
-sequences:
+Sequences:
 - fasta_path:
   num_of_copies:
   positions:

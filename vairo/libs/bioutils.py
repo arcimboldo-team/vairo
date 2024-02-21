@@ -4,7 +4,7 @@ import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
 import numpy as np
 import pandas as pd
 import io
-from Bio import SeqIO
+from Bio import SeqIO, pairwise2
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder, \
     Superimposer
 from scipy.spatial import distance
@@ -13,8 +13,7 @@ from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
 from alphafold.relax import cleanup, amber_minimize
 from simtk import unit
-from libs import change_res, hhsearch, structures, utils, plots, global_variables, sequence, \
-    structures
+from libs import change_res, hhsearch, structures, utils, plots, global_variables, sequence, structures
 
 
 def download_pdb(pdb_id: str, pdb_path: str) -> str:
@@ -916,6 +915,10 @@ def sequence_identity(seq1, seq2) -> float:
     identical_count = sum(a == b for a, b in zip(seq1, seq2))
     identity = (identical_count / len(seq1)) * 100
     return identity
+
+
+def sequence_identity2(seq1: str, seq2: str) -> float:
+    result_pairwise = pairwise2.align.globalxx(seq1, seq2)
 
 
 def read_bfactors_from_residues(pdb_path: str) -> Dict:

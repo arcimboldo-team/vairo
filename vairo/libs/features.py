@@ -677,10 +677,27 @@ def print_features_from_file(pkl_in_path: str):
 
 
 def create_features_from_file(pkl_in_path: str) -> Features:
-    # Read features.pkl and generate a features class
+    # Read features.pkl and generate a feature class
     with open(f'{pkl_in_path}', 'rb') as input_file:
         features_dict = pickle.load(input_file)
     new_features = Features(query_sequence=features_dict['sequence'][0].decode('utf-8'))
     new_features.set_msa_features(features_dict)
     new_features.set_template_features(features_dict)
     return new_features
+
+
+def extract_features_info(pkl_in_path: str, regions: List[str], original_seq: str):
+    feature = create_features_from_file(pkl_in_path=pkl_in_path)
+    for msa_seq in feature.msa_features['msa']:
+        check_region(regions, msa_seq, original_seq)
+    for template_seq in feature.template_features['template_sequence']:
+        check_region(regions, template_seq, original_seq)
+
+
+def check_region(regions: List[str], check_seq: [str], original_seq: [str]):
+    for region in regions:
+
+def check_identity(seq1: str, seq2: str):
+    biopython.pairwise2.align.globalx(seq1, seq2)
+
+
