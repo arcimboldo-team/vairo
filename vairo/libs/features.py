@@ -661,10 +661,8 @@ def print_features_from_file(pkl_in_path: str):
     logging.error('\n')
     logging.error('MSA:')
     for num, name in enumerate(features_dict['msa']):
-        logging.error(num)
-        logging.error('\n')
+        logging.error(f'> {num}')
         logging.error(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][num].tolist()]))
-        logging.error('\n')
 
     logging.error('TEMPLATES:')
     for num, seq in enumerate(features_dict['template_sequence']):
@@ -721,24 +719,26 @@ def extract_features_info(pkl_in_path: str, regions: List[str]):
         print(f'REGION {regions_list[i]}')
         print(f'The reference sequence is the following one:')
         print(f'{reference_split}')
-        print(f'\nMSA:')
         result_dict['msa'].sort(key=lambda x: x['identity'], reverse=True)
-        max_identity = result_dict['msa'][0]['identity']
-        max_identity_elements = [element for element in result_dict['msa'] if element['identity'] > max_identity*0.5]
-        print(f'Maximum identity is {round(max_identity, 2)}%')
-        print(
-            f'It can be found in {len(max_identity_elements)} sequences, which is a {round((len(max_identity_elements) / feature.get_msa_length())*100, 2)}% of the total sequences')
-        print(f'The full sequences:')
-        for seq in max_identity_elements:
-            print(f'Identity: {round(seq["identity"])} Sequence: {seq["seq"]}')
-        print(f'\nTEMPLATES:')
-        result_dict['templates'].sort(key=lambda x: x['identity'], reverse=True)
-        max_identity = result_dict['templates'][0]['identity']
-        max_identity_elements = [element for element in result_dict['templates'] if element['identity'] == max_identity]
-        print(f'Maximum identity is {round(max_identity,2)}%')
-        print(
-            f'It can be found in {len(max_identity_elements)} template, which is a {round((len(max_identity_elements) / feature.get_templates_length())*100, 2)}% of the total templates')
-        print(f'The full sequences:')
-        for seq in max_identity_elements:
-            print(f'Name: {seq["name"]}, Sequence: {seq["seq"]}')
+        if result_dict['msa']:
+            print(f'\nMSA:')
+            max_identity = result_dict['msa'][0]['identity']
+            max_identity_elements = [element for element in result_dict['msa'] if element['identity'] > max_identity*0.5]
+            print(f'Maximum identity is {round(max_identity, 2)}%')
+            print(
+                f'It can be found in {len(max_identity_elements)} sequences, which is a {round((len(max_identity_elements) / feature.get_msa_length())*100, 2)}% of the total sequences')
+            print(f'The full sequences:')
+            for seq in max_identity_elements:
+                print(f'Identity: {round(seq["identity"])} Sequence: {seq["seq"]}')
+        if result_dict['templates']:
+            print(f'\nTEMPLATES:')
+            result_dict['templates'].sort(key=lambda x: x['identity'], reverse=True)
+            max_identity = result_dict['templates'][0]['identity']
+            max_identity_elements = [element for element in result_dict['templates'] if element['identity'] == max_identity]
+            print(f'Maximum identity is {round(max_identity,2)}%')
+            print(
+                f'It can be found in {len(max_identity_elements)} template, which is a {round((len(max_identity_elements) / feature.get_templates_length())*100, 2)}% of the total templates')
+            print(f'The full sequences:')
+            for seq in max_identity_elements:
+                print(f'Name: {seq["name"]}, Sequence: {seq["seq"]}')
         print('\n================================')
