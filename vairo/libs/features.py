@@ -223,8 +223,8 @@ class Features:
     def cut_expand_features(self, query_sequence: int, query_list: List[int], query_features: List[int]):
         new_features = Features(query_sequence=query_sequence)
         msa_dict = create_empty_msa_list(self.get_msa_length() - 1)
-        self_len = len(query_sequence)
-        ext_len = len(self.query_sequence)
+        ext_len = len(query_sequence)
+        self_len = len(self.query_sequence)
 
         # We skip the first one, so that's the -1, because it is the query sequence one, and we have created
         # another new_features with a fake query_sequence. This will be skipped in set_msa_features
