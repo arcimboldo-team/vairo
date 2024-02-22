@@ -2,7 +2,6 @@ import logging
 import os
 import shutil
 import subprocess
-from typing import List
 import alphafold
 from libs import utils, bioutils, features, structures
 

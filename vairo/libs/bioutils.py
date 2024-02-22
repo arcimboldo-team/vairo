@@ -4,7 +4,7 @@ import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
 import numpy as np
 import pandas as pd
 import io
-from Bio import SeqIO, pairwise2
+from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder, \
     Superimposer
 from scipy.spatial import distance
@@ -888,6 +888,7 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
     return return_list, changes_dict
 
+
 def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
     match = 6
     gap = 0
@@ -898,8 +899,8 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
     for i, (res1, res2) in enumerate(itertools.zip_longest(sequence1, sequence2, fillvalue='-')):
         if res1 == '-' or res2 == '-':
             return_list.append(gap)
-        elif res1 == res2 :
-            return_list.append(match)            
+        elif res1 == res2:
+            return_list.append(match)
         elif get_group(res1) == get_group(res2):
             return_list.append(group_match)
         else:
@@ -912,13 +913,13 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 
 def sequence_identity(seq1, seq2) -> float:
     # Compare the identity of two sequences
-    identical_count = sum(a == b for a, b in zip(seq1, seq2))
+    identical_count = sum(1 for a, b in zip(seq1, seq2) if a != '-' and b != '-' and a == b)
     identity = (identical_count / len(seq1)) * 100
     return identity
 
 
-def sequence_identity2(seq1: str, seq2: str) -> float:
-    result_pairwise = pairwise2.align.globalxx(seq1, seq2)
+def convert_msa_sequence(number_list: List[int]) -> str:
+    return ''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in number_list])
 
 
 def read_bfactors_from_residues(pdb_path: str) -> Dict:
@@ -1359,7 +1360,6 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     add_domains_dict = {}
     for chain, residue in zip([interface.chain1, interface.chain2],
                               [interface.res_chain1, interface.res_chain2]):
-
         added_res_list = []
         [added_res_list.extend(domains) for domains in domains_dict[chain] if bool(set(residue).intersection(domains))]
         added_res_list.extend(residue)
@@ -1374,15 +1374,13 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     return add_domains_dict
 
 
-
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
     if length <= 0:
         return []
 
     combinated_list = list(itertools.product(*input_list))
-    trimmed_list = [sorted(element, key=lambda x: x[2])[:min(len(element), length)] for element in combinated_list if element]
-
-
+    trimmed_list = [sorted(element, key=lambda x: x[2])[:min(len(element), length)] for element in combinated_list if
+                    element]
 
 
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
@@ -1442,8 +1440,8 @@ def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str],
         else:
             for i, path in enumerate(chain_dict.values()):
                 aligned_chain, _ = hhsearch.run_hh(output_dir=tmpdirname, database_dir=tmpdirname,
-                                                              query_sequence_path=sequences_list[i],
-                                                              chain_in_path=path, databases=databases)
+                                                   query_sequence_path=sequences_list[i],
+                                                   chain_in_path=path, databases=databases)
                 shutil.copy2(aligned_chain, path)
                 chains_aligned.append(path)
             merge_pdbs(list_of_paths_of_pdbs_to_merge=chains_aligned, merged_pdb_path=pdb_out_path)

@@ -1,7 +1,6 @@
 import os
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
-import statistics
 from libs import bioutils, utils
 from typing import Dict, List
 

@@ -1,4 +1,3 @@
-import copy
 import logging
 import os
 import pickle
@@ -118,9 +117,14 @@ class Features:
     def get_msa_by_name(self, name: str) -> Union[str, None]:
         index = np.where(self.msa_features['accession_ids'] == name.encode())[0]
         if index:
-            return (''.join(
-                [residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][index[0]].tolist()]))
+            return bioutils.convert_msa_sequence(self.msa_features['msa'][index[0]].tolist())
         return None
+
+    def get_msa_sequences(self) -> List[str]:
+        results_list = []
+        for msa_seq in self.msa_features['msa']:
+            results_list.append(bioutils.convert_msa_sequence(msa_seq))
+        return results_list
 
     def get_index_by_name(self, name: str) -> Union[int, None]:
         index = np.where(self.template_features['template_domain_names'] == name.encode())
@@ -222,7 +226,7 @@ class Features:
         self_len = len(query_sequence)
         ext_len = len(self.query_sequence)
 
-        # We skip the first one, so thats the -1, because it is the query sequence one, and we have created
+        # We skip the first one, so that's the -1, because it is the query sequence one, and we have created
         # another new_features with a fake query_sequence. This will be skipped in set_msa_features
         for i in range(0, self.get_msa_length() - 1):
             msa_dict['msa'][i] = np.full(ext_len, 21)
@@ -686,18 +690,55 @@ def create_features_from_file(pkl_in_path: str) -> Features:
     return new_features
 
 
-def extract_features_info(pkl_in_path: str, regions: List[str], original_seq: str):
+def extract_features_info(pkl_in_path: str, regions: List[str]):
     feature = create_features_from_file(pkl_in_path=pkl_in_path)
-    for msa_seq in feature.msa_features['msa']:
-        check_region(regions, msa_seq, original_seq)
-    for template_seq in feature.template_features['template_sequence']:
-        check_region(regions, template_seq, original_seq)
+    features_info_dict = {}
+    regions_list = regions.replace(" ", "").split(',')
+    for region in regions_list:
+        region_split = list(map(int, region.split('-')))
+        reference_split_seq = feature.query_sequence[region_split[0]:region_split[1] + 1]
+        features_info_dict[reference_split_seq] = {'msa': [], 'templates': []}
+        msa_sequences = feature.get_msa_sequences()
+        for msa_seq in msa_sequences[1:]:
+            seq_split = msa_seq[region_split[0]:region_split[1] + 1]
+            identity = bioutils.sequence_identity(reference_split_seq, seq_split)
+            if identity != 0:
+                features_info_dict[reference_split_seq]['msa'].append(
+                    {'identity': identity, 'seq': msa_seq, 'seq_split': seq_split})
+        for i, template_seq in enumerate(feature.template_features['template_sequence']):
+            seq_split = template_seq.decode()[region_split[0]:region_split[1] + 1]
+            identity = bioutils.sequence_identity(reference_split_seq, seq_split)
+            if identity != 0:
+                features_info_dict[reference_split_seq]['templates'].append(
+                    {'identity': identity,
+                     'seq': msa_seq,
+                     'seq_split': seq_split,
+                     'name': feature.template_features['template_domain_names'][i].decode()
+                     })
 
-
-def check_region(regions: List[str], check_seq: [str], original_seq: [str]):
-    for region in regions:
-
-def check_identity(seq1: str, seq2: str):
-    biopython.pairwise2.align.globalx(seq1, seq2)
-
-
+    for i, (reference_split, result_dict) in enumerate(features_info_dict.items()):
+        print('\n================================')
+        print(f'REGION {regions_list[i]}')
+        print(f'The reference sequence is the following one:')
+        print(f'{reference_split}')
+        print(f'\nMSA:')
+        result_dict['msa'].sort(key=lambda x: x['identity'], reverse=True)
+        max_identity = result_dict['msa'][0]['identity']
+        max_identity_elements = [element for element in result_dict['msa'] if element['identity'] > max_identity*0.5]
+        print(f'Maximum identity is {round(max_identity, 2)}%')
+        print(
+            f'It can be found in {len(max_identity_elements)} sequences, which is a {round((len(max_identity_elements) / feature.get_msa_length())*100, 2)}% of the total sequences')
+        print(f'The full sequences:')
+        for seq in max_identity_elements:
+            print(f'Identity: {round(seq["identity"])} Sequence: {seq["seq"]}')
+        print(f'\nTEMPLATES:')
+        result_dict['templates'].sort(key=lambda x: x['identity'], reverse=True)
+        max_identity = result_dict['templates'][0]['identity']
+        max_identity_elements = [element for element in result_dict['templates'] if element['identity'] == max_identity]
+        print(f'Maximum identity is {round(max_identity,2)}%')
+        print(
+            f'It can be found in {len(max_identity_elements)} template, which is a {round((len(max_identity_elements) / feature.get_templates_length())*100, 2)}% of the total templates')
+        print(f'The full sequences:')
+        for seq in max_identity_elements:
+            print(f'Name: {seq["name"]}, Sequence: {seq["seq"]}')
+        print('\n================================')

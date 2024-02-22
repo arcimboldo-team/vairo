@@ -5,8 +5,7 @@ import os
 import shutil
 from typing import List, Dict, Union
 from libs import alphafold_classes, bioutils, change_res, output, pymol_script, template, utils, features, sequence, \
-    structures, \
-    plots
+    structures, plots
 from jinja2 import Environment, FileSystemLoader
 
 MIN_RMSD_SPLIT = 5

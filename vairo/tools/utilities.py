@@ -28,6 +28,10 @@ def print_features(features_path: str):
     features.print_features_from_file(features_path)
 
 
+def extract_features_info(features_path: str, regions: str):
+    features.extract_features_info(pkl_in_path=features_path, regions=regions)
+
+
 def generate_features(query_path: str, fasta_path: str):
     path = os.path.join(os.getcwd(), 'features.pkl')
     query = bioutils.extract_sequence(query_path)
