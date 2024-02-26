@@ -688,10 +688,17 @@ def create_features_from_file(pkl_in_path: str) -> Features:
     return new_features
 
 
-def extract_features_info(pkl_in_path: str, regions: List[str]):
+def delete_seq_from_msa(pkl_in_path: str, delete_list: List[str], pkl_out_path: str = None):
+    feature = create_features_from_file(pkl_in_path=pkl_in_path)
+    feature.delete_msas(delete_list)
+    if pkl_out_path is None:
+        pkl_out_path = pkl_in_path
+    feature.write_pkl(pkl_out_path)
+
+
+def extract_features_info(pkl_in_path: str, regions_list: List[str]):
     feature = create_features_from_file(pkl_in_path=pkl_in_path)
     features_info_dict = {}
-    regions_list = regions.replace(" ", "").split(',')
     for region in regions_list:
         region_split = list(map(int, region.split('-')))
         reference_split_seq = feature.query_sequence[region_split[0]:region_split[1] + 1]

@@ -1,13 +1,16 @@
 #! /usr/bin/env python3
+import json
 import re
 import shutil
 import sys
 import pickle
 import os
 import logging
-
+import xml.etree.ElementTree as ET
 import numpy as np
+import requests
 from alphafold.data import parsers, templates, mmcif_parsing
+from Bio.Blast import NCBIWWW
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
@@ -29,7 +32,8 @@ def print_features(features_path: str):
 
 
 def extract_features_info(features_path: str, regions: str):
-    features.extract_features_info(pkl_in_path=features_path, regions=regions)
+    regions_list = regions.replace(" ", "").split(',')
+    features.extract_features_info(pkl_in_path=features_path, regions_list=regions_list)
 
 
 def generate_features(query_path: str, fasta_path: str):
@@ -267,6 +271,38 @@ def align_pdb(hhr_path: str, pdb_path: str, fasta_path: str):
         results_list.append(result_pdb)
 
     bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=results_list, merged_pdb_path='result.pdb')
+
+
+def delete_msas(pkl_in_path: str, pkl_out_path: str, delete_str: str):
+    delete_list = list(map(int, delete_str.split(',')))
+    features.delete_seq_from_msa(pkl_in_path=pkl_in_path, pkl_out_path=pkl_out_path, delete_list=delete_list)
+
+
+def run_uniprot_blast(fasta_path: str):
+    try:
+        sequences_dict = bioutils.extract_sequences(fasta_path)
+        for id, seq in sequences_dict.items():
+            database= 'swissprot'
+            result_handle = NCBIWWW.qblast("blastp", database, seq)
+            root = ET.fromstring(result_handle.read())
+            for iteration_elem in root.findall('.//Hit'):
+                hit_accession = iteration_elem.find('.//Hit_accession').text
+                evalue = iteration_elem.find('.//Hsp_evalue').text
+                identity = iteration_elem.find('.//Hsp_identity').text
+                url = f'https://rest.uniprot.org/uniprotkb/search?query=accession_id:{hit_accession}&fields=annotation_score,protein_name'
+                response = requests.get(url)
+                print('--------------')
+                json_response = response.json()
+                annotation_score = json_response['results'][0]['annotationScore']
+                protein_description = json_response['results'][0]['proteinDescription']['recommendedName']['fullName']['value']
+                print(f'Accession ID: {hit_accession}')
+                print(f'E-value: {evalue}')
+                print(f'Identity: {identity}')
+                print(f'Annotation Score: {annotation_score}')
+                print(f'Protein description: {protein_description}')
+                print('--------------')   
+    except Exception as e:
+        print(str(e))
 
 
 if __name__ == "__main__":
