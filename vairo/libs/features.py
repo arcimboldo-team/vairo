@@ -700,24 +700,18 @@ def extract_features_info(pkl_in_path: str, regions_list: List[str]):
     feature = create_features_from_file(pkl_in_path=pkl_in_path)
     features_info_dict = {}
     for region in regions_list:
-        region_split = list(map(int, region.split('-')))
-        reference_split_seq = feature.query_sequence[region_split[0]:region_split[1] + 1]
-        features_info_dict[reference_split_seq] = {'msa': [], 'templates': []}
+        features_info_dict[str(region)] = {'msa': [], 'templates': []}
         msa_sequences = feature.get_msa_sequences()
         for msa_seq in msa_sequences[1:]:
-            seq_split = msa_seq[region_split[0]:region_split[1] + 1]
-            identity = bioutils.sequence_identity(reference_split_seq, seq_split)
+            identity = bioutils.sequence_identity_regions(feature.query_sequence, msa_seq, region)
             if identity != 0:
-                features_info_dict[reference_split_seq]['msa'].append(
-                    {'identity': identity, 'seq': msa_seq, 'seq_split': seq_split})
+                features_info_dict[str(region)]['msa'].append({'identity': identity, 'seq': msa_seq})
         for i, template_seq in enumerate(feature.template_features['template_sequence']):
-            seq_split = template_seq.decode()[region_split[0]:region_split[1] + 1]
-            identity = bioutils.sequence_identity(reference_split_seq, seq_split)
+            identity = bioutils.sequence_identity_regions(feature.query_sequence, template_seq, region)
             if identity != 0:
-                features_info_dict[reference_split_seq]['templates'].append(
+                features_info_dict[str(region)]['templates'].append(
                     {'identity': identity,
                      'seq': msa_seq,
-                     'seq_split': seq_split,
                      'name': feature.template_features['template_domain_names'][i].decode()
                      })
 
@@ -726,26 +720,38 @@ def extract_features_info(pkl_in_path: str, regions_list: List[str]):
         print(f'REGION {regions_list[i]}')
         print(f'The reference sequence is the following one:')
         print(f'{reference_split}')
-        result_dict['msa'].sort(key=lambda x: x['identity'], reverse=True)
+        store_results = []
         if result_dict['msa']:
             print(f'\nMSA:')
-            max_identity = result_dict['msa'][0]['identity']
-            max_identity_elements = [element for element in result_dict['msa'] if element['identity'] > max_identity*0.5]
-            print(f'Maximum identity is {round(max_identity, 2)}%')
-            print(
-                f'It can be found in {len(max_identity_elements)} sequences, which is a {round((len(max_identity_elements) / feature.get_msa_length())*100, 2)}% of the total sequences')
-            print(f'The full sequences:')
+            result_dict['msa'].sort(key=lambda x: x['identity'], reverse=True)
+            max_identity_elements = [element for element in result_dict['msa'] if element['identity'] > 90]
+            print(f'\nSequences that have more than a 90% of identity ({len(max_identity_elements)}):')
             for seq in max_identity_elements:
-                print(f'Identity: {round(seq["identity"])} Sequence: {seq["seq"]}')
+                print(f'Identity: {round(seq["identity"])}\n{seq["seq"]}\n')
+            accepted_identity_elements = [element for element in result_dict['msa'] if element['identity'] <= 90 and element['identity'] >= 50]
+            print(f'\nSequences that have beetween a 50% and 90% of identity ({len(accepted_identity_elements)}):')
+            for seq in accepted_identity_elements:
+                print(f'Identity: {round(seq["identity"])}\n{seq["seq"]}\n')
+            store_results.extend(accepted_identity_elements)
+
         if result_dict['templates']:
             print(f'\nTEMPLATES:')
             result_dict['templates'].sort(key=lambda x: x['identity'], reverse=True)
-            max_identity = result_dict['templates'][0]['identity']
-            max_identity_elements = [element for element in result_dict['templates'] if element['identity'] == max_identity]
-            print(f'Maximum identity is {round(max_identity,2)}%')
-            print(
-                f'It can be found in {len(max_identity_elements)} template, which is a {round((len(max_identity_elements) / feature.get_templates_length())*100, 2)}% of the total templates')
-            print(f'The full sequences:')
+            max_identity_elements = [element for element in result_dict['templates'] if element['identity'] > 90]
+            print(f'Templates that have more than a 90% of identity ({len(max_identity_elements)}):')
             for seq in max_identity_elements:
-                print(f'Name: {seq["name"]}, Sequence: {seq["seq"]}')
+                print(f'Name: {seq["name"]} Identity: {seq["identity"]}\n{seq["seq"]}\n')
+            
+            accepted_identity_elements = [element for element in result_dict['templates'] if element['identity'] <= 90 and element['identity'] >= 50]
+            print(f'Templates that have beetween a 50% and 90% of identity ({len(accepted_identity_elements)}):')
+            for seq in accepted_identity_elements:
+                print(f'Name: {seq["name"]} Identity: {seq["identity"]}\n{seq["seq"]}\n')
+            store_results.extend(accepted_identity_elements)
+        
+        store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{i}.fasta')
+        print(f'Accepted sequences have been stored in: {store_fasta_path}')
+        with open(store_fasta_path, 'w') as file:
+            for i, seq in enumerate(store_results):
+                file.write(f'\n>{i}\n')
+                file.write(f'{seq["seq"]}')
         print('\n================================')

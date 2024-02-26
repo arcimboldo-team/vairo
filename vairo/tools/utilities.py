@@ -31,8 +31,11 @@ def print_features(features_path: str):
     features.print_features_from_file(features_path)
 
 
-def extract_features_info(features_path: str, regions: str):
-    regions_list = regions.replace(" ", "").split(',')
+def extract_features_info(features_path: str, *regions):
+    print(regions)
+    regions_list = []
+    for region in regions:
+        regions_list.append(region.split(','))
     features.extract_features_info(pkl_in_path=features_path, regions_list=regions_list)
 
 
