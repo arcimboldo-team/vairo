@@ -32,7 +32,6 @@ def print_features(features_path: str):
 
 
 def extract_features_info(features_path: str, *regions):
-    print(regions)
     regions_list = []
     for region in regions:
         regions_list.append(region.split(','))

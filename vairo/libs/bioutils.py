@@ -914,13 +914,17 @@ def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
 def sequence_identity_regions(seq1, seq2, regions_list: List):
     identity = 0
     num_amino = 0
+    amino_region1 = ['X'] * len(seq1)
+    amino_region2 = ['X'] * len(seq2)
     for region in regions_list:
         region = list(map(int, region.split('-')))
-        region1 = seq1[region[0] - 1 : region[1]]
-        region2 = seq2[region[0] - 1 : region[1]]
-        identity += sum(1 for a, b in zip(region1, region2) if a != '-' and b != '-' and a == b)
-        num_amino += len(region1)
-    return (identity / num_amino) * 100
+        for i in range(region[0] - 1, region[1]):
+            identity += 1 if seq1[i] == seq2[i] and seq1[i] != '-' and seq2[i] != '-' else 0
+            num_amino += 1
+            amino_region1[i] = seq1[i]
+            amino_region2[i] = seq2[i]
+    return (identity / num_amino) * 100, ''.join(map(str, amino_region1)), ''.join(map(str, amino_region2))
+
 
 def sequence_identity(seq1, seq2) -> float:
     # Compare the identity of two sequences

@@ -699,20 +699,23 @@ def delete_seq_from_msa(pkl_in_path: str, delete_list: List[str], pkl_out_path: 
 def extract_features_info(pkl_in_path: str, regions_list: List[str]):
     feature = create_features_from_file(pkl_in_path=pkl_in_path)
     features_info_dict = {}
+    region_query = ''
     for region in regions_list:
         features_info_dict[str(region)] = {'msa': [], 'templates': []}
         msa_sequences = feature.get_msa_sequences()
         for msa_seq in msa_sequences[1:]:
-            identity = bioutils.sequence_identity_regions(feature.query_sequence, msa_seq, region)
+            identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, msa_seq, region)
             if identity != 0:
                 features_info_dict[str(region)]['msa'].append({'identity': identity, 'seq': msa_seq})
         for i, template_seq in enumerate(feature.template_features['template_sequence']):
-            identity = bioutils.sequence_identity_regions(feature.query_sequence, template_seq, region)
+            identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, template_seq, region)
             if identity != 0:
                 features_info_dict[str(region)]['templates'].append(
                     {'identity': identity,
                      'seq': msa_seq,
-                     'name': feature.template_features['template_domain_names'][i].decode()
+                     'name': feature.template_features['template_domain_names'][i].decode(),
+                     'seq_query': region_query,
+                     'seq_msa': region_msa
                      })
 
     for i, (reference_split, result_dict) in enumerate(features_info_dict.items()):
@@ -720,6 +723,8 @@ def extract_features_info(pkl_in_path: str, regions_list: List[str]):
         print(f'REGION {regions_list[i]}')
         print(f'The reference sequence is the following one:')
         print(f'{reference_split}')
+        print(f'And we are looking for these specific regions:')
+        print(f'{region_query}')
         store_results = []
         if result_dict['msa']:
             print(f'\nMSA:')
@@ -729,7 +734,7 @@ def extract_features_info(pkl_in_path: str, regions_list: List[str]):
             for seq in max_identity_elements:
                 print(f'Identity: {round(seq["identity"])}\n{seq["seq"]}\n')
             accepted_identity_elements = [element for element in result_dict['msa'] if element['identity'] <= 90 and element['identity'] >= 50]
-            print(f'\nSequences that have beetween a 50% and 90% of identity ({len(accepted_identity_elements)}):')
+            print(f'\nSequences that have between a 50% and 90% of identity ({len(accepted_identity_elements)}):')
             for seq in accepted_identity_elements:
                 print(f'Identity: {round(seq["identity"])}\n{seq["seq"]}\n')
             store_results.extend(accepted_identity_elements)
@@ -743,7 +748,7 @@ def extract_features_info(pkl_in_path: str, regions_list: List[str]):
                 print(f'Name: {seq["name"]} Identity: {seq["identity"]}\n{seq["seq"]}\n')
             
             accepted_identity_elements = [element for element in result_dict['templates'] if element['identity'] <= 90 and element['identity'] >= 50]
-            print(f'Templates that have beetween a 50% and 90% of identity ({len(accepted_identity_elements)}):')
+            print(f'Templates that have between a 50% and 90% of identity ({len(accepted_identity_elements)}):')
             for seq in accepted_identity_elements:
                 print(f'Name: {seq["name"]} Identity: {seq["identity"]}\n{seq["seq"]}\n')
             store_results.extend(accepted_identity_elements)
@@ -751,7 +756,7 @@ def extract_features_info(pkl_in_path: str, regions_list: List[str]):
         store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{i}.fasta')
         print(f'Accepted sequences have been stored in: {store_fasta_path}')
         with open(store_fasta_path, 'w') as file:
-            for i, seq in enumerate(store_results):
-                file.write(f'\n>{i}\n')
+            for j, seq in enumerate(store_results):
+                file.write(f'\n>{j}\n')
                 file.write(f'{seq["seq"]}')
         print('\n================================')
