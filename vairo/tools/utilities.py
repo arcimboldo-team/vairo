@@ -2,10 +2,12 @@
 import json
 import re
 import shutil
+import subprocess
 import sys
 import pickle
 import os
 import logging
+import tempfile
 import xml.etree.ElementTree as ET
 import numpy as np
 import requests
@@ -35,7 +37,9 @@ def extract_features_info(features_path: str, *regions):
     regions_list = []
     for region in regions:
         regions_list.append(region.split(','))
-    features.extract_features_info(pkl_in_path=features_path, regions_list=regions_list)
+    return_files = features.extract_features_info(pkl_in_path=features_path, regions_list=regions_list)
+    for file in return_files:
+        run_uniprot_blast(file)
 
 
 def generate_features(query_path: str, fasta_path: str):
@@ -280,13 +284,27 @@ def delete_msas(pkl_in_path: str, pkl_out_path: str, delete_str: str):
     features.delete_seq_from_msa(pkl_in_path=pkl_in_path, pkl_out_path=pkl_out_path, delete_list=delete_list)
 
 
-def run_uniprot_blast(fasta_path: str):
+def run_uniprot_blast(fasta_path: str, use_server: bool = False):
     try:
         sequences_dict = bioutils.extract_sequences(fasta_path)
+        print(f'Running BLASTP with the sequences inside the file {fasta_path}')
         for id, seq in sequences_dict.items():
-            database= 'swissprot'
-            result_handle = NCBIWWW.qblast("blastp", database, seq)
-            root = ET.fromstring(result_handle.read())
+            print('================================')
+            print(f'Sequence id {id} with length {len(seq)}:')
+            print(f'{seq}')
+            modified_content = seq.replace('-', 'X')
+            root = ''
+            if use_server:
+                database = 'swissprot'
+                result_handle = NCBIWWW.qblast("blastp", database, modified_content)
+                root = ET.fromstring(result_handle.read())
+            else:
+                with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+                    temp_file.write(modified_content)
+                    temp_file.flush()
+                    blastp_cmd = f'blastp -query {temp_file.name} -outfmt 5'
+                    blastp_output = subprocess.Popen(['/bin/bash', '-i', '-c', blastp_cmd], stdout=subprocess.PIPE).communicate()[0].decode('utf-8')
+                    root = ET.fromstring(blastp_output)
             for iteration_elem in root.findall('.//Hit'):
                 hit_accession = iteration_elem.find('.//Hit_accession').text
                 evalue = iteration_elem.find('.//Hsp_evalue').text
@@ -302,7 +320,7 @@ def run_uniprot_blast(fasta_path: str):
                 print(f'Identity: {identity}')
                 print(f'Annotation Score: {annotation_score}')
                 print(f'Protein description: {protein_description}')
-                print('--------------')   
+            print('================================')
     except Exception as e:
         print(str(e))
 
