@@ -211,7 +211,6 @@ def rmsilent(file_path: str):
 
 def clean_files(input_dir: str):
     # Remove directory
-
     shutil.rmtree(input_dir)
 
 

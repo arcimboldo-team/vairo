@@ -8,9 +8,11 @@ import pickle
 import os
 import logging
 import tempfile
+from typing import List
 import xml.etree.ElementTree as ET
 import numpy as np
 import requests
+import csv
 from alphafold.data import parsers, templates, mmcif_parsing
 from Bio.Blast import NCBIWWW
 
@@ -37,8 +39,53 @@ def extract_features_info(features_path: str, *regions):
     regions_list = []
     for region in regions:
         regions_list.append(region.split(','))
-    return_files = features.extract_features_info(pkl_in_path=features_path, regions_list=regions_list)
-    for file in return_files:
+    features_info_dict, region_query = features.extract_features_info(pkl_in_path=features_path, regions_list=regions_list)
+    files_info = []
+    for i, (reference_split, result_dict) in enumerate(features_info_dict.items()):
+        print('\n================================')
+        print(f'REGION {regions_list[i]}')
+        print(f'The reference sequence is the following one:')
+        print(f'{reference_split}')
+        print(f'And we are looking for these specific regions:')
+        print(f'{region_query}')
+        store_results = []
+        if result_dict['msa']:
+            print(f'\nMSA:')
+            result_dict['msa'].sort(key=lambda x: x['identity'], reverse=True)
+            max_identity_elements = [element for element in result_dict['msa'] if element['identity'] > 90]
+            print(f'\nSequences that have more than a 90% of identity ({len(max_identity_elements)}):')
+            for seq in max_identity_elements:
+                print(f'ID: {seq["name"]} Identity: {round(seq["identity"])} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
+            accepted_identity_elements = [element for element in result_dict['msa'] if element['identity'] <= 90 and element['identity'] >= 50]
+            print(f'\nSequences that have between a 50% and 90% of identity ({len(accepted_identity_elements)}):')
+            for seq in accepted_identity_elements:
+                print(f'ID: {seq["name"]} Identity: {round(seq["identity"])} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
+            store_results.extend(accepted_identity_elements)
+
+        if result_dict['templates']:
+            print(f'\nTEMPLATES:')
+            result_dict['templates'].sort(key=lambda x: x['identity'], reverse=True)
+            max_identity_elements = [element for element in result_dict['templates'] if element['identity'] > 90]
+            print(f'Templates that have more than a 90% of identity ({len(max_identity_elements)}):')
+            for seq in max_identity_elements:
+                print(f'ID: {seq["name"]} Identity: {seq["identity"]} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
+            
+            accepted_identity_elements = [element for element in result_dict['templates'] if element['identity'] <= 90 and element['identity'] >= 50]
+            print(f'Templates that have between a 50% and 90% of identity ({len(accepted_identity_elements)}):')
+            for seq in accepted_identity_elements:
+                print(f'ID: {seq["name"]} Identity: {seq["identity"]} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
+            store_results.extend(accepted_identity_elements)
+        
+        store_fasta_path = os.path.join(os.path.dirname(features_path), f'accepted_sequences_{i}.fasta')
+        print(f'Accepted sequences have been stored in: {store_fasta_path}')
+        with open(store_fasta_path, 'w') as file:
+            for seq in store_results:
+                file.write(f'\n>{seq["name"]}\n')
+                file.write(f'{seq["seq"]}')
+        print('\n================================')
+        files_info.append(store_fasta_path)    
+    
+    for file in files_info:
         run_uniprot_blast(file)
 
 
@@ -160,7 +207,6 @@ def renumber():
                                 pass
 
         if save_pdb:
-            print(save_residues)
             if len(save_residues) != 15:
                 raise Exception
             bioutils.copy_positions_of_pdb(pdb_file, os.path.join("/Users/pep/work/transfers/library",
@@ -282,6 +328,30 @@ def align_pdb(hhr_path: str, pdb_path: str, fasta_path: str):
 def delete_msas(pkl_in_path: str, pkl_out_path: str, delete_str: str):
     delete_list = list(map(int, delete_str.split(',')))
     features.delete_seq_from_msa(pkl_in_path=pkl_in_path, pkl_out_path=pkl_out_path, delete_list=delete_list)
+
+
+def select_csv(pkl_in_path: str, csv_path: str, min_input: float, max_input: float):
+    accepted_list = []
+    deleted_list = []
+    min_aux=min([min_input,max_input])
+    max_aux=max([min_input,max_input])
+    new_features_path = os.path.join(os.path.dirname(pkl_in_path), f'features_{min_aux}-{max_aux}.pkl')
+    with open(csv_path) as csvfile:
+        csvreader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        next(csvreader)
+        for row in csvreader:
+            y_value = row[2]
+            name = int(row[6])
+            if min_aux >= y_value <= max_aux:
+                accepted_list.append(name)
+            else:
+                deleted_list.append(name)
+    
+    print(f'The deleted list is the following one: {", ".join(list(map(str,deleted_list)))}\n')
+    print(f'The accepted list is the following one: {", ".join(list(map(str,accepted_list)))}\n')
+    print(f'The features file with just the accepted sequences can be found in:')
+    features.delete_seq_from_msa(pkl_in_path=pkl_in_path, pkl_out_path=new_features_path, delete_list=deleted_list)    
+
 
 
 def run_uniprot_blast(fasta_path: str, use_server: bool = False):

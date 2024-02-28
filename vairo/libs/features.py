@@ -732,48 +732,4 @@ def extract_features_info(pkl_in_path: str, regions_list: List[str]):
                      'seq_msa': region_msa
                      })
 
-    return_files = []
-    for i, (reference_split, result_dict) in enumerate(features_info_dict.items()):
-        print('\n================================')
-        print(f'REGION {regions_list[i]}')
-        print(f'The reference sequence is the following one:')
-        print(f'{reference_split}')
-        print(f'And we are looking for these specific regions:')
-        print(f'{region_query}')
-        store_results = []
-        if result_dict['msa']:
-            print(f'\nMSA:')
-            result_dict['msa'].sort(key=lambda x: x['identity'], reverse=True)
-            max_identity_elements = [element for element in result_dict['msa'] if element['identity'] > 90]
-            print(f'\nSequences that have more than a 90% of identity ({len(max_identity_elements)}):')
-            for seq in max_identity_elements:
-                print(f'ID: {seq["name"]} Identity: {round(seq["identity"])} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
-            accepted_identity_elements = [element for element in result_dict['msa'] if element['identity'] <= 90 and element['identity'] >= 50]
-            print(f'\nSequences that have between a 50% and 90% of identity ({len(accepted_identity_elements)}):')
-            for seq in accepted_identity_elements:
-                print(f'ID: {seq["name"]} Identity: {round(seq["identity"])} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
-            store_results.extend(accepted_identity_elements)
-
-        if result_dict['templates']:
-            print(f'\nTEMPLATES:')
-            result_dict['templates'].sort(key=lambda x: x['identity'], reverse=True)
-            max_identity_elements = [element for element in result_dict['templates'] if element['identity'] > 90]
-            print(f'Templates that have more than a 90% of identity ({len(max_identity_elements)}):')
-            for seq in max_identity_elements:
-                print(f'ID: {seq["name"]} Identity: {seq["identity"]} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
-            
-            accepted_identity_elements = [element for element in result_dict['templates'] if element['identity'] <= 90 and element['identity'] >= 50]
-            print(f'Templates that have between a 50% and 90% of identity ({len(accepted_identity_elements)}):')
-            for seq in accepted_identity_elements:
-                print(f'ID: {seq["name"]} Identity: {seq["identity"]} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
-            store_results.extend(accepted_identity_elements)
-        
-        store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{i}.fasta')
-        print(f'Accepted sequences have been stored in: {store_fasta_path}')
-        with open(store_fasta_path, 'w') as file:
-            for seq in store_results:
-                file.write(f'\n>{seq["name"]}\n')
-                file.write(f'{seq["seq"]}')
-        print('\n================================')
-        return_files.append(store_fasta_path)
-    return return_files
+    return features_info_dict, region_query
