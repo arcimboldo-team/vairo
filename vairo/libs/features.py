@@ -663,10 +663,6 @@ def print_features_from_file(pkl_in_path: str):
     for num, name in enumerate(features_dict['msa']):
         logging.error(f'> {num}')
         logging.error(''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in features_dict['msa'][num].tolist()]))
-        logging.error(features_dict['accession_ids'][num])
-        logging.error(features_dict['deletion_matrix_int'][num])
-        logging.error(features_dict['msa_species_identifiers'][num])
-        logging.error(features_dict['num_alignments'][num])
 
     logging.error('TEMPLATES:')
     for num, seq in enumerate(features_dict['template_sequence']):

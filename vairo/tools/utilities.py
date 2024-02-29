@@ -349,7 +349,7 @@ def select_csv(pkl_in_path: str, csv_path: str, min_input: float, max_input: flo
         for row in csvreader:
             y_value = row[2]
             name = int(row[6])
-            if min_aux >= y_value <= max_aux:
+            if min_aux <= y_value and y_value <= max_aux:
                 accepted_list.append(name)
             else:
                 deleted_list.append(name)
