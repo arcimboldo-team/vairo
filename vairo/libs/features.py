@@ -168,9 +168,8 @@ class Features:
     def set_msa_features(self, new_msa: Dict, start: int = 1, finish: int = -1,
                          delete_positions: List[int] = []) -> int:
         coverage_msa = []
-        for i in range(start, len(new_msa['msa'])):
-            if delete_positions:
-                new_msa = delete_residues_msa(msa=new_msa, position=i, delete_positions=delete_positions)
+        self.delete_residues_msa(delete_positions=delete_positions)
+        for i in range(start, self.get_msa_length()):
             coverage_msa.append(len([residue for residue in new_msa['msa'][i] if residue != 21]))
         if finish == -1:
             coverage_msa = list(range(0, len(new_msa['msa']) - start))
@@ -374,6 +373,17 @@ class Features:
             self.extra_info['msa_coverage'] = [1] * len(query_seq)
         self.write_pkl(pkl_path=path)
 
+    def delete_residues_msa(self, delete_positions: List[int]):
+        # Delete the specifics residues in the msa.
+        if delete_positions:
+            for i in range(self.get_msa_length()):
+                for delete in delete_positions:
+                    if delete <= self.msa_features['msa'][i].size:
+                        self.msa_features['msa'][i][delete - 1] = 21
+                        self.msa_features['deletion_matrix_int'][i][delete - 1] = 0
+                    else:
+                        break
+
 
 def create_empty_msa_list(length: int) -> Dict:
     msa_dict = {
@@ -396,17 +406,6 @@ def create_empty_template_list(length: int) -> Dict:
         'template_sum_probs': [None] * length
     }
     return template_dict
-
-
-def delete_residues_msa(msa: Dict, position: int, delete_positions: List[int]) -> Dict:
-    # Delete the specifics residues in the msa.
-    for delete in delete_positions:
-        if delete <= msa['msa'][position].size:
-            msa['msa'][position][delete - 1] = 21
-            msa['deletion_matrix_int'][position][delete - 1] = 0
-        else:
-            break
-    return msa
 
 
 def replace_sequence_template(template_dict: Dict, sequence_in: str) -> Dict:

@@ -84,11 +84,15 @@ def main():
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
                 num_msa = 0
                 num_templates = 0
+                #Delete the residues before expanding, so we avoid shifting them
+                feat_aux.delete_residues_msa(delete_positions=feat.msa_mask)
+                #Cut and expand the features, in order to fit the generat features.pkl
                 feat_aux = feat_aux.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled, query_list=feat.positions_query, query_features=feat.positions_features)
                 if feat.keep_msa != 0:
+                    #Send without masking features, as we have delete them
                     num_msa = a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
                                                              finish=feat.keep_msa,
-                                                             delete_positions=feat.msa_mask)
+                                                             delete_positions=[])
                     logging.error(f'     Adding {num_msa} sequence/s to the MSA')
                 if feat.keep_templates != 0:
                     num_templates = a_air.feature.set_template_features(new_templates=feat_aux.template_features,
