@@ -95,6 +95,11 @@ cmd.set("valence", 'off')
                     script += f'cmd.color("wheat", "resn TYR and {utils.get_file_name(interface.path)}")\n'
                     script += f'cmd.color("pink", "resn VAL and {utils.get_file_name(interface.path)}")\n'
 
+        if a_air.output.conservation_ranked_path:
+            script += f'cmd.load("{a_air.output.conservation_ranked_path}", "{utils.get_file_name(a_air.output.conservation_ranked_path)}")\n'
+            script += f'cmd.spectrum("b", "blue_white_red", "{utils.get_file_name(a_air.output.conservation_ranked_path)}")\n'
+
+        
         script += f'cmd.reset()\n'
 
         if a_air.output.ranked_list[0].get_interfaces_with_path():
@@ -108,11 +113,6 @@ cmd.set("valence", 'off')
                            f'into interface {interface.name}")\n')
                 i += 1
 
-        for zoom in a_air.pymol_show_list:
-            script += f'cmd.zoom("center", {zoom})\n'
-            script += f'cmd.scene(key="{i}: Residues {zoom}", action="store", message="Zoom into residues {zoom}")\n'
-            i += 1
-
         script += f'cmd.disable("*")\n'
         script += f'cmd.enable("{a_air.output.ranked_list[0].name}")\n'
         script += f'cmd.enable("{a_air.output.best_experimental}")\n'
@@ -124,6 +124,12 @@ cmd.set("valence", 'off')
         script += f'cmd.enable("{a_air.output.ranked_list[0].name}")\n'
         script += f'cmd.enable("{a_air.output.best_experimental}")\n'
         script += f'cmd.orient("{a_air.output.ranked_list[0].name}")\n'
+
+        for zoom in a_air.pymol_show_list:
+            script += f'cmd.zoom(("{zoom}"), 10, complete=1)\n'
+            script += f'cmd.scene(key="{i}: Residues {zoom}", action="store", message="Zoom into residues {zoom}")\n'
+            i += 1
+
         script += f'cmd.save("{a_air.output.pymol_session_path}")\n'
         script += 'cmd.quit()\n'
 

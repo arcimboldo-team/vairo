@@ -6,7 +6,7 @@ from itertools import combinations
 from typing import Dict, List
 import pandas as pd
 from ALEPH.aleph.core import ALEPH
-from libs import bioutils, features, utils, sequence, structures, plots
+from libs import bioutils, utils, sequence, structures, plots
 
 PERCENTAGE_FILTER = 0.8
 QSCORE_MINIMUM = 0.3
@@ -53,6 +53,7 @@ class OutputStructure:
         self.rankeds_split_dir: str = ''
         self.rankeds_without_mutations_dir: str = ''
         self.tmp_dir: str = ''
+        self.conservation_ranked_path: str = ''
         self.group_ranked_by_qscore_dict: dict = {}
         self.templates_selected: List = []
         self.dendogram_struct: structures.Dendogram = None
@@ -194,6 +195,14 @@ class OutputStructure:
                 'There are no predictions that meet the minimum quality requirements. All predictions were filtered. Check the tables')
         else:
             self.ranked_list = sorted_ranked_list
+
+
+        if vairo_struct.feature is not None:
+            self.conservation_ranked_path = os.path.join(self.results_dir, f'{ranked.name}_conservation.pdb')
+            bioutils.conservation_pdb(self.ranked_list[0].path, self.conservation_ranked_path, vairo_struct.feature.get_msa_sequences())
+            bioutils.split_chains_assembly(pdb_in_path=self.conservation_ranked_path,
+                                           pdb_out_path=self.conservation_ranked_path,
+                                           sequence_assembled=vairo_struct.sequence_assembled)
 
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, experimental_pdbs: List[str],
                        binaries_paths):

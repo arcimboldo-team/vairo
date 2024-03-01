@@ -98,7 +98,7 @@ class MainStructure:
         pyoml_show_str = utils.get_input_value(name='show_pymol', section='global', input_dict=parameters_dict)
 
         if pyoml_show_str:
-            self.pymol_show_list = pyoml_show_str.replace(' ', '').split(',')
+            self.pymol_show_list = str(pyoml_show_str).split(',')
 
         if self.mode == 'naive':
             self.cluster_templates = utils.get_input_value(name='cluster_templates', section='global',

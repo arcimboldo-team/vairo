@@ -862,38 +862,20 @@ def get_group(res: str) -> str:
     return res
 
 
-def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
+def compare_sequences(sequence1: str, sequence2: str, only_match=False) -> List[str]:
     # Given two sequences with same length, return a list showing
     # if there is a match, a group match, they are different, or
     # they are not aligned
     # Also, return the changes in the sequence2
-    return_list = []
-    changes_dict = {}
-    for i in range(0, len(sequence1)):
-        if i < len(sequence2):
-            res1 = sequence1[i]
-            res2 = sequence2[i]
-            if res1 == res2:
-                return_list.append(6)
-            elif res2 == '-':
-                return_list.append(0)
-            elif get_group(res1) == get_group(res2):
-                return_list.append(4)
-            else:
-                return_list.append(2)
-            if res1 != res2:
-                changes_dict[i] = res2
-        else:
-            return_list.append(0)
-
-    return return_list, changes_dict
-
-
-def compare_sequences(sequence1: str, sequence2: str) -> List[str]:
-    match = 6
     gap = 0
-    group_match = 4
-    mismatch = 2
+    if only_match:
+        match = 1
+        group_match = 0
+        mismatch = 0
+    else:
+        match = 6
+        group_match = 4
+        mismatch = 2
     return_list = []
     changes_dict = {}
     for i, (res1, res2) in enumerate(itertools.zip_longest(sequence1, sequence2, fillvalue='-')):
@@ -948,7 +930,6 @@ def read_bfactors_from_residues(pdb_path: str) -> Dict:
         for res in list(chain.get_residues()):
             return_dict[chain.get_id()].append(res.get_unpacked_list()[0].bfactor)
     return return_dict
-
 
 def read_residues_from_pdb(pdb_path: str) -> Dict:
     # Create a dictionary with each existing chain in the pdb.
@@ -1461,3 +1442,19 @@ def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str],
                 chains_aligned.append(path)
             merge_pdbs(list_of_paths_of_pdbs_to_merge=chains_aligned, merged_pdb_path=pdb_out_path)
             return pdb_out_path
+
+
+def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
+    #Change the bfactors with the conservation found in the msa. Just one chain, as the msa 
+    #it is in a chain
+    sequences_dict = extract_sequence_msa_from_pdb(pdb_path=pdb_in_path)
+    chain = get_chains(pdb_in_path)[0]
+    whole_seq = "".join([seq for seq in sequences_dict.values()])
+    convervation_list = np.zeros(len(whole_seq))
+    for msa_seq in msa_list:
+        results_list, _ = compare_sequences(whole_seq, msa_seq, only_match=True)
+        convervation_list += np.array(results_list)
+    change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(whole_seq) + 1, 1)]}, chain_bfactors_dict={chain: convervation_list})
+    change.change_bfactors(pdb_in_path, pdb_out_path)
+    
+
