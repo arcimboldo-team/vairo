@@ -900,7 +900,8 @@ def sequence_identity_regions(seq1, seq2, regions_list: List):
     amino_region2 = ['X'] * len(seq2)
     for region in regions_list:
         region = list(map(int, region.split('-')))
-        for i in range(region[0] - 1, region[1]):
+        min_i = min(region[1], len(seq1), len(seq2))
+        for i in range(region[0] - 1, min_i):
             identity += 1 if seq1[i] == seq2[i] and seq1[i] != '-' and seq2[i] != '-' else 0
             num_amino += 1
             amino_region1[i] = seq1[i]
@@ -930,6 +931,7 @@ def read_bfactors_from_residues(pdb_path: str) -> Dict:
         for res in list(chain.get_residues()):
             return_dict[chain.get_id()].append(res.get_unpacked_list()[0].bfactor)
     return return_dict
+
 
 def read_residues_from_pdb(pdb_path: str) -> Dict:
     # Create a dictionary with each existing chain in the pdb.
@@ -1445,8 +1447,8 @@ def align_pdb(pdb_in_path: str, pdb_out_path: str, sequences_list: List[str],
 
 
 def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
-    #Change the bfactors with the conservation found in the msa. Just one chain, as the msa 
-    #it is in a chain
+    # Change the bfactors with the conservation found in the msa. Just one chain, as the msa
+    # it is in a chain
     sequences_dict = extract_sequence_msa_from_pdb(pdb_path=pdb_in_path)
     chain = get_chains(pdb_in_path)[0]
     whole_seq = "".join([seq for seq in sequences_dict.values()])
@@ -1454,7 +1456,6 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     for msa_seq in msa_list:
         results_list, _ = compare_sequences(whole_seq, msa_seq, only_match=True)
         convervation_list += np.array(results_list)
-    change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(whole_seq) + 1, 1)]}, chain_bfactors_dict={chain: convervation_list})
+    change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(whole_seq) + 1, 1)]},
+                                       chain_bfactors_dict={chain: convervation_list})
     change.change_bfactors(pdb_in_path, pdb_out_path)
-    
-

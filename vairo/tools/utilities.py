@@ -35,6 +35,24 @@ def print_features(features_path: str):
     features.print_features_from_file(features_path)
 
 
+def print_sequence_info(seq_list, seq_type):
+    seq_list.sort(key=lambda x: x['identity'], reverse=True)
+    max_identity_elements = [element for element in seq_list if element['identity'] > 90]
+    print(f'{seq_type} that have more than a 90% identity ({len(max_identity_elements)}):')
+    for seq in max_identity_elements:
+        print(
+            f'ID: {seq["name"]} Identity: {round(seq["identity"])}% Global Identity: {round(seq["global_identity"])}%\n{seq["seq"]}\n')
+
+    accepted_identity_elements = [element for element in seq_list if 90 >= element['identity'] >= 50]
+    print(f'{seq_type} that have between a 50% and 90% identity percentage ({len(accepted_identity_elements)}):')
+    for seq in accepted_identity_elements:
+        print(F'SEQUENCE {seq["name"]}')
+        print(
+            f'ID: {seq["name"]} || Identity: {round(seq["identity"])}% || Global Identity: {round(seq["global_identity"])}%\n{seq["seq"]}\n')
+
+    return accepted_identity_elements
+
+
 def extract_features_info(features_path: str, *regions):
     regions_list = []
     for region in regions:
@@ -50,40 +68,18 @@ def extract_features_info(features_path: str, *regions):
         print(f'And we are looking for these specific regions:')
         print(f'{region_query}')
         store_results = []
+
         if result_dict['msa']:
-            print(f'\nMSA:')
-            result_dict['msa'].sort(key=lambda x: x['identity'], reverse=True)
-            max_identity_elements = [element for element in result_dict['msa'] if element['identity'] > 90]
-            print(f'\nSequences that have more than a 90% of identity ({len(max_identity_elements)}):')
-            for seq in max_identity_elements:
-                print(
-                    f'ID: {seq["name"]} Identity: {round(seq["identity"])} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
-            accepted_identity_elements = [element for element in result_dict['msa'] if
-                                          element['identity'] <= 90 and element['identity'] >= 50]
-            print(f'\nSequences that have between a 50% and 90% of identity ({len(accepted_identity_elements)}):')
-            for seq in accepted_identity_elements:
-                print(
-                    f'ID: {seq["name"]} Identity: {round(seq["identity"])} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
-            store_results.extend(accepted_identity_elements)
+            print('\nMSA:')
+            store_results.extend(print_sequence_info(result_dict['msa'], 'Sequences'))
 
         if result_dict['templates']:
-            print(f'\nTEMPLATES:')
-            result_dict['templates'].sort(key=lambda x: x['identity'], reverse=True)
-            max_identity_elements = [element for element in result_dict['templates'] if element['identity'] > 90]
-            print(f'Templates that have more than a 90% of identity ({len(max_identity_elements)}):')
-            for seq in max_identity_elements:
-                print(
-                    f'ID: {seq["name"]} Identity: {seq["identity"]} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
+            print('\nTEMPLATES:')
+            print_sequence_info(result_dict['templates'], (50, 90), 'Templates')
+            store_results.extend(print_sequence_info(result_dict['templates'], 'Templates'))
 
-            accepted_identity_elements = [element for element in result_dict['templates'] if
-                                          element['identity'] <= 90 and element['identity'] >= 50]
-            print(f'Templates that have between a 50% and 90% of identity ({len(accepted_identity_elements)}):')
-            for seq in accepted_identity_elements:
-                print(
-                    f'ID: {seq["name"]} Identity: {seq["identity"]} Global Identity: {seq["global_identity"]}\n{seq["seq"]}\n')
-            store_results.extend(accepted_identity_elements)
-
-        store_fasta_path = os.path.join(os.path.dirname(features_path), f'accepted_sequences_{i}.fasta')
+        # store_fasta_path = os.path.join(os.path.dirname(features_path), f'accepted_sequences_{i}.fasta')
+        store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{i}.fasta')
         print(f'Accepted sequences have been stored in: {store_fasta_path}')
         with open(store_fasta_path, 'w') as file:
             for seq in store_results:
@@ -349,7 +345,7 @@ def select_csv(pkl_in_path: str, csv_path: str, min_input: float, max_input: flo
         for row in csvreader:
             y_value = row[2]
             name = int(row[6])
-            if min_aux <= y_value and y_value <= max_aux:
+            if min_aux <= y_value <= max_aux:
                 accepted_list.append(name)
             else:
                 deleted_list.append(name)
@@ -366,10 +362,10 @@ def run_uniprot_blast(fasta_path: str, use_server: bool = False):
         print(f'Running BLASTP with the sequences inside the file {fasta_path}')
         for id, seq in sequences_dict.items():
             print('================================')
+            print(F'SEQUENCE {id}')
             print(f'Sequence id {id} with length {len(seq)}:')
             print(f'{seq}')
             modified_content = seq.replace('-', 'X')
-            root = ''
             if use_server:
                 database = 'swissprot'
                 result_handle = NCBIWWW.qblast("blastp", database, modified_content)
@@ -385,19 +381,23 @@ def run_uniprot_blast(fasta_path: str, use_server: bool = False):
             for iteration_elem in root.findall('.//Hit'):
                 hit_accession = iteration_elem.find('.//Hit_accession').text
                 evalue = iteration_elem.find('.//Hsp_evalue').text
-                identity = iteration_elem.find('.//Hsp_identity').text
-                url = f'https://rest.uniprot.org/uniprotkb/search?query=accession_id:{hit_accession}&fields=annotation_score,protein_name'
+                residues_identity = iteration_elem.find('.//Hsp_identity').text
+                aligned_identity = iteration_elem.find('.//Hsp_align-len').text
+                url = f'https://rest.uniprot.org/uniprotkb/search?query=accession_id:{hit_accession}&fields=annotation_score,protein_name,organism_name'
                 response = requests.get(url)
                 print('--------------')
                 json_response = response.json()
                 annotation_score = json_response['results'][0]['annotationScore']
                 protein_description = json_response['results'][0]['proteinDescription']['recommendedName']['fullName'][
                     'value']
+                organism = json_response['results'][0]['organism']['scientificName']
                 print(f'Accession ID: {hit_accession}')
                 print(f'E-value: {evalue}')
-                print(f'Identity: {identity}')
+                print(f'Identity residues: {residues_identity}')
+                print(f'Aligned residues: {aligned_identity}')
                 print(f'Annotation Score: {annotation_score}')
                 print(f'Protein description: {protein_description}')
+                print(f'Organism: {organism}')
             print('================================')
     except Exception as e:
         print(str(e))

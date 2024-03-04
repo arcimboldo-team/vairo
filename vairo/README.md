@@ -6,24 +6,24 @@ Usage: vairo.py configuration.bor
 The configuration.bor has to be a file with YAML format and can contain the following
 parameters:
 
-  mode (mandatory, string): {naive, guided}
+  Mode (mandatory, string): {naive, guided}
   output_dir (mandatory, string): Path to the results' directory.
-  af2_dbs_path (mandatory, string): Path to the AlphaFold2 databases, they have to be downloaded.
-  run_dir (optional, string, 'run'): Path to the directory where AlphaFold2 will be run.
-  glycines (optional, integer, 50): Number of glycines between sequence copies.
-  small_bfd (optional, bool, false): Use reduced bfd library.
-  run_af2 (optional, bool, true): Run AlphaFold2, it can be used to generate a features.pkl without going further.
-  stop_after_msa (optional, bool, false): Run AlphaFold2 and stop it after generating the msa.
-  reference (optional, string, ''): Existing pdbid or path to a pdb
+  Af2_dbs_path (mandatory, string): Path to the AlphaFold2 databases, they have to be downloaded.
+  Run_dir (optional, string, 'run'): Path to the directory where AlphaFold2 will be run.
+  Glycines (optional, integer, 50): Number of glycines between sequence copies.
+  Small_bfd (optional, bool, false): Use reduced bfd library.
+  Run_af2 (optional, bool, true): Run AlphaFold2, it can be used to generate a features.pkl without going further.
+  Stop_after_msa (optional, bool, false): Run AlphaFold2 and stop it after generating the msa.
+  Reference (optional, string, ''): Existing pdbid or path to a pdb
   experimental_pdbs (optional, List, []): List of existing pdbid or path to a pdb
   mosaic (optional, integer, None): Split the sequence in X partitions.
-  mosaic_partition (optional, range, None): Split the sequence by the number of residues.
-  mosaic_seq_partition (optional, range, None): Split the sequence by the number of sequences.
+  Mosaic_partition (optional, range, None): Split the sequence by the number of residues.
+  Mosaic_seq_partition (optional, range, None): Split the sequence by the number of sequences.
   cluster_templates (optional, bool, false, true if naive): Cluster templates from preprocessed features.pkl
   cluster_templates_msa (optional, int, -1): Select a specific number of sequences to add to the new features.pkl MSA (-1 to add all the sequences) from the preprocessed features.pkl MSA
   cluster_templates_msa_mask: (optional, range, None): Delete specific residues from the MSA sequences.
-  cluster_templates_sequence: (optional, path, None): Replace templates sequence with sequence in path.
-  show_pymol: (optional, str, None): Select regions to zoom in the pymol session. Use selection languaje in pymol, separeted by commas
+  Cluster_templates_sequence: (optional, path, None): Replace templates sequence with sequence in path.
+  Show_pymol: (optional, str, None): Select regions to zoom in the pymol session. Use selection language in pymol, separated by commas
 
 Several sequences can be added to the query sequence. Each Fasta can have several copies and can be inserted in a specific position inside the query sequence. All the sequences will be concatenated using Glycines.
 Sequences:
@@ -73,7 +73,7 @@ templates:
       fasta_path (optional, string): Fasta path to replace the sequence
       when (optional, string, after_alignment): When change the chain, before_alignment or after_alignment
 
-  match: -> Set restrictions in order to insert the template into the sequence copies
+  match: -> Set restrictions to insert the template into the sequence copies
     - chain (mandatory, string): Set the position of the chain
       position: (optional, string, None, X): Set a specific position
       residues: (optional, int range, ''): Selection of residues to set in a position. Can be a range or an integer (Ex: 100-120, 100), otherwise, the whole chain is going to be selected.

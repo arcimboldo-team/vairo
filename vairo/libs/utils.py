@@ -26,6 +26,7 @@ def scale_values(input_list: List[int]) -> List[int]:
         new_list.append(new_value)
     return new_list
 
+
 def calculate_coverage(query_seq: str, sequences: List[str]):
     add_sequences = np.zeros(len(query_seq))
     for seq in sequences:
@@ -35,6 +36,7 @@ def calculate_coverage(query_seq: str, sequences: List[str]):
     new_sequences = scale_values(add_sequences)
     new_sequences = [1 - i for i in new_sequences]
     return new_sequences
+
 
 def check_external_programs():
     try:
@@ -51,6 +53,7 @@ def check_external_programs():
     except:
         raise Exception('MAXIT cannot be found in the PATH. In order to continue, download and install maxit ('
                         'https://sw-tools.rcsb.org/apps/MAXIT/index.html).')
+
 
 def print_msg_box(msg, indent=1, title=None):
     lines = msg.split('\n')
@@ -161,7 +164,7 @@ def get_chain_and_number(path_pdb: str) -> Tuple[str, int]:
 
 
 def replace_last_number(text: str, value: int) -> str:
-    # Replace the last number of text by the value
+    # Replace the last amount of a text by the value
     return re.sub(r'\d+.pdb', str(value), str(text)) + '.pdb'
 
 
@@ -200,7 +203,7 @@ def renum_residues(res_list: List[int], mapping: Dict) -> List[int]:
 
 
 def rmsilent(file_path: str):
-    # Remove file without error if it doesn't exist
+    # Remove file without an error if it doesn't exist
     for file in glob.glob(file_path):
         try:
             os.remove(file)
@@ -355,7 +358,8 @@ def parse_pisa_general_multimer(pisa_output: str) -> List:
         chain2 = line[2].split()[0].replace(' ', '')
         serial = line[0][:4].replace(' ', '')
         nhb = line[3][15:22].replace(' ', '')
-        return_list.append({'serial': serial, 'area': area, 'deltaG': deltag, 'nhb': nhb, 'chain1': chain1, 'chain2': chain2})
+        return_list.append(
+            {'serial': serial, 'area': area, 'deltaG': deltag, 'nhb': nhb, 'chain1': chain1, 'chain2': chain2})
 
     return return_list
 
@@ -554,6 +558,7 @@ def create_logger_dir(log_path: str, log_extended_path: str):
     file_handler2 = logging.FileHandler(log_extended_path)
     file_handler2.setLevel(logging.DEBUG)
     logger.addHandler(file_handler2)
+
 
 def generate_random_code(length: int):
     letters = string.ascii_letters
