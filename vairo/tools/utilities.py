@@ -356,7 +356,7 @@ def select_csv(pkl_in_path: str, csv_path: str, min_input: float, max_input: flo
     features.delete_seq_from_msa(pkl_in_path=pkl_in_path, pkl_out_path=new_features_path, delete_list=deleted_list)
 
 
-def run_uniprot_blast(fasta_path: str, use_server: bool = False):
+def run_uniprot_blast(fasta_path: str, use_server: bool = False, ini: int=None, end: int=None):
     try:
         sequences_dict = bioutils.extract_sequences(fasta_path)
         print(f'Running BLASTP with the sequences inside the file {fasta_path}')
@@ -379,6 +379,18 @@ def run_uniprot_blast(fasta_path: str, use_server: bool = False):
                     blastp_output = result.communicate()[0].decode('utf-8')
                     root = ET.fromstring(blastp_output)
             for iteration_elem in root.findall('.//Hit'):
+                residues = 0
+                if ini is not None and end is not None:
+                    ini_query = iteration_elem.find('.//Hsp_query-from').text
+                    end_query = iteration_elem.find('.//Hsp_query-to').text
+                    residues = sum(1 for i in range(ini_query, end_query + 1) if ini <= i <= end)
+                    if residues > 1:
+                        check = True
+                    else:
+                        check = False
+                else:
+                    check = True
+
                 hit_accession = iteration_elem.find('.//Hit_accession').text
                 evalue = iteration_elem.find('.//Hsp_evalue').text
                 residues_identity = iteration_elem.find('.//Hsp_identity').text
@@ -386,6 +398,10 @@ def run_uniprot_blast(fasta_path: str, use_server: bool = False):
                 url = f'https://rest.uniprot.org/uniprotkb/search?query=accession_id:{hit_accession}&fields=annotation_score,protein_name,organism_name'
                 response = requests.get(url)
                 print('--------------')
+                if check:
+                    print(f'It shares {residues} with the searched range')
+                else:
+                    print(f'It does not have any matching residue')
                 json_response = response.json()
                 annotation_score = json_response['results'][0]['annotationScore']
                 protein_description = json_response['results'][0]['proteinDescription']['recommendedName']['fullName'][

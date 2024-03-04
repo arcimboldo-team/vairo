@@ -173,18 +173,26 @@ class MainStructure:
                 raise Exception(f'Path {path} does not exist. Check the input append_library parameter.')
 
         for parameters_features in utils.get_input_value(name='features', section='global', input_dict=parameters_dict):
-            positions_features = utils.get_input_value(name='positions_features', section='features', input_dict=parameters_features)
-            positions_query = utils.get_input_value(name='positions_query', section='features', input_dict=parameters_features)
-            positions_query = list(map(int, str(positions_query).replace(' ','').split(',')))
+            positions_features = utils.get_input_value(name='positions_features', section='features',
+                                                       input_dict=parameters_features)
+
+            positions = utils.get_input_value(name='positions', section='features', input_dict=parameters_features)
+            positions_query = utils.get_input_value(name='positions_query', section='features',
+                                                    input_dict=parameters_features)
+            if positions_query is None and positions is not None:
+                positions_query = f'{self.sequence_assembled.get_starting_length(positions-1)+1}'
+            else:
+                positions_query = 1
+            positions_query = list(map(int, str(positions_query).replace(' ', '').split(',')))
             if positions_features is None:
                 positions_features = [[1, self.sequence_assembled.length]]
             else:
-                positions_features = positions_features.replace(' ','').split(',')
+                positions_features = positions_features.replace(' ', '').split(',')
                 positions_features = [tuple(map(int, r.split('-'))) for r in positions_features]
 
             if len(positions_query) != len(positions_features):
                 raise Exception('The number of query positions and feature positions mismatch')
-            
+
             self.features_input.append(structures.FeaturesInput(
                 path=utils.get_input_value(name='path', section='features', input_dict=parameters_features),
                 keep_msa=utils.get_input_value(name='keep_msa', section='features', input_dict=parameters_features),
@@ -474,7 +482,7 @@ class MainStructure:
         return None
 
     def order_templates_with_restrictions(self):
-        # Order the templates list in order to meet the required dependencies
+        # Order the templates list to meet the required dependencies
         # All the templates are going to be in order, so the references will be calculated
         # before needed
         new_templates_list = []
@@ -546,7 +554,7 @@ class MainStructure:
             [ranked.set_plddt() for ranked in ranked_list]
             ranked_list.sort(key=lambda x: x.plddt, reverse=True)
 
-            # Select the two bests rankeds, I don't think a superposition would help here.
+            # Select the two best rankeds; I don't think a superposition would help here.
             for i in range(2):
                 new_ranked_path = os.path.join(best_rankeds_dir,
                                                f'ranked_{afrun.start_chunk + 1}-{afrun.end_chunk}_v{i}.pdb')
@@ -877,7 +885,8 @@ class MainStructure:
                     if feat.msa_mask:
                         f_out.write(f'  msa_mask: {",".join(map(str, feat.msa_mask))}\n')
                     f_out.write(f'  positions_query: {",".join(map(str, feat.positions_query))}\n')
-                    f_out.write(f'  positions_features: {",".join(f"{start}-{end}" for start, end in feat.positions_features)}\n')
+                    f_out.write(
+                        f'  positions_features: {",".join(f"{start}-{end}" for start, end in feat.positions_features)}\n')
                     if feat.sequence is not None:
                         f_out.write(f'  sequence: {feat.sequence}\n')
             f_out.write(f'\nsequences:\n')

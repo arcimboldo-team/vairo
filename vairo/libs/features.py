@@ -169,7 +169,7 @@ class Features:
                          delete_positions: List[int] = []) -> int:
         coverage_msa = []
         self.delete_residues_msa(delete_positions=delete_positions)
-        for i in range(start, self.get_msa_length()):
+        for i in range(start, len(new_msa['msa'])):
             coverage_msa.append(len([residue for residue in new_msa['msa'][i] if residue != 21]))
         if finish == -1:
             coverage_msa = list(range(0, len(new_msa['msa']) - start))

@@ -89,7 +89,7 @@ def main():
                 #Cut and expand the features, in order to fit the generat features.pkl
                 feat_aux = feat_aux.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled, query_list=feat.positions_query, query_features=feat.positions_features)
                 if feat.keep_msa != 0:
-                    #Send without masking features, as we have delete them
+                    #Send without masking features, as we have deleted them
                     num_msa = a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
                                                              finish=feat.keep_msa,
                                                              delete_positions=[])

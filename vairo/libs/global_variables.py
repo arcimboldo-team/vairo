@@ -282,8 +282,12 @@ INPUT_PARAMETERS = {
         },
         'positions_query': {
             'required': False,
-            'default': '1'
-        }
+            'default': None
+        },
+        'positions': {
+            'required': False,
+            'default': None
+        },
     },
     'append_library_input': {
       'path': {
