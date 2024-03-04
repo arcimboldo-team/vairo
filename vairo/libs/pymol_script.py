@@ -97,7 +97,7 @@ cmd.set("valence", 'off')
 
         if a_air.output.conservation_ranked_path:
             script += f'cmd.load("{a_air.output.conservation_ranked_path}", "{utils.get_file_name(a_air.output.conservation_ranked_path)}")\n'
-            script += f'cmd.spectrum("b", "blue_white_red", "{utils.get_file_name(a_air.output.conservation_ranked_path)}")\n'
+            script += f'cmd.spectrum("b", "blue_white_red", "{utils.get_file_name(a_air.output.conservation_ranked_path)}", "0", "100")\n'
 
         
         script += f'cmd.reset()\n'

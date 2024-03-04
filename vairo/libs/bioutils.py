@@ -1452,10 +1452,11 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     sequences_dict = extract_sequence_msa_from_pdb(pdb_path=pdb_in_path)
     chain = get_chains(pdb_in_path)[0]
     whole_seq = "".join([seq for seq in sequences_dict.values()])
-    convervation_list = np.zeros(len(whole_seq))
+    conservation_list = np.zeros(len(whole_seq))
     for msa_seq in msa_list:
         results_list, _ = compare_sequences(whole_seq, msa_seq, only_match=True)
-        convervation_list += np.array(results_list)
+        conservation_list += np.array(results_list)
+    conservation_list = conservation_list/len(msa_list)*100
     change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(whole_seq) + 1, 1)]},
-                                       chain_bfactors_dict={chain: convervation_list})
+                                       chain_bfactors_dict={chain: conservation_list})
     change.change_bfactors(pdb_in_path, pdb_out_path)
