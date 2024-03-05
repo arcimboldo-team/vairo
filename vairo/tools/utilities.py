@@ -78,7 +78,6 @@ def extract_features_info(features_path: str, *regions):
             print_sequence_info(result_dict['templates'], (50, 90), 'Templates')
             store_results.extend(print_sequence_info(result_dict['templates'], 'Templates'))
 
-        # store_fasta_path = os.path.join(os.path.dirname(features_path), f'accepted_sequences_{i}.fasta')
         store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{i}.fasta')
         print(f'Accepted sequences have been stored in: {store_fasta_path}')
         with open(store_fasta_path, 'w') as file:
@@ -88,8 +87,11 @@ def extract_features_info(features_path: str, *regions):
         print('\n================================')
         files_info.append(store_fasta_path)
 
-    for file in files_info:
-        run_uniprot_blast(file)
+        residues_list = []
+        for range_str in regions_list[i]:
+            start, end = map(int, range_str.split('-'))
+            residues_list.extend(list(range(start, end + 1)))
+        run_uniprot_blast(store_fasta_path, residues_list)
 
 
 def generate_features(query_path: str, fasta_path: str):
@@ -356,67 +358,79 @@ def select_csv(pkl_in_path: str, csv_path: str, min_input: float, max_input: flo
     features.delete_seq_from_msa(pkl_in_path=pkl_in_path, pkl_out_path=new_features_path, delete_list=deleted_list)
 
 
-def run_uniprot_blast(fasta_path: str, use_server: bool = False, ini: int=None, end: int=None):
-    try:
-        sequences_dict = bioutils.extract_sequences(fasta_path)
-        print(f'Running BLASTP with the sequences inside the file {fasta_path}')
-        for id, seq in sequences_dict.items():
-            print('================================')
-            print(F'SEQUENCE {id}')
-            print(f'Sequence id {id} with length {len(seq)}:')
-            print(f'{seq}')
-            modified_content = seq.replace('-', 'X')
-            if use_server:
-                database = 'swissprot'
-                result_handle = NCBIWWW.qblast("blastp", database, modified_content)
-                root = ET.fromstring(result_handle.read())
-            else:
-                with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-                    temp_file.write(modified_content)
-                    temp_file.flush()
-                    blastp_cmd = f'blastp -db /xtal/blastp/bin/swissprot -query {temp_file.name} -outfmt 5'
-                    result = subprocess.Popen(blastp_cmd, stdout=subprocess.PIPE, shell=True)
-                    blastp_output = result.communicate()[0].decode('utf-8')
-                    root = ET.fromstring(blastp_output)
-            for iteration_elem in root.findall('.//Hit'):
-                residues = 0
-                if ini is not None and end is not None:
-                    ini_query = iteration_elem.find('.//Hsp_query-from').text
-                    end_query = iteration_elem.find('.//Hsp_query-to').text
-                    residues = sum(1 for i in range(ini_query, end_query + 1) if ini <= i <= end)
-                    if residues > 1:
-                        check = True
-                    else:
-                        check = False
-                else:
-                    check = True
+def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: bool = False):
+    sequences_dict = bioutils.extract_sequences(fasta_path)
+    print(f'Running BLASTP with the sequences inside the file {fasta_path}')
+    for id, seq in sequences_dict.items():
+        print('================================')
+        print(F'SEQUENCE {id}')
+        print(f'Sequence id {id} with length {len(seq)}:')
+        print(f'{seq}')
+        modified_content = seq.replace('-', 'X')
+        if use_server:
+            database = 'swissprot'
+            result_handle = NCBIWWW.qblast("blastp", database, modified_content)
+            root = ET.fromstring(result_handle.read())
+        else:
+            with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+                temp_file.write(modified_content)
+                temp_file.flush()
+                blastp_cmd = f'blastp -db /xtal/blastp/bin/swissprot -query {temp_file.name} -outfmt 5'
+                result = subprocess.Popen(blastp_cmd, stdout=subprocess.PIPE, shell=True)
+                blastp_output = result.communicate()[0].decode('utf-8')
+                root = ET.fromstring(blastp_output)
 
-                hit_accession = iteration_elem.find('.//Hit_accession').text
-                evalue = iteration_elem.find('.//Hsp_evalue').text
-                residues_identity = iteration_elem.find('.//Hsp_identity').text
-                aligned_identity = iteration_elem.find('.//Hsp_align-len').text
-                url = f'https://rest.uniprot.org/uniprotkb/search?query=accession_id:{hit_accession}&fields=annotation_score,protein_name,organism_name'
-                response = requests.get(url)
-                print('--------------')
-                if check:
-                    print(f'It shares {residues} with the searched range')
-                else:
-                    print(f'It does not have any matching residue')
-                json_response = response.json()
-                annotation_score = json_response['results'][0]['annotationScore']
-                protein_description = json_response['results'][0]['proteinDescription']['recommendedName']['fullName'][
-                    'value']
-                organism = json_response['results'][0]['organism']['scientificName']
-                print(f'Accession ID: {hit_accession}')
-                print(f'E-value: {evalue}')
-                print(f'Identity residues: {residues_identity}')
-                print(f'Aligned residues: {aligned_identity}')
-                print(f'Annotation Score: {annotation_score}')
-                print(f'Protein description: {protein_description}')
-                print(f'Organism: {organism}')
-            print('================================')
-    except Exception as e:
-        print(str(e))
+        for iteration_elem in root.findall('.//Hit'):
+            ini_query = iteration_elem.find('.//Hsp_query-from').text
+            end_query = iteration_elem.find('.//Hsp_query-to').text
+            search_range = range(int(ini_query), int(end_query) + 1)
+            residues = list(set(search_range) & set(residues_list))
+            if len(residues) > 1:
+                check = True
+            else:
+                check = False
+            hit_accession = iteration_elem.find('.//Hit_accession').text
+            evalue = iteration_elem.find('.//Hsp_evalue').text
+            residues_identity = iteration_elem.find('.//Hsp_identity').text
+            aligned_identity = iteration_elem.find('.//Hsp_align-len').text
+            hsp_qseq = iteration_elem.find('.//Hsp_qseq').text
+            hsp_hseq = iteration_elem.find('.//Hsp_hseq').text
+            url = f'https://rest.uniprot.org/uniprotkb/search?query=accession_id:{hit_accession}&fields=annotation_score,protein_name,organism_name'
+            response = requests.get(url)
+            print('--------------')
+            json_response = response.json()
+            annotation_score = json_response['results'][0]['annotationScore']
+            protein_description = json_response['results'][0]['proteinDescription']['recommendedName']['fullName'][
+                'value']
+            organism = json_response['results'][0]['organism']['scientificName']
+            print(f'Accession ID: {hit_accession}')
+            print(f'E-value: {evalue}')
+            print(f'Identity residues: {residues_identity}')
+            print(f'Aligned residues: {aligned_identity}')
+            print(f'Annotation Score: {annotation_score}')
+            print(f'Protein description: {protein_description}')
+            print(f'Organism: {organism}')
+            if check:
+                print(f'It shares residues {", ".join(map(str, residues))} with the searched range')
+                print(f'The search query matching the range is the following one:')
+                chain = 'X'*(int(ini_query)-1)
+                for i, res in enumerate(hsp_qseq, start=int(ini_query)):
+                    if i in residues:
+                        chain += res
+                    else:
+                        chain += 'X'
+                print("".join(chain))
+                print(f'The found sequence matching range is the following one:')
+                chain = 'X'*(int(ini_query)-1)
+                for i, res in enumerate(hsp_hseq, start=int(ini_query)):
+                    if i in residues:
+                        chain += res
+                    else:
+                        chain += 'X'
+                print("".join(chain))
+            else:
+                print(f'It does not have any matching residue with the specified range')
+        print('================================')
 
 
 if __name__ == "__main__":

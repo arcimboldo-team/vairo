@@ -227,7 +227,7 @@ class Features:
 
         # We skip the first one, so that's the -1, because it is the query sequence one, and we have created
         # another new_features with a fake query_sequence. This will be skipped in set_msa_features
-        for i in range(0, self.get_msa_length() - 1):
+        for i in range(self.get_msa_length() - 1):
             msa_dict['msa'][i] = np.full(ext_len, 21)
             msa_dict['deletion_matrix_int'][i] = np.full(ext_len, 0)
             msa_dict['msa_species_identifiers'][i] = self.msa_features['msa_species_identifiers'][i + 1]
@@ -247,7 +247,7 @@ class Features:
             new_features.append_row_in_msa_from_features(msa_dict)
 
         template_dict = create_empty_template_list((self.get_templates_length()))
-        for i in range(0, self.get_templates_length()):
+        for i in range(self.get_templates_length()):
             template_dict['template_all_atom_positions'][i] = np.zeros(
                 (ext_len, residue_constants.atom_type_num, 3))
             template_dict['template_all_atom_masks'][i] = np.zeros(
@@ -286,7 +286,7 @@ class Features:
             ''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
         new_features = Features(query_sequence=sequence_in[ini:end])
         msa_dict = create_empty_msa_list(self.get_msa_length() - 1)
-        for i in range(0, self.get_msa_length() - 1):
+        for i in range(self.get_msa_length() - 1):
             msa_dict['msa'][i] = self.msa_features['msa'][i + 1][ini:end]
             msa_dict['accession_ids'][i] = str(i).encode()
             msa_dict['deletion_matrix_int'][i] = self.msa_features['deletion_matrix_int'][i + 1][
@@ -297,7 +297,7 @@ class Features:
             new_features.append_row_in_msa_from_features(msa_dict)
 
         template_dict = create_empty_template_list((self.get_templates_length()))
-        for i in range(0, self.get_templates_length()):
+        for i in range(self.get_templates_length()):
             template_dict['template_all_atom_positions'][i] = self.template_features['template_all_atom_positions'][
                                                                   i][ini:end]
             template_dict['template_all_atom_masks'][i] = self.template_features['template_all_atom_masks'][i][
