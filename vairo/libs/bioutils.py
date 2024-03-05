@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
 import numpy as np
@@ -38,34 +38,22 @@ def pdb2mmcif(pdb_in_path: str, cif_out_path: str) -> str:
 
 
 def superposition_by_chains(pdb1_in_path: str, pdb2_in_path: str) -> Dict:
-    def compare_residues(list1, list2) -> List:
-        list_res = [at.get_parent().get_id()[1] for at in list2]
-        return [at for at in list1 if at.get_parent().get_id()[1] in list_res]
-
-    output_dict = {}
-    chains1_list = get_chains(pdb1_in_path)
-    chains2_list = get_chains(pdb2_in_path)
-    for chain1 in chains1_list:
-        name1 = f'{utils.get_file_name(pdb1_in_path)}_{chain1.id}'
-        output_dict[name1] = {}
-        atoms_1 = [at for at in chain1.get_atoms() if at.get_id() == 'CA']
-        for chain2 in chains2_list:
-            name2 = f'{utils.get_file_name(pdb2_in_path)}_{chain2.id}'
-            output_dict[name1][name2] = {}
-            atoms_2 = copy.deepcopy([at for at in chain2.get_atoms() if at.get_id() == 'CA'])
-            atoms_1_aux = compare_residues(atoms_1, atoms_2)
-            atoms_2 = compare_residues(atoms_2, atoms_1_aux)
-            superimposer1 = Superimposer()
-            superimposer1.set_atoms(atoms_1_aux, atoms_2)
-            for chain3 in chains2_list:
-                name3 = f'{utils.get_file_name(pdb2_in_path)}'
-                atoms_3 = copy.deepcopy([at for at in chain3.get_atoms() if at.get_id() == 'CA'])
-                atoms_12_aux = compare_residues(atoms_1, atoms_3)
-                atoms_3 = compare_residues(atoms_3, atoms_12_aux)
-                superimposer2 = Superimposer()
-                superimposer1.apply(atoms_3)
-                superimposer2.set_atoms(atoms_12_aux, atoms_3)
-                output_dict[name1][name2][name3] = superimposer2.rms
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        output_dict = defaultdict(lambda: defaultdict(dict))
+        chains1_list = get_chains(pdb1_in_path)
+        chains2_list = get_chains(pdb2_in_path)
+        for chain1 in chains1_list:
+            name1 = f'{utils.get_file_name(pdb1_in_path)}_{chain1}'
+            for chain2 in chains2_list:
+                name2 = f'{utils.get_file_name(pdb2_in_path)}_{chain2}'
+                output_path = os.path.join(tmpdirname, 'aux.pdb')
+                run_gesamt(pdb_reference=pdb1_in_path, pdb_superposed=pdb2_in_path, output_path=output_path,
+                           reference_chains=[chain1], superposed_chains=[chain2])
+                for chain3 in chains2_list:
+                    name3 = f'{chain3}'
+                    rmsd, _, _ = run_gesamt(pdb_reference=pdb1_in_path, pdb_superposed=output_path,
+                                            reference_chains=[chain1], superposed_chains=[chain3])
+                    output_dict[name1][name2][name3] = rmsd
     return output_dict
 
 
@@ -1203,30 +1191,24 @@ def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[fl
     return rmsd, nalign, quality_q
 
 
-def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None, check_chains: bool = True) -> Tuple[
+def run_gesamt(pdb_reference: str, pdb_superposed: str, output_path: str = None, reference_chains: List[str] = [], superposed_chains: List[str] = []) -> Tuple[
     Optional[float], Optional[str], Optional[str]]:
     with tempfile.TemporaryDirectory() as tmpdirname:
         superpose_cmd = 'gesamt'
-        if check_chains:
-            chains_reference = get_chains(pdb_reference)
-            chains_superposed = get_chains(pdb_superposed)
-            if all(chain in chains_reference for chain in chains_superposed):
-                logging.info(
-                    f'Superposing {pdb_reference} with {pdb_superposed}, only chains {",".join(chains_superposed)}')
-                superpose_cmd += f' {pdb_reference} -s {",".join(chains_superposed)} {pdb_superposed}'
-            else:
-                logging.info(f'Superposing {pdb_reference} with {pdb_superposed}')
-                superpose_cmd += f' {pdb_reference} {pdb_superposed}'
-
-        else:
-            superpose_cmd += f' {pdb_reference} {pdb_superposed}'
-
+        logging_text = f'Superposing {pdb_reference} with {pdb_superposed}.'
+        superpose_cmd += f' {pdb_reference}'
+        if reference_chains:
+            logging_text += f' Reference chains: {", ".join(reference_chains)}.'
+            superpose_cmd += f' -s {",".join(reference_chains)}'
+        superpose_cmd += f' {pdb_superposed}'
+        if superposed_chains:
+            f' Superposed chains: {", ".join(reference_chains)}.'
+            superpose_cmd += f' -s {",".join(superposed_chains)}'
         if output_path is not None:
             superpose_cmd += f' -o {tmpdirname} -o-d'
-        superpose_output = subprocess.Popen(superpose_cmd, stdout=subprocess.PIPE, shell=True).communicate()[0].decode(
-            'utf-8')
+        logging.info(logging_text)
+        superpose_output = subprocess.Popen(superpose_cmd, stdout=subprocess.PIPE, shell=True).communicate()[0].decode('utf-8')
         new_path = os.path.join(tmpdirname, f'{utils.get_file_name(pdb_superposed)}_2.pdb')
-
         if os.path.exists(new_path) and output_path:
             shutil.copy2(new_path, output_path)
         elif not os.path.exists(new_path) and output_path:
@@ -1240,6 +1222,20 @@ def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None
             if 'Aligned residues :' in line:
                 nalign = int(line.split()[3].strip())
         return rmsd, nalign, qscore
+
+
+def gesamt_pdbs(pdb_reference: str, pdb_superposed: str, output_path: str = None, check_chains: bool = True) -> Tuple[
+    Optional[float], Optional[str], Optional[str]]:
+    chains_superposed = []
+    if check_chains:
+        chains_r = get_chains(pdb_reference)
+        chains_s = get_chains(pdb_superposed)
+        if all(chain in chains_r for chain in chains_s):
+            chains_superposed = chains_s
+
+    rmsd, nalign, qscore = run_gesamt(pdb_reference=pdb_reference, pdb_superposed=pdb_superposed,
+                                      output_path=output_path, reference_chains=chains_superposed, superposed_chains=[])
+    return rmsd, nalign, qscore
 
 
 def pdist(query_pdb: str, target_pdb: str) -> float:
@@ -1456,7 +1452,7 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     for msa_seq in msa_list:
         results_list, _ = compare_sequences(whole_seq, msa_seq, only_match=True)
         conservation_list += np.array(results_list)
-    conservation_list = conservation_list/len(msa_list)*100
+    conservation_list = conservation_list / len(msa_list) * 100
     change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(whole_seq) + 1, 1)]},
                                        chain_bfactors_dict={chain: conservation_list})
     change.change_bfactors(pdb_in_path, pdb_out_path)

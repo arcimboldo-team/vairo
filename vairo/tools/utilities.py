@@ -134,17 +134,9 @@ def ccanalysis(template_path: str):
 def superposition_chains(pdb1_path: str, pdb2_path: str):
     ret_dict = bioutils.superposition_by_chains(pdb1_in_path=pdb1_path, pdb2_in_path=pdb2_path)
     for key3, i3 in ret_dict.items():
-        print(key3)
         for key2, i2 in i3.items():
-            print(key2)
             for key1, i1 in i2.items():
-                print(key1, i1)
-
-
-def superpose_chains(pdb1_path: str, pdb2_path: str, tmp_dir: str):
-    utils.create_dir(tmp_dir)
-    pdb1_chains_dict = bioutils.split_pdb_in_chains(pdb_path=pdb1_path, output_dir=tmp_dir)
-    pdb2_chains_dict = bioutils.split_pdb_in_chains(pdb_path=pdb2_path, output_dir=tmp_dir)
+                print(key3, key2, key1, i1)
 
 
 def run_minimize(pdb1_path: str, pdb2_path: str):
