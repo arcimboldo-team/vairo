@@ -54,11 +54,10 @@ def print_sequence_info(seq_list, seq_type):
 
 
 def extract_features_info(features_path: str, region: str = None):
-
+    if region is None:
+        region = '1-10000'
     region_list = region.replace(" ","").split(',')
     region_result = []
-    if region is None:
-        region_result = ['1-10000']
     for r in region_list:
         start, end = map(int, r.split('-'))
         region_result.append((int(start), int(end)))
