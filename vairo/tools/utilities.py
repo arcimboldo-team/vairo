@@ -53,45 +53,55 @@ def print_sequence_info(seq_list, seq_type):
     return accepted_identity_elements
 
 
-def extract_features_info(features_path: str, *regions):
-    regions_list = []
-    for region in regions:
-        regions_list.append(region.split(','))
+def extract_features_info(features_path: str, region: str = None):
+
+    region_list = region.replace(" ","").split(',')
+    region_result = []
+    if region is None:
+        region_result = ['1-10000']
+    for r in region_list:
+        start, end = map(int, r.split('-'))
+        region_result.append((int(start), int(end)))
+    
     features_info_dict, region_query = features.extract_features_info(pkl_in_path=features_path,
-                                                                      regions_list=regions_list)
+                                                                      regions_list=region_result)
     files_info = []
-    for i, (reference_split, result_dict) in enumerate(features_info_dict.items()):
-        print('\n================================')
-        print(f'REGION {regions_list[i]}')
-        print(f'The reference sequence is the following one:')
-        print(f'{reference_split}')
-        print(f'And we are looking for these specific regions:')
-        print(f'{region_query}')
-        store_results = []
+    print('\n================================')
+    print(f'REGION {region}')
+    print(f'And we are looking for these specific regions:')
+    print(f'{region_query}')
+    store_results = []
 
-        if result_dict['msa']:
-            print('\nMSA:')
-            store_results.extend(print_sequence_info(result_dict['msa'], 'Sequences'))
+    if features_info_dict['msa']:
+        print('\nMSA:')
+        store_results.extend(print_sequence_info(features_info_dict['msa'], 'Sequences'))
 
-        if result_dict['templates']:
-            print('\nTEMPLATES:')
-            print_sequence_info(result_dict['templates'], (50, 90), 'Templates')
-            store_results.extend(print_sequence_info(result_dict['templates'], 'Templates'))
+    if features_info_dict['templates']:
+        print('\nTEMPLATES:')
+        print_sequence_info(features_info_dict['templates'], (50, 90), 'Templates')
+        store_results.extend(print_sequence_info(features_info_dict['templates'], 'Templates'))
 
-        store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{i}.fasta')
-        print(f'Accepted sequences have been stored in: {store_fasta_path}')
-        with open(store_fasta_path, 'w') as file:
-            for seq in store_results:
-                file.write(f'\n>{seq["name"]}\n')
-                file.write(f'{seq["seq"]}')
-        print('\n================================')
-        files_info.append(store_fasta_path)
+    store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{region}.fasta')
+    print(f'Accepted sequences have been stored in: {store_fasta_path}')
+    with open(store_fasta_path, 'w') as file:
+        for seq in store_results:
+            file.write(f'\n>{seq["name"]}\n')
+            file.write(f'{seq["seq"]}')
+    print('\n================================')
+    files_info.append(store_fasta_path)
 
-        residues_list = []
-        for range_str in regions_list[i]:
-            start, end = map(int, range_str.split('-'))
-            residues_list.extend(list(range(start, end + 1)))
-        run_uniprot_blast(store_fasta_path, residues_list)
+    residues_list = []
+    for r in region_result:
+        residues_list.extend(list(range(r[0], r[1] + 1)))
+    results_uniprot = run_uniprot_blast(store_fasta_path, residues_list)
+
+    for key, value in results_uniprot.items():
+        if key in features_info_dict['templates']:
+            features_info_dict['templates'][key]['uniprot'] = value
+        elif key in features_info_dict['msa']:
+            features_info_dict['msa'][key]['uniprot'] = value
+
+    return features_info_dict
 
 
 def generate_features(query_path: str, fasta_path: str):
@@ -353,7 +363,9 @@ def select_csv(pkl_in_path: str, csv_path: str, min_input: float, max_input: flo
 def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: bool = False):
     sequences_dict = bioutils.extract_sequences(fasta_path)
     print(f'Running BLASTP with the sequences inside the file {fasta_path}')
+    results_dict = {}
     for id, seq in sequences_dict.items():
+        results_dict[id] = []
         print('================================')
         print(F'SEQUENCE {id}')
         print(f'Sequence id {id} with length {len(seq)}:')
@@ -387,43 +399,53 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
             aligned_identity = iteration_elem.find('.//Hsp_align-len').text
             hsp_qseq = iteration_elem.find('.//Hsp_qseq').text
             hsp_hseq = iteration_elem.find('.//Hsp_hseq').text
-            url = f'https://rest.uniprot.org/uniprotkb/search?query=accession_id:{hit_accession}&fields=annotation_score,protein_name,organism_name'
-            response = requests.get(url)
-            print('--------------')
-            json_response = response.json()
-            annotation_score = json_response['results'][0]['annotationScore']
-            protein_description = json_response['results'][0]['proteinDescription']['recommendedName']['fullName'][
-                'value']
-            organism = json_response['results'][0]['organism']['scientificName']
-            print(f'Accession ID: {hit_accession}')
-            print(f'E-value: {evalue}')
-            print(f'Identity residues: {residues_identity}')
-            print(f'Aligned residues: {aligned_identity}')
-            print(f'Annotation Score: {annotation_score}')
-            print(f'Protein description: {protein_description}')
-            print(f'Organism: {organism}')
-            if check:
-                print(f'It shares residues {", ".join(map(str, residues))} with the searched range')
-                print(f'The search query matching the range is the following one:')
-                chain = 'X'*(int(ini_query)-1)
-                for i, res in enumerate(hsp_qseq, start=int(ini_query)):
-                    if i in residues:
-                        chain += res
-                    else:
-                        chain += 'X'
-                print("".join(chain))
-                print(f'The found sequence matching range is the following one:')
-                chain = 'X'*(int(ini_query)-1)
-                for i, res in enumerate(hsp_hseq, start=int(ini_query)):
-                    if i in residues:
-                        chain += res
-                    else:
-                        chain += 'X'
-                print("".join(chain))
-            else:
-                print(f'It does not have any matching residue with the specified range')
-        print('================================')
+            if float(evalue) < float(0.01):
+                url = f'https://rest.uniprot.org/uniprotkb/search?query=accession_id:{hit_accession}&fields=annotation_score,protein_name,organism_name'
+                response = requests.get(url)
+                print('--------------')
+                json_response = response.json()
+                annotation_score = json_response['results'][0]['annotationScore']
+                protein_description = json_response['results'][0]['proteinDescription']['recommendedName']['fullName'][
+                    'value']
+                organism = json_response['results'][0]['organism']['scientificName']
+                print(f'Accession ID: {hit_accession}')
+                print(f'E-value: {evalue}')
+                print(f'Identity residues: {residues_identity}')
+                print(f'Aligned residues: {aligned_identity}')
+                print(f'Annotation Score: {annotation_score}')
+                print(f'Protein description: {protein_description}')
+                print(f'Organism: {organism}')
+                if check:
+                    print(f'It shares residues {", ".join(map(str, residues))} with the searched range')
+                    print(f'The search query matching the range is the following one:')
+                    chain = 'X'*(int(ini_query)-1)
+                    for i, res in enumerate(hsp_qseq, start=int(ini_query)):
+                        if i in residues:
+                            chain += res
+                        else:
+                            chain += 'X'
+                    print("".join(chain))
+                    print(f'The found sequence matching range is the following one:')
+                    chain = 'X'*(int(ini_query)-1)
+                    for i, res in enumerate(hsp_hseq, start=int(ini_query)):
+                        if i in residues:
+                            chain += res
+                        else:
+                            chain += 'X'
+                    print("".join(chain))
+                else:
+                    print(f'It does not have any matching residue with the specified range')
 
+                results_dict[id].append({
+                    'uniprot_protein_description': protein_description,
+                    'uniprot_annotation_score': annotation_score,
+                    'uniprot_organism': organism,
+                    'uniprot_acession_id': hit_accession,
+                    'uniprot_identity': residues_identity,
+                    'uniprot_evalue':  evalue
+                })
+        print('================================')
+    return results_dict
 
 if __name__ == "__main__":
     print('Usage: utilities.py function input')

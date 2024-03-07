@@ -237,7 +237,7 @@ def parse_cc_analysis(file_path: str) -> Dict:
 
 def parse_hinges_chains(output: str) -> str:
     # Read the output of hines when using -p chains
-    # Return the bets chain combination
+    # Return the best chain combination
     lines = output.strip().split('\n')
     lowest_rmstot = float('inf')
     lowest_perm = ''

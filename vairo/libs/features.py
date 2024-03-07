@@ -695,36 +695,34 @@ def delete_seq_from_msa(pkl_in_path: str, delete_list: List[str], pkl_out_path: 
     feature.write_pkl(pkl_out_path)
 
 
-def extract_features_info(pkl_in_path: str, regions_list: List[str]):
+def extract_features_info(pkl_in_path: str, regions_list: List):
     feature = create_features_from_file(pkl_in_path=pkl_in_path)
-    features_info_dict = {}
+    features_info_dict = {'msa': [], 'templates': []}
+    msa_sequences = feature.get_msa_sequences()
     region_query = ''
-    for region in regions_list:
-        features_info_dict[str(region)] = {'msa': [], 'templates': []}
-        msa_sequences = feature.get_msa_sequences()
-        for k, msa_seq in enumerate(msa_sequences[1:], start=1):
-            identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, msa_seq, region)
-            global_identity = bioutils.sequence_identity(feature.query_sequence, msa_seq)
-            if identity != 0:
-                features_info_dict[str(region)]['msa'].append(
-                    {'name': feature.msa_features['accession_ids'][k].decode(),
-                     'global_identity': global_identity,
-                     'identity': identity,
-                     'seq': msa_seq,
-                     'seq_query': region_query,
-                     'seq_msa': region_msa
-                     })
-        for i, template_seq in enumerate(feature.template_features['template_sequence']):
-            identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, template_seq, region)
-            global_identity = bioutils.sequence_identity(feature.query_sequence, template_seq)
-            if identity != 0:
-                features_info_dict[str(region)]['templates'].append(
-                    {'identity': identity,
-                     'global_identity': global_identity,
-                     'seq': msa_seq,
-                     'name': feature.template_features['template_domain_names'][i].decode(),
-                     'seq_query': region_query,
-                     'seq_msa': region_msa
-                     })
+    for k, msa_seq in enumerate(msa_sequences[1:], start=1):
+        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, msa_seq, regions_list)
+        global_identity = bioutils.sequence_identity(feature.query_sequence, msa_seq)
+        if identity != 0:
+            features_info_dict['msa'].append(
+                {'name': feature.msa_features['accession_ids'][k].decode(),
+                 'global_identity': global_identity,
+                 'identity': identity,
+                 'seq': msa_seq,
+                 'seq_query': region_query,
+                 'seq_msa': region_msa
+                 })
+    for i, template_seq in enumerate(feature.template_features['template_sequence']):
+        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, template_seq, regions_list)
+        global_identity = bioutils.sequence_identity(feature.query_sequence, template_seq)
+        if identity != 0:
+            features_info_dict['templates'].append(
+                {'identity': identity,
+                 'global_identity': global_identity,
+                 'seq': msa_seq,
+                 'name': feature.template_features['template_domain_names'][i].decode(),
+                 'seq_query': region_query,
+                 'seq_msa': region_msa
+                 })
 
     return features_info_dict, region_query
