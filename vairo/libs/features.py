@@ -353,25 +353,23 @@ class Features:
         if delete_templates:
             self.delete_templates(delete_templates)
 
-    def rewrite_with_extra_info(self, path: str, query_seq: str):
-        try:
-            self.extra_info['num_templates'] = self.get_templates_length()
+    def set_extra_info(self):
+        self.extra_info['num_templates'] = self.get_templates_length()
+        if self.get_templates_length() > 0:
             seq_templates = [seq.decode() for seq in self.template_features['template_sequence']]
-            self.extra_info['templates_coverage'] = utils.calculate_coverage(query_seq=query_seq,
-                                                                             sequences=seq_templates)
-        except:
-            self.extra_info['num_templates'] = 0
-            self.extra_info['templates_coverage'] = [1] * len(query_seq)
+            self.extra_info['templates_coverage'] = bioutils.calculate_coverage_scaled(query_seq=self.query_sequence,
+                                                                                       sequences=seq_templates)
+        else:
+            self.extra_info['templates_coverage'] = [0] * len(self.query_sequence)
 
-        try:
-            self.extra_info['num_msa'] = self.get_msa_length() - 1
+        self.extra_info['num_msa'] = self.get_msa_length() - 1
+        if self.get_msa_length() - 1 > 0:
             seq_msa = [''.join(residue_constants.ID_TO_HHBLITS_AA[res] for res in msa.tolist()) for msa in
                        self.msa_features['msa'][1:]]
-            self.extra_info['msa_coverage'] = utils.calculate_coverage(query_seq=query_seq, sequences=seq_msa)
-        except:
-            self.extra_info['num_msa'] = 0
-            self.extra_info['msa_coverage'] = [1] * len(query_seq)
-        self.write_pkl(pkl_path=path)
+            self.extra_info['msa_coverage'] = bioutils.calculate_coverage_scaled(query_seq=self.query_sequence,
+                                                                                 sequences=seq_msa)
+        else:
+            self.extra_info['msa_coverage'] = [0] * len(self.query_sequence)
 
     def delete_residues_msa(self, delete_positions: List[int]):
         # Delete the specifics residues in the msa.
@@ -697,32 +695,33 @@ def delete_seq_from_msa(pkl_in_path: str, delete_list: List[str], pkl_out_path: 
 
 def extract_features_info(pkl_in_path: str, regions_list: List):
     feature = create_features_from_file(pkl_in_path=pkl_in_path)
-    features_info_dict = {'msa': [], 'templates': []}
+    feature.set_extra_info()
+    features_info_dict = {'msa': {}, 'templates': {}, 'coverage': feature.extra_info}
     msa_sequences = feature.get_msa_sequences()
     region_query = ''
     for k, msa_seq in enumerate(msa_sequences[1:], start=1):
-        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, msa_seq, regions_list)
+        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, msa_seq,
+                                                                                regions_list)
         global_identity = bioutils.sequence_identity(feature.query_sequence, msa_seq)
         if identity != 0:
-            features_info_dict['msa'].append(
-                {'name': feature.msa_features['accession_ids'][k].decode(),
-                 'global_identity': global_identity,
-                 'identity': identity,
-                 'seq': msa_seq,
-                 'seq_query': region_query,
-                 'seq_msa': region_msa
-                 })
+            features_info_dict['msa'][feature.msa_features['accession_ids'][k].decode()] = {
+                'global_identity': round(global_identity, 2),
+                'identity': round(identity, 2),
+                'seq': msa_seq,
+                'seq_query': region_query,
+                'seq_msa': region_msa
+            }
     for i, template_seq in enumerate(feature.template_features['template_sequence']):
-        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, template_seq, regions_list)
+        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, template_seq,
+                                                                                regions_list)
         global_identity = bioutils.sequence_identity(feature.query_sequence, template_seq)
         if identity != 0:
-            features_info_dict['templates'].append(
-                {'identity': identity,
-                 'global_identity': global_identity,
-                 'seq': msa_seq,
-                 'name': feature.template_features['template_domain_names'][i].decode(),
-                 'seq_query': region_query,
-                 'seq_msa': region_msa
-                 })
+            features_info_dict['templates'][feature.template_features['template_domain_names'][i].decode()] = {
+                'identity': round(identity, 2),
+                'global_identity': round(global_identity, 2),
+                'seq': msa_seq,
+                'seq_query': region_query,
+                'seq_msa': region_msa
+            }
 
-    return features_info_dict, region_query
+    return features_info_dict, region_query, feature.query_sequence

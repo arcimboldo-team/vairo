@@ -1447,11 +1447,24 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     sequences_dict = extract_sequence_msa_from_pdb(pdb_path=pdb_in_path)
     chain = get_chains(pdb_in_path)[0]
     whole_seq = "".join([seq for seq in sequences_dict.values()])
-    conservation_list = np.zeros(len(whole_seq))
-    for msa_seq in msa_list:
-        results_list, _ = compare_sequences(whole_seq, msa_seq, only_match=True)
-        conservation_list += np.array(results_list)
-    conservation_list = conservation_list / len(msa_list) * 100
+    conservation_list = calculate_coverage(query_seq=whole_seq, sequences=msa_seq, only_match=True)
+    conservation_list = conservation_list * 100
     change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(whole_seq) + 1, 1)]},
                                        chain_bfactors_dict={chain: conservation_list})
     change.change_bfactors(pdb_in_path, pdb_out_path)
+
+
+def calculate_coverage(query_seq: str, sequences: List[str], only_match: bool) -> List[str]:
+    # Coverage of the sequences. It is divided by the number of sequences.
+    add_sequences = np.zeros(len(query_seq))
+    for seq in sequences:
+        aligned_sequence, _ = compare_sequences(query_seq, seq, only_match)
+        add_sequences += np.array(aligned_sequence)
+    add_sequences /= len(sequences)
+    return add_sequences
+
+
+def calculate_coverage_scaled(query_seq: str, sequences: List[str]):
+    sequences_coverage = calculate_coverage(query_seq=query_seq, sequences=sequences, only_match=False)
+    new_sequences = utils.scale_values(sequences_coverage)
+    return new_sequences

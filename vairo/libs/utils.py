@@ -27,17 +27,6 @@ def scale_values(input_list: List[int]) -> List[int]:
     return new_list
 
 
-def calculate_coverage(query_seq: str, sequences: List[str]):
-    add_sequences = np.zeros(len(query_seq))
-    for seq in sequences:
-        aligned_sequence, _ = bioutils.compare_sequences(query_seq, seq)
-        add_sequences += np.array(aligned_sequence)
-    add_sequences /= len(sequences)
-    new_sequences = scale_values(add_sequences)
-    new_sequences = [1 - i for i in new_sequences]
-    return new_sequences
-
-
 def check_external_programs():
     try:
         cmd = 'which gesamt'

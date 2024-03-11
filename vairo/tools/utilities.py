@@ -8,6 +8,7 @@ import pickle
 import os
 import logging
 import tempfile
+import collections
 from typing import List
 import xml.etree.ElementTree as ET
 import numpy as np
@@ -35,57 +36,58 @@ def print_features(features_path: str):
     features.print_features_from_file(features_path)
 
 
-def print_sequence_info(seq_list, seq_type):
-    seq_list.sort(key=lambda x: x['identity'], reverse=True)
-    max_identity_elements = [element for element in seq_list if element['identity'] > 90]
-    print(f'{seq_type} that have more than a 90% identity ({len(max_identity_elements)}):')
-    for seq in max_identity_elements:
-        print(
-            f'ID: {seq["name"]} Identity: {round(seq["identity"])}% Global Identity: {round(seq["global_identity"])}%\n{seq["seq"]}\n')
+def print_sequence_info(seq_dict: dict, seq_type: str):
+    seq_sorted = sorted(seq_dict.items(), key=lambda x: x[1]['identity'], reverse=True)
+    max_identity_elements = {key: value for key, value in seq_sorted if value['identity'] > 90}
 
-    accepted_identity_elements = [element for element in seq_list if 90 >= element['identity'] >= 50]
-    print(f'{seq_type} that have between a 50% and 90% identity percentage ({len(accepted_identity_elements)}):')
-    for seq in accepted_identity_elements:
-        print(F'SEQUENCE {seq["name"]}')
+    print(f'{seq_type} that have more than a 90% identity ({len(max_identity_elements)}):')
+    for key, values in max_identity_elements.items():
         print(
-            f'ID: {seq["name"]} || Identity: {round(seq["identity"])}% || Global Identity: {round(seq["global_identity"])}%\n{seq["seq"]}\n')
+            f'ID: {key} Identity: {values["identity"]}% Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
+
+    accepted_identity_elements = {key: value for key, value in seq_sorted if 90 >= value['identity'] >= 50}
+    print(f'{seq_type} that have between a 50% and 90% identity percentage ({len(accepted_identity_elements)}):')
+    for key, values in accepted_identity_elements.items():
+        print(F'SEQUENCE {key}')
+        print(
+            f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
 
     return accepted_identity_elements
 
 
 def extract_features_info(features_path: str, region: str = None):
-    if region is None:
+    if region is None or region == "":
         region = '1-10000'
-    region_list = region.replace(" ","").split(',')
+    region_list = region.replace(" ", "").split(',')
     region_result = []
     for r in region_list:
         start, end = map(int, r.split('-'))
         region_result.append((int(start), int(end)))
-    
-    features_info_dict, region_query = features.extract_features_info(pkl_in_path=features_path,
+
+    features_info_dict, region_query, query = features.extract_features_info(pkl_in_path=features_path,
                                                                       regions_list=region_result)
     files_info = []
     print('\n================================')
     print(f'REGION {region}')
     print(f'And we are looking for these specific regions:')
     print(f'{region_query}')
-    store_results = []
+    store_results = {}
 
     if features_info_dict['msa']:
         print('\nMSA:')
-        store_results.extend(print_sequence_info(features_info_dict['msa'], 'Sequences'))
+        store_results.update(print_sequence_info(features_info_dict['msa'], 'Sequences'))
 
     if features_info_dict['templates']:
         print('\nTEMPLATES:')
         print_sequence_info(features_info_dict['templates'], (50, 90), 'Templates')
-        store_results.extend(print_sequence_info(features_info_dict['templates'], 'Templates'))
+        store_results.update(print_sequence_info(features_info_dict['templates'], 'Templates'))
 
     store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{region}.fasta')
     print(f'Accepted sequences have been stored in: {store_fasta_path}')
     with open(store_fasta_path, 'w') as file:
-        for seq in store_results:
-            file.write(f'\n>{seq["name"]}\n')
-            file.write(f'{seq["seq"]}')
+        for key, values in store_results.items():
+            file.write(f'\n>{key}\n')
+            file.write(f'{values["seq"]}')
     print('\n================================')
     files_info.append(store_fasta_path)
 
@@ -94,11 +96,36 @@ def extract_features_info(features_path: str, region: str = None):
         residues_list.extend(list(range(r[0], r[1] + 1)))
     results_uniprot = run_uniprot_blast(store_fasta_path, residues_list)
 
+    features_info_dict['templates'] = dict(
+        sorted(features_info_dict['templates'].items(), key=lambda item: item[1]['identity'], reverse=True))
+    features_info_dict['msa'] = dict(
+        sorted(features_info_dict['msa'].items(), key=lambda item: item[1]['identity'], reverse=True))
+
+    templates_keys = list(features_info_dict['templates'].keys())
+    msa_keys = list(features_info_dict['msa'].keys())
+    uniprot_description_statistics = collections.defaultdict(int)
+    uniprot_identity_statistics = collections.defaultdict(int)
     for key, value in results_uniprot.items():
-        if key in features_info_dict['templates']:
+        if key in templates_keys:
             features_info_dict['templates'][key]['uniprot'] = value
-        elif key in features_info_dict['msa']:
+        elif key in msa_keys:
             features_info_dict['msa'][key]['uniprot'] = value
+
+        for uni_element in value:
+            protein_description = uni_element['uniprot_protein_description']
+            uniprot_description_statistics[protein_description] += 1
+            uniprot_identity_statistics[protein_description] = max(uniprot_identity_statistics[protein_description],
+                                                                   int(uni_element['uniprot_identity']))
+
+    combined_uniprot_dict = {k: {'description': v, 'identity': uniprot_identity_statistics[k]}
+                             for k, v in uniprot_description_statistics.items()}
+
+    features_info_dict['uniprot_statistics'] = dict(
+        sorted(combined_uniprot_dict.items(), key=lambda item: item[1]['description'], reverse=True))
+
+    features_info_dict['general_information'] = {}
+    features_info_dict['general_information']['query_sequence'] = query
+    features_info_dict['general_information']['query_search'] = region_query
 
     return features_info_dict
 
@@ -378,7 +405,7 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
                 temp_file.write(modified_content)
                 temp_file.flush()
-                blastp_cmd = f'blastp -db /xtal/blastp/bin/swissprot -query {temp_file.name} -outfmt 5'
+                blastp_cmd = f'blastp -db /opt/blast/bin/swissprot -query {temp_file.name} -outfmt 5'
                 result = subprocess.Popen(blastp_cmd, stdout=subprocess.PIPE, shell=True)
                 blastp_output = result.communicate()[0].decode('utf-8')
                 root = ET.fromstring(blastp_output)
@@ -417,7 +444,7 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
                 if check:
                     print(f'It shares residues {", ".join(map(str, residues))} with the searched range')
                     print(f'The search query matching the range is the following one:')
-                    chain = 'X'*(int(ini_query)-1)
+                    chain = 'X' * (int(ini_query) - 1)
                     for i, res in enumerate(hsp_qseq, start=int(ini_query)):
                         if i in residues:
                             chain += res
@@ -425,7 +452,7 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
                             chain += 'X'
                     print("".join(chain))
                     print(f'The found sequence matching range is the following one:')
-                    chain = 'X'*(int(ini_query)-1)
+                    chain = 'X' * (int(ini_query) - 1)
                     for i, res in enumerate(hsp_hseq, start=int(ini_query)):
                         if i in residues:
                             chain += res
@@ -441,10 +468,11 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
                     'uniprot_organism': organism,
                     'uniprot_acession_id': hit_accession,
                     'uniprot_identity': residues_identity,
-                    'uniprot_evalue':  evalue
+                    'uniprot_evalue': evalue
                 })
         print('================================')
     return results_dict
+
 
 if __name__ == "__main__":
     print('Usage: utilities.py function input')
