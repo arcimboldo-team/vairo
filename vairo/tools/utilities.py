@@ -405,7 +405,7 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
                 temp_file.write(modified_content)
                 temp_file.flush()
-                blastp_cmd = f'blastp -db /opt/blast/bin/swissprot -query {temp_file.name} -outfmt 5'
+                blastp_cmd = f'blastp -db /xtal/blastp/bin/swissprot -query {temp_file.name} -outfmt 5'
                 result = subprocess.Popen(blastp_cmd, stdout=subprocess.PIPE, shell=True)
                 blastp_output = result.communicate()[0].decode('utf-8')
                 root = ET.fromstring(blastp_output)
