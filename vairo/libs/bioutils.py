@@ -1447,7 +1447,7 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     sequences_dict = extract_sequence_msa_from_pdb(pdb_path=pdb_in_path)
     chain = get_chains(pdb_in_path)[0]
     whole_seq = "".join([seq for seq in sequences_dict.values()])
-    conservation_list = calculate_coverage(query_seq=whole_seq, sequences=msa_seq, only_match=True)
+    conservation_list = calculate_coverage(query_seq=whole_seq, sequences=msa_list, only_match=True)
     conservation_list = conservation_list * 100
     change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(whole_seq) + 1, 1)]},
                                        chain_bfactors_dict={chain: conservation_list})

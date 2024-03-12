@@ -172,6 +172,9 @@ def main():
             a_air.set_feature(new_features)
         #a_air.align_experimental_pdbs()
         if a_air.mode == 'naive' and a_air.run_af2 and a_air.cluster_templates:
+            # store results features before trimming
+            old_features_path = os.path.join(a_air.results_dir, 'alphafold_features.pkl')
+            a_air.feature.write_pkl(pkl_path=old_features_path)
             a_air.feature.select_msa_templates(sequence_assembled=a_air.sequence_assembled)
             a_air.extract_results()
             a_air.templates_clustering()
