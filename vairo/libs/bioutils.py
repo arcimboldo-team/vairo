@@ -1190,7 +1190,8 @@ def superpose_pdbs(pdb_list: List, output_path: str = None) -> Tuple[Optional[fl
     return rmsd, nalign, quality_q
 
 
-def run_gesamt(pdb_reference: str, pdb_superposed: str, output_path: str = None, reference_chains: List[str] = [], superposed_chains: List[str] = []) -> Tuple[
+def run_gesamt(pdb_reference: str, pdb_superposed: str, output_path: str = None, reference_chains: List[str] = [],
+               superposed_chains: List[str] = []) -> Tuple[
     Optional[float], Optional[str], Optional[str]]:
     with tempfile.TemporaryDirectory() as tmpdirname:
         superpose_cmd = 'gesamt'
@@ -1206,7 +1207,8 @@ def run_gesamt(pdb_reference: str, pdb_superposed: str, output_path: str = None,
         if output_path is not None:
             superpose_cmd += f' -o {tmpdirname} -o-d'
         logging.info(logging_text)
-        superpose_output = subprocess.Popen(superpose_cmd, stdout=subprocess.PIPE, shell=True).communicate()[0].decode('utf-8')
+        superpose_output = subprocess.Popen(superpose_cmd, stdout=subprocess.PIPE, shell=True).communicate()[0].decode(
+            'utf-8')
         new_path = os.path.join(tmpdirname, f'{utils.get_file_name(pdb_superposed)}_2.pdb')
         if os.path.exists(new_path) and output_path:
             shutil.copy2(new_path, output_path)

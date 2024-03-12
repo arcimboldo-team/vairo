@@ -37,22 +37,28 @@ def print_features(features_path: str):
 
 
 def print_sequence_info(seq_dict: dict, seq_type: str):
+    #seq_sorted = sorted(seq_dict.items(), key=lambda x: x[1]['identity'], reverse=True)
+    #max_identity_elements = {key: value for key, value in seq_sorted if value['identity'] > 90}
+
+    #print(f'{seq_type} that have more than a 90% identity ({len(max_identity_elements)}):')
+    #for key, values in max_identity_elements.items():
+    #    print(
+    #        f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
+
+    #accepted_identity_elements = {key: value for key, value in seq_sorted if 90 >= value['identity'] >= 50}
+    #print(f'{seq_type} that have between a 50% and 90% identity percentage ({len(accepted_identity_elements)}):')
+    #for key, values in accepted_identity_elements.items():
+    #    print(F'SEQUENCE {key}')
+    #    print(
+    #        f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
+
+    print(f'{seq_type}:')
     seq_sorted = sorted(seq_dict.items(), key=lambda x: x[1]['identity'], reverse=True)
-    max_identity_elements = {key: value for key, value in seq_sorted if value['identity'] > 90}
+    print(seq_sorted)
+    for key, values in seq_sorted:
+        print(f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
 
-    print(f'{seq_type} that have more than a 90% identity ({len(max_identity_elements)}):')
-    for key, values in max_identity_elements.items():
-        print(
-            f'ID: {key} Identity: {values["identity"]}% Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
-
-    accepted_identity_elements = {key: value for key, value in seq_sorted if 90 >= value['identity'] >= 50}
-    print(f'{seq_type} that have between a 50% and 90% identity percentage ({len(accepted_identity_elements)}):')
-    for key, values in accepted_identity_elements.items():
-        print(F'SEQUENCE {key}')
-        print(
-            f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
-
-    return accepted_identity_elements
+    return seq_dict
 
 
 def extract_features_info(features_path: str, region: str = None):
@@ -405,7 +411,9 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
             with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
                 temp_file.write(modified_content)
                 temp_file.flush()
-                blastp_cmd = f'blastp -db /xtal/blastp/bin/swissprot -query {temp_file.name} -outfmt 5'
+                blastp_path = shutil.which('blastp')
+                blast_folder = os.path.dirname(blastp_path)
+                blastp_cmd = f'{blastp_path} -db {os.path.join(blast_folder,"swissprot")} -query {temp_file.name} -outfmt 5'
                 result = subprocess.Popen(blastp_cmd, stdout=subprocess.PIPE, shell=True)
                 blastp_output = result.communicate()[0].decode('utf-8')
                 root = ET.fromstring(blastp_output)
@@ -466,10 +474,12 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
                     'uniprot_protein_description': protein_description,
                     'uniprot_annotation_score': annotation_score,
                     'uniprot_organism': organism,
-                    'uniprot_acession_id': hit_accession,
+                    'uniprot_accession_id': hit_accession,
                     'uniprot_identity': residues_identity,
                     'uniprot_evalue': evalue
                 })
+
+        break
         print('================================')
     return results_dict
 
