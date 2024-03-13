@@ -479,7 +479,6 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
                     'uniprot_evalue': evalue
                 })
 
-        break
         print('================================')
     return results_dict
 
