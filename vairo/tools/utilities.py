@@ -36,32 +36,18 @@ def print_features(features_path: str):
     features.print_features_from_file(features_path)
 
 
-def print_sequence_info(seq_dict: dict, seq_type: str):
-    #seq_sorted = sorted(seq_dict.items(), key=lambda x: x[1]['identity'], reverse=True)
-    #max_identity_elements = {key: value for key, value in seq_sorted if value['identity'] > 90}
-
-    #print(f'{seq_type} that have more than a 90% identity ({len(max_identity_elements)}):')
-    #for key, values in max_identity_elements.items():
-    #    print(
-    #        f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
-
-    #accepted_identity_elements = {key: value for key, value in seq_sorted if 90 >= value['identity'] >= 50}
-    #print(f'{seq_type} that have between a 50% and 90% identity percentage ({len(accepted_identity_elements)}):')
-    #for key, values in accepted_identity_elements.items():
-    #    print(F'SEQUENCE {key}')
-    #    print(
-    #        f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
-
-    print(f'{seq_type}:')
+def print_sequence_info(seq_dict: dict, seq_type: str, ini: int = 0, end: int = 100):
     seq_sorted = sorted(seq_dict.items(), key=lambda x: x[1]['identity'], reverse=True)
-    print(seq_sorted)
-    for key, values in seq_sorted:
-        print(f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
+    accepted_identity_elements = {key: value for key, value in seq_sorted if end >= value['identity'] >= ini}
+    print(f'{seq_type} that have between a {ini}% and {end}% identity percentage ({len(accepted_identity_elements)}):')
+    for key, values in accepted_identity_elements.items():
+        print(F'SEQUENCE {key}')
+        print(
+            f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
+    return accepted_identity_elements
 
-    return seq_dict
 
-
-def extract_features_info(features_path: str, region: str = None):
+def extract_features_info(features_path: str, region: str = None, ini_identity: int = 0, end_identity: int = 100, run_uniprot: bool= False):
     if region is None or region == "":
         region = '1-10000'
     region_list = region.replace(" ", "").split(',')
@@ -77,21 +63,19 @@ def extract_features_info(features_path: str, region: str = None):
     print(f'REGION {region}')
     print(f'And we are looking for these specific regions:')
     print(f'{region_query}')
-    store_results = {}
 
     if features_info_dict['msa']:
         print('\nMSA:')
-        store_results.update(print_sequence_info(features_info_dict['msa'], 'Sequences'))
-
+        features_info_dict['msa'] = print_sequence_info(features_info_dict['msa'], 'Sequences', ini=ini_identity, end=end_identity)
     if features_info_dict['templates']:
         print('\nTEMPLATES:')
-        print_sequence_info(features_info_dict['templates'], (50, 90), 'Templates')
-        store_results.update(print_sequence_info(features_info_dict['templates'], 'Templates'))
+        features_info_dict['templates'] = print_sequence_info(features_info_dict['templates'], 'Templates', ini=ini_identity, end=end_identity)
 
     store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{region}.fasta')
-    print(f'Accepted sequences have been stored in: {store_fasta_path}')
+    merged_dict = {**features_info_dict['msa'],**features_info_dict['templates']}
+    print(f'Accepted sequences tanking into account the identity have been stored in: {store_fasta_path}')
     with open(store_fasta_path, 'w') as file:
-        for key, values in store_results.items():
+        for key, values in merged_dict.items():
             file.write(f'\n>{key}\n')
             file.write(f'{values["seq"]}')
     print('\n================================')
@@ -100,8 +84,10 @@ def extract_features_info(features_path: str, region: str = None):
     residues_list = []
     for r in region_result:
         residues_list.extend(list(range(r[0], r[1] + 1)))
-    results_uniprot = run_uniprot_blast(store_fasta_path, residues_list)
-
+    if run_uniprot:
+        results_uniprot = run_uniprot_blast(store_fasta_path, residues_list)
+    else:
+        results_uniprot = {}
     features_info_dict['templates'] = dict(
         sorted(features_info_dict['templates'].items(), key=lambda item: item[1]['identity'], reverse=True))
     features_info_dict['msa'] = dict(
@@ -132,7 +118,22 @@ def extract_features_info(features_path: str, region: str = None):
     features_info_dict['general_information'] = {}
     features_info_dict['general_information']['query_sequence'] = query
     features_info_dict['general_information']['query_search'] = region_query
-
+    
+    templates_coverage = [0]*len(query)
+    msa_coverage = [0]*len(query)
+    if len(features_info_dict['templates']):
+        templates_seq_list = [seq['seq'] for seq in features_info_dict['templates'].values()]
+        templates_coverage = bioutils.calculate_coverage_scaled(query_seq=query, sequences=templates_seq_list)
+    if len(features_info_dict['msa']):
+        msa_seq_list = [seq['seq'] for seq in features_info_dict['msa'].values()]
+        msa_coverage = bioutils.calculate_coverage_scaled(query_seq=query, sequences=msa_seq_list)
+       
+    features_info_dict['coverage'] = {
+        'msa_coverage': msa_coverage,
+        'num_msa': len(features_info_dict['msa']),
+        'templates_coverage': templates_coverage,
+        'num_templates': len(features_info_dict['templates'])
+    }
     return features_info_dict
 
 

@@ -2,6 +2,7 @@ import logging
 import os
 import pickle
 import re
+import tempfile
 from typing import Dict, List, Union, Any
 import numpy as np
 from Bio.PDB import PDBParser, Selection
@@ -602,6 +603,44 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     return template_features
 
 
+
+def write_template_in_features(template_features: Dict, template_code: str, output_path: str, chain='A'):
+    with open(output_path, 'w') as output_pdb:
+        template_domain_index = np.where(template_features['template_domain_names'] == template_code)[0][0]
+        atom_num_int = 0
+        for index, atoms_mask in enumerate(template_features['template_all_atom_masks'][template_domain_index][:]):
+            template_residue_masks = template_features['template_aatype'][template_domain_index][index]
+            template_residue_masks_index = np.where(template_residue_masks == 1)[0][0]
+            res_type = ID_TO_HHBLITS_AA_3LETTER_CODE[template_residue_masks_index]
+            list_of_atoms_in_residue = [ORDER_ATOM[i] for i, atom in enumerate(atoms_mask) if atom == 1]
+            for atom in list_of_atoms_in_residue:
+                atom_num_int = atom_num_int + 1
+                atom_remark = 'ATOM'
+                atom_num = str(atom_num_int)
+                atom_name = atom
+                res_name = res_type
+                res_num = str(index + 1)
+                x_coord = str('%8.3f' % (float(str(
+                    template_features['template_all_atom_positions'][template_domain_index][index][
+                        ATOM_TYPES.index(atom)][
+                        0]))))
+                y_coord = str('%8.3f' % (float(str(
+                    template_features['template_all_atom_positions'][template_domain_index][index][
+                        ATOM_TYPES.index(atom)][
+                        1]))))
+                z_coord = str('%8.3f' % (float(str(
+                    template_features['template_all_atom_positions'][template_domain_index][index][
+                        ATOM_TYPES.index(atom)][
+                        2]))))
+                occ = '1.0'
+                bfact = '25.0'
+                atom_type = atom[0]
+                atom_line = bioutils.get_atom_line(remark=atom_remark, num=int(atom_num), name=atom_name,
+                                                    res=res_name, chain=chain, resseq=res_num, x=float(x_coord),
+                                                    y=float(y_coord), z=float(z_coord), occ=occ, bfact=bfact,
+                                                    atype=atom_type)
+                output_pdb.write(atom_line)
+
 def write_templates_in_features(template_features: Dict, output_dir: str, chain='A', print_number=True) -> Dict:
     templates_dict = {}
     for pdb_name in template_features['template_domain_names']:
@@ -609,41 +648,7 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
         number = '1' if print_number else ''
         pdb_path = os.path.join(output_dir, f'{pdb}{number}.pdb')
         templates_dict[utils.get_file_name(pdb_path)] = pdb_path
-        with open(pdb_path, 'w') as output_pdb:
-            template_domain_index = np.where(template_features['template_domain_names'] == pdb_name)[0][0]
-            atom_num_int = 0
-            for index, atoms_mask in enumerate(template_features['template_all_atom_masks'][template_domain_index][:]):
-                template_residue_masks = template_features['template_aatype'][template_domain_index][index]
-                template_residue_masks_index = np.where(template_residue_masks == 1)[0][0]
-                res_type = ID_TO_HHBLITS_AA_3LETTER_CODE[template_residue_masks_index]
-                list_of_atoms_in_residue = [ORDER_ATOM[i] for i, atom in enumerate(atoms_mask) if atom == 1]
-                for atom in list_of_atoms_in_residue:
-                    atom_num_int = atom_num_int + 1
-                    atom_remark = 'ATOM'
-                    atom_num = str(atom_num_int)
-                    atom_name = atom
-                    res_name = res_type
-                    res_num = str(index + 1)
-                    x_coord = str('%8.3f' % (float(str(
-                        template_features['template_all_atom_positions'][template_domain_index][index][
-                            ATOM_TYPES.index(atom)][
-                            0]))))
-                    y_coord = str('%8.3f' % (float(str(
-                        template_features['template_all_atom_positions'][template_domain_index][index][
-                            ATOM_TYPES.index(atom)][
-                            1]))))
-                    z_coord = str('%8.3f' % (float(str(
-                        template_features['template_all_atom_positions'][template_domain_index][index][
-                            ATOM_TYPES.index(atom)][
-                            2]))))
-                    occ = '1.0'
-                    bfact = '25.0'
-                    atom_type = atom[0]
-                    atom_line = bioutils.get_atom_line(remark=atom_remark, num=int(atom_num), name=atom_name,
-                                                       res=res_name, chain=chain, resseq=res_num, x=float(x_coord),
-                                                       y=float(y_coord), z=float(z_coord), occ=occ, bfact=bfact,
-                                                       atype=atom_type)
-                    output_pdb.write(atom_line)
+        write_template_in_features(template_features=template_features, template_code=pdb_name, output_path=pdb_path, chain=chain)
     return templates_dict
 
 
@@ -695,8 +700,7 @@ def delete_seq_from_msa(pkl_in_path: str, delete_list: List[str], pkl_out_path: 
 
 def extract_features_info(pkl_in_path: str, regions_list: List):
     feature = create_features_from_file(pkl_in_path=pkl_in_path)
-    feature.set_extra_info()
-    features_info_dict = {'msa': {}, 'templates': {}, 'coverage': feature.extra_info}
+    features_info_dict = {'msa': {}, 'templates': {}}
     msa_sequences = feature.get_msa_sequences()
     region_query = ''
     for k, msa_seq in enumerate(msa_sequences[1:], start=1):
@@ -712,16 +716,22 @@ def extract_features_info(pkl_in_path: str, regions_list: List):
                 'seq_msa': region_msa
             }
     for i, template_seq in enumerate(feature.template_features['template_sequence']):
-        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, template_seq,
+        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, template_seq.decode(),
                                                                                 regions_list)
-        global_identity = bioutils.sequence_identity(feature.query_sequence, template_seq)
-        if identity != 0:
-            features_info_dict['templates'][feature.template_features['template_domain_names'][i].decode()] = {
-                'identity': round(identity, 2),
-                'global_identity': round(global_identity, 2),
-                'seq': msa_seq,
-                'seq_query': region_query,
-                'seq_msa': region_msa
-            }
+        global_identity = bioutils.sequence_identity(feature.query_sequence, template_seq.decode())
+        pdb_name = feature.template_features['template_domain_names'][i]
+        pdb_info = ''
+        with tempfile.NamedTemporaryFile() as temp_file:
+            write_template_in_features(template_features=feature.template_features, template_code=pdb_name, output_path=temp_file.name)
+            pdb_info = temp_file.read().decode()
+
+        features_info_dict['templates'][feature.template_features['template_domain_names'][i].decode()] = {
+            'identity': round(identity, 2),
+            'global_identity': round(global_identity, 2),
+            'seq': template_seq.decode(),
+            'seq_query': region_query,
+            'seq_msa': region_msa,
+            'pdb': pdb_info
+        }
 
     return features_info_dict, region_query, feature.query_sequence
