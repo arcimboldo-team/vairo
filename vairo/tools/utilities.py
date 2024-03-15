@@ -47,7 +47,7 @@ def print_sequence_info(seq_dict: dict, seq_type: str, ini: int = 0, end: int = 
     return accepted_identity_elements
 
 
-def extract_features_info(features_path: str, region: str = None, ini_identity: int = 0, end_identity: int = 100, run_uniprot: bool= False):
+def extract_features_info(features_path: str, region: str = None, ini_identity: int = 0, end_identity: int = 100, run_uniprot: bool = False):
     if region is None or region == "":
         region = '1-10000'
     region_list = region.replace(" ", "").split(',')

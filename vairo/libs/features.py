@@ -603,7 +603,6 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     return template_features
 
 
-
 def write_template_in_features(template_features: Dict, template_code: str, output_path: str, chain='A'):
     with open(output_path, 'w') as output_pdb:
         template_domain_index = np.where(template_features['template_domain_names'] == template_code)[0][0]
@@ -636,10 +635,11 @@ def write_template_in_features(template_features: Dict, template_code: str, outp
                 bfact = '25.0'
                 atom_type = atom[0]
                 atom_line = bioutils.get_atom_line(remark=atom_remark, num=int(atom_num), name=atom_name,
-                                                    res=res_name, chain=chain, resseq=res_num, x=float(x_coord),
-                                                    y=float(y_coord), z=float(z_coord), occ=occ, bfact=bfact,
-                                                    atype=atom_type)
+                                                   res=res_name, chain=chain, resseq=res_num, x=float(x_coord),
+                                                   y=float(y_coord), z=float(z_coord), occ=occ, bfact=bfact,
+                                                   atype=atom_type)
                 output_pdb.write(atom_line)
+
 
 def write_templates_in_features(template_features: Dict, output_dir: str, chain='A', print_number=True) -> Dict:
     templates_dict = {}
@@ -648,7 +648,8 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
         number = '1' if print_number else ''
         pdb_path = os.path.join(output_dir, f'{pdb}{number}.pdb')
         templates_dict[utils.get_file_name(pdb_path)] = pdb_path
-        write_template_in_features(template_features=template_features, template_code=pdb_name, output_path=pdb_path, chain=chain)
+        write_template_in_features(template_features=template_features, template_code=pdb_name, output_path=pdb_path,
+                                   chain=chain)
     return templates_dict
 
 
@@ -716,13 +717,14 @@ def extract_features_info(pkl_in_path: str, regions_list: List):
                 'seq_msa': region_msa
             }
     for i, template_seq in enumerate(feature.template_features['template_sequence']):
-        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, template_seq.decode(),
+        identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence,
+                                                                                template_seq.decode(),
                                                                                 regions_list)
         global_identity = bioutils.sequence_identity(feature.query_sequence, template_seq.decode())
         pdb_name = feature.template_features['template_domain_names'][i]
-        pdb_info = ''
         with tempfile.NamedTemporaryFile() as temp_file:
-            write_template_in_features(template_features=feature.template_features, template_code=pdb_name, output_path=temp_file.name)
+            write_template_in_features(template_features=feature.template_features, template_code=pdb_name,
+                                       output_path=temp_file.name)
             pdb_info = temp_file.read().decode()
 
         features_info_dict['templates'][feature.template_features['template_domain_names'][i].decode()] = {
