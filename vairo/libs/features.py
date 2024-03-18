@@ -133,6 +133,13 @@ class Features:
             return index[0][0]
         else:
             return None
+        
+    def get_index_msa_by_name(self, name: str) -> Union[int, None]:
+        index = np.where(self.msa_features['accession_ids'] == name.encode())
+        if index[0].size != 0:
+            return index[0][0]
+        else:
+            return None        
 
     def get_msa_length(self) -> int:
         return len(self.msa_features['msa'])
@@ -353,6 +360,51 @@ class Features:
 
         if delete_templates:
             self.delete_templates(delete_templates)
+
+
+    def delete_by_id(self, id_list: List[str]):
+        # Given a list of ids, check if it belongs to a msa or a templates. Delete them.
+        delete_templates_list = []
+        delete_msa_list = []
+
+        for id_delete in id_list:
+            index = self.get_index_msa_by_name(id_delete)
+            if index is None:
+                index = self.get_index_by_name(id_delete)
+                if index is None:
+                    continue
+                else:
+                    delete_templates_list.append(index)
+            else:
+                delete_msa_list.append(index)
+
+        if delete_msa_list:
+            print(delete_msa_list)
+            self.delete_msas(delete_msa_list)
+
+        if delete_templates_list:
+            print(delete_templates_list)
+            self.delete_templates(delete_templates_list)
+
+    def delete_by_range(self, min_identity: float, max_identity: float):
+        # Given a minimum identity value, and a maximum identity value, delete them the outlayers.
+        delete_msa = []
+        for i in range(0, self.get_msa_length()):
+            sequence_in = self.msa_features['msa'][i]
+            identity = bioutils.sequence_identity(self.query_sequence, sequence_in)
+            if min_identity < identity > max_identity:
+                delete_msa.append(i)
+        if delete_msa:
+            self.delete_msas(delete_msa)
+        delete_templates = []
+        for i in range(0, self.get_templates_length()):
+            sequence_in = self.template_features['template_sequence'][i].decode()
+            identity = bioutils.sequence_identity(self.query_sequence, sequence_in)
+            if min_identity < identity > max_identity:
+                delete_templates.append(i)
+        if delete_templates:
+            self.delete_templates(delete_templates)        
+
 
     def set_extra_info(self):
         self.extra_info['num_templates'] = self.get_templates_length()
