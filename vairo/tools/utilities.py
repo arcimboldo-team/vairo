@@ -39,11 +39,12 @@ def print_features(features_path: str):
 def print_sequence_info(seq_dict: dict, seq_type: str, ini: int = 0, end: int = 100):
     seq_sorted = sorted(seq_dict.items(), key=lambda x: x[1]['identity'], reverse=True)
     accepted_identity_elements = {key: value for key, value in seq_sorted if end >= value['identity'] >= ini}
+
     print(f'{seq_type} that have between a {ini}% and {end}% identity percentage ({len(accepted_identity_elements)}):')
     for key, values in accepted_identity_elements.items():
         print(F'SEQUENCE {key}')
         print(
-            f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}%\n{values["seq"]}\n')
+            f'ID: {key} || Identity: {values["identity"]}% || Global Identity: {values["global_identity"]}% || Coverage: {values["coverage"]}%\n{values["seq"]}\n')
     return accepted_identity_elements
 
 

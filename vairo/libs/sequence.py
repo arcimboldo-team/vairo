@@ -59,7 +59,8 @@ class Sequence:
                 values = utils.expand_residues(list(mutation.values())[0])
                 if key not in list(residue_constants.restype_1to3.keys()):
                     raise Exception(
-                        f'Mutation residues {"".join(values)} in {key} could not be possible. Residue {key} does not exist')
+                        f'Mutation residues {"".join(values)} in {key} could not be possible. Residue {key} does not '
+                        f'exist')
                 self.mutations_dict.setdefault(key, []).extend(values)
                 for value in values:
                     if value <= len(self.sequence):

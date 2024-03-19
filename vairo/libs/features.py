@@ -760,10 +760,12 @@ def extract_features_info(pkl_in_path: str, regions_list: List):
         identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, msa_seq,
                                                                                 regions_list)
         global_identity = bioutils.sequence_identity(feature.query_sequence, msa_seq)
+        coverage = (sum(1 for res in msa_seq if res != '-')/len(msa_seq)*100)
         if identity != 0:
             features_info_dict['msa'][feature.msa_features['accession_ids'][k].decode()] = {
                 'global_identity': round(global_identity, 2),
                 'identity': round(identity, 2),
+                'coverage': round(coverage, 2),
                 'seq': msa_seq,
                 'seq_query': region_query,
                 'seq_msa': region_msa
@@ -773,6 +775,7 @@ def extract_features_info(pkl_in_path: str, regions_list: List):
                                                                                 template_seq.decode(),
                                                                                 regions_list)
         global_identity = bioutils.sequence_identity(feature.query_sequence, template_seq.decode())
+        coverage = (sum(1 for res in msa_seq if res != '-') / len(msa_seq) * 100)
         pdb_name = feature.template_features['template_domain_names'][i]
         with tempfile.NamedTemporaryFile() as temp_file:
             write_template_in_features(template_features=feature.template_features, template_code=pdb_name,
@@ -781,6 +784,7 @@ def extract_features_info(pkl_in_path: str, regions_list: List):
 
         features_info_dict['templates'][feature.template_features['template_domain_names'][i].decode()] = {
             'identity': round(identity, 2),
+            'coverage': round(coverage, 2),
             'global_identity': round(global_identity, 2),
             'seq': template_seq.decode(),
             'seq_query': region_query,
