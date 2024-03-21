@@ -86,6 +86,7 @@ def main():
                 num_templates = 0
                 #Delete the residues before expanding, so we avoid shifting them
                 feat_aux.delete_residues_msa(delete_positions=feat.msa_mask)
+                feat_aux.replace_sequence_template(sequence_in=feat.replace_sequence)
                 #Cut and expand the features, in order to fit the generat features.pkl
                 feat_aux = feat_aux.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled, query_list=feat.positions_query, query_features=feat.positions_features)
                 if feat.keep_msa != 0:

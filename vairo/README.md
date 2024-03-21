@@ -41,8 +41,8 @@ append_library:
   - path: (mandatory, string): Path to a folder, pdb or fasta. The folder can contain fastas or pdbs too.
     add_to_msa: (optional, bool, True): Append the sequences of the pdbs or fastas to the MSA
     add_to_templates: (optional, bool, False): Only if they are pdbs. Append the pdbs to the templates.
-    positions: Dictionary with the positions of the input pdbs to the query sequence
-               {Select positions of the pdb or fasta (1-4)}: {Put those residues in the selected positions (5-8)}
+    positions_query: Positions of the query sequence where the lib will be inserted
+    positions_lib: Positions of the lib, those residues will be selected and inserted
 
 features:
 - path: (mandatory, string): Path to features.pkl

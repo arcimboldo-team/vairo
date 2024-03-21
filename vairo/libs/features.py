@@ -18,6 +18,7 @@ class Features:
         self.sequence_features: pipeline.FeatureDict
         self.msa_features: Dict
         self.template_features: Dict
+
         self.query_sequence = query_sequence
         self.sequence_features = pipeline.make_sequence_features(sequence=self.query_sequence,
                                                                  description='Query',
@@ -133,13 +134,13 @@ class Features:
             return index[0][0]
         else:
             return None
-        
+
     def get_index_msa_by_name(self, name: str) -> Union[int, None]:
         index = np.where(self.msa_features['accession_ids'] == name.encode())
         if index[0].size != 0:
             return index[0][0]
         else:
-            return None        
+            return None
 
     def get_msa_length(self) -> int:
         return len(self.msa_features['msa'])
@@ -199,7 +200,7 @@ class Features:
             self.append_row_in_msa_from_features(msa_dict)
         return len(msa_dict['msa'])
 
-    def set_template_features(self, new_templates: Dict, finish: int = -1, sequence_in: str = None) -> int:
+    def set_template_features(self, new_templates: Dict, finish: int = -1) -> int:
         finish = len(new_templates['template_sequence']) if finish == -1 else finish
         template_dict = create_empty_template_list(finish)
         for i in range(0, finish):
@@ -222,8 +223,6 @@ class Features:
             template_dict['template_sum_probs'][i] = new_templates['template_sum_probs'][i]
 
         if len(template_dict['template_all_atom_positions']) > 0:
-            if sequence_in is not None:
-                template_dict = replace_sequence_template(template_dict=template_dict, sequence_in=sequence_in)
             self.append_new_template_features(template_dict)
         return len(template_dict['template_all_atom_positions'])
 
@@ -361,7 +360,6 @@ class Features:
         if delete_templates:
             self.delete_templates(delete_templates)
 
-
     def delete_by_id(self, id_list: List[str]):
         # Given a list of ids, check if it belongs to a msa or a templates. Delete them.
         delete_templates_list = []
@@ -403,8 +401,7 @@ class Features:
             if min_identity < identity > max_identity:
                 delete_templates.append(i)
         if delete_templates:
-            self.delete_templates(delete_templates)        
-
+            self.delete_templates(delete_templates)
 
     def set_extra_info(self):
         self.extra_info['num_templates'] = self.get_templates_length()
@@ -435,6 +432,16 @@ class Features:
                     else:
                         break
 
+    def replace_sequence_template(self, sequence_in: str):
+        # Replace the sequence for the new sequence
+        if sequence_in:
+            for i in range(self.get_templates_length()):
+                self.template_features['template_sequence'][i] = sequence_in.encode()
+                for index, atoms_mask in enumerate(self.template_features['template_all_atom_masks'][i][0][:]):
+                    aa_container = [0] * 22
+                    aa_container[residue_constants.HHBLITS_AA_TO_ID[sequence_in[index]]] = 1
+                    self.template_features['template_aatype'][i][0][index] = aa_container
+
 
 def create_empty_msa_list(length: int) -> Dict:
     msa_dict = {
@@ -456,16 +463,6 @@ def create_empty_template_list(length: int) -> Dict:
         'template_domain_names': [None] * length,
         'template_sum_probs': [None] * length
     }
-    return template_dict
-
-
-def replace_sequence_template(template_dict: Dict, sequence_in: str) -> Dict:
-    for i in range(len(template_dict['template_sequence'])):
-        template_dict['template_sequence'][i] = sequence_in.encode()
-        for index, atoms_mask in enumerate(template_dict['template_all_atom_masks'][i][0][:]):
-            aa_container = [0] * 22
-            aa_container[residue_constants.HHBLITS_AA_TO_ID[sequence_in[index]]] = 1
-            template_dict['template_aatype'][i][0][index] = aa_container
     return template_dict
 
 
@@ -760,7 +757,7 @@ def extract_features_info(pkl_in_path: str, regions_list: List):
         identity, region_query, region_msa = bioutils.sequence_identity_regions(feature.query_sequence, msa_seq,
                                                                                 regions_list)
         global_identity = bioutils.sequence_identity(feature.query_sequence, msa_seq)
-        coverage = (sum(1 for res in msa_seq if res != '-')/len(msa_seq)*100)
+        coverage = (sum(1 for res in msa_seq if res != '-') / len(msa_seq) * 100)
         if identity != 0:
             features_info_dict['msa'][feature.msa_features['accession_ids'][k].decode()] = {
                 'global_identity': round(global_identity, 2),

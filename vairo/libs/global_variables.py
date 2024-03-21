@@ -305,7 +305,11 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': False
       },
-      'positions': {
+      'positions_library': {
+            'required': False,
+            'default': None
+      },
+      'positions_query': {
             'required': False,
             'default': None
       },

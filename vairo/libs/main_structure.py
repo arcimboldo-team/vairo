@@ -147,28 +147,29 @@ class MainStructure:
             add_to_msa = utils.get_input_value(name='add_to_msa', section='append_library', input_dict=library)
             add_to_templates = utils.get_input_value(name='add_to_templates', section='append_library',
                                                      input_dict=library)
-            positions = utils.get_input_value(name='positions', section='append_library', input_dict=library)
-            positions_list = None
-            if positions:
-                positions_list = ['-'] * self.sequence_assembled.length
-                for pos in positions:
-                    for pos_lib, pos_query_list in pos.items():
-                        pos_lib_exp = utils.expand_residues(pos_lib)
-                        for pos_query in pos_query_list.split(','):
-                            pos_query_exp = utils.expand_residues(pos_query)
-                            if len(pos_lib_exp) != len(pos_query_exp):
-                                raise Exception(
-                                    'Wrong format in the positions in append_library. Residue range numbers '
-                                    'mismatch')
-                            for i, pos_aux in enumerate(pos_query_exp):
-                                positions_list[pos_aux - 1] = pos_lib_exp[i] - 1
+            positions_query = utils.get_input_value(name='positions_query', section='append_library',
+                                                    input_dict=library)
+            positions_library = utils.get_input_value(name='positions_library', section='append_library',
+                                                      input_dict=library)
+
+            if positions_query is not None or positions_library is not None:
+                if positions_query is None:
+                    positions_query = 1
+                positions_query = list(map(int, str(positions_query).replace(' ', '').split(',')))
+                if positions_library is None:
+                    positions_library = [[1, self.sequence_assembled.length]]
+                else:
+                    positions_library = positions_library.replace(' ', '').split(',')
+                    positions_library = [tuple(map(int, r.split('-'))) for r in positions_library]
+                if len(positions_query) != len(positions_library):
+                    raise Exception('The number of query positions and library positions mismatch')
 
             if os.path.exists(path):
                 self.library_list.append(structures.Library(path=path, aligned=aligned,
                                                             add_to_msa=add_to_msa,
                                                             add_to_templates=add_to_templates,
-                                                            positions=positions,
-                                                            positions_list=positions_list))
+                                                            positions_query=positions_query,
+                                                            positions_library=positions_library))
             else:
                 raise Exception(f'Path {path} does not exist. Check the input append_library parameter.')
 
@@ -180,7 +181,7 @@ class MainStructure:
             positions_query = utils.get_input_value(name='positions_query', section='features',
                                                     input_dict=parameters_features)
             if positions_query is None and positions is not None:
-                positions_query = f'{self.sequence_assembled.get_starting_length(positions-1)+1}'
+                positions_query = f'{self.sequence_assembled.get_starting_length(positions - 1) + 1}'
             else:
                 positions_query = 1
             positions_query = list(map(int, str(positions_query).replace(' ', '').split(',')))
@@ -202,7 +203,7 @@ class MainStructure:
                     utils.get_input_value(name='msa_mask', section='features', input_dict=parameters_features)),
                 positions_features=positions_features,
                 positions_query=positions_query,
-                sequence=bioutils.check_sequence_path(
+                replace_sequence=bioutils.check_sequence_path(
                     utils.get_input_value(name='sequence', section='features', input_dict=parameters_features))
             ))
 
@@ -870,11 +871,10 @@ class MainStructure:
                         f_out.write(f'  add_to_msa: {library.add_to_msa}\n')
                     if library.add_to_templates:
                         f_out.write(f'  add_to_templates: {library.add_to_templates}\n')
-                    if library.positions:
-                        f_out.write(f'  positions:\n')
-                        for positions in library.positions:
-                            for lib, query in positions.items():
-                                f_out.write(f'  -{lib}: {query}\n')
+                    if library.positions_query and library.positions_library:
+                        f_out.write(f'  positions_query: {",".join(map(str, library.positions_query))}\n')
+                        f_out.write(
+                            f'  positions_library: {",".join(f"{start}-{end}" for start, end in library.positions_library)}\n')
             if self.features_input:
                 f_out.write(f'\nfeatures:\n')
                 for feat in self.features_input:
@@ -888,7 +888,7 @@ class MainStructure:
                     f_out.write(
                         f'  positions_features: {",".join(f"{start}-{end}" for start, end in feat.positions_features)}\n')
                     if feat.sequence is not None:
-                        f_out.write(f'  sequence: {feat.sequence}\n')
+                        f_out.write(f'  sequence: {feat.replace_sequence}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
