@@ -84,11 +84,12 @@ def main():
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
                 num_msa = 0
                 num_templates = 0
+                modifications_list = utils.modification_list(query=feat.positions_query, target=feat.positions_features, length=a_air.sequence_assembled.length)
                 #Delete the residues before expanding, so we avoid shifting them
                 feat_aux.delete_residues_msa(delete_positions=feat.msa_mask)
                 feat_aux.replace_sequence_template(sequence_in=feat.replace_sequence)
                 #Cut and expand the features, in order to fit the generat features.pkl
-                feat_aux = feat_aux.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled, query_list=feat.positions_query, query_features=feat.positions_features)
+                feat_aux = feat_aux.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled, modifications_list=modifications_list)
                 if feat.keep_msa != 0:
                     #Send without masking features, as we have deleted them
                     num_msa = a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
@@ -105,28 +106,22 @@ def main():
                 aux_list = [os.path.join(library.path, file) for file in os.listdir(library.path)] if os.path.isdir(
                     library.path) else [library.path]
                 paths = [path for path in aux_list if utils.get_file_extension(path) in ['.pdb', '.fasta']]
-                num_msa = 0
-                num_templates = 0
+                modifications_list = utils.modification_list(query=library.positions_query, target=library.positions_library, length=a_air.sequence_assembled.length)
+                lib_feat = features.Features(query_sequence=a_air.sequence_assembled.sequence_mutated_assembled)                                
                 for aux_path in paths:
                     if library.add_to_templates:
                         if utils.get_file_extension(aux_path) == '.fasta' and library.add_to_templates:
                             logging.error(f'Ignoring add_to_templates to True for fasta file {aux_path}')
                         else:
                             template_path = f'{os.path.join(a_air.input_dir, utils.get_file_name(aux_path))}.pdb'
-                            if library.positions:
-                                template_path = bioutils.copy_positions_of_pdb(path_in=aux_path, path_out=template_path,
-                                                                               positions=library.positions_list)
-                            else:
-                                shutil.copy2(aux_path, template_path)
-                            bioutils.remove_hetatm(template_path, template_path)
+                            bioutils.remove_hetatm(aux_path, template_path)
                             bioutils.remove_hydrogens(template_path, template_path)
                             template_features = features.extract_template_features_from_aligned_pdb_and_sequence(
                                 query_sequence=a_air.sequence_assembled.sequence_assembled,
                                 pdb_path=template_path,
                                 pdb_id=utils.get_file_name(aux_path),
                                 chain_id='A')
-                            a_air.feature.append_new_template_features(new_template_features=template_features)
-                            num_templates += 1
+                            lib_feat.append_new_template_features(new_template_features=template_features)
 
                     if library.add_to_msa:
                         extension = utils.get_file_extension(aux_path)
@@ -135,19 +130,18 @@ def main():
                             sequence_list = list(sequence_list.values())
                         if extension == '.fasta':
                             sequence_list = list(bioutils.extract_sequences(aux_path).values())
-
                         for num, sequence in enumerate(sequence_list):
-                            seq_aux = sequence
-                            if library.positions_list:
-                                aux_library_list = copy.copy(library.positions_list)
-                                for m, pos in enumerate(aux_library_list):
-                                    if pos != '-':
-                                        aux_library_list[m] = seq_aux[pos]
-                                seq_aux = aux_library_list
-                            seq_aux = ''.join(seq_aux)
-                            a_air.feature.append_row_in_msa(seq_aux, f'lib_{i}-{num}_{utils.get_file_name(aux_path)}',
-                                                            1)
-                            num_msa += 1
+                            lib_feat.append_row_in_msa(sequence, f'lib_{i}-{num}_{utils.get_file_name(aux_path)}',1)
+
+                num_msa = 0
+                num_templates = 0
+                lib_feat = lib_feat.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled, modifications_list=modifications_list)
+                if library.add_to_msa:
+                    num_msa = a_air.feature.set_msa_features(new_msa=lib_feat.msa_features)
+                if library.add_to_templates:
+                    num_templates = a_air.feature.set_template_features(new_templates=lib_feat.template_features)
+
+
                 if num_templates > 0:
                     logging.error(f'     Adding {num_templates} template/s to templates')
                 if num_msa > 0:

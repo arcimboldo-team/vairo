@@ -500,6 +500,28 @@ def get_input_value(name: str, section: str, input_dict: Dict, override_default=
     return value
 
 
+def modification_list(query: List[int], target: List[int], length: int) -> List[int]:
+    # Create a list of length LENGTH. Where each value, is the value that it should has in the target
+    result = [None] * length
+    if query is None:
+        query = '1'
+    query = list(map(int, str(query).replace(' ', '').split(',')))
+    if target is None:
+        target = [(1, length)]
+    else:
+        target = target.replace(' ', '').split(',')
+        target = [tuple(map(int, r.split('-'))) for r in target]
+    if len(query) != len(target):
+        raise ValueError('The number of query positions and library positions mismatch')
+    for query_value, target_range in zip(query, target):
+        start, end = target_range
+        for i in range(start, end+1):
+            if query_value-1 < length:
+                result[query_value-1] = i
+                query_value += 1
+    return result
+
+
 def print_dict(input_dict: Dict):
     for key, value in input_dict.items():
         if isinstance(value, list):

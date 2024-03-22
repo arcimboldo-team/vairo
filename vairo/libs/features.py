@@ -226,30 +226,20 @@ class Features:
             self.append_new_template_features(template_dict)
         return len(template_dict['template_all_atom_positions'])
 
-    def cut_expand_features(self, query_sequence: int, query_list: List[int], query_features: List[int]):
+    def cut_expand_features(self, query_sequence: int, modifications_list: List[int]):
         new_features = Features(query_sequence=query_sequence)
         msa_dict = create_empty_msa_list(self.get_msa_length() - 1)
         ext_len = len(query_sequence)
-        self_len = len(self.query_sequence)
-
         # We skip the first one, so that's the -1, because it is the query sequence one, and we have created
         # another new_features with a fake query_sequence. This will be skipped in set_msa_features
         for i in range(self.get_msa_length() - 1):
             msa_dict['msa'][i] = np.full(ext_len, 21)
             msa_dict['deletion_matrix_int'][i] = np.full(ext_len, 0)
             msa_dict['msa_species_identifiers'][i] = self.msa_features['msa_species_identifiers'][i + 1]
-            for query_ini, feat in zip(query_list, query_features):
-                feat_ini, feat_end = feat
-                query_ini = query_ini - 1
-                feat_ini = feat_ini - 1
-                feat_end = min(feat_end, self_len)
-                query_end = query_ini + feat_end - feat_ini
-                if query_end > ext_len:
-                    query_end = ext_len
-                    feat_end = feat_ini + query_end - query_ini
-                msa_dict['msa'][i][query_ini:query_end] = self.msa_features['msa'][i + 1][feat_ini:feat_end]
-                msa_dict['deletion_matrix_int'][i][query_ini:query_end] = self.msa_features['deletion_matrix_int'][
-                                                                              i + 1][feat_ini:feat_end]
+            for j, mod in enumerate(modifications_list):
+                if mod is not None and mod <= len(self.query_sequence):
+                    msa_dict['msa'][i][j] = self.msa_features['msa'][i + 1][mod-1]
+                    msa_dict['deletion_matrix_int'][i][j] = self.msa_features['deletion_matrix_int'][i + 1][mod-1]
         if len(msa_dict['msa']) > 0:
             new_features.append_row_in_msa_from_features(msa_dict)
 
@@ -264,23 +254,15 @@ class Features:
             template_dict['template_domain_names'][i] = self.template_features['template_domain_names'][i]
             template_dict['template_sum_probs'][i] = self.template_features['template_sum_probs'][i]
             template_sequence = list(('-' * ext_len))
-            for query_ini, feat in zip(query_list, query_features):
-                feat_ini, feat_end = feat
-                query_ini = query_ini - 1
-                feat_ini = feat_ini - 1
-                feat_end = min(feat_end, self_len)
-                query_end = query_ini + feat_end - feat_ini
-                if query_end > ext_len:
-                    query_end = ext_len
-                    feat_end = feat_ini + query_end - query_ini
-                template_dict['template_all_atom_positions'][i][query_ini:query_end] = \
-                    self.template_features['template_all_atom_positions'][i][feat_ini:feat_end]
-                template_dict['template_all_atom_masks'][i][query_ini:query_end] = \
-                    self.template_features['template_all_atom_masks'][i][feat_ini:feat_end]
-                template_dict['template_aatype'][i][query_ini:query_end] = \
-                    self.template_features['template_aatype'][i][feat_ini:feat_end]
-                template_sequence[query_ini:query_end] = self.template_features['template_sequence'][i].decode()[
-                                                         feat_ini:feat_end]
+            for j, mod in enumerate(modifications_list):
+                if mod is not None and mod <= len(self.query_sequence):
+                    template_dict['template_all_atom_positions'][i][j] = \
+                        self.template_features['template_all_atom_positions'][i][mod-1]
+                    template_dict['template_all_atom_masks'][i][j] = \
+                        self.template_features['template_all_atom_masks'][i][mod-1]
+                    template_dict['template_aatype'][i][j] = \
+                        self.template_features['template_aatype'][i][mod-1]
+                    template_sequence[j] = self.template_features['template_sequence'][i].decode()[mod-1]
             template_dict['template_sequence'][i] = ''.join(template_sequence).encode()
 
         if len(template_dict['template_all_atom_positions']) > 0:
@@ -377,11 +359,9 @@ class Features:
                 delete_msa_list.append(index)
 
         if delete_msa_list:
-            print(delete_msa_list)
             self.delete_msas(delete_msa_list)
 
         if delete_templates_list:
-            print(delete_templates_list)
             self.delete_templates(delete_templates_list)
 
     def delete_by_range(self, min_identity: float, max_identity: float):

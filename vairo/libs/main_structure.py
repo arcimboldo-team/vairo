@@ -151,19 +151,7 @@ class MainStructure:
                                                     input_dict=library)
             positions_library = utils.get_input_value(name='positions_library', section='append_library',
                                                       input_dict=library)
-
-            if positions_query is not None or positions_library is not None:
-                if positions_query is None:
-                    positions_query = 1
-                positions_query = list(map(int, str(positions_query).replace(' ', '').split(',')))
-                if positions_library is None:
-                    positions_library = [[1, self.sequence_assembled.length]]
-                else:
-                    positions_library = positions_library.replace(' ', '').split(',')
-                    positions_library = [tuple(map(int, r.split('-'))) for r in positions_library]
-                if len(positions_query) != len(positions_library):
-                    raise Exception('The number of query positions and library positions mismatch')
-
+            
             if os.path.exists(path):
                 self.library_list.append(structures.Library(path=path, aligned=aligned,
                                                             add_to_msa=add_to_msa,
@@ -182,17 +170,6 @@ class MainStructure:
                                                     input_dict=parameters_features)
             if positions_query is None and positions is not None:
                 positions_query = f'{self.sequence_assembled.get_starting_length(positions - 1) + 1}'
-            else:
-                positions_query = 1
-            positions_query = list(map(int, str(positions_query).replace(' ', '').split(',')))
-            if positions_features is None:
-                positions_features = [[1, self.sequence_assembled.length]]
-            else:
-                positions_features = positions_features.replace(' ', '').split(',')
-                positions_features = [tuple(map(int, r.split('-'))) for r in positions_features]
-
-            if len(positions_query) != len(positions_features):
-                raise Exception('The number of query positions and feature positions mismatch')
 
             self.features_input.append(structures.FeaturesInput(
                 path=utils.get_input_value(name='path', section='features', input_dict=parameters_features),
@@ -872,9 +849,8 @@ class MainStructure:
                     if library.add_to_templates:
                         f_out.write(f'  add_to_templates: {library.add_to_templates}\n')
                     if library.positions_query and library.positions_library:
-                        f_out.write(f'  positions_query: {",".join(map(str, library.positions_query))}\n')
-                        f_out.write(
-                            f'  positions_library: {",".join(f"{start}-{end}" for start, end in library.positions_library)}\n')
+                        f_out.write(f'  positions_query: {library.positions_query}\n')
+                        f_out.write(f'  positions_library: {library.positions_library}\n')
             if self.features_input:
                 f_out.write(f'\nfeatures:\n')
                 for feat in self.features_input:
@@ -884,10 +860,10 @@ class MainStructure:
                     f_out.write(f'  keep_templates: {feat.keep_templates}\n')
                     if feat.msa_mask:
                         f_out.write(f'  msa_mask: {",".join(map(str, feat.msa_mask))}\n')
-                    f_out.write(f'  positions_query: {",".join(map(str, feat.positions_query))}\n')
+                    f_out.write(f'  positions_query: {feat.positions_query}\n')
                     f_out.write(
-                        f'  positions_features: {",".join(f"{start}-{end}" for start, end in feat.positions_features)}\n')
-                    if feat.sequence is not None:
+                        f'  positions_features: {feat.positions_features}\n')
+                    if feat.replace_sequence is not None:
                         f_out.write(f'  sequence: {feat.replace_sequence}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:

@@ -42,7 +42,7 @@ append_library:
     add_to_msa: (optional, bool, True): Append the sequences of the pdbs or fastas to the MSA
     add_to_templates: (optional, bool, False): Only if they are pdbs. Append the pdbs to the templates.
     positions_query: Positions of the query sequence where the lib will be inserted
-    positions_lib: Positions of the lib, those residues will be selected and inserted
+    positions_library: Positions of the lib, those residues will be selected and inserted
 
 features:
 - path: (mandatory, string): Path to features.pkl
@@ -52,7 +52,7 @@ features:
   sequence: (optional, path, None): Replace template sequence with sequence in path.
   positions_query: (optional, list of ints, 1): List of integers, it would be the positions where the features will be placed,
   by default, it starts at position 1, but several can be applied (1, 50, 100), and they will correspond to the positions of the features.
-  positions_feature: (optional, list of ranges, None): List of ranges. The selected range, will be placed in the positions specified by positions_query.
+  positions_feature: (optional, list of ranges, None): List of ranges. The selected range, will be placed in the positions specified by positions_query:w.
   positions: (optional, range, None): Insert the features.pkl in a specific region inside the query sequence.
 Templates can be added to the templates section inside the features.pkl, as well as their sequence to the msa, it is possible to add as many templates as the user requires:
 
