@@ -482,11 +482,11 @@ def get_input_value(name: str, section: str, input_dict: Dict, override_default=
         'global': 'global_input',
         'sequence': 'sequence_input',
         'template': 'template_input',
-        'change_res': 'change_res_input',
-        'match': 'match_input',
+        'modifications': 'modifications_input',
+        'replace': 'replace_input',
         'append_library': 'append_library_input',
     }
-    chosen_dict = INPUT_PARAMETERS.get(mapping.get(section, 'features_input'))
+    chosen_dict = INPUT_PARAMETERS.get(mapping.get(section))
 
     value_dict = chosen_dict.get(name)
     value = input_dict.get(name)

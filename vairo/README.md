@@ -67,19 +67,15 @@ templates:
   legacy (optional, bool, false): If the template has been prepared (aligned, one chain)
   reference (optional, string, ''): Existing pdbid or path to a pdb
   
-  change_res: -> Change residues of the template. It can be a chain or 'ALL' so this can be applied to all chains
-    - {chain_name or ALL}: (mandatory, range): Selection of residues to apply the modification
-      resname (optional, string): Residue name
-      fasta_path (optional, string): Fasta path to replace the sequence
-      when (optional, string, after_alignment): When change the chain, before_alignment or after_alignment
-
-  match: -> Set restrictions to insert the template into the sequence copies
-    - chain (mandatory, string): Set the position of the chain
-      position: (optional, string, None, X): Set a specific position
-      residues: (optional, int range, ''): Selection of residues to set in a position. Can be a range or an integer (Ex: 100-120, 100), otherwise, the whole chain is going to be selected.
-      reference:  (optional, string, ''): Existing pdbid or path to a pdb
-      reference_chain: (optional, string, ''): Existing reference chain. The match chain will be fixed in the same position as the reference chain.
-
+  modifications:
+     - chain: Selection of chains, or just a single chain. If it applies to all chains, it accepts ALL
+       position: If a single chain has been selected, it accepts a query sequence position, otherwise it will be ANY.
+       accepted_residues: Selection of ranges of residues, which will be kept.
+       deleted_residues: Selection of ranges of residues, which will be deleted.
+       replace:
+          - residue_number: Residues, or range of residues that the modification will be applied
+            by: It can be a resname, or a fasta path
+            when: when the modification will be applied
 
 PATHS:
 All information can be found in the output_dir directory, which is an input parameter in the configuration file. Inside the output_dir

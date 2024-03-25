@@ -243,10 +243,6 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': False
         },
-        'reference': {
-            'required': False,
-            'default': None
-        },
         'change_res': {
             'required': False,
             'default': []
@@ -314,43 +310,33 @@ INPUT_PARAMETERS = {
             'default': None
       },
     },
-    'change_res_input': {
-        'resname': {
-            'required': False,
-            'default': None
-        },
-        'fasta_path': {
-            'required': False,
-            'default': None
-        },
-        'when': {
-            'required': False,
-            'default': 'after_alignment'
-        }
-    },
-    'match_input': {
+    'modifications_input': {
         'chain': {
-            'required': True
+            'required': True,
         },
         'position': {
             'required': False,
-            'default': -1
+            'default': -1,
         },
-        'mask_msa': {
+        'accepted_residues': {
             'required': False,
-            'default': False
+            'default': [],
         },
+        'deleted_residues': {
+            'required': False,
+            'default': [],
+        },
+    },
+    'replace_input': {
         'residues': {
-            'required': False,
-            'default': None
+            'required': True,
         },
-        'reference': {
-            'required': False,
-            'default': None
+        'by': {
+            'required': True,
         },
-        'reference_chain': {
+        'when': {
             'required': False,
-            'default': None
-        }
-    }
+            'default': 'after_alignment',
+        },
+    },
 }

@@ -149,7 +149,7 @@ class TemplateChainsList:
                 change_list = change_res_copy.get_changes_by_chain(chain=chain, when='after_alignment')
                 match = None
                 # If there is an alignment, there might be a mapping. It is necessary to apply that mapping
-                # to change_res (match can have a change_res too) because the residues numbering has changed during
+                # to change_res (match can have a change_res too) because the residue numbering has changed during
                 # the alignment
                 if alignment:
                     structure = bioutils.get_structure(path)

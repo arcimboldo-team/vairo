@@ -220,9 +220,10 @@ class MainStructure:
                 self.templates_list.append(new_template)
                 self.reference = new_template if new_template.pdb_id == self.reference else self.reference
 
-            [element.set_reference_templates(self) for element in self.templates_list]
-            self.order_templates_with_restrictions()
-            self.reference = self.templates_list[0] if self.reference is None else self.reference
+            if self.reference is not None:
+                self.templates_list.insert(0, self.templates_list.pop(self.reference))
+            else:
+                self.reference = self.templates_list[0]
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
 
     def partition_mosaic(self) -> List[features.Features]:
@@ -459,28 +460,6 @@ class MainStructure:
                 return temp
         return None
 
-    def order_templates_with_restrictions(self):
-        # Order the templates list to meet the required dependencies
-        # All the templates are going to be in order, so the references will be calculated
-        # before needed
-        new_templates_list = []
-        old_templates_list = self.templates_list
-
-        if self.reference is not None:
-            new_templates_list.append(self.reference)
-            old_templates_list.remove(self.reference)
-
-        while old_templates_list:
-            deleted_items = []
-            for temp in old_templates_list:
-                reference_list = temp.get_templates_references()
-                if set(reference_list).issubset(new_templates_list):
-                    new_templates_list.append(temp)
-                    deleted_items.append(temp)
-            old_templates_list = [x for x in old_templates_list if (x not in deleted_items)]
-            if not deleted_items:
-                raise Exception('The match conditions could not be applied, there is an endless loop')
-        self.templates_list = new_templates_list
 
     def append_line_in_templates(self, new_list: List):
         # Add line to the template's matrix.
@@ -887,8 +866,6 @@ class MainStructure:
                     f_out.write(f'  aligned: {template_in.aligned}\n')
                     f_out.write(f'  legacy: {template_in.legacy}\n')
                     f_out.write(f'  strict: {template_in.strict}\n')
-                    if template_in.reference is not None:
-                        f_out.write(f'  reference: {self.reference}\n')
                     if template_in.change_res_struct.change_residues_list:
                         f_out.write(f'  change_res:\n')
                         for change in template_in.change_res_struct.change_residues_list:
@@ -914,10 +891,6 @@ class MainStructure:
                             if match.residues is not None:
                                 f_out.write(
                                     f'    residues: {",".join(map(str, list(match.residues.chain_res_dict.values())[0]))}\n')
-                            if match.reference is not None:
-                                f_out.write(f'    reference: {match.reference}\n')
-                            if match.reference_chain is not None:
-                                f_out.write(f'    reference_chain: {match.reference_chain}\n')
 
     def __repr__(self) -> str:
         return f' \

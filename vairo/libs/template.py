@@ -2,8 +2,8 @@ import logging
 import os
 import shutil
 from typing import Dict, List, Optional, Union
-from libs import bioutils, features, hhsearch, match_restrictions, utils, change_res, alphafold_classes, template_chains
-from libs import structures, sequence
+from libs import bioutils, features, hhsearch, utils, alphafold_classes, template_chains
+from libs import structures, sequence, template_modifications
 
 
 class Template:
@@ -15,8 +15,7 @@ class Template:
         self.template_originalseq_path: str
         self.template_chains: Dict
         self.generate_multimer: bool
-        self.change_res_struct: change_res.ChangeResiduesList = change_res.ChangeResiduesList()
-        self.match_restrict_struct: match_restrictions.MatchRestrictionsList = match_restrictions.MatchRestrictionsList()
+        self.modifications_struct: template_modifications.TemplateModifications = template_modifications.TemplateModifications()
         self.add_to_msa: bool
         self.add_to_templates: bool
         self.sum_prob: bool
@@ -25,7 +24,6 @@ class Template:
         self.strict: bool
         self.template_features: Optional[features.Features] = None
         self.results_path_position: List = [None] * num_of_copies
-        self.reference: Optional[str] = None
         self.template_chains_struct: template_chains.TemplateChainsList = template_chains.TemplateChainsList()
         self.alignment_database: List[structures.AlignmentDatabase] = []
         self.selected_positions: bool = False
@@ -51,49 +49,40 @@ class Template:
                                              override_default=self.legacy)
         self.template_path = f'{os.path.join(output_dir, self.pdb_id)}_template.pdb'
         self.template_originalseq_path = f'{os.path.join(output_dir, self.pdb_id)}_template_originalseq.pdb'
-        self.reference = utils.get_input_value(name='reference', section='template', input_dict=parameters_dict)
         self.generate_multimer = utils.get_input_value(name='generate_multimer', section='template',
                                                        input_dict=parameters_dict)
         self.generate_multimer = False if self.legacy else self.generate_multimer
 
-        for paramaters_change_res in utils.get_input_value(name='change_res', section='template',
-                                                           input_dict=parameters_dict):
-            change_res_dict = {}
-            resname = utils.get_input_value(name='resname', section='change_res', input_dict=paramaters_change_res)
-            fasta_path = utils.get_input_value(name='fasta_path', section='change_res',
-                                               input_dict=paramaters_change_res)
-            when = utils.get_input_value(name='when', section='change_res', input_dict=paramaters_change_res)
-            for chain, change in paramaters_change_res.items():
-                if chain.lower() == 'all' or len(chain) == 1:
-                    change_list = utils.expand_residues(change)
-                    change_chain_list = bioutils.get_chains(self.pdb_path) if chain.lower() == 'all' else [chain]
-                    change_res_dict.update({key: list(set(change_list)) for key in change_chain_list})
+        for parameter_modification in utils.get_input_value(name='modifications', section='template',
+                                                            input_dict=parameters_dict):
+            chains = utils.get_input_value(name='chain', section='modifications', input_dict=parameter_modification)
+            if chains.lower() == 'all':
+                chains = bioutils.get_chains(self.pdb_path)
+            else:
+                chains = [chains.replace(" ", "").split(',')]
 
-            self.change_res_struct.append_change(chain_res_dict=change_res_dict,
-                                                 resname=resname,
-                                                 fasta_path=fasta_path,
-                                                 when=when)
+            position = utils.get_input_value(name='position', section='modifications',
+                                             input_dict=parameter_modification)
 
-        for parameters_match_dict in utils.get_input_value(name='match', section='template',
-                                                           input_dict=parameters_dict):
-            chain_match = utils.get_input_value(name='chain', section='match', input_dict=parameters_match_dict)
-            residues_match_list = utils.get_input_value(name='residues', section='match',
-                                                        input_dict=parameters_match_dict)
-            residues = None
-            if residues_match_list is not None:
-                change_list = utils.expand_residues(residues_match_list)
-                new_dict = {chain_match: change_list}
-                residues = change_res.ChangeResidues(chain_res_dict=new_dict)
-                
-            position = utils.get_input_value(name='position', section='match', input_dict=parameters_match_dict)
             if position != -1:
                 position = position - 1
                 self.selected_positions = True
-            reference = utils.get_input_value(name='reference', section='match', input_dict=parameters_match_dict)
-            reference_chain = utils.get_input_value(name='reference_chain', section='match',
-                                                    input_dict=parameters_match_dict)
-            self.match_restrict_struct.append_match(chain=chain_match, position=position, residues=residues,
-                                                    reference=reference, reference_chain=reference_chain)
+
+            accepted_residues = utils.get_input_value(name='accepted_residues', section='modifications',
+                                                      input_dict=parameter_modification)
+            deleted_residues = utils.get_input_value(name='deleted_residues', section='modifications',
+                                                     input_dict=parameter_modification)
+
+            replace_list = []
+            for parameter_replace in utils.get_input_value(name='replace', section='modifications',
+                                                           input_dict=parameter_modification):
+                residues = utils.get_input_value(name='residues', section='replace', input_dict=parameter_replace)
+                residues = utils.expand_residues(residues)
+                by = utils.get_input_value(name='by', section='replace', input_dict=parameter_replace)
+                when = utils.get_input_value(name='when', section='replace', input_dict=parameter_replace)
+                replace_list.append(template_modifications.ResidueReplace(residues=residues, by=by, when=when))
+
+            self.modifications_struct.append_change(chains=chains, accepted_residues=accepted_residues, deleted_residues=deleted_residues, position=position, replace_list=replace_list)
 
         cryst_card = bioutils.extract_cryst_card_pdb(pdb_in_path=self.pdb_path)
         bioutils.remove_hetatm(self.pdb_path, self.pdb_path)
@@ -106,14 +95,6 @@ class Template:
         bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
         if cryst_card is not None:
             bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
-
-    def get_templates_references(self) -> List:
-        # Get all the references from another template
-        # Those references can be in the match class or in the
-        # template itself
-        return_references_list = self.match_restrict_struct.get_reference_list()
-        return_references_list.append(self.reference)
-        return list(filter(None, return_references_list))
 
     def generate_features(self, output_dir: str, global_reference, sequence_assembled: sequence.SequenceAssembled):
         #   - Generate offset.
@@ -212,9 +193,9 @@ class Template:
                                                                             pdb_path=self.pdb_path)
             else:
                 for chain, chain_path in self.template_chains.items():
-                    match_list = self.match_restrict_struct.get_matches_by_chain_position(chain=chain)
-                    for match in match_list:
-                        sequence_in = sequence_assembled.sequence_list_expanded[match.position]
+                    modification_list = self.modifications_struct.get_modifications_position_by_chain_position(chain=chain)
+                    for modification in modification_list:
+                        sequence_in = sequence_assembled.sequence_list_expanded[modification.position]
                         alignment_chain_dir = os.path.join(sequence_in.alignment_dir, chain)
                         utils.create_dir(alignment_chain_dir)
                         extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
@@ -261,13 +242,10 @@ class Template:
                 deleted_positions.append(position)
                 chain_match.check_alignment(stop=self.strict)
 
-        reference = self.reference if self.reference is not None else None
-        reference = global_reference if reference is None else reference
-
         if not any(composition_path_list):
             new_targets_list = self.template_chains_struct.get_chains_not_in_list(composition_path_list)
             if new_targets_list and len(deleted_positions) < len(sequence_name_list):
-                results_targets_list = self.choose_best_offset(reference=reference,
+                results_targets_list = self.choose_best_offset(reference=global_reference,
                                                                deleted_positions=deleted_positions,
                                                                template_chains_list=new_targets_list,
                                                                name_list=sequence_name_list)
@@ -312,21 +290,11 @@ class Template:
                 results_algorithm.append(reference_algorithm)
 
         return_offset_list = [None] * (len(reference.results_path_position))
-        best_offset_list = bioutils.calculate_auto_offset(results_algorithm,
-                                                          len(return_offset_list) - len(deleted_positions))
+        best_offset_list = bioutils.calculate_auto_offset(results_algorithm, len(return_offset_list) - len(deleted_positions))
         for x, y, _, _, path in best_offset_list:
             return_offset_list[y] = path
 
         return return_offset_list
-
-    def set_reference_templates(self, a_air):
-        # Change pdb_id str to the Template reference
-        if self.reference is not None:
-            self.reference = a_air.get_template_by_id(self.reference)
-        for match in self.match_restrict_struct.match_restrict_list:
-            if match.reference is not None:
-                new_reference = a_air.get_template_by_id(match.reference)
-                match.set_reference(new_reference)
 
     def get_old_sequence(self, sequence_list: List[sequence.Sequence], glycines: int) -> str:
         old_sequence = []
