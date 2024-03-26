@@ -20,7 +20,7 @@ from Bio.Blast import NCBIWWW
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
 sys.path.append(target_directory)
-from vairo.libs import features, bioutils, plots, utils, structures, change_res
+from vairo.libs import features, bioutils, plots, utils, structures, template_modifications
 
 
 def write_features(features_path: str, output_dir: str = None):
@@ -294,11 +294,12 @@ def merge_pdbs(pdb1_path: str, pdb2_path: str, inf_ini, inf_end, inm_ini, inm_en
 
     inf_cut = int(best_list[1][3])
     inm_cut = int(best_list[2][1])
-    delete_residues = change_res.ChangeResidues(
-        chain_res_dict={'A': [*range(inf_cut + 1, 10000 + 1, 1)]})
-    delete_residues.delete_residues(pdb_in_path=pdb1_path, pdb_out_path=aux_pdb1_path)
-    delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
-    delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
+
+    delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(inf_cut + 1, 10000 + 1, 1)])
+    delete_residues.modify_template(pdb_in_path=pdb1_path, pdb_out_path=aux_pdb1_path, type_modify='delete')
+    delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
+    delete_residues.modify_template(pdb_in_path=pdb_out, pdb_out_path=pdb_out, type_modify='delete') 
+
     merge_pdbs_list.append(pdb_out)
     bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
                                      pdb_out_path=os.path.join(best_rankeds_dir, 'merged.pdb'))

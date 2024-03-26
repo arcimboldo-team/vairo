@@ -13,7 +13,7 @@ from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
 from alphafold.relax import cleanup, amber_minimize
 from simtk import unit
-from libs import change_res, hhsearch, structures, utils, plots, global_variables, sequence, structures
+from libs import hhsearch, structures, utils, plots, global_variables, sequence, structures, template_modifications
 
 
 def download_pdb(pdb_id: str, pdb_path: str) -> str:
@@ -227,10 +227,11 @@ def read_seqres(pdb_path: str) -> str:
 def extract_sequence_from_file(file_path: str) -> List[str]:
     results_dict = {}
     extension = utils.get_file_extension(file_path)
-    if extension == '.pdb':
-        extraction = 'pdb-atom'
-    else:
+    if extension == '.cif':
         extraction = 'cif-atom'
+    else:
+        extraction = 'pdb-atom'
+        
     try:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
@@ -735,9 +736,11 @@ def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.Binari
                 for i in range(len(residues)):
                     if bfactors_dict[chain][i] is not None:
                         bfactors_dict[chain][i] = round(bfactors_dict[chain][i] - 70.0, 2)
-            residues_dict = read_residues_from_pdb(path)
-            change = change_res.ChangeResidues(chain_res_dict=residues_dict, chain_bfactors_dict=bfactors_dict)
-            change.change_bfactors(path, path)
+
+            modify_bfactors = template_modifications.TemplateModifications()
+            modify_bfactors.append_modification(chains=list(bfactors_dict.keys()), bfactors=list(bfactors_dict.values()))
+            modify_bfactors.modify_template(pdb_in_path=path, pdb_out_path=path, type_modify='bfactors')
+
         new_path = os.path.join(output_dir, f'orig.{str(index)}.pdb')
         os.rename(os.path.join(output_dir, path), new_path)
         # Create a translation dictionary, with and index and the pdb name
@@ -980,16 +983,6 @@ def split_chains_assembly(pdb_in_path: str,
         io.set_structure(new_structure)
         io.save(pdb_out_path)
     return chains_return
-
-
-def change_sequence_pdb(pdb_in_path: str, pdb_out_path: str, sequence_list: List[str]):
-    chain_list = get_chains(pdb_in_path)
-    shutil.copy2(pdb_in_path, pdb_out_path)
-    for i, chain in enumerate(chain_list, start=0):
-        if sequence_list[i] is not None:
-            change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(sequence_list[i]) + 1, 1)]},
-                                               sequence=sequence_list[i])
-            change.change_residues(pdb_in_path=pdb_out_path, pdb_out_path=pdb_out_path)
 
 
 def split_pdb_in_chains(pdb_path: str, chain: str = None, output_dir: str = None) -> Dict:
@@ -1363,8 +1356,10 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     split_dimers_in_pdb(pdb_in_path=pdb_in_path,
                         pdb_out_path=pdb_out_path,
                         chain_list=[interface.chain1, interface.chain2])
-    change = change_res.ChangeResidues(chain_res_dict=add_domains_dict)
-    change.delete_residues_inverse(pdb_out_path, pdb_out_path)
+    
+    change = template_modifications.TemplateModifications()
+    change.append_modification(chains=list(add_domains_dict.keys()), accepted_residues=list(add_domains_dict.values()))
+    change.modify_template(pdb_in_path=pdb_out_path, pdb_out_path=pdb_out_path, type_modify='delete')
 
     return add_domains_dict
 
@@ -1451,10 +1446,9 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     whole_seq = "".join([seq for seq in sequences_dict.values()])
     conservation_list = calculate_coverage(query_seq=whole_seq, sequences=msa_list, only_match=True)
     conservation_list = conservation_list * 100
-    change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(whole_seq) + 1, 1)]},
-                                       chain_bfactors_dict={chain: conservation_list})
-    change.change_bfactors(pdb_in_path, pdb_out_path)
-
+    modify_bfactors = template_modifications.TemplateModifications()
+    modify_bfactors.append_modification(chains=[chain], bfactors=conservation_list.tolist())
+    modify_bfactors.modify_template(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path, type_modify='bfactors')
 
 def calculate_coverage(query_seq: str, sequences: List[str], only_match: bool) -> List[str]:
     # Coverage of the sequences. It is divided by the number of sequences.

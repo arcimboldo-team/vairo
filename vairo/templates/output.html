@@ -375,43 +375,45 @@
                 {% endif %}
 
                 {% if data.templates_list %}
-                    {% for template in data.templates_list if template.change_res_struct.change_residues_list %}
+                    {% for template in data.templates_list if template.modifications_struct.modifications_list %}
                         {% if loop.first %}
                             <p>The following changes have been made to the sequence of the templates:</p>
                             <ul>
                         {% endif %}
 
-                        {% for change in template.change_res_struct.change_residues_list %}
-
+                        {% for change in template.modifications_struct.modifications_list %}
                             {% if loop.first  %}
                                 <li> {{ template.pdb_id }}:
                                 <ul>
                             {% endif %}
+                                {% if change.when == 'before_alignment' %}
+                                    Modifications have been done before alignment in chain {{ change.chain }}.
+                                {% else %}
+                                    Modifications have been done after alignment in chain {{ change.chain }}.
+                                {% endif %}                               
+                                {% if change.deleted_residues %}
+                                    Deleted residues: {{ change.deleted_residues|join(', ') }}
+                                {% endif %} 
+                                {% if change.accepted_residues %}
+                                    Maintained residues: {{ change.accepted_residues|join(', ') }}
+                                {% endif %} 
+                                {% for mutation in change.mutations %}
                                     <li>
-                                        {% if change.when == 'before_alignment'  %}
-                                            Before alignment
-                                        {% else %}
-                                            After alignment of the templates, sequence has been replaced with
-                                        {% endif %}
-                                        {% if change.resname is not none  %}
-                                            {{ change.resname }}
-                                        {% else %}
-                                            the query sequence in {{change.fasta_path }}
-                                        {% endif %}
-                                        in the following residues:
-                                        <ul>
-                                        {% for key, value in change.chain_group_res_dict.items() %}
-                                            <li> Chain {{ key }}: {{ value|join(', ') }}</li>
-                                        {% endfor %}
-                                        </ul>
+                                        Residues: {{ mutation.residues|join(', ') }}
+                                        by: {{ mutation.by }}
                                     </li>
+                                {% endfor %}
+
+
+
+
                             {% if loop.last  %}
                                 </ul>
                             </li>
                             {% endif %}
                         {% endfor %}
                         {% if loop.last %}
-                                        </ul>
+                            </ul>
                         {% endif %}
                     {% endfor %}
                 {% endif %}

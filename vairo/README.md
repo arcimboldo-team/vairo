@@ -72,10 +72,10 @@ templates:
        position: If a single chain has been selected, it accepts a query sequence position, otherwise it will be ANY.
        accepted_residues: Selection of ranges of residues, which will be kept.
        deleted_residues: Selection of ranges of residues, which will be deleted.
+       when: when the modification will be applied
        replace:
-          - residue_number: Residues, or range of residues that the modification will be applied
+          - residues: Residues, or range of residues that the modification will be applied
             by: It can be a resname, or a fasta path
-            when: when the modification will be applied
 
 PATHS:
 All information can be found in the output_dir directory, which is an input parameter in the configuration file. Inside the output_dir

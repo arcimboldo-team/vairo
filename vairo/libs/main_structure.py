@@ -4,8 +4,7 @@ import logging
 import os
 import shutil
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, change_res, output, pymol_script, template, utils, features, sequence, \
-    structures, plots
+from libs import alphafold_classes, bioutils, output, template, utils, features, sequence, structures, plots, template_modifications
 from jinja2 import Environment, FileSystemLoader
 
 MIN_RMSD_SPLIT = 5
@@ -564,11 +563,12 @@ class MainStructure:
 
                     inf_cut = int(best_list[1][3])
                     inm_cut = int(best_list[2][1])
-                    delete_residues = change_res.ChangeResidues(
-                        chain_res_dict={'A': [*range(inf_cut + 1, len_sequence + 1, 1)]})
-                    delete_residues.delete_residues(pdb_in_path=inf_path, pdb_out_path=inf_path)
-                    delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
-                    delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
+
+                    delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(inf_cut + 1, len_sequence + 1, 1)])
+                    delete_residues.modify_template(pdb_in_path=inf_path, pdb_out_path=inf_path, type_modify='delete')
+                    delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
+                    delete_residues.modify_template(pdb_in_path=pdb_out, pdb_out_path=pdb_out, type_modify='delete') 
+                                       
                     merge_pdbs_list.append(pdb_out)
                     inf_path = pdb_out
 
@@ -729,9 +729,11 @@ class MainStructure:
             f_out.write('-')
             f_out.write(f' pdb: {pdb_path}\n')
             f_out.write(f'  legacy: True\n')
-            f_out.write(f'  change_res:\n')
-            f_out.write(f'  - All: 1-100000\n')
-            f_out.write(f'    resname: ALA\n')
+            f_out.write(f'  modifications:\n')
+            f_out.write(f'  -  chain: ALL\n')
+            f_out.write(f'     replace:\n')
+            f_out.write(f'     - residues: 1-100000\n')
+            f_out.write(f'       by: ALA\n')
         bioutils.run_vairo(yml_path=yml_path)
         if os.path.exists(old_results_dir):
             shutil.rmtree(old_results_dir)
@@ -866,31 +868,25 @@ class MainStructure:
                     f_out.write(f'  aligned: {template_in.aligned}\n')
                     f_out.write(f'  legacy: {template_in.legacy}\n')
                     f_out.write(f'  strict: {template_in.strict}\n')
-                    if template_in.change_res_struct.change_residues_list:
-                        f_out.write(f'  change_res:\n')
-                        for change in template_in.change_res_struct.change_residues_list:
-                            f_out.write('  -')
-                            if change.resname is not None:
-                                f_out.write(f' resname: {change.resname}\n')
-                            elif change.sequence is not None:
-                                if change.fasta_path is not None:
-                                    f_out.write(f' fasta_path: {change.fasta_path}\n')
-                                else:
-                                    f_out.write(f' fasta_path: {change.sequence}\n')
-                            f_out.write(f'    when: {change.when}\n')
-                            for key, value in change.chain_group_res_dict.items():
-                                f_out.write(f'    {key}: {", ".join(map(str, value))}\n')
 
-                    if template_in.match_restrict_struct.match_restrict_list:
-                        f_out.write(f'  match:\n')
-                        for match in template_in.match_restrict_struct.match_restrict_list:
-                            f_out.write('  -')
-                            f_out.write(f' chain: {match.chain}\n')
-                            f_out.write(
-                                f'    position: {match.position + 1 if match.position != -1 else match.position}\n')
-                            if match.residues is not None:
-                                f_out.write(
-                                    f'    residues: {",".join(map(str, list(match.residues.chain_res_dict.values())[0]))}\n')
+                    if template_in.modifications_struct.modifications_list:
+                        f_out.write(f'  modifications:\n')
+                        for modification in template_in.modifications_struct.modifications_list:
+                            f_out.write(f'  - chain: {modification.chain}\n')
+                            if modification.position:
+                                f_out.write(f'    position: {modification.position}\n')
+                            if modification.accepted_residues:
+                                f_out.write(f'    accepted_residues: {", ".join(map(str, modification.accepted_residues))}\n')
+                            if modification.deleted_residues:
+                                f_out.write(f'    deleted_residues: {", ".join(map(str, modification.deleted_residues))}\n')
+                            f_out.write(f'      when: {modification.when}\n')
+
+                            if modification.mutations:
+                                f_out.write(f'      replace:\n')
+                                for mutation in modification.mutations:
+                                    f_out.write(f'      - residues: {", ".join(map(str, mutation.residues))}\n')
+                                    f_out.write(f'        by: {mutation.by}\n')
+                                    
 
     def __repr__(self) -> str:
         return f' \

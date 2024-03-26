@@ -243,11 +243,7 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': False
         },
-        'change_res': {
-            'required': False,
-            'default': []
-        },
-        'match': {
+        'modifications': {
             'required': False,
             'default': []
         },
@@ -326,6 +322,14 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': [],
         },
+        'when': {
+            'required': False,
+            'default': 'after_alignment',
+        },
+        'replace': {
+            'required': False,
+            'default': None,
+        },
     },
     'replace_input': {
         'residues': {
@@ -333,10 +337,6 @@ INPUT_PARAMETERS = {
         },
         'by': {
             'required': True,
-        },
-        'when': {
-            'required': False,
-            'default': 'after_alignment',
         },
     },
 }
