@@ -22,7 +22,7 @@ class ResidueReplace:
 
 class ChainModifications:
     def __init__(self, chain: str, bfactors: List[float] = [], position: int = -1,
-                 accepted_residues: List[int] = [], deleted_residues: List[int] = [],
+                 maintain_residues: List[int] = [], delete_residues: List[int] = [],
                  mutations: List[ResidueReplace] = [], when: str = 'after_alignment'):
         # It will define the changes to apply to a template.
         # A list with all the chains that those changes will be applied.
@@ -33,27 +33,26 @@ class ChainModifications:
         self.chain: str
         self.bfactors: List[float]
         self.position: int = -1
-        self.accepted_residues: List[int] = []
-        self.deleted_residues: List[int] = []
+        self.maintain_residues: List[int] = []
+        self.delete_residues: List[int] = []
         self.mutations: List[ResidueReplace] = []
         self.when: str = 'after_alignment'
 
         self.chain = chain
         self.bfactors = bfactors
         self.position = position
-        self.accepted_residues = accepted_residues
-        self.deleted_residues = deleted_residues
+        self.maintain_residues = maintain_residues
+        self.delete_residues = delete_residues
         self.mutations = mutations
         self.when = when
-
 
     def apply_mapping(self, mapping: Dict):
         def convert(residues, mapp):
             results = [utils.get_key_by_value(res, mapp) for res in residues]
             return [x[0] for x in results if x]
 
-        self.accepted_residues = convert(self.accepted_residues, mapping)
-        self.deleted_residues = convert(self.deleted_residues, mapping)
+        self.maintain_residues = convert(self.maintain_residues, mapping)
+        self.delete_residues = convert(self.delete_residues, mapping)
         for mutation in self.mutations:
             mutation.residues = convert(mutation.residues, mapping)
 
@@ -74,10 +73,10 @@ class ChainModifications:
 
     def get_deleted_residues(self) -> List[int]:
         return_list = []
-        if self.deleted_residues:
-            return_list.extend(self.deleted_residues)
-        if self.accepted_residues:
-            return_list.extend(list((1001 - num for num in self.accepted_residues)))
+        if self.delete_residues:
+            return_list.extend(self.delete_residues)
+        if self.maintain_residues:
+            return_list.extend(list((1001 - num for num in self.maintain_residues)))
         return return_list
 
 
@@ -85,9 +84,9 @@ class TemplateModifications:
     def __init__(self):
         self.modifications_list: List[ChainModifications] = []
 
-    def append_modification(self, chains: List[str], position: int = -1, accepted_residues: List[List[int]] = [],
-                      deleted_residues: List[List[int]] = [], mutations: List[ResidueReplace] = [],
-                      bfactors: List[List[float]] = [], when: str = 'after_alignment'):
+    def append_modification(self, chains: List[str], position: int = -1, maintain_residues: List[List[int]] = [],
+                            delete_residues: List[List[int]] = [], mutations: List[ResidueReplace] = [],
+                            bfactors: List[List[float]] = [], when: str = 'after_alignment'):
 
         for i, chain in enumerate(chains):
             chain_class = ChainModifications(chain=chain,
@@ -95,12 +94,12 @@ class TemplateModifications:
                                              when=when,
                                              bfactors=bfactors[i] if bfactors and all(
                                                  isinstance(item, list) for item in bfactors) else bfactors,
-                                             accepted_residues=accepted_residues[i] if accepted_residues and all(
+                                             maintain_residues=maintain_residues[i] if maintain_residues and all(
                                                  isinstance(item, list) for item in
-                                                 accepted_residues) else accepted_residues,
-                                             deleted_residues=deleted_residues[i] if deleted_residues and all(
+                                                 maintain_residues) else maintain_residues,
+                                             delete_residues=delete_residues[i] if delete_residues and all(
                                                  isinstance(item, list) for item in
-                                                 deleted_residues) else deleted_residues,
+                                                 delete_residues) else delete_residues,
                                              mutations=mutations)
 
             self.modifications_list.append(chain_class)
@@ -108,10 +107,8 @@ class TemplateModifications:
     def append_chain_modification(self, chain_mod: ChainModifications):
         self.modifications_list.append(chain_mod)
 
-
     def append_chain_modifications(self, chain_mod: List[ChainModifications]):
         self.modifications_list.extend(chain_mod)
-
 
     def apply_mapping(self, chain: str, mapping: Dict):
         # Change residues numbering by the ones in mapping
@@ -128,12 +125,10 @@ class TemplateModifications:
         return [modification for modification in self.modifications_list if
                 modification.chain == chain and (not modification.check_position or modification.position == position)]
 
-
     def get_modifications_position_by_chain(self, chain: str) -> List[ChainModifications]:
         # Return all the matches for a specific chain
         return [modification for modification in self.modifications_list if
                 modification.chain == chain and modification.check_position()]
-
 
     def get_residues_changed_by_chain(self, chain: str) -> List:
         # Return all the changes for a specific chain.
@@ -154,11 +149,10 @@ class TemplateModifications:
         delete_list = []
         modification_chain = self.get_modifications_by_chain(chain=chain)
         for modification in modification_chain:
-            delete_list.expand(modification.deleted_residues())
+            delete_list.expand(modification.delete_residues())
         return delete_list
 
-
-    def modify_template(self, pdb_in_path: str, pdb_out_path: str, type_modify: str, when: str = ''):
+    def modify_template(self, pdb_in_path: str, pdb_out_path: str, type_modify: List[str], when: str = ''):
         # Change residues of chains specified in chain_res_dict
         structure = bioutils.get_structure(pdb_in_path)
         chains_struct = bioutils.get_chains(pdb_in_path)
@@ -170,11 +164,11 @@ class TemplateModifications:
             for i, res in enumerate(structure[0][chain].get_residues()):
                 resseq = bioutils.get_resseq(res)
                 for modify in modification_chain:
-                    if type_modify == 'change':
-                        if (modify.accepted_residues and resseq not in modify.accepted_residues) or resseq in modify.deleted_residues:
+                    if 'delete' in type_modify:
+                        if (modify.maintain_residues and resseq not in modify.maintain_residues) or resseq in modify.delete_residues:
                             res_del_dict[chain].append(res.id)
 
-                    elif type_modify == 'mutate':
+                    if 'mutate' in type_modify:
                         change_name = modify.get_change(resseq, when)
                         if change_name is not None:
                             for atom in res:
@@ -182,7 +176,7 @@ class TemplateModifications:
                                 if not atom.name in residue_constants.residue_atoms[res.resname]:
                                     atoms_del_list.append(atom.get_serial_number())
 
-                    elif type_modify == 'bfactors':
+                    if 'bfactors' in type_modify:
                         if modify.bfactors:
                             for atom in res:
                                 atom.set_bfactor(modify.bfactors[i])
@@ -191,10 +185,10 @@ class TemplateModifications:
             chain = structure[0][key_chain]
             [chain.detach_child(id) for id in residue_list]
 
-
         class AtomSelect(Select):
             def accept_atom(self, atom):
                 return not atom.get_serial_number() in atoms_del_list
+
         io = PDBIO()
         io.set_structure(structure)
         if atoms_del_list:

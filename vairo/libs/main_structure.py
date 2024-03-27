@@ -565,9 +565,9 @@ class MainStructure:
                     inm_cut = int(best_list[2][1])
 
                     delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(inf_cut + 1, len_sequence + 1, 1)])
-                    delete_residues.modify_template(pdb_in_path=inf_path, pdb_out_path=inf_path, type_modify='delete')
+                    delete_residues.modify_template(pdb_in_path=inf_path, pdb_out_path=inf_path, type_modify=['delete'])
                     delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
-                    delete_residues.modify_template(pdb_in_path=pdb_out, pdb_out_path=pdb_out, type_modify='delete') 
+                    delete_residues.modify_template(pdb_in_path=pdb_out, pdb_out_path=pdb_out, type_modify=['delete'])
                                        
                     merge_pdbs_list.append(pdb_out)
                     inf_path = pdb_out
@@ -875,10 +875,10 @@ class MainStructure:
                             f_out.write(f'  - chain: {modification.chain}\n')
                             if modification.position:
                                 f_out.write(f'    position: {modification.position}\n')
-                            if modification.accepted_residues:
-                                f_out.write(f'    accepted_residues: {", ".join(map(str, modification.accepted_residues))}\n')
-                            if modification.deleted_residues:
-                                f_out.write(f'    deleted_residues: {", ".join(map(str, modification.deleted_residues))}\n')
+                            if modification.maintain_residues:
+                                f_out.write(f'    maintain_residues: {", ".join(map(str, modification.maintain_residues))}\n')
+                            if modification.delete_residues:
+                                f_out.write(f'    delete_residues: {", ".join(map(str, modification.delete_residues))}\n')
                             f_out.write(f'      when: {modification.when}\n')
 
                             if modification.mutations:

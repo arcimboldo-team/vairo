@@ -314,11 +314,11 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': -1,
         },
-        'accepted_residues': {
+        'maintain_residues': {
             'required': False,
             'default': [],
         },
-        'deleted_residues': {
+        'delete_residues': {
             'required': False,
             'default': [],
         },

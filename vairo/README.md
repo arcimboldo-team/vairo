@@ -70,8 +70,8 @@ templates:
   modifications:
      - chain: Selection of chains, or just a single chain. If it applies to all chains, it accepts ALL
        position: If a single chain has been selected, it accepts a query sequence position, otherwise it will be ANY.
-       accepted_residues: Selection of ranges of residues, which will be kept.
-       deleted_residues: Selection of ranges of residues, which will be deleted.
+       maintain_residues: Selection of ranges of residues, which will be kept.
+       delete_residues: Selection of ranges of residues, which will be deleted.
        when: when the modification will be applied
        replace:
           - residues: Residues, or range of residues that the modification will be applied

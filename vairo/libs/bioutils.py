@@ -739,7 +739,7 @@ def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.Binari
 
             modify_bfactors = template_modifications.TemplateModifications()
             modify_bfactors.append_modification(chains=list(bfactors_dict.keys()), bfactors=list(bfactors_dict.values()))
-            modify_bfactors.modify_template(pdb_in_path=path, pdb_out_path=path, type_modify='bfactors')
+            modify_bfactors.modify_template(pdb_in_path=path, pdb_out_path=path, type_modify=['bfactors'])
 
         new_path = os.path.join(output_dir, f'orig.{str(index)}.pdb')
         os.rename(os.path.join(output_dir, path), new_path)
@@ -1358,8 +1358,8 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
                         chain_list=[interface.chain1, interface.chain2])
     
     change = template_modifications.TemplateModifications()
-    change.append_modification(chains=list(add_domains_dict.keys()), accepted_residues=list(add_domains_dict.values()))
-    change.modify_template(pdb_in_path=pdb_out_path, pdb_out_path=pdb_out_path, type_modify='delete')
+    change.append_modification(chains=list(add_domains_dict.keys()), maintain_residues=list(add_domains_dict.values()))
+    change.modify_template(pdb_in_path=pdb_out_path, pdb_out_path=pdb_out_path, type_modify=['delete'])
 
     return add_domains_dict
 
@@ -1448,7 +1448,7 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     conservation_list = conservation_list * 100
     modify_bfactors = template_modifications.TemplateModifications()
     modify_bfactors.append_modification(chains=[chain], bfactors=conservation_list.tolist())
-    modify_bfactors.modify_template(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path, type_modify='bfactors')
+    modify_bfactors.modify_template(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path, type_modify=['bfactors'])
 
 def calculate_coverage(query_seq: str, sequences: List[str], only_match: bool) -> List[str]:
     # Coverage of the sequences. It is divided by the number of sequences.
