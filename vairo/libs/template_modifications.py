@@ -113,22 +113,22 @@ class TemplateModifications:
     def apply_mapping(self, chain: str, mapping: Dict):
         # Change residues numbering by the ones in mapping
         for modification in self.modifications_list:
-            if modification.chain == chain:
+            if modification.chain == [chain, 'all']:
                 modification.apply_mapping(mapping)
 
     def get_modifications_by_chain(self, chain: str, when: str = '') -> List[ChainModifications]:
         return [modification for modification in self.modifications_list if
-                modification.chain == chain and (when == '' or modification.when == when)]
+                modification.chain == [chain, 'all'] and (when == '' or modification.when == when)]
 
     def get_modifications_by_chain_and_position(self, chain: str, position: int) -> List[ChainModifications]:
         # Return all the matches for a specific chain and position
         return [modification for modification in self.modifications_list if
-                modification.chain == chain and (not modification.check_position or modification.position == position)]
+                modification.chain == [chain, 'all'] and (not modification.check_position or modification.position == position)]
 
     def get_modifications_position_by_chain(self, chain: str) -> List[ChainModifications]:
         # Return all the matches for a specific chain
         return [modification for modification in self.modifications_list if
-                modification.chain == chain and modification.check_position()]
+                modification.chain == [chain, 'all'] and modification.check_position()]
 
     def get_residues_changed_by_chain(self, chain: str) -> List:
         # Return all the changes for a specific chain.

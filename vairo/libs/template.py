@@ -13,8 +13,8 @@ class Template:
         self.pdb_path: str
         self.pdb_id: str
         self.template_path: str
+        self.template_chains_dir: str
         self.template_originalseq_path: str
-        self.template_chains: Dict
         self.generate_multimer: bool
         self.modifications_struct: template_modifications.TemplateModifications = template_modifications.TemplateModifications()
         self.add_to_msa: bool
@@ -48,19 +48,11 @@ class Template:
         self.strict = utils.get_input_value(name='strict', section='template', input_dict=parameters_dict)
         self.aligned = utils.get_input_value(name='aligned', section='template', input_dict=parameters_dict,
                                              override_default=self.legacy)
-        self.template_path = f'{os.path.join(output_dir, self.pdb_id)}_template.pdb'
-        self.template_originalseq_path = f'{os.path.join(output_dir, self.pdb_id)}_template_originalseq.pdb'
         self.generate_multimer = utils.get_input_value(name='generate_multimer', section='template',
                                                        input_dict=parameters_dict)
-        self.generate_multimer = False if self.legacy else self.generate_multimer
 
         for parameter_modification in utils.get_input_value(name='modifications', section='template',
                                                             input_dict=parameters_dict):
-            chains = utils.get_input_value(name='chain', section='modifications', input_dict=parameter_modification)
-            if chains.lower() == 'all':
-                chains = bioutils.get_chains(self.pdb_path)
-            else:
-                chains = chains.replace(" ", "").split(',')
 
             position = utils.get_input_value(name='position', section='modifications',
                                              input_dict=parameter_modification)
@@ -88,6 +80,12 @@ class Template:
                     by = utils.get_input_value(name='by', section='replace', input_dict=replace)
                     replace_list.append(template_modifications.ResidueReplace(residues=residues, by=by))
 
+            chains = utils.get_input_value(name='chain', section='modifications', input_dict=parameter_modification)
+            if chains.lower() == 'all' or self.legacy:
+                chains = ['all']
+            else:
+                chains = chains.replace(" ", "").split(',')
+
             self.modifications_struct.append_modification(chains=chains, maintain_residues=maintain_residues,
                                                           delete_residues=delete_residues, position=position,
                                                           mutations=replace_list, when=when)
@@ -95,19 +93,20 @@ class Template:
         cryst_card = bioutils.extract_cryst_card_pdb(pdb_in_path=self.pdb_path)
         bioutils.remove_hetatm(self.pdb_path, self.pdb_path)
         bioutils.remove_hydrogens(self.pdb_path, self.pdb_path)
-        tmp_dir = os.path.join(output_dir, f'{self.pdb_id}_chains')
-        utils.create_dir(tmp_dir, delete_if_exists=True)
-        self.template_chains = bioutils.split_pdb_in_chains(output_dir=tmp_dir, pdb_path=self.pdb_path)
-        aux_list = utils.dict_values_to_list(self.template_chains)
-        bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            template_chains = bioutils.split_pdb_in_chains(output_dir=temp_file, pdb_path=self.pdb_path)
+            aux_list = utils.dict_values_to_list(template_chains)
+            bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
+
         if cryst_card is not None:
             bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
 
-        if not self.selected_positions or self.legacy:
-            for path in aux_list:
-                self.modifications_struct.modify_template(pdb_in_path=path, pdb_out_path=path,
-                                                          type_modify=['mutate', 'delete'],
-                                                          when='before_alignment')
+        self.template_chains_dir = os.path.join(output_dir, f'{self.pdb_id}_template_data'})
+        utils.create_dir(self.template_database_dir, delete_if_exists=True)
+        self.template_originalseq_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template_originalseq.pdb'
+        self.template_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template.pdb'
+
 
     def generate_features(self, output_dir: str, global_reference, sequence_assembled: sequence.SequenceAssembled):
         #   - Generate offset.
@@ -132,23 +131,7 @@ class Template:
                     merge_list.append(new_pdb_path)
             bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=utils.sort_by_digit(merge_list),
                                 merged_pdb_path=self.template_path)
-        else:
-            shutil.copy2(self.pdb_path, self.template_path)
-            aux_path = os.path.join(output_dir, f'{utils.get_file_name(self.pdb_path)}_split.pdb')
-            positions = bioutils.split_chains_assembly(
-                pdb_in_path=self.template_path,
-                pdb_out_path=aux_path,
-                sequence_assembled=sequence_assembled)
-            chain_dict = bioutils.split_pdb_in_chains(pdb_path=aux_path)
-            for i, pos in enumerate(list(positions.keys())):
-                if pos in chain_dict:
-                    self.results_path_position[i] = chain_dict[pos]
-                    self.template_chains_struct.from_dict_to_struct(chain=pos, path=chain_dict[pos],
-                                                                    alignment_dict={},
-                                                                    sequence=sequence_assembled.get_sequence_name(i),
-                                                                    modifications_list=self.modifications_struct)
-                else:
-                    self.results_path_position[i] = None
+
         aux_path_list = []
         chain_name = 'A'
         for path in self.results_path_position:
@@ -171,12 +154,65 @@ class Template:
         logging.error(
             f'Positions of chains in the template {self.pdb_id}: {" | ".join([str(element) for element in self.results_path_position])}')
 
+    def generate_chains_and_align(self, databases: alphafold_classes.AlphaFoldPaths,
+                                  sequence_assembled: sequence.SequenceAssembled):
+
+        if not self.legacy:
+            if not self.aligned:
+                template_database_dir = os.path.join(self.template_chains_dir, 'databases')
+                utils.create_dir(template_database_dir, delete_if_exists=True)
+
+            temp_file = tempfile.NamedTemporaryFile(mode="w", delete=False)
+            template_chains = bioutils.split_pdb_in_chains(output_dir=temp_file, pdb_path=self.pdb_path)
+            for chain, template_chain_path in template_chains.items():
+                if self.generate_multimer:
+                    chain_dict = bioutils.generate_multimer_chains(self.pdb_path, {chain: template_chain_path})
+                    path_list = chain_dict[chain]
+                else:
+                    path_list = [template_chain_path]
+
+                if not self.selected_positions:
+                    for sequence_in in sequence_assembled.sequence_list:
+                        if not self.aligned:
+                            alignment_chain_dir = os.path.join(sequence_in.alignment_dir, chain)
+                            utils.create_dir(alignment_chain_dir)
+                            extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
+                                                                               database_dir=template_database_dir,
+                                                                               chain_in_path=template_chain_path,
+                                                                               query_sequence_path=sequence_in.fasta_path,
+                                                                               databases=databases,
+                                                                               name=self.pdb_id)
+                else:
+                    modification_list = self.modifications_struct.get_modifications_position_by_chain(chain=chain)
+                    for i, modification, chain_path in enumerate(zip(modification_list[:len(path_list)], path_list)):
+                        new_path = os.path.join(self.template_chains_dir, os.path.basename(chain_path))
+                        shutil.copy2(chain_path, new_path)
+                        modification_pos_list = self.modifications_struct.get_modifications_by_chain_and_position(
+                            chain=chain, position=modification.position)
+                        template_chains.TemplateChain
+                        self.template_chains_struct.new_chain(path=new_path,
+                                                      sequence=sequence_assembled.sequence_list_expanded[modification.position],
+                                                      modification=modification_pos_list,
+                                                      align=self.aligned)
+
+        else:
+            aux_path = os.path.join(self.template_chains_dir, f'{utils.get_file_name(self.pdb_path)}_split.pdb')
+            positions = bioutils.split_chains_assembly(
+                pdb_in_path=self.pdb_path,
+                pdb_out_path=aux_path,
+                sequence_assembled=sequence_assembled)
+            chain_dict = bioutils.split_pdb_in_chains(pdb_path=aux_path)
+            for i, pos in enumerate(list(positions.keys())):
+                if pos in chain_dict:
+                    self.template_chains_struct.from_dict_to_struct(chain=pos, path=chain_dict[pos],
+                                                                    alignment_dict={},
+                                                                    sequence=sequence_assembled.get_sequence_name(i),
+                                                                    modifications_list=self.modifications_struct)
+
+                    self.modifications_struct.append_modification(chains=[pos], position=i + 1)
+
     def alignment(self, run_dir: str, sequence_assembled: sequence.SequenceAssembled,
                   databases: alphafold_classes.AlphaFoldPaths):
-
-        if not self.aligned:
-            template_database_dir = os.path.join(run_dir, f'{self.pdb_id}_databases')
-            utils.create_dir(template_database_dir, delete_if_exists=True)
 
         if not self.selected_positions:
             for sequence_in in sequence_assembled.sequence_list:
@@ -226,7 +262,7 @@ class Template:
                         alignment_dict = {chain: alignment_chain}
                     else:
                         alignment_dict = {}
-                        extracted_chain = chain_path
+                        extracted_chain = chain_aux_path
                     if extracted_chain:
                         self.template_chains_struct.from_dict_to_struct(chain=chain, path=extracted_chain,
                                                                         alignment_dict=alignment_dict,
@@ -235,7 +271,6 @@ class Template:
                                                                         modify_chain=modification,
                                                                         generate_multimer=self.generate_multimer,
                                                                         pdb_path=self.pdb_path)
-        sys.exit(1)
 
     def sort_chains_into_positions(self, sequence_name_list: List[str], global_reference) -> List[str]:
         # Given a sequence list and if there is any global reference:
@@ -326,7 +361,7 @@ class Template:
 
     def get_changes(self) -> List:
         # Get the changes that have been done to the templates.
-        # Return all those residues that has been changed.
+        # Return all those residues that have been changed.
         chains_changed = []
         fasta_changed = []
         chains_deleted = []
@@ -348,7 +383,7 @@ class Template:
                 in self.results_path_position]
 
     def get_chain_by_position(self) -> str:
-        # Return the chain used in the results path position. If there is any, if not, return None
+        # Return the chain used in the result path position. If there is any, if not, return None
         return [utils.get_chain_and_number(path)[0] if path is not None else None for path
                 in self.results_path_position]
 

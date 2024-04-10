@@ -62,7 +62,7 @@ class TemplateChainsList:
         chain1, code1 = utils.get_chain_and_number(pdb_path)
         pdb_dirname = os.path.dirname(pdb_path)
         for template_chain in self.template_chains_list:
-            # if there is alignment, we check the directory too, because it can be from different alignments
+            # if there is an alignment, we check the directory too, because it can be from different alignments
             if pdb_dirname == os.path.dirname(
                     template_chain.path) and chain1 == template_chain.chain and code1 == template_chain.code:
                 return template_chain
@@ -109,6 +109,51 @@ class TemplateChainsList:
         # Get all the chains that have a match with a determinate position.
         return [template_chain for template_chain in self.template_chains_list if
                 template_chain.modification is not None and template_chain.modification.check_position()]
+
+    def new_chain_sequence(self, path: str, sequence: str):
+        chain, number = utils.get_chain_and_number(path)
+
+
+        self.template_chains_list.append(TemplateChain(chain=chain,
+                                                       path=path,
+                                                       path_before_changes=path_before_changes,
+                                                       code=number,
+                                                       sequence=sequence,
+                                                       modification=match,
+                                                       alignment=alignment,
+                                                       deleted_residues=deleted_residues,
+                                                       changed_residues=changed_residues,
+                                                       fasta_residues=fasta_residues,
+                                                       sequence_before_changes=sequence_before_changes))
+
+        chain_aux_path = tempfile.NamedTemporaryFile(delete=False)
+        temp_aux = template_modifications.TemplateModifications()
+        temp_aux.append_chain_modifications(modification_pos_list)
+        temp_aux.modify_template(pdb_in_path=chain_path, pdb_out_path=chain_aux_path.name,
+                                 type_modify=['mutate', 'delete'], when='before_alignment')
+        if not self.aligned:
+            alignment_chain_dir = os.path.join(sequence_in.alignment_dir, chain)
+            utils.create_dir(alignment_chain_dir)
+            extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
+                                                               database_dir=template_database_dir,
+                                                               chain_in_path=chain_aux_path.name,
+                                                               query_sequence_path=sequence_in.fasta_path,
+                                                               databases=databases,
+                                                               name=self.pdb_id)
+            alignment_dict = {chain: alignment_chain}
+        else:
+            alignment_dict = {}
+            extracted_chain = chain_aux_path
+        if extracted_chain:
+            self.template_chains_struct.from_dict_to_struct(chain=chain, path=extracted_chain,
+                                                            alignment_dict=alignment_dict,
+                                                            sequence=sequence_in.name,
+                                                            modifications_list=self.modifications_struct,
+                                                            modify_chain=modification,
+                                                            generate_multimer=self.generate_multimer,
+                                                            pdb_path=self.pdb_path)
+
+
 
     def from_dict_to_struct(self, chain: str, path: str, alignment_dict: Dict, sequence: str,
                             modifications_list: template_modifications.TemplateModifications,
@@ -164,8 +209,7 @@ class TemplateChainsList:
             # Store the sequence before changing the residues, as if we want to add it in the MSA, it would not
             # make sense
             sequence_before_changes = list(bioutils.extract_sequence_msa_from_pdb(path).values())[0]
-            path_before_changes = os.path.join(os.path.dirname(path),
-                                               f'{utils.get_file_name(path)}_originalseq.pdb')
+            path_before_changes = os.path.join(os.path.dirname(path), f'{utils.get_file_name(path)}_originalseq.pdb')
             if os.path.exists(path_before_changes):
                 os.remove(path_before_changes)
             shutil.copy2(path, path_before_changes)

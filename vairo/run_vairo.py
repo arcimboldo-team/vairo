@@ -56,10 +56,9 @@ def main():
             for template in a_air.templates_list:
                 logging.error(f'Reading template {template.pdb_id}')
                 if template.add_to_templates or template.add_to_msa:
-                    if not template.legacy:
-                        template.alignment(run_dir=a_air.run_dir,
-                                           databases=a_air.alphafold_paths,
-                                           sequence_assembled=a_air.sequence_assembled)                        
+                    template.generate_chains_and_align(output_dir=a_air.run_dir,
+                                                       databases=a_air.alphafold_paths,
+                                                       sequence_assembled=a_air.sequence_assembled)
 
                     template.generate_features(
                         output_dir=a_air.run_dir,
