@@ -56,10 +56,9 @@ def main():
             for template in a_air.templates_list:
                 logging.error(f'Reading template {template.pdb_id}')
                 if template.add_to_templates or template.add_to_msa:
-                    template.generate_chains_and_align(output_dir=a_air.run_dir,
-                                                       databases=a_air.alphafold_paths,
-                                                       sequence_assembled=a_air.sequence_assembled)
-
+                    template.generate_chains(output_dir=a_air.run_dir, sequence_assembled=a_air.sequence_assembled)
+                    if not template.aligned:
+                        template.align(databases=a_air.alphafold_paths)
                     template.generate_features(
                         output_dir=a_air.run_dir,
                         global_reference=a_air.reference,
@@ -82,14 +81,16 @@ def main():
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
                 num_msa = 0
                 num_templates = 0
-                modifications_list = utils.modification_list(query=feat.positions_query, target=feat.positions_features, length=a_air.sequence_assembled.length)
-                #Delete the residues before expanding, so we avoid shifting them
+                modifications_list = utils.modification_list(query=feat.positions_query, target=feat.positions_features,
+                                                             length=a_air.sequence_assembled.length)
+                # Delete the residues before expanding, so we avoid shifting them
                 feat_aux.delete_residues_msa(delete_positions=feat.msa_mask)
                 feat_aux.replace_sequence_template(sequence_in=feat.replace_sequence)
-                #Cut and expand the features, in order to fit the generat features.pkl
-                feat_aux = feat_aux.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled, modifications_list=modifications_list)
+                # Cut and expand the features, in order to fit the generat features.pkl
+                feat_aux = feat_aux.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled,
+                                                        modifications_list=modifications_list)
                 if feat.keep_msa != 0:
-                    #Send without masking features, as we have deleted them
+                    # Send without masking features, as we have deleted them
                     num_msa = a_air.feature.set_msa_features(new_msa=feat_aux.msa_features, start=1,
                                                              finish=feat.keep_msa,
                                                              delete_positions=[])
@@ -104,8 +105,10 @@ def main():
                 aux_list = [os.path.join(library.path, file) for file in os.listdir(library.path)] if os.path.isdir(
                     library.path) else [library.path]
                 paths = [path for path in aux_list if utils.get_file_extension(path) in ['.pdb', '.fasta']]
-                modifications_list = utils.modification_list(query=library.positions_query, target=library.positions_library, length=a_air.sequence_assembled.length)
-                lib_feat = features.Features(query_sequence=a_air.sequence_assembled.sequence_mutated_assembled)                                
+                modifications_list = utils.modification_list(query=library.positions_query,
+                                                             target=library.positions_library,
+                                                             length=a_air.sequence_assembled.length)
+                lib_feat = features.Features(query_sequence=a_air.sequence_assembled.sequence_mutated_assembled)
                 for aux_path in paths:
                     if library.add_to_templates:
                         if utils.get_file_extension(aux_path) == '.fasta' and library.add_to_templates:
@@ -129,16 +132,16 @@ def main():
                         if extension == '.fasta':
                             sequence_list = list(bioutils.extract_sequences(aux_path).values())
                         for num, sequence in enumerate(sequence_list):
-                            lib_feat.append_row_in_msa(sequence, f'lib_{i}-{num}_{utils.get_file_name(aux_path)}',1)
+                            lib_feat.append_row_in_msa(sequence, f'lib_{i}-{num}_{utils.get_file_name(aux_path)}', 1)
 
                 num_msa = 0
                 num_templates = 0
-                lib_feat = lib_feat.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled, modifications_list=modifications_list)
+                lib_feat = lib_feat.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled,
+                                                        modifications_list=modifications_list)
                 if library.add_to_msa:
                     num_msa = a_air.feature.set_msa_features(new_msa=lib_feat.msa_features)
                 if library.add_to_templates:
                     num_templates = a_air.feature.set_template_features(new_templates=lib_feat.template_features)
-
 
                 if num_templates > 0:
                     logging.error(f'     Adding {num_templates} template/s to templates')
@@ -163,7 +166,7 @@ def main():
         if a_air.feature is None and os.path.exists(features_path):
             new_features = features.create_features_from_file(features_path)
             a_air.set_feature(new_features)
-        #a_air.align_experimental_pdbs()
+        # a_air.align_experimental_pdbs()
         if a_air.mode == 'naive' and a_air.run_af2 and a_air.cluster_templates:
             # store results features before trimming
             old_features_path = os.path.join(a_air.results_dir, 'alphafold_features.pkl')

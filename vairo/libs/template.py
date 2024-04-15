@@ -95,18 +95,17 @@ class Template:
         bioutils.remove_hydrogens(self.pdb_path, self.pdb_path)
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
-            template_chains = bioutils.split_pdb_in_chains(output_dir=temp_file, pdb_path=self.pdb_path)
-            aux_list = utils.dict_values_to_list(template_chains)
+            template_chains_aux = bioutils.split_pdb_in_chains(output_dir=temp_file, pdb_path=self.pdb_path)
+            aux_list = utils.dict_values_to_list(template_chains_aux)
             bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=aux_list, merged_pdb_path=self.pdb_path)
 
         if cryst_card is not None:
             bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
 
-        self.template_chains_dir = os.path.join(output_dir, f'{self.pdb_id}_template_data'})
+        self.template_chains_dir = os.path.join(output_dir, f'{self.pdb_id}_template_data')
         utils.create_dir(self.template_database_dir, delete_if_exists=True)
         self.template_originalseq_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template_originalseq.pdb'
         self.template_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template.pdb'
-
 
     def generate_features(self, output_dir: str, global_reference, sequence_assembled: sequence.SequenceAssembled):
         #   - Generate offset.
@@ -115,22 +114,22 @@ class Template:
         #   - Create features for the new template.
 
         logging.debug(f'Generating features of template {self.pdb_id}')
+        self.template_chains_struct.apply_changes()
 
-        if not self.legacy:
-            merge_list = []
-            self.results_path_position = self.sort_chains_into_positions(
-                sequence_name_list=sequence_assembled.get_list_name(),
-                global_reference=global_reference)
-            for i, pdb_path in enumerate(self.results_path_position):
-                if pdb_path is not None:
-                    offset = sequence_assembled.get_starting_length(i)
-                    new_pdb_path = os.path.join(output_dir, f'{self.pdb_id}_{offset}.pdb')
-                    bioutils.change_chain(pdb_in_path=pdb_path,
-                                          pdb_out_path=new_pdb_path,
-                                          offset=offset, chain='A')
-                    merge_list.append(new_pdb_path)
-            bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=utils.sort_by_digit(merge_list),
-                                merged_pdb_path=self.template_path)
+        merge_list = []
+        self.results_path_position = self.sort_chains_into_positions(
+            sequence_name_list=sequence_assembled.get_list_name(),
+            global_reference=global_reference)
+        for i, pdb_path in enumerate(self.results_path_position):
+            if pdb_path is not None:
+                offset = sequence_assembled.get_starting_length(i)
+                new_pdb_path = os.path.join(output_dir, f'{self.pdb_id}_{offset}.pdb')
+                bioutils.change_chain(pdb_in_path=pdb_path,
+                                      pdb_out_path=new_pdb_path,
+                                      offset=offset, chain='A')
+                merge_list.append(new_pdb_path)
+        bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=utils.sort_by_digit(merge_list),
+                            merged_pdb_path=self.template_path)
 
         aux_path_list = []
         chain_name = 'A'
@@ -154,46 +153,35 @@ class Template:
         logging.error(
             f'Positions of chains in the template {self.pdb_id}: {" | ".join([str(element) for element in self.results_path_position])}')
 
-    def generate_chains_and_align(self, databases: alphafold_classes.AlphaFoldPaths,
-                                  sequence_assembled: sequence.SequenceAssembled):
-
+    def generate_chains(self, sequence_assembled: sequence.SequenceAssembled):
         if not self.legacy:
-            if not self.aligned:
-                template_database_dir = os.path.join(self.template_chains_dir, 'databases')
-                utils.create_dir(template_database_dir, delete_if_exists=True)
-
             temp_file = tempfile.NamedTemporaryFile(mode="w", delete=False)
-            template_chains = bioutils.split_pdb_in_chains(output_dir=temp_file, pdb_path=self.pdb_path)
-            for chain, template_chain_path in template_chains.items():
+            template_chains_aux = bioutils.split_pdb_in_chains(output_dir=temp_file, pdb_path=self.pdb_path)
+            for chain, template_chain_path in template_chains_aux.items():
                 if self.generate_multimer:
                     chain_dict = bioutils.generate_multimer_chains(self.pdb_path, {chain: template_chain_path})
                     path_list = chain_dict[chain]
                 else:
                     path_list = [template_chain_path]
-
                 if not self.selected_positions:
+                    modification_list = self.modifications_struct.get_modifications_position_by_chain(chain=chain)
                     for sequence_in in sequence_assembled.sequence_list:
-                        if not self.aligned:
-                            alignment_chain_dir = os.path.join(sequence_in.alignment_dir, chain)
-                            utils.create_dir(alignment_chain_dir)
-                            extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
-                                                                               database_dir=template_database_dir,
-                                                                               chain_in_path=template_chain_path,
-                                                                               query_sequence_path=sequence_in.fasta_path,
-                                                                               databases=databases,
-                                                                               name=self.pdb_id)
+                        for new_path in path_list:
+                            self.template_chains_struct.new_chain_sequence(path=new_path, sequence=sequence_in,
+                                                                           modification=modification_list)
                 else:
                     modification_list = self.modifications_struct.get_modifications_position_by_chain(chain=chain)
                     for i, modification, chain_path in enumerate(zip(modification_list[:len(path_list)], path_list)):
                         new_path = os.path.join(self.template_chains_dir, os.path.basename(chain_path))
                         shutil.copy2(chain_path, new_path)
-                        modification_pos_list = self.modifications_struct.get_modifications_by_chain_and_position(
-                            chain=chain, position=modification.position)
-                        template_chains.TemplateChain
-                        self.template_chains_struct.new_chain(path=new_path,
-                                                      sequence=sequence_assembled.sequence_list_expanded[modification.position],
-                                                      modification=modification_pos_list,
-                                                      align=self.aligned)
+                        modification_pos_list = template_modifications.TemplateModifications(
+                            self.modifications_struct.get_modifications_by_chain_and_position(
+                                chain=chain, position=modification.position))
+                        self.template_chains_struct.new_chain_sequence(path=new_path,
+                                                                       sequence=
+                                                                       sequence_assembled.sequence_list_expanded[
+                                                                           modification.position],
+                                                                       modification=modification_pos_list)
 
         else:
             aux_path = os.path.join(self.template_chains_dir, f'{utils.get_file_name(self.pdb_path)}_split.pdb')
@@ -204,73 +192,27 @@ class Template:
             chain_dict = bioutils.split_pdb_in_chains(pdb_path=aux_path)
             for i, pos in enumerate(list(positions.keys())):
                 if pos in chain_dict:
-                    self.template_chains_struct.from_dict_to_struct(chain=pos, path=chain_dict[pos],
-                                                                    alignment_dict={},
-                                                                    sequence=sequence_assembled.get_sequence_name(i),
-                                                                    modifications_list=self.modifications_struct)
+                    modification_pos_list = template_modifications.TemplateModifications(
+                        self.modifications_struct.get_modifications_by_chain_and_position(chain=[pos], position=i + 1))
+                    modification_pos_list.append_modification(chains=[pos], position=i + 1)
+                    self.template_chains_struct.new_chain_sequence(path=chain_dict[pos],
+                                                                   sequence=sequence_assembled.get_sequence_name(i),
+                                                                   modifications_list=modification_pos_list)
 
-                    self.modifications_struct.append_modification(chains=[pos], position=i + 1)
-
-    def alignment(self, run_dir: str, sequence_assembled: sequence.SequenceAssembled,
-                  databases: alphafold_classes.AlphaFoldPaths):
-
-        if not self.selected_positions:
-            for sequence_in in sequence_assembled.sequence_list:
-                for chain, chain_path in self.template_chains.items():
-                    if not self.aligned:
-                        alignment_chain_dir = os.path.join(sequence_in.alignment_dir, chain)
-                        utils.create_dir(alignment_chain_dir)
-                        extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
-                                                                           database_dir=template_database_dir,
-                                                                           chain_in_path=chain_path,
-                                                                           query_sequence_path=sequence_in.fasta_path,
-                                                                           databases=databases,
-                                                                           name=self.pdb_id)
-                        alignment_dict = {chain: alignment_chain}
-                    else:
-                        alignment_dict = {}
-                        extracted_chain = chain_path
-
-                    if extracted_chain:
-                        self.template_chains_struct.from_dict_to_struct(chain=chain, path=extracted_chain,
-                                                                        alignment_dict=alignment_dict,
-                                                                        sequence=sequence_in.name,
-                                                                        modifications_list=self.modifications_struct,
-                                                                        generate_multimer=self.generate_multimer,
-                                                                        pdb_path=self.pdb_path)
-        else:
-            for chain, chain_path in self.template_chains.items():
-                modification_list = self.modifications_struct.get_modifications_position_by_chain(chain=chain)
-                for i, modification in enumerate(modification_list):
-                    sequence_in = sequence_assembled.sequence_list_expanded[modification.position]
-                    chain_aux_path = tempfile.NamedTemporaryFile(delete=False)
-                    modification_pos_list = self.modifications_struct.get_modifications_by_chain_and_position(
-                        chain=chain, position=modification.position)
-                    temp_aux = template_modifications.TemplateModifications()
-                    temp_aux.append_chain_modifications(modification_pos_list)
-                    temp_aux.modify_template(pdb_in_path=chain_path, pdb_out_path=chain_aux_path.name,
-                                             type_modify=['mutate', 'delete'], when='before_alignment')
-                    if not self.aligned:
-                        alignment_chain_dir = os.path.join(sequence_in.alignment_dir, chain)
-                        utils.create_dir(alignment_chain_dir)
-                        extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
-                                                                           database_dir=template_database_dir,
-                                                                           chain_in_path=chain_aux_path.name,
-                                                                           query_sequence_path=sequence_in.fasta_path,
-                                                                           databases=databases,
-                                                                           name=self.pdb_id)
-                        alignment_dict = {chain: alignment_chain}
-                    else:
-                        alignment_dict = {}
-                        extracted_chain = chain_aux_path
-                    if extracted_chain:
-                        self.template_chains_struct.from_dict_to_struct(chain=chain, path=extracted_chain,
-                                                                        alignment_dict=alignment_dict,
-                                                                        sequence=sequence_in.name,
-                                                                        modifications_list=self.modifications_struct,
-                                                                        modify_chain=modification,
-                                                                        generate_multimer=self.generate_multimer,
-                                                                        pdb_path=self.pdb_path)
+    def align(self, databases: alphafold_classes.AlphaFoldPaths):
+        template_database_dir = os.path.join(self.template_chains_dir, 'databases')
+        utils.create_dir(template_database_dir, delete_if_exists=True)
+        for chain_struct in self.template_chains_struct.template_chains_list:
+            alignment_chain_dir = os.path.join(chain_struct.sequence.alignment_dir, chain_struct.chain)
+            utils.create_dir(alignment_chain_dir)
+            extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
+                                                               database_dir=template_database_dir,
+                                                               chain_in_path=chain_struct.path,
+                                                               query_sequence_path=chain_struct.sequence.fasta_path,
+                                                               databases=databases,
+                                                               name=self.pdb_id)
+            if extracted_chain:
+                chain_struct.set_alignment(alignment_chain)
 
     def sort_chains_into_positions(self, sequence_name_list: List[str], global_reference) -> List[str]:
         # Given a sequence list and if there is any global reference:

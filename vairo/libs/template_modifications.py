@@ -81,8 +81,10 @@ class ChainModifications:
 
 
 class TemplateModifications:
-    def __init__(self):
+    def __init__(self,  modifications_list: List[ChainModifications] = []):
         self.modifications_list: List[ChainModifications] = []
+        if modifications_list:
+            self.modifications_list = modifications_list
 
     def append_modification(self, chains: List[str], position: int = -1, maintain_residues: List[List[int]] = [],
                             delete_residues: List[List[int]] = [], mutations: List[ResidueReplace] = [],
@@ -123,7 +125,8 @@ class TemplateModifications:
     def get_modifications_by_chain_and_position(self, chain: str, position: int) -> List[ChainModifications]:
         # Return all the matches for a specific chain and position
         return [modification for modification in self.modifications_list if
-                modification.chain == [chain, 'all'] and (not modification.check_position or modification.position == position)]
+                modification.chain == [chain, 'all'] and (
+                            not modification.check_position or modification.position == position)]
 
     def get_modifications_position_by_chain(self, chain: str) -> List[ChainModifications]:
         # Return all the matches for a specific chain
@@ -132,7 +135,7 @@ class TemplateModifications:
 
     def get_residues_changed_by_chain(self, chain: str) -> List:
         # Return all the changes for a specific chain.
-        # In the dict, there will be the residue name as key
+        # In the dict, there will be the residue name as a key
         # and all the residues to change in a list
         fasta = set()
         resname = set()
@@ -165,7 +168,8 @@ class TemplateModifications:
                 resseq = bioutils.get_resseq(res)
                 for modify in modification_chain:
                     if 'delete' in type_modify:
-                        if (modify.maintain_residues and resseq not in modify.maintain_residues) or resseq in modify.delete_residues:
+                        if (
+                                modify.maintain_residues and resseq not in modify.maintain_residues) or resseq in modify.delete_residues:
                             res_del_dict[chain].append(res.id)
 
                     if 'mutate' in type_modify:
