@@ -65,78 +65,88 @@ def run_hhalign(fasta_ref_path: str, fasta_aligned_path: str, output_path: str) 
 
 
 def run_hh(output_dir: str, database_dir: str, query_sequence_path: str, chain_in_path: str,
-           databases, name: str = None):
+           databases, temp_name: str, hhr_path: str = None):
+    
     query_sequence = bioutils.extract_sequence(query_sequence_path)
-    template_sequence = bioutils.extract_sequence_from_file(file_path=chain_in_path)
-    aux_key = list(template_sequence.keys())[0].replace('>', '')
-    sequence_name = aux_key.split(':')[0]
-    sequence_chain = aux_key.split(':')[1]
-    database_chain_dir = os.path.join(database_dir, sequence_chain)
-
-    if name is None:
-        name = utils.get_file_name(chain_in_path)
-
-    template_fasta_path = os.path.join(database_chain_dir, f'{name}.fasta')
-    cif_path = os.path.join(output_dir, f'{name}.cif')
-    hhr_path = os.path.join(output_dir, f'{name}.hhr')
+    temp_sequence = bioutils.extract_sequence_from_file(file_path=chain_in_path)
+    temp_chain, temp_number = utils.get_chain_and_number(chain_in_path)
+    cif_path = os.path.join(output_dir, f'{temp_name}.cif')
     bioutils.pdb2mmcif(pdb_in_path=chain_in_path, cif_out_path=cif_path)
-    if not os.path.exists(database_chain_dir):
-        utils.create_dir(database_chain_dir)
-        bioutils.write_sequence(sequence_name=f'{sequence_name}:{sequence_chain}',
-                                sequence_amino=list(template_sequence.values())[0],
-                                sequence_path=template_fasta_path)
-    run_hhalign(fasta_ref_path=query_sequence_path, fasta_aligned_path=template_fasta_path, output_path=hhr_path)
+    if hhr_path is None:
+        database_chain_dir = os.path.join(database_dir, f'{temp_chain}{temp_number}')
+        template_fasta_path = os.path.join(database_chain_dir, f'{temp_name}.fasta')
+        hhr_path = os.path.join(output_dir, f'{temp_name}.hhr')
+        if not os.path.exists(database_chain_dir):
+            utils.create_dir(database_chain_dir)
+            bioutils.write_sequence(sequence_name=f'{temp_name}:{temp_chain}',
+                                    sequence_amino=list(temp_sequence.values())[0],
+                                    sequence_path=template_fasta_path)
+        run_hhalign(fasta_ref_path=query_sequence_path, fasta_aligned_path=template_fasta_path, output_path=hhr_path)
 
-    template_features, mapping, identities, aligned_columns, total_columns, evalue = \
-        features.extract_template_features_from_pdb(
-            query_sequence=query_sequence,
-            hhr_path=hhr_path,
-            cif_path=cif_path,
-            sequence_id=sequence_name,
-            chain_id=sequence_chain
-        )
-    if template_features is None or int(aligned_columns) <= int(total_columns * 0.95):
-
-        create_database_from_pdb(fasta_path=template_fasta_path, databases=databases, output_dir=database_chain_dir)
-        
-        hhr_path2 = os.path.join(output_dir, f'{name}2.hhr')
-        a3m_path = os.path.join(output_dir, f'{utils.get_file_name(query_sequence_path)}.a3m')
-
-        if not os.path.exists(a3m_path):
-            a3m_path = create_a3m(fasta_path=query_sequence_path,
-                                  databases=databases,
-                                  output_dir=output_dir)
-
-        databases_hh_path = os.path.join(database_chain_dir, name)
-        run_hhsearch(a3m_path=a3m_path, database_path=databases_hh_path, output_path=hhr_path2)
-        template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2 = \
+        template_features, mapping, identities, aligned_columns, total_columns, evalue = \
             features.extract_template_features_from_pdb(
                 query_sequence=query_sequence,
-                hhr_path=hhr_path2,
+                hhr_path=hhr_path,
                 cif_path=cif_path,
-                sequence_id=sequence_name,
-                chain_id=sequence_chain)
+                sequence_id=temp_name,
+                chain_id=temp_chain
+            )
+        if template_features is None or int(aligned_columns) <= int(total_columns * 0.95):
 
-        if int(aligned_columns) < int(aligned_columns2):
-            os.remove(hhr_path)
-            shutil.move(hhr_path2, hhr_path)
-            template_features, mapping, identities, aligned_columns, total_columns, evalue = \
-                template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2
+            create_database_from_pdb(fasta_path=template_fasta_path, databases=databases, output_dir=database_chain_dir)
+            
+            hhr_path2 = os.path.join(output_dir, f'{temp_name}2.hhr')
+            a3m_path = os.path.join(output_dir, f'{utils.get_file_name(query_sequence_path)}.a3m')
+
+            if not os.path.exists(a3m_path):
+                a3m_path = create_a3m(fasta_path=query_sequence_path,
+                                    databases=databases,
+                                    output_dir=output_dir)
+
+            databases_hh_path = os.path.join(database_chain_dir, temp_name)
+            run_hhsearch(a3m_path=a3m_path, database_path=databases_hh_path, output_path=hhr_path2)
+            template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2 = \
+                features.extract_template_features_from_pdb(
+                    query_sequence=query_sequence,
+                    hhr_path=hhr_path2,
+                    cif_path=cif_path,
+                    sequence_id=temp_name,
+                    chain_id=temp_chain)
+
+            if int(aligned_columns) < int(aligned_columns2):
+                os.remove(hhr_path)
+                shutil.move(hhr_path2, hhr_path)
+                template_features, mapping, identities, aligned_columns, total_columns, evalue = \
+                    template_features2, mapping2, identities2, aligned_columns2, total_columns2, evalue2
+    else:
+        template_features, mapping, identities, aligned_columns, total_columns, evalue = \
+            features.extract_template_features_from_pdb(
+                query_sequence=query_sequence,
+                hhr_path=hhr_path,
+                cif_path=cif_path,
+                sequence_id=temp_name,
+                chain_id=temp_chain
+            )        
 
     extracted_chain_path = None
 
     logging.info(
-        f'Alignment results for pdb {utils.get_file_name(chain_in_path)} and chain {sequence_chain}, with sequence {utils.get_file_name(query_sequence_path)}:')
+        f'Alignment results for pdb {utils.get_file_name(chain_in_path)} and chain {temp_chain}, with sequence {utils.get_file_name(query_sequence_path)}:')
     logging.info(
         f'Aligned columns: {aligned_columns} ({total_columns}), Evalue: {evalue}, Identities: {identities}')
     if template_features is not None:
         g = features.Features(query_sequence=query_sequence)
         g.append_new_template_features(new_template_features=template_features)
-        aux_dict = g.write_all_templates_in_features(output_dir=output_dir, chain=sequence_chain)
+        aux_dict = g.write_all_templates_in_features(output_dir=output_dir, chain=temp_chain)
         extracted_chain_path = list(aux_dict.values())[0]
+        try:
+            extracted_chain_path = shutil.copy2(extracted_chain_path, os.path.join(output_dir, f'{utils.get_file_name(chain_in_path)}.pdb'))
+        except shutil.SameFileError:
+            pass
+        
 
     alignment_chain_struct = structures.Alignment(hhr_path=hhr_path, identities=identities,
                                                   aligned_columns=aligned_columns,
                                                   total_columns=total_columns, evalue=evalue,
-                                                  mapping=mapping, chain=sequence_chain)
+                                                  mapping=mapping, chain=temp_chain)
     return extracted_chain_path, alignment_chain_struct
