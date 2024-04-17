@@ -68,8 +68,6 @@ class ChainModifications:
                 break
         return name
 
-    def check_position(self) -> bool:
-        return self.position != -1
 
     def get_deleted_residues(self) -> List[int]:
         return_list = []
@@ -81,7 +79,7 @@ class ChainModifications:
 
 
 class TemplateModifications:
-    def __init__(self,  modifications_list: List[ChainModifications] = []):
+    def __init__(self, modifications_list: List[ChainModifications] = []):
         self.modifications_list: List[ChainModifications] = []
         if modifications_list:
             self.modifications_list = modifications_list
@@ -112,33 +110,32 @@ class TemplateModifications:
     def append_chain_modifications(self, chain_mod: List[ChainModifications]):
         self.modifications_list.extend(chain_mod)
 
-    def apply_mapping(self, mapping: Dict, chain: str ='all'):
+    def apply_mapping(self, mapping: Dict, chain: str = 'all'):
         # Change residues numbering by the ones in mapping
         for modification in self.modifications_list:
-            if modification.chain in [chain, 'all']:
+            if chain in [modification.chain, 'all']:
                 modification.apply_mapping(mapping)
 
     def check_position(self, chain: str = 'all'):
         for modification in self.modifications_list:
-            if modification.chain in [chain, 'all'] and modification.check_position():
-                return True
-        return False
-
-
+            if chain in [modification.chain, 'all'] and modification.position != -1:
+                return modification.position
+        return -1
 
     def get_modifications_by_chain(self, chain: str = 'all', when: str = '') -> List[ChainModifications]:
         return [modification for modification in self.modifications_list if
-                modification.chain in [chain, 'all'] and (when == '' or modification.when == when)]
+                chain in [modification.chain, 'all'] and (when == '' or modification.when == when)]
 
     def get_modifications_by_chain_and_position(self, position: int, chain: str = 'all') -> List[ChainModifications]:
         # Return all the matches for a specific chain and position
         return [modification for modification in self.modifications_list if
-                modification.chain in [chain, 'all'] and ( not modification.check_position or modification.position == position)]
+                chain in [modification.chain, 'all'] and (
+                        modification.position == -1 or modification.position == position)]
 
     def get_modifications_position_by_chain(self, chain: str = 'all') -> List[ChainModifications]:
         # Return all the matches for a specific chain
         return [modification for modification in self.modifications_list if
-                modification.chain in [chain, 'all'] and modification.check_position()]
+                chain in [modification.chain, 'all'] and modification.position != -1]
 
     def get_residues_changed_by_chain(self, chain: str = 'all') -> List:
         # Return all the changes for a specific chain.
@@ -159,7 +156,7 @@ class TemplateModifications:
         delete_list = []
         modification_chain = self.get_modifications_by_chain(chain=chain)
         for modification in modification_chain:
-            delete_list.expand(modification.delete_residues())
+            delete_list.extend(modification.delete_residues)
         return delete_list
 
     def modify_template(self, pdb_in_path: str, pdb_out_path: str, type_modify: List[str], when: str = ''):
@@ -194,7 +191,11 @@ class TemplateModifications:
 
         for key_chain, residue_list in res_del_dict.items():
             chain = structure[0][key_chain]
-            [chain.detach_child(id) for id in residue_list]
+            for id in residue_list:
+                try:
+                    chain.detach_child(id)
+                except:
+                    pass
 
         class AtomSelect(Select):
             def accept_atom(self, atom):

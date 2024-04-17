@@ -157,22 +157,19 @@ class Template:
                 else:
                     path_list = [template_chain_path]
                 if not self.selected_positions:
-                    modifications_list = template_modifications.TemplateModifications(self.modifications_struct.get_modifications_position_by_chain(chain=chain))
+                    modifications_list = template_modifications.TemplateModifications(self.modifications_struct.get_modifications_by_chain(chain=chain))
                     for sequence_in in sequence_assembled.sequence_list:
                         for new_path in path_list:
                             self.template_chains_struct.new_chain_sequence(path=new_path, sequence=sequence_in,
                                                                            modifications_list=modifications_list)
                 else:
-                    modifications_list = template_modifications.TemplateModifications(self.modifications_struct.get_modifications_position_by_chain(chain=chain))
-                    for i, modification, chain_path in enumerate(zip(modifications_list[:len(path_list)], path_list)):
-                        new_path = os.path.join(self.template_chains_dir, os.path.basename(chain_path))
-                        shutil.copy2(chain_path, new_path)
+                    modifications_list = self.modifications_struct.get_modifications_position_by_chain(chain=chain)
+                    for i, (modification, chain_path) in enumerate(zip(modifications_list[:len(path_list)], path_list)):
                         modification_pos_list = template_modifications.TemplateModifications(
                             self.modifications_struct.get_modifications_by_chain_and_position(
                                 chain=chain, position=modification.position))
-                        self.template_chains_struct.new_chain_sequence(path=new_path,
-                                                                       sequence=
-                                                                       sequence_assembled.sequence_list_expanded[
+                        self.template_chains_struct.new_chain_sequence(path=chain_path,
+                                                                       sequence=sequence_assembled.sequence_list_expanded[
                                                                            modification.position],
                                                                        modifications_list=modification_pos_list)
 
@@ -222,7 +219,7 @@ class Template:
         deleted_positions = []
 
         for chain_match in self.template_chains_struct.get_chains_with_matches_pos():
-            position = chain_match.modification.position
+            position = chain_match.check_position()
             if int(position) < len(composition_path_list):
                 composition_path_list[position] = chain_match.path
                 deleted_positions.append(position)

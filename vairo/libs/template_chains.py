@@ -71,6 +71,7 @@ class TemplateChain:
 
     def check_position(self):
         return self.modifications_list.check_position()
+
     
     def set_extracted_chain(self, extracted_path: str):
         self.path = extracted_path
@@ -128,7 +129,7 @@ class TemplateChainsList:
 
     def get_chains_with_matches_pos(self) -> List[TemplateChain]:
         # Get all the chains that have a match with a determinate position.(
-        return [temp_chain for temp_chain in self.template_chains_list if temp_chain.check_position()]
+        return [temp_chain for temp_chain in self.template_chains_list if temp_chain.check_position() != -1]
 
     def apply_changes(self, when: str = 'after_alignment'):
         for temp_chain in self.template_chains_list:

@@ -873,8 +873,8 @@ class MainStructure:
                         f_out.write(f'  modifications:\n')
                         for modification in template_in.modifications_struct.modifications_list:
                             f_out.write(f'  - chain: {modification.chain}\n')
-                            if modification.position:
-                                f_out.write(f'    position: {modification.position}\n')
+                            if modification.position+1:
+                                f_out.write(f'    position: {modification.position+1}\n')
                             if modification.maintain_residues:
                                 f_out.write(f'    maintain_residues: {", ".join(map(str, modification.maintain_residues))}\n')
                             if modification.delete_residues:
