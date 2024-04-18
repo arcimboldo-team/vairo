@@ -60,7 +60,6 @@ def main():
                     if not template.aligned:
                         template.align(databases=a_air.alphafold_paths)
                     template.generate_features(
-                        output_dir=a_air.run_dir,
                         global_reference=a_air.reference,
                         sequence_assembled=a_air.sequence_assembled)
 

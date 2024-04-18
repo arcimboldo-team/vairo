@@ -113,29 +113,29 @@ class TemplateModifications:
     def apply_mapping(self, mapping: Dict, chain: str = 'all'):
         # Change residues numbering by the ones in mapping
         for modification in self.modifications_list:
-            if chain in [modification.chain, 'all']:
+            if (chain in [modification.chain, 'all'] or modification.chain == 'all'):
                 modification.apply_mapping(mapping)
 
     def check_position(self, chain: str = 'all'):
         for modification in self.modifications_list:
-            if chain in [modification.chain, 'all'] and modification.position != -1:
+            if (chain in [modification.chain, 'all'] or modification.chain == 'all') and modification.position != -1:
                 return modification.position
         return -1
 
     def get_modifications_by_chain(self, chain: str = 'all', when: str = '') -> List[ChainModifications]:
         return [modification for modification in self.modifications_list if
-                chain in [modification.chain, 'all'] and (when == '' or modification.when == when)]
+                (chain in [modification.chain, 'all'] or modification.chain == 'all') and (when == '' or modification.when == when)]
 
     def get_modifications_by_chain_and_position(self, position: int, chain: str = 'all') -> List[ChainModifications]:
         # Return all the matches for a specific chain and position
         return [modification for modification in self.modifications_list if
-                chain in [modification.chain, 'all'] and (
+                (chain in [modification.chain, 'all'] or modification.chain == 'all') and (
                         modification.position == -1 or modification.position == position)]
 
     def get_modifications_position_by_chain(self, chain: str = 'all') -> List[ChainModifications]:
         # Return all the matches for a specific chain
         return [modification for modification in self.modifications_list if
-                chain in [modification.chain, 'all'] and modification.position != -1]
+                (chain in [modification.chain, 'all'] or modification.chain == 'all') and modification.position != -1]
 
     def get_residues_changed_by_chain(self, chain: str = 'all') -> List:
         # Return all the changes for a specific chain.

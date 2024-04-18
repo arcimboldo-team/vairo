@@ -28,17 +28,27 @@ class Template:
         self.alignment_database: List[structures.AlignmentDatabase] = []
         self.selected_positions: bool = False
 
+
         pdb_path = utils.get_input_value(name='pdb', section='template', input_dict=parameters_dict)
         if new_name is not None:
             pdb_out_path = os.path.join(output_dir, f'{new_name}.pdb')
         else:
             pdb_out_path = os.path.join(output_dir, f'{utils.get_file_name(pdb_path)}.pdb')
-        self.pdb_path = bioutils.check_pdb(pdb_path, pdb_out_path)
-        if utils.check_ranked(os.path.basename(self.pdb_path)):
-            raise Exception(f'Template {self.pdb_path} has a protected name (ranked). Please change the name before '
+        bioutils.check_pdb(pdb_path, pdb_out_path)
+        if utils.check_ranked(os.path.basename(pdb_out_path)):
+            raise Exception(f'Template {pdb_out_path} has a protected name (ranked). Please change the name before '
                             f'continuing, as it can cause issues with the VAIRO output.')
 
-        self.pdb_id = utils.get_file_name(self.pdb_path)
+        self.pdb_id = utils.get_file_name(pdb_out_path)
+        self.template_chains_dir = os.path.join(output_dir, f'{self.pdb_id}_template_data')
+        self.pdb_path = os.path.join(self.template_chains_dir, f'{self.pdb_id}.pdb')
+        utils.create_dir(self.template_chains_dir, delete_if_exists=True)
+        shutil.move(pdb_out_path, self.pdb_path)
+        
+        self.template_originalseq_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template_originalseq.pdb'
+        self.template_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template.pdb'
+
+
         self.add_to_msa = utils.get_input_value(name='add_to_msa', section='template', input_dict=parameters_dict)
         self.add_to_templates = utils.get_input_value(name='add_to_templates', section='template',
                                                       input_dict=parameters_dict)
@@ -96,12 +106,7 @@ class Template:
         if cryst_card is not None:
             bioutils.add_cryst_card_pdb(pdb_in_path=self.pdb_path, cryst_card=cryst_card)
 
-        self.template_chains_dir = os.path.join(output_dir, f'{self.pdb_id}_template_data')
-        utils.create_dir(self.template_chains_dir, delete_if_exists=True)
-        self.template_originalseq_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template_originalseq.pdb'
-        self.template_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template.pdb'
-
-    def generate_features(self, output_dir: str, global_reference, sequence_assembled: sequence.SequenceAssembled):
+    def generate_features(self, global_reference, sequence_assembled: sequence.SequenceAssembled):
         #   - Generate offset.
         #   - Apply the generated offset to all the templates.
         #   - Build the new template merging all the templates.
@@ -117,7 +122,7 @@ class Template:
         for i, pdb_path in enumerate(self.results_path_position):
             if pdb_path is not None:
                 offset = sequence_assembled.get_starting_length(i)
-                new_pdb_path = os.path.join(output_dir, f'{self.pdb_id}_{offset}.pdb')
+                new_pdb_path = os.path.join(self.template_chains_dir, f'{self.pdb_id}_{offset}.pdb')
                 bioutils.change_chain(pdb_in_path=pdb_path,
                                       pdb_out_path=new_pdb_path,
                                       offset=offset, chain='A')
@@ -183,8 +188,9 @@ class Template:
             for i, pos in enumerate(list(positions.keys())):
                 if pos in chain_dict:
                     modification_pos_list = template_modifications.TemplateModifications(
-                        self.modifications_struct.get_modifications_by_chain_and_position(chain=[pos], position=i + 1))
-                    modification_pos_list.append_modification(chains=[pos], position=i + 1)
+                        self.modifications_struct.get_modifications_by_chain_and_position(chain=pos, position=i))
+                    print(len(modification_pos_list.modifications_list))
+                    modification_pos_list.append_modification(chains=[pos], position=i)
                     self.template_chains_struct.new_chain_sequence(path=chain_dict[pos],
                                                                    sequence=sequence_assembled.get_sequence_name(i),
                                                                    modifications_list=modification_pos_list)
