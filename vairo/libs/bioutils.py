@@ -171,7 +171,6 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
         prev_residue_number = 0
         for residue in chain:
             residue_number = residue.get_id()[1]
-            # Check for missing residues and add gaps to the sequence
             if residue_number - prev_residue_number > 1:
                 sequence_with_gaps += "-" * (residue_number - prev_residue_number - 1)
             try:

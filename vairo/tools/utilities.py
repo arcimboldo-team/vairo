@@ -295,9 +295,12 @@ def merge_pdbs(pdb1_path: str, pdb2_path: str, inf_ini, inf_end, inm_ini, inm_en
     inf_cut = int(best_list[1][3])
     inm_cut = int(best_list[2][1])
 
-    delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(inf_cut + 1, 10000 + 1, 1)])
+
+    delete_residues = template_modifications.TemplateModifications()
+    delete_residues.append_modification(chains=['A'], delete_residues=[*range(inf_cut + 1, 10000 + 1, 1)])
     delete_residues.modify_template(pdb_in_path=pdb1_path, pdb_out_path=aux_pdb1_path, type_modify='delete')
-    delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
+    delete_residues = template_modifications.TemplateModifications()
+    delete_residues.append_modification(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
     delete_residues.modify_template(pdb_in_path=pdb_out, pdb_out_path=pdb_out, type_modify='delete') 
 
     merge_pdbs_list.append(pdb_out)
