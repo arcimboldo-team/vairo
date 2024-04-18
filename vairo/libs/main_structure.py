@@ -733,7 +733,7 @@ class MainStructure:
             f_out.write(f' pdb: {pdb_path}\n')
             f_out.write(f'  legacy: True\n')
             f_out.write(f'  modifications:\n')
-            f_out.write(f'  -  chain: ALL\n')
+            f_out.write(f'  -  chain: all\n')
             f_out.write(f'     replace:\n')
             f_out.write(f'     - residues: 1-100000\n')
             f_out.write(f'       by: ALA\n')
