@@ -167,25 +167,23 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
     model = structure[0]
     sequences = {}
     for chain in model:
-        residue_numbers = set()
-        for residue in chain:
-            residue_numbers.add(residue.get_id()[1])
-        sequence_ext = ""
+        sequence_with_gaps = ""
         prev_residue_number = 0
         for residue in chain:
             residue_number = residue.get_id()[1]
+            # Check for missing residues and add gaps to the sequence
             if residue_number - prev_residue_number > 1:
-                for missing_number in range(prev_residue_number + 1, residue_number):
-                    sequence_ext += "-"
+                sequence_with_gaps += "-" * (residue_number - prev_residue_number - 1)
             try:
+                # Convert MSE to M
                 if residue.get_resname() == 'MSE':
-                    sequence_ext += 'M'
+                    sequence_with_gaps += 'M'
                 else:
-                    sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
-            except Exception as e:
+                    sequence_with_gaps += residue_constants.restype_3to1[residue.get_resname()]
+            except KeyError:
                 pass
             prev_residue_number = residue_number
-        sequences[chain.id] = sequence_ext
+        sequences[chain.id] = sequence_with_gaps
     return sequences
 
 

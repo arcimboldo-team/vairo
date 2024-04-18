@@ -166,7 +166,7 @@ class TemplateModifications:
         atoms_del_list = []
         res_del_dict = {}
         for chain in chains_struct:
-            modification_chain = self.get_modifications_by_chain(chain=chain)
+            modification_chain = self.get_modifications_by_chain(chain=chain, when=when)
             res_del_dict[chain] = []
             for i, res in enumerate(structure[0][chain].get_residues()):
                 resseq = bioutils.get_resseq(res)

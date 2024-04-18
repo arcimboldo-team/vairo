@@ -292,6 +292,9 @@ class MainStructure:
             if self.cluster_list:
                 render_dict['cluster_list'] = self.cluster_list
 
+        if self.templates_list:
+            render_dict['templates_list'] = self.templates_list
+            
         if self.feature:
             if self.mode != 'naive':
                 info_input_list = []
@@ -324,6 +327,7 @@ class MainStructure:
             else:
                 render_dict['num_msa'] = self.feature.get_msa_length()
                 render_dict['num_templates'] = self.feature.get_templates_length()
+
 
         if self.output.ranked_list:
             render_dict['table'] = {}
@@ -396,8 +400,7 @@ class MainStructure:
             render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
             render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_filtered_list}
 
-            if self.templates_list:
-                render_dict['templates_list'] = self.templates_list
+
             if self.output.ranked_list:
                 render_dict['ranked_list'] = self.output.ranked_list
             if self.output.group_ranked_by_qscore_dict:

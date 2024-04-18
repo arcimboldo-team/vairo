@@ -26,12 +26,7 @@ class TemplateChain:
         self.sequence_before_alignment = ''
 
     def apply_changes(self, when: str):
-        if when == 'after_alignment':
-            self.modifications_list.modify_template(pdb_in_path=self.path, pdb_out_path=self.path,
-                                                    type_modify=['mutate', 'delete'], when='after_alignment')
-            self.deleted_residues = self.modifications_list.get_deleted_residues()
-            self.changed_residues, self.fasta_residues = self.modifications_list.get_residues_changed_by_chain()
-        else:
+        if when == 'before_alignment':
             self.sequence_before_changes = list(bioutils.extract_sequence_msa_from_pdb(self.path).values())[0]
             self.path_before_changes = os.path.join(os.path.dirname(self.path),
                                                     f'{utils.get_file_name(self.path)}_originalseq.pdb')
@@ -41,6 +36,11 @@ class TemplateChain:
             self.modifications_list.modify_template(pdb_in_path=self.path, pdb_out_path=self.path,
                                                     type_modify=['mutate', 'delete'], when='before_alignment')
             self.sequence_before_alignment = list(bioutils.extract_sequence_msa_from_pdb(self.path).values())[0]
+        else:
+            self.modifications_list.modify_template(pdb_in_path=self.path, pdb_out_path=self.path,
+                                                    type_modify=['mutate', 'delete'], when='after_alignment')
+            self.deleted_residues = self.modifications_list.get_deleted_residues()
+            self.changed_residues, self.fasta_residues = self.modifications_list.get_residues_changed_by_chain()
 
     def get_chain_code(self) -> List:
         return self.chain, self.code

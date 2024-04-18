@@ -374,7 +374,7 @@
                     </ul>
                 {% endif %}
 
-                {% if data.templates_list %}
+                {% if 'templates_list' in data %}
                     {% for template in data.templates_list if template.modifications_struct.modifications_list %}
                         {% if loop.first %}
                             <p>The following changes have been made to the sequence of the templates:</p>
@@ -386,24 +386,31 @@
                                 <li> {{ template.pdb_id }}:
                                 <ul>
                             {% endif %}
+                            <p>
                                 {% if change.when == 'before_alignment' %}
-                                    Modifications have been done before alignment in a chain {{ change.chain }}.
+                                    Modifications have been done before alignment in a chain {{ change.chain }}:
                                 {% else %}
-                                    Modifications have been done after an alignment chain {{ change.chain }}.
+                                    Modifications have been done after an alignment chain {{ change.chain }}:
                                 {% endif %}                               
-                                {% if change.deleted_residues %}
+                                {% if change.delete_residues %}
                                     Deleted residues: {{ change.delete_residues|join(', ') }}
                                 {% endif %} 
-                                {% if change.accepted_residues %}
+                                {% if change.maintain_residues %}
                                     Maintained residues: {{ change.maintain_residues|join(', ') }}
                                 {% endif %} 
                                 {% for mutation in change.mutations %}
-                                    <li>
-                                        It has mutated the following residues:
-                                        Residues: {{ mutation.residues|join(', ') }}
-                                        by: {{ mutation.by }}
-                                    </li>
+                                    {% if loop.first  %}
+                                        <ul>
+                                    {% endif %}
+                                        <li>
+                                            It has mutated the following residues: {{ mutation.residues|join(', ') }}
+                                            by: {{ mutation.by }}
+                                        </li>
+                                    {% if loop.last  %}
+                                        </ul>
+                                    {% endif %}
                                 {% endfor %}
+                            </p>
                             {% if loop.last  %}
                                 </ul>
                             </li>
