@@ -398,6 +398,9 @@
                                 {% if change.maintain_residues %}
                                     Maintained residues: {{ change.maintain_residues|join(', ') }}
                                 {% endif %} 
+                                {% if change.position != -1 %}
+                                    Selected position: {{ change.position }}
+                                {% endif %}
                                 {% for mutation in change.mutations %}
                                     {% if loop.first  %}
                                         <ul>

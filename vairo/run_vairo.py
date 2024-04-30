@@ -183,8 +183,9 @@ def main():
         logging.error(f'Timestamp: {datetime.now()}')
         logging.error('VAIRO has finished successfully')
         a_air.generate_output()
-        a_air.feature.set_extra_info()
-        a_air.feature.write_pkl(pkl_path=features_path)
+        if a_air.feature is not None:
+            a_air.feature.set_extra_info()
+            a_air.feature.write_pkl(pkl_path=features_path)
 
     except SystemExit as e:
         sys.exit(e)

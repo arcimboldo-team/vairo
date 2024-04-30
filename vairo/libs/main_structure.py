@@ -567,9 +567,11 @@ class MainStructure:
                     inf_cut = int(best_list[1][3])
                     inm_cut = int(best_list[2][1])
 
-                    delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(inf_cut + 1, len_sequence + 1, 1)])
+                    delete_residues = template_modifications.TemplateModifications()
+                    delete_residues.append_modification(chains=['A'], delete_residues=[*range(inf_cut + 1, len_sequence + 1, 1)])
                     delete_residues.modify_template(pdb_in_path=inf_path, pdb_out_path=inf_path, type_modify=['delete'])
-                    delete_residues = template_modifications.TemplateModifications(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
+                    delete_residues = template_modifications.TemplateModifications()
+                    delete_residues.append_modification(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
                     delete_residues.modify_template(pdb_in_path=pdb_out, pdb_out_path=pdb_out, type_modify=['delete'])
                                        
                     merge_pdbs_list.append(pdb_out)
