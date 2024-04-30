@@ -11,12 +11,9 @@ function toggleModify(templateID, modificationID) {
 function toggleChainSelection(templateID, modificationID) {
     const selection = document.getElementById(`template-modify-where-${templateID}-${modificationID}`).value;
     const specificChar = document.querySelectorAll(`div[name=chain-div-${templateID}-${modificationID}]`);
-    const divHide = document.getElementById(`modaminoacids-div-${templateID}-${modificationID}`);
-    const modifyCheck = document.getElementById(`template-modify-residues-${templateID}-${modificationID}`).checked;
     specificChar.forEach(div => {
-        div.classList.toggle('hidden', selection !== 'custom');
+        div.classList.toggle('hidden', selection === 'all');
     });
-    divHide.classList.toggle('hidden', selection !== 'all' && !modifyCheck);
     updatePlot();
 }
 
@@ -36,26 +33,20 @@ async function generateMultimer(key, templateName="undefined", templateData="und
         templateName = templatesDict[key].templateName;
     }
     let chainSeq = getSequences(templateData);
+    for (let key in chainSeq) {
+        chainSeq[key] = [chainSeq[key]];
+    }
     check = document.getElementById(`template-multimer-${key}`);
     if(check.checked){
         try{
-            const result = await postData('/generate-multimer', {'templateData': templateData});
-            chainSeq = Object.entries(result).reduce((acc, [key, values]) => {
-                if (chainSeq.hasOwnProperty(key)) {
-                    values.forEach((_, index) => {
-                        acc[`${key}${index + 1}`] = chainSeq[key];
-                    });
-                }
-                return acc;
-            }, {});
+            chainSeq = await postData('/generate-multimer', {'templateData': templateData});
         } catch (error) {
             alert('It has not been possible to generate the multimer. Unchecking it');
             check.checked = false;
             console.error('Error:', error);
         }
     }
-    const chainsArray = Object.keys(chainSeq);
-    templatesDict[key] = {"templateName": templateName, "templateData": templateData, "chainSequences": chainSeq, "chains": chainsArray};
+    templatesDict[key] = {"templateName": templateName, "templateData": templateData, "chainSequences": chainSeq};
     updatePlot();
     populateChainSelect(key);
 }
@@ -98,25 +89,34 @@ async function readTemplate(id){
 function getRestrictions(templateID){
     const divs = document.querySelectorAll(`li[id^=modify-${templateID}-]`);
     const modificationsDict = {};
+    let positionsAccepted = false;
     divs.forEach(div => {
         const selection = div.querySelector(`select[id^=template-modify-where-${templateID}-]`).value;
-        const modifyCheck = div.querySelector(`input[type=checkbox][id^=template-modify-residues-${templateID}]`);
-        let key = selection === "custom" ? div.querySelector(`select[id^=template-modify-chain-${templateID}-]`).value : 'all';
-        if(key === "") return;
-        modificationsDict[key] = modificationsDict[key] || {};
-
-        if(selection === "custom"){
-            const position = div.querySelector(`select[id^=template-modify-pos-${templateID}-]`).value;
-            const residues = div.querySelector(`input[id^=template-modify-maintain-${templateID}-]`).value.trim();
-            if(position !== "ANY"){
-                modificationsDict[key]["position"] = position;
-            }
-            if(residues){
-                modificationsDict[key]["maintain"] = new Set(extendedNumbers(residues).sort(function(a, b){return a-b}));
+        if(selection === "") return;
+        modificationsDict[selection] = modificationsDict[selection] || {};
+        let positionKey = ''
+        if(selection !== "all"){
+            positionKey = div.querySelector(`select[id^=template-modify-pos-${templateID}-]`).value;
+            if(positionKey !== 'ANY'){
+                positionsAccepted = true;
             }
         }
+        else{
+            positionKey = 'ANY'
+        }
+        modificationsDict[selection][positionKey] = modificationsDict[selection][positionKey] || {};
 
-        if(!modifyCheck.checked && selection !== "all") return;
+        const residues = div.querySelector(`input[id^=template-modify-delete-${templateID}-]`).value.trim();
+        if(residues){
+            if (!modificationsDict[selection][positionKey].hasOwnProperty('delete')) {
+                modificationsDict[selection][positionKey]["delete"] = new Set();
+            }
+            const oldValues = modificationsDict[selection][positionKey]["delete"];
+            const newValues = extendedNumbers(residues).sort(function(a, b) { return a - b });
+            console.log(oldValues);
+            console.log(newValues);
+            modificationsDict[selection][positionKey]["delete"] = new Set(...oldValues, [...newValues]);
+        }
         const changeAminoacids = div.querySelectorAll(`li[id^=modaminoacids-${templateID}-]`);
         changeAminoacids.forEach(change => {
             const positions = change.querySelector(`input[id^=template-modify-amino-pos-${templateID}]`).value.trim();
@@ -124,22 +124,23 @@ function getRestrictions(templateID){
             const choose = change.querySelector(`select[id^=template-modify-amino-select-${templateID}-]`).value;
             if(positions && ((choose === "residue") || (choose === "fasta" && sequence.files.length > 0))){
                 const positionsArray = extendedNumbers(positions);
-                modificationsDict[key][choose] = [...new Set([...(modificationsDict[key][choose] || []), ...positionsArray])];
+                modificationsDict[selection][positionKey][choose] = [...new Set([...(modificationsDict[selection][positionKey][choose] || []), ...positionsArray])];
             }
         });
     });
-    return modificationsDict;
+    return [modificationsDict, positionsAccepted];
 }
 
 function populateChainSelect(templateID) {
     let options = '';
     if(templatesDict.hasOwnProperty(templateID)){
-        const chains = templatesDict[templateID].chains;
-        options = chains.map(chain => `<option value="${chain}">${chain}</option>`).join('');
+        const chains = templatesDict[templateID].chainSequences;
+        const uniqueChains = Object.keys(chains)
+        options = `<option value="all">All chains</option>` + uniqueChains.map(chain => `<option value="${chain}">${chain} (${chains[chain].length} copies)</option>`).join('');
     } else {
-        options = `<option value=""></option>`;
+        options = `<option value="all">All chains</option>`;
     }
-    const modifications = document.querySelectorAll(`select[id^=template-modify-chain-${templateID}-]`);
+    const modifications = document.querySelectorAll(`select[id^=template-modify-where-${templateID}-]`);
     modifications.forEach(modification => {
         const oldValue = modification.value;
         modification.innerHTML = options;
@@ -282,32 +283,26 @@ class templateTable extends HTMLElement {
                     <label class="form-label" for="template-modify-where-${id}">Apply modifications</label>
                     <select class="form-select" id="template-modify-where-${id}" name="template-modify-where-${id}" onchange="toggleChainSelection(${this.templateID}, ${currentModificationValue})">
                         <option value="all">All chains</option>
-                        <option selected value="custom">Specific chain</option>
                     </select>
                 </div>
-                <div class="col-md-auto" name="chain-div-${id}">
-                    <label class="form-label" for="template-modify-chain-${id}">Chain</label>
-                    <select class="form-select" id="template-modify-chain-${id}" name="template-modify-chain-${id}" size="1" maxlength="1" placeholder="A" title="Select chain to modify" onchange="updatePlot()">
-                    </select>
+                <div class="col-md-auto">
+                    <label class="form-label" for="template-modify-delete-${id}"> Delete residues</label>
+                    <input type="text" class="form-control" id="template-modify-delete-${id}" name="template-modify-delete-${id}" placeholder="Default: ALL. 1, 3-10" title="Select residue numbers to delete in the chain, the rest will be deleted" onchange="updatePlot()">
                 </div>
-                <div class="col-md-auto" name="chain-div-${id}">
+                <div class="hidden col-md-auto" name="chain-div-${id}">
                     <label class="form-label" for="template-modify-pos-${id}">Position</label>
                     <select class="form-select" id="template-modify-pos-${id}" name="template-modify-pos-${id}" title="Choose position of the query sequence to insert the chain" onchange="updatePlot()">
                         ${optionsHTML}
                     </select>
                 </div>
-                <div class="col-md-auto" name="chain-div-${id}">
-                    <label class="form-label" for="template-modify-maintain-${id}"> Maintain residues</label>
-                    <input type="text" class="form-control" id="template-modify-maintain-${id}" name="template-modify-maintain-${id}" placeholder="1, 3-10" title="Select residue numbers to maintain in the chain, the rest will be deleted" onchange="updatePlot()">
-                </div>
             </div>
-            <div class="row row-margin" name="chain-div-${id}">
+            <div class="row row-margin">
                 <div class="col-md-auto">
                     <input type="checkbox" name="template-modify-residues-${id}" id="template-modify-residues-${id}" onchange="toggleModify(${this.templateID}, ${currentModificationValue})" value="true">
                     <label class="form-label" for="template-modify-residues-${id}"> Modify amino acids</label>
                 </div>
             </div>
-            <div class="hidden aminoacid-line-padding" style="margin-top: 0px" id="modaminoacids-div-${id}">
+            <div class="aminoacid-line-padding hidden" style="margin-top: 0px" id="modaminoacids-div-${id}">
                 <ul id="ul-modaminoacids-${id}" style="margin-bottom: 10px"></ul>
                 <a class="link-opacity-100 link-line-padding" id="add-modaminoacids-${id}" href="javascript:void(0)">Add amino acid change</a>
             </div>

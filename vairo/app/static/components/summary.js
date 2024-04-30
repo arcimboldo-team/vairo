@@ -236,58 +236,100 @@ async function updatePlot() {
             const addMSA = document.getElementById(`template-addmsa-${key}`).checked;
             const addTemplate = document.getElementById(`template-addtemplates-${key}`).checked;
             const chainsDict = Object.assign({}, values.chainSequences);
-            const chainsArray = [...values.chains]; 
             const resultsArray = Array(totalNumberCopies).fill("");
             const resultsChainArray = Array(totalNumberCopies).fill("");
             let changesResidue = Array(totalNumberCopies).fill([]);
             let changesFasta = Array(totalNumberCopies).fill([]);
-            for (const [restrictChain, restrictions] of Object.entries(getRestrictions(key))) {
+            let deleteResidues = Array(totalNumberCopies).fill(new Set());
+
+            const resValues = getRestrictions(key);
+            const positionsAccepted = resValues[1]
+            const restrictionsDict = resValues[0]
+
+            if(!positionsAccepted){
+                let currentIndex = 0;
+                Object.keys(chainsDict).forEach((key) => {
+                    const valueList = chainsDict[key];
+                    for (let i = 0; i < valueList.length && currentIndex < totalNumberCopies; i++) {
+                        resultsArray[currentIndex] = valueList[i];
+                        resultsChainArray[currentIndex] = key;
+                        currentIndex++;
+                    }
+                });
+                
+            }
+
+            for (const [restrictChain, restrictions] of Object.entries(restrictionsDict)) {
                 if (restrictChain === 'all') {
-                    if (restrictions.hasOwnProperty('residue')){
+                    if (restrictions['ANY'].hasOwnProperty('residue')){
                         changesResidue = changesResidue.map(change =>
-                            new Set([...change, ...restrictions['residue']])
+                            new Set([...change, ...restrictions['ANY']['residue']])
                         );
                     } 
-                    if (restrictions.hasOwnProperty('fasta')){
+                    if (restrictions['ANY'].hasOwnProperty('fasta')){
                         changesFasta = changesFasta.map(change =>
-                            new Set([...change, ...restrictions['fasta']])
+                            new Set([...change, ...restrictions['ANY']['fasta']])
                         );           
                     }
-                    continue;
+                    if (restrictions['ANY'].hasOwnProperty('delete')){
+                        deleteResidues = deleteResidues.map(deleteres =>
+                            new Set([...deleteres, ...restrictions['ANY']['delete']])
+                        );           
+                    }
+                    if (restrictions['ANY'].hasOwnProperty('residue')){
+                        changesResidue = changesResidue.map(changes =>
+                            new Set([...changes, ...restrictions['ANY']['residue']])
+                        );           
+                    }
+                    if (restrictions['ANY'].hasOwnProperty('fasta')){
+                        changesFasta = changesFasta.map(fasta =>
+                            new Set([...fasta, ...restrictions['ANY']['fasta']])
+                        );           
+                    }
                 }
-
-                let sequence = chainsDict[restrictChain];
-                if (restrictions.hasOwnProperty('maintain')) {
-                    sequence = Array.from(sequence)
-                    .filter((_, index) => restrictions['maintain'].has(index + 1))
-                    .join('');
-                }
-
-                let positionRes = '';
-                if (restrictions.hasOwnProperty('position')) {
-                    positionRes = restrictions['position'] - 1;
-                    resultsArray[positionRes] = sequence;
-                    resultsChainArray[positionRes] = restrictChain;
-                } else {
-                    chainsDict[restrictChain] = sequence;
-                    positionRes = chainsArray.indexOf(restrictChain)
-                }
-
-                if (restrictions.hasOwnProperty('residue')){
-                    changesResidue[positionRes] = new Set([...changesResidue[positionRes], ...restrictions['residue']]);
-                }
-                if (restrictions.hasOwnProperty('fasta')){
-                    changesFasta[positionRes] = new Set([...changesFasta[positionRes], ...restrictions['fasta']]);
-                }                          
+                else{
+                    for (let [positionStr, values] of Object.entries(restrictions)) {
+                        if (!positionsAccepted) {
+                            for (let i = 0; i < resultsChainArray.length; i++) {
+                                if (resultsChainArray[i] === restrictChain) {
+                                    if (values.hasOwnProperty('residue')) {
+                                        changesResidue[i] = new Set([...changesResidue[i], ...values['residue']]);
+                                    }
+                                    if (values.hasOwnProperty('fasta')) {
+                                        changesFasta[i] = new Set([...changesFasta[i], ...values['fasta']]);
+                                    }
+                                    if (values.hasOwnProperty('delete')) {
+                                        deleteResidues[i] = new Set([...deleteResidues[i], ...values['delete']]);
+                                    }
+                                }
+                            }
+                        } else {
+                            let position = parseInt(positionStr) - 1;
+                            const sequence = chainsDict[restrictChain].shift();
+                            chainsDict[restrictChain].push(sequence);
+                            resultsArray[position] = sequence;
+                            resultsChainArray[position] = restrictChain;
+                            if (values.hasOwnProperty('residue')) {
+                                changesResidue[position] = new Set([...changesResidue[position], ...values['residue']]);
+                            }
+                            if (values.hasOwnProperty('fasta')) {
+                                changesFasta[position] = new Set([...changesFasta[position], ...values['fasta']]);
+                            }
+                            if (values.hasOwnProperty('delete')) {
+                                deleteResidues[position] = new Set([...deleteResidues[position], ...values['delete']]);
+                            }
+                        }
+                    }
+                }                         
             }
-            
+
             let trimmedSequences = '';
             for (let i = 0; i < xTicks.length; i += 2) {
                 changesResidue[i/2] = Array.from(changesResidue[i/2]).map(value => value + (xTicks[i]-1));
                 changesFasta[i/2] = Array.from(changesFasta[i/2]).map(value => value + (xTicks[i]-1));
-                const isEmpty = resultsChainArray.every(value => value === "");
-                const chainName = !isEmpty ? resultsChainArray[i / 2] : chainsArray[i / 2];
-                const sequence = !isEmpty ? resultsArray[i / 2] : chainsDict[chainName];
+                const chainName = resultsChainArray[i / 2];
+                let sequence = resultsArray[i / 2];
+                sequence = Array.from(sequence).map((char, index) => deleteResidues[i / 2].has(index + 1) ? '-' : char).join('');
                 const seqLength = xTicks[i+1] - xTicks[i];
                 let trimmedSeq = chainName !== '' && sequence
                 ? seqLength >= sequence.length ? sequence + '-'.repeat(seqLength - sequence.length) : sequence.substring(0, seqLength)

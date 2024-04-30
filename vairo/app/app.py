@@ -1,3 +1,5 @@
+#! /usr/bin/env python3
+
 import io
 import os
 import pickle
@@ -11,8 +13,9 @@ import tempfile
 
 target_directory = os.path.dirname(Path(__file__).absolute().parent.parent)
 sys.path.append(target_directory)
-from vairo.libs import bioutils, features
-from vairo.tools import utilities
+from vairo import libs
+from libs import bioutils, features
+from tools import utilities
 
 app = Flask(__name__)
 
@@ -196,12 +199,18 @@ def form_vairo():
 def generate_multimer():
     try:
         pdb_data = request.form.get('templateData')
+        results_dict = {}
         with tempfile.NamedTemporaryFile(mode='w+') as pdb_input:
             pdb_input.write(pdb_data)
             pdb_input.flush()
             chain_dict = bioutils.split_pdb_in_chains(pdb_path=pdb_input.name)
             multimer_chain_dict = dict(sorted(bioutils.generate_multimer_chains(pdb_input.name, chain_dict).items()))
-            return jsonify(multimer_chain_dict)
+            for key, values in multimer_chain_dict.items():
+                results_dict[key] = []
+                for value in values:
+                    results_dict[key].append(bioutils.extract_sequence_msa_from_pdb(value)[key])
+
+            return jsonify(results_dict)
     except Exception as e:
         print(e)
         return jsonify({}), 500

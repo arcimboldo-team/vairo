@@ -160,5 +160,6 @@ setup(
         'scikit-learn',
         'pickle5',
         'jinja2',
+        'flask',
     ],
     python_requires='>=3.6')

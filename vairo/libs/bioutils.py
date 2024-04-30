@@ -13,7 +13,7 @@ from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
 from alphafold.relax import cleanup, amber_minimize
 from simtk import unit
-from libs import hhsearch, structures, utils, plots, global_variables, sequence, structures, template_modifications
+from libs import hhsearch, structures, utils, plots, global_variables, sequence, template_modifications
 
 
 def download_pdb(pdb_id: str, pdb_path: str) -> str:

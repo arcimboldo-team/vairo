@@ -22,6 +22,9 @@ function updatePositionsModifications(totalPositions){
         if (selectPositionsArray.map(String).includes(String(oldValue))) {
             select.value = oldValue;
         }
+        else{
+            select.value = 'ANY';
+        }
     });
     const selectionsFeature = document.querySelectorAll(`select[id^=feature-pos-]`);
 
@@ -85,6 +88,7 @@ function gradient(value) {
   let color = Math.floor((1-value) * 255);
   return "rgb(" + color + "," + color + "," + color + ")";
 }
+
 
 function scaleValues(inputList) {
   let max_value = Math.max(...inputList);
