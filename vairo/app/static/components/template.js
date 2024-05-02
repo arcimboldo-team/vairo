@@ -113,8 +113,6 @@ function getRestrictions(templateID){
             }
             const oldValues = modificationsDict[selection][positionKey]["delete"];
             const newValues = extendedNumbers(residues).sort(function(a, b) { return a - b });
-            console.log(oldValues);
-            console.log(newValues);
             modificationsDict[selection][positionKey]["delete"] = new Set(...oldValues, [...newValues]);
         }
         const changeAminoacids = div.querySelectorAll(`li[id^=modaminoacids-${templateID}-]`);
@@ -270,7 +268,6 @@ class templateTable extends HTMLElement {
     }
 
     addModificationLine() {
-        const optionsHTML = selectPositionsArray.map(option => `<option value="${option}">${option}</option>`).join('');
         const addModificationButton = this.querySelector(`#ul-modification-${this.templateID}`);
         const modificationLine = document.createElement('li');
         const id = `${this.templateID}-${this.modificationID}`;
@@ -292,7 +289,6 @@ class templateTable extends HTMLElement {
                 <div class="hidden col-md-auto" name="chain-div-${id}">
                     <label class="form-label" for="template-modify-pos-${id}">Position</label>
                     <select class="form-select" id="template-modify-pos-${id}" name="template-modify-pos-${id}" title="Choose position of the query sequence to insert the chain" onchange="updatePlot()">
-                        ${optionsHTML}
                     </select>
                 </div>
             </div>

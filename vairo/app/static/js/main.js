@@ -17,27 +17,28 @@ function updatePositionsModifications(totalPositions){
     const optionsHTML = selectPositionsArray.map(option => `<option value="${option}">${option}</option>`).join('');
     const selectionsTemplate = document.querySelectorAll(`select[id^=template-modify-pos-]`);
     selectionsTemplate.forEach(select => {
-        const oldValue = String(select.value);
+        const oldValue = select.value;
         select.innerHTML = optionsHTML;
         if (selectPositionsArray.map(String).includes(String(oldValue))) {
             select.value = oldValue;
-        }
-        else{
+        } else{
             select.value = 'ANY';
         }
     });
-    const selectionsFeature = document.querySelectorAll(`select[id^=feature-pos-]`);
 
-    const selectFeatureArray = selectPositionsArray;
+    const selectionsFeature = document.querySelectorAll(`select[id^=feature-pos-]`);
+    let selectFeatureArray = selectPositionsArray;
     selectFeatureArray.shift();
     const optionsFeatureHTML = selectFeatureArray.map(option => `<option value="${option}">${option}</option>`).join('');
     selectionsFeature.forEach(select => {
-      const oldValue = String(select.value);
-      select.innerHTML = optionsFeatureHTML;
-      if (selectFeatureArray.map(String).includes(String(oldValue))) {
-          select.value = oldValue;
-      }
-  });
+        const oldValue = select.value;
+        select.innerHTML = optionsFeatureHTML;
+        if (selectFeatureArray.map(String).includes(String(oldValue))) {
+            select.value = oldValue;
+        } else{
+            select.value = '1';
+        }
+    });
 }
 
 function extendedNumbers(input){

@@ -304,19 +304,21 @@ async function updatePlot() {
                                 }
                             }
                         } else {
-                            let position = parseInt(positionStr) - 1;
-                            const sequence = chainsDict[restrictChain].shift();
-                            chainsDict[restrictChain].push(sequence);
-                            resultsArray[position] = sequence;
-                            resultsChainArray[position] = restrictChain;
-                            if (values.hasOwnProperty('residue')) {
-                                changesResidue[position] = new Set([...changesResidue[position], ...values['residue']]);
-                            }
-                            if (values.hasOwnProperty('fasta')) {
-                                changesFasta[position] = new Set([...changesFasta[position], ...values['fasta']]);
-                            }
-                            if (values.hasOwnProperty('delete')) {
-                                deleteResidues[position] = new Set([...deleteResidues[position], ...values['delete']]);
+                            if(positionStr !== 'ANY'){
+                                let position = parseInt(positionStr) - 1;
+                                const sequence = chainsDict[restrictChain].shift();
+                                chainsDict[restrictChain].push(sequence);
+                                resultsArray[position] = sequence;
+                                resultsChainArray[position] = restrictChain;
+                                if (values.hasOwnProperty('residue')) {
+                                    changesResidue[position] = new Set([...changesResidue[position], ...values['residue']]);
+                                }
+                                if (values.hasOwnProperty('fasta')) {
+                                    changesFasta[position] = new Set([...changesFasta[position], ...values['fasta']]);
+                                }
+                                if (values.hasOwnProperty('delete')) {
+                                    deleteResidues[position] = new Set([...deleteResidues[position], ...values['delete']]);
+                                }
                             }
                         }
                     }
