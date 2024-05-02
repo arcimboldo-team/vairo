@@ -171,7 +171,7 @@ def form_vairo():
             if template_info.get('input') == 'code':
                 pdb_path = template_info.get('code')
             else:
-                file = files_dict['template'][library_id].get('file')
+                file = files_dict['template'][template_id].get('file')
                 filename = secure_filename(file.filename)
                 pdb_path = os.path.join(files_path, f'{template_id}_{filename}')
                 file.save(pdb_path)
@@ -181,6 +181,35 @@ def form_vairo():
             template_str += f"  generate_multimer: {'True' if template_info.get('multimer') is not None else 'False'}\n"
             template_str += f"  aligned: {'True' if template_info.get('aligned') is not None else 'False'}\n"
 
+            modify = template_info.get('modify')
+            if modify is not None:
+                template_str += f"  modifications:\n"
+                for modify_id, modify_info in template_info['modify'].items():
+                    chain = modify_info.get('where')
+                    delete = modify_info.get('delete')
+                    pos = modify_info.get('pos')
+                    modify_residues = True if modify_info.get('residues') is not None else False
+                    template_str += f"    - chain: {chain}\n"
+                    if delete is not None:
+                        template_str += f"      delete_residues: {delete}\n"
+                    if pos is not None:
+                        template_str += f"      position: {pos}\n"
+                    aminos = modify_info.get('amino')
+                    if aminos is not None and modify_residues:
+                        template_str += f"  replace:\n"
+                        for amino_id, amino_info in aminos.items():
+                            pos = amino_info.get('pos')
+                            select = amino_info.get('select')
+                            if pos is not None:
+                                template_str += f"      - residues: {pos}\n"
+                            if select == 'residue':
+                                template_str += f"        by: {select}\n"
+                            else:
+                                file = files_dict['template'][template_id]['modify'][modify_id]['amino'][amino_id].get('fasta')
+                                filename = secure_filename(file.filename)
+                                fasta_path = os.path.join(files_path, f'{template_id}_{modify_id}_{amino_id}_{filename}')
+                                file.save(fasta_path)
+                                template_str += f"        by: {fasta_path}\n"
 
     with open(config_file, 'w') as f_out:
         f_out.write(f'mode: {input_dict.get("mode")}\n')
@@ -191,7 +220,7 @@ def form_vairo():
         f_out.write(feat_str)
         f_out.write(library_str)
         f_out.write(template_str)
-
+    print(config_file)
     return jsonify({})
 
 
