@@ -114,7 +114,7 @@ async function updatePlot() {
 
         let mutationsArray = [];
         const ulMutation = document.getElementById(`ul-mutation-${sequenceID}`);
-        const posmutationInputs = ulMutation.querySelectorAll(`input[id^=posmutation-${sequenceID}-]`);
+        const posmutationInputs = ulMutation.querySelectorAll(`input[id^=sequence-mutations-pos-${sequenceID}-]`);
         posmutationInputs.forEach(input => {
             inputValue = input.value;
             if(input.value !== ""){
@@ -122,7 +122,6 @@ async function updatePlot() {
                 mutationsArray = [...new Set([...mutationsArray, ...resultArray])];
             }
         });
-
         const sequenceDict = {"name": nameQuery, "seq": sequenceInput, "mutations": mutationsArray.sort(function(a, b){return a-b})};
         const positionsSeqInput = document.getElementById(`sequence-positions-${sequenceID}`).value;
         const positionsSeq = positionsSeqInput.split(',').map(Number);
@@ -372,10 +371,11 @@ async function updatePlot() {
                 positionLibraryArray = extendedNumbers(`1-${numberResidues-1}`);
             }
             const seqArray = Array(numberResidues).fill(0);
+
             positionLibraryArray.forEach(index => seqArray[index-1] = 1);
             arrayTemplates.push({
-                'name': `library-${key}`, 
-                'seq': positionLibraryArray, 
+                'name': `lib-${key}`,
+                'seq': seqArray,
                 'changesRes': [],
                 'changesFasta': []
             });

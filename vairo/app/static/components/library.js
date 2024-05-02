@@ -10,9 +10,9 @@ async function readLibrary(id){
     const selectedRadio = document.querySelector(`input[type=radio][name="library-input-${id}"]:checked`);
     let counterMsa = 0;
     let counterTemplates = 0;
+    const addMsa = document.getElementById(`library-addmsa-${id}`).checked;
     if(selectedRadio.value === 'folder'){
         const folder = document.getElementById(`library-folder-${id}`);
-        const addMsa = document.getElementById(`library-addmsa-${id}`).checked;
         const addTemplates = document.getElementById(`library-addtemplates-${id}`).checked;
         var files = folder.files;
         for (let i = 0; i < files.length; i++) {
@@ -28,13 +28,15 @@ async function readLibrary(id){
             }
         }
     } else {
-        const fileInput = document.getElementById(`library-folder-${id}`)?.files?.[0];
-        const fileData = await readFile(fileInput);
-        const lines = fileData.split('\n');
-        if(addMsa){
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i][0] !== '>') {
-                    counterMsa++;
+        const fileInput = document.getElementById(`library-fasta-${id}`)?.files?.[0];
+        if(fileInput !== "undefined"){
+            const fileData = await readFile(fileInput);
+            const lines = fileData.split('\n');
+            if(addMsa){
+                for (let i = 0; i < lines.length; i++) {
+                    if (lines[i][0] !== '>') {
+                        counterMsa++;
+                    }
                 }
             }
         }
@@ -93,17 +95,17 @@ class libraryTable extends HTMLElement {
                             <input type="file" accept=".fasta" class="form-control" name="library-fasta-${this.libraryID}" id="library-fasta-${this.libraryID}" title="Choose fasta file with sequences" onchange="readLibrary('${this.libraryID}')">
                         </div>  
                     </div>
-                </div>    
-                <div class="row row-margin" id="library-add-templates-div-${this.libraryID}">
-                    <div class="col-md-auto">
-                        <input type="checkbox" id="library-addtemplates-${this.libraryID}" name="library-addtemplates-${this.libraryID}" value="true" onchange="readLibrary('${this.libraryID}')" checked>
-                        <label class="form-label" for="library-addtemplates-${this.libraryID}"> Add to templates</label>
-                    </div>
                 </div>
                 <div class="row">
                     <div class="col-md-auto">
                         <input type="checkbox" id="library-addmsa-${this.libraryID}" name="library-addmsa-${this.libraryID}" value="true" onchange="readLibrary('${this.libraryID}')">
                         <label class="form-label" for="library-addmsa-${this.libraryID}"> Add to MSA</label>
+                    </div>
+                </div>
+                <div class="row" id="library-addtemplates-div-${this.libraryID}">
+                    <div class="col-md-auto">
+                        <input type="checkbox" id="library-addtemplates-${this.libraryID}" name="library-addtemplates-${this.libraryID}" value="true" onchange="readLibrary('${this.libraryID}')" checked>
+                        <label class="form-label" for="library-addtemplates-${this.libraryID}"> Add to templates</label>
                     </div>
                 </div>
                 <div class="row row-margin">
