@@ -11,6 +11,10 @@ function convertToOneLetter(threeLetterCode) {
   return aminoacidMap[threeLetterCode] || '-';
 }
 
+function redirectToOutput(){
+    window.location.href = '/output';
+}
+
 let selectPositionsArray = ['ANY'];
 function updatePositionsModifications(totalPositions){
     selectPositionsArray = ['ANY', ...Array.from({length: totalPositions}, (_, i) => i + 1)];

@@ -13,7 +13,6 @@ import tempfile
 
 target_directory = os.path.dirname(Path(__file__).absolute().parent.parent)
 sys.path.append(target_directory)
-from vairo import libs
 from libs import bioutils, features
 from tools import utilities
 
@@ -64,6 +63,9 @@ def show_modfeatures():
 def show_modfeaturesinfo():
     return render_template('modfeaturesinfo.html')
 
+@app.route('/output')
+def show_output():
+    return render_template('output.html')
 
 @app.route('/', methods=["POST"])
 def form_vairo():
@@ -220,7 +222,6 @@ def form_vairo():
         f_out.write(feat_str)
         f_out.write(library_str)
         f_out.write(template_str)
-    print(config_file)
     return jsonify({})
 
 
