@@ -27,8 +27,7 @@ function updatePositionsModifications(totalPositions){
     });
 
     const selectionsFeature = document.querySelectorAll(`select[id^=feature-pos-]`);
-    let selectFeatureArray = selectPositionsArray;
-    selectFeatureArray.shift();
+    const selectFeatureArray = selectPositionsArray = [...Array.from({length: totalPositions}, (_, i) => i + 1)];
     const optionsFeatureHTML = selectFeatureArray.map(option => `<option value="${option}">${option}</option>`).join('');
     selectionsFeature.forEach(select => {
         const oldValue = select.value;

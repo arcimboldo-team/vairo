@@ -83,7 +83,7 @@ class featureTable extends HTMLElement {
                     </div>
                     <div class="col-md-auto">
                         <label class="form-label" for="feature-regionquery-${this.featureID}">Insert those regions in the following positions of the query sequence</label>
-                        <input type="text" class="form-control" id="feature-regionquery-${this.featureID}" name="feature-regionquery-${this.featureID}" placeholder="1, 20" title="Insert those regions in the following positions of the query sequence" onchange="updatePlot()">
+                        <input type="text" class="form-control" id="feature-regionquery-${this.featureID}" name="feature-regionquery-${this.featureID}" placeholder="Integer numbers separated by comma e.g. 1,3" title="Insert those regions in the following positions of the query sequence" onchange="updatePlot()">
                     </div>
                 </div>
                 <div class="row row-margin" id="feature-fasta-div-${this.featureID}">
