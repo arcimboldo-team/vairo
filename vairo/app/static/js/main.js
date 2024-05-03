@@ -11,10 +11,6 @@ function convertToOneLetter(threeLetterCode) {
   return aminoacidMap[threeLetterCode] || '-';
 }
 
-function redirectToOutput(){
-    window.location.href = '/output';
-}
-
 let selectPositionsArray = ['ANY'];
 function updatePositionsModifications(totalPositions){
     selectPositionsArray = ['ANY', ...Array.from({length: totalPositions}, (_, i) => i + 1)];
@@ -43,6 +39,7 @@ function updatePositionsModifications(totalPositions){
         }
     });
 }
+
 
 function extendedNumbers(input){
   inputArray = input.split(',');
@@ -98,15 +95,15 @@ function scaleValues(inputList) {
   let max_value = Math.max(...inputList);
   let new_list = [];
   for (let value of inputList) {
-      let new_value;
-      if (value <= 0) {
-          new_value = 0;
-      } else if (value >= max_value) {
-          new_value = 1;
-      } else {
-          new_value = Math.round(Math.log(value + 1) / Math.log(max_value + 1) * 100) / 100;
-      }
-      new_list.push(new_value);
+    let new_value;
+    if (value <= 0) {
+        new_value = 0;
+    } else if (value >= max_value) {
+        new_value = 1;
+    } else {
+        new_value = Math.round(Math.log(value + 1) / Math.log(max_value + 1) * 100) / 100;
+    }
+    new_list.push(new_value);
   }
   return new_list;
 }
@@ -143,7 +140,7 @@ async function readFile(file, binary=false) {
   return new Promise((resolve, reject) => {
       let fileReader = new FileReader();
       if(binary){
-          fileReader.readAsBinaryString(file);
+          fileReader.readAsArrayBuffer(file);
       } else {
           fileReader.readAsText(file);
       }
@@ -164,12 +161,17 @@ async function fetchPDB(pdbCode) {
     }
 }
 
-async function postData(url = '', dataDict, jsonData=true) {
+async function postData(url = '', dataDict, jsonData=true, alreadyForm=false) {
     return new Promise(async (resolve, reject) => {
         try {
-            let formData = new FormData();
-            for (const [key, value] of Object.entries(dataDict)) {
-                formData.append(key, value);
+            let formData = '';
+            if(alreadyForm){
+                formData = dataDict;
+            } else {
+                formData = new FormData();
+                for (const [key, value] of Object.entries(dataDict)) {
+                    formData.append(key, value);
+                }
             }
             const response = await fetch(url, {
                 method: 'POST',
@@ -183,7 +185,7 @@ async function postData(url = '', dataDict, jsonData=true) {
                 result = await response.json();
             } else {
                 result = await response.blob();
-            }            
+            }
             resolve(result);
         } catch (error) {
             reject(error);
@@ -191,35 +193,5 @@ async function postData(url = '', dataDict, jsonData=true) {
     });
 }
 
-window.addEventListener('DOMContentLoaded', event => {
-    const sidebarToggle = document.body.querySelector('#sidebarToggle');
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', event => {
-            event.preventDefault();
-            document.body.classList.toggle('sb-sidenav-toggled');
-            localStorage.setItem('sb|sidebar-toggle', document.body.classList.contains('sb-sidenav-toggled'));
-        });
-    }
-});
 
-const mainModule = (function () {
-    let sequenceClass, templateClass, libraryClass, featureClass, summaryClass;
-
-    $(document).ready(function(){
-        sequenceClass = new Accordion("sequence", "Query sequences");
-        templateClass = new Accordion("template", "Templates");
-        libraryClass = new Accordion("library", "Libraries");
-        featureClass = new Accordion("feature", "Features");
-        summaryClass = new Summary();
-        updatePlot();
-  });
-
-    return {
-        getSequenceClass: function() { return sequenceClass; },
-        getTemplateClass: function() { return templateClass; },
-        getLibraryClass: function() { return libraryClass; },
-        getFeatureClass: function() { return featureClass; },
-        getSummaryClass: function() { return summaryClass; }
-    };
-})();
 

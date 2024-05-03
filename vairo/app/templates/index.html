@@ -5,7 +5,7 @@
         {% include 'nav.html' %}
         <div class="layout-main">
             <main id="vairo-input">
-                <form action="{{ url_for('form_vairo')}}" method="post" enctype="multipart/form-data">
+                <form id="vairo-form">
                     <div class="container-fluid px-4">
                         <div class="card" id="general-input">
                             <div class="card-header">
@@ -52,7 +52,7 @@
                         </div>
                         <div class="card" id=feature>
                         </div>
-                    <button class="btn btn-primary" type="submit" onclick="redirectToOutput()">RUN</button>
+                    <button class="btn btn-primary" type="submit">RUN</button>
                     </div>
                 </form>
             </main>
@@ -61,6 +61,7 @@
         <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
         <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/input.js') }}"></script>
         <script src="{{ url_for('static', filename='js/plotly.js') }}"></script>
         <script src="{{ url_for('static', filename='js/ngl.js') }}"></script>
         <script src="{{ url_for('static', filename='components/summary.js') }}"></script>
