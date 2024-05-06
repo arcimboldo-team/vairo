@@ -8,18 +8,12 @@ async function displayOutput(){
         try{
             outputInfo = await postData('/read-output', {'path': decodedData});
             const mainElement = document.getElementById('vairo-output');
-            const configPathElement = document.createElement('p');
-            configPathElement.textContent = `Config Path: ${outputInfo['config_path']}`;
-            mainElement.appendChild(configPathElement);
-        
-            const configInfoElement = document.createElement('p');
-            const configInfoText = outputInfo['config_info'].replace(/\n/g, '<br>');
-            configInfoElement.innerHTML = `Config Info:<br> ${configInfoText}`;
-            mainElement.appendChild(configInfoElement);
-        
-            const outputPathElement = document.createElement('p');
-            outputPathElement.textContent = `Output Path: ${outputInfo['output_path']}`;
-            mainElement.appendChild(outputPathElement);
+
+            mainElement.innerHTML = `
+                <p>Configuration file: ${outputInfo['config_path']}</p>
+                <pre>${outputInfo['config_info']}</pre>
+                <p>HTML output path: ${outputInfo['output_path']}</p>
+            `;
 
         } catch (error) {
             alert('It has not been possible to read the output');

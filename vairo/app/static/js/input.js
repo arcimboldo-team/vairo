@@ -1,3 +1,22 @@
+
+function checkMode(){
+    var guidedRadio = document.getElementById('guided-radio');
+    var naiveRadio = document.getElementById('naive-radio');
+    var element1 = document.getElementById('template');
+    var element2 = document.getElementById('library');
+    var element3 = document.getElementById('feature');
+
+    if (naiveRadio.checked) {
+        element1.classList.add('hidden');
+        element2.classList.add('hidden');
+        element3.classList.add('hidden');
+    } else {
+        element1.classList.remove('hidden');
+        element2.classList.remove('hidden');
+        element3.classList.remove('hidden');
+    }
+}
+
 async function handleFormSubmission(event) {
     event.preventDefault();
 
