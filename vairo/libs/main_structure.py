@@ -769,8 +769,7 @@ class MainStructure:
         for template_in in templates:
             index = self.feature.get_index_by_name(utils.get_file_name(template_in))
             template_dict = self.feature.get_template_by_index(index)
-            new_features.set_template_features(new_templates=template_dict,
-                                               sequence_in=self.cluster_templates_sequence)
+            new_features.set_template_features(new_templates=template_dict)
         total_msa = self.feature.get_msa_length() if self.cluster_templates_msa == -1 else self.cluster_templates_msa + 1
         if self.cluster_templates_msa != 0:
             new_features.set_msa_features(new_msa=self.feature.msa_features, start=1, finish=total_msa,
