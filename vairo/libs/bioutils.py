@@ -537,8 +537,11 @@ def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures
                                binaries_path=binaries_path,
                                output_dir=os.path.join(output_dir, 'hinges'))
 
+    templates_cluster =  [pdbs]
+
     pdbs_accepted_list = [template_in for template_list in templates_cluster for template_in in template_list]
     num_templates = len(pdbs_accepted_list)
+
 
     if num_templates >= 5:
         logging.debug(
