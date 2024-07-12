@@ -87,29 +87,29 @@ class AlphaFoldPaths:
         for db in os.listdir(f'{self.af2_dbs_path}'):
             if 'mgnify' == db:
                 self.mgnify_db_path = glob.glob(f'{self.af2_dbs_path}/{db}/*.fa', recursive=True)[0]
-                logging.debug(f'Mgnify DB path: {self.mgnify_db_path}')
+                logging.info(f'Mgnify DB path: {self.mgnify_db_path}')
             elif 'uniref90' == db:
                 self.uniref90_db_path = glob.glob(f'{self.af2_dbs_path}/{db}/*.fasta', recursive=True)[0]
-                logging.debug(f'Uniref90 DB path: {self.uniref90_db_path}')
+                logging.info(f'Uniref90 DB path: {self.uniref90_db_path}')
             elif 'pdb_mmcif' == db:
                 self.mmcif_db_path = f'{self.af2_dbs_path}/{db}/mmcif_files'
                 self.obsolete_mmcif_db_path = f'{self.af2_dbs_path}/{db}/obsolete.dat'
-                logging.debug(f'mmCIF DB path: {self.mmcif_db_path}')
-                logging.debug(f'Obsolte mmCIF path: {self.obsolete_mmcif_db_path}')
+                logging.info(f'mmCIF DB path: {self.mmcif_db_path}')
+                logging.info(f'Obsolte mmCIF path: {self.obsolete_mmcif_db_path}')
             elif 'bfd' == db:
                 self.bfd_db_path = '_'.join(glob.glob(f'{self.af2_dbs_path}/{db}/*', recursive=True)[0].split('_')[:-1])
-                logging.debug(f'BFD DB path: {self.bfd_db_path}')
+                logging.info(f'BFD DB path: {self.bfd_db_path}')
             elif 'uniclust30' == db:
                 for file in glob.glob(f'{self.af2_dbs_path}/{db}/**/*', recursive=True):
                     if '.cs219' in file[-6:]:
                         self.uniclust30_db_path = file.split('.')[:-1][0]
-                        logging.debug(f'Uniclust30 DB path: {self.uniclust30_db_path}')
+                        logging.info(f'Uniclust30 DB path: {self.uniclust30_db_path}')
             elif 'pdb70' == db:
                 self.pdb70_db_path = f'{self.af2_dbs_path}/{db}/pdb70'
-                logging.debug(f'PDB70 DB path: {self.pdb70_db_path}')
+                logging.info(f'PDB70 DB path: {self.pdb70_db_path}')
             elif 'small_bfd' == db:
                 self.small_bfd_path = glob.glob(f'{self.af2_dbs_path}/{db}/*.fasta', recursive=True)[0]
-                logging.debug(f'Small BFD path: {self.small_bfd_path}')
+                logging.info(f'Small BFD path: {self.small_bfd_path}')
 
     def __repr__(self):
         return f' \

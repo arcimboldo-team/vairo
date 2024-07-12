@@ -21,6 +21,7 @@ import random
 import shutil
 import sys
 import time
+import copy
 from typing import Dict, Union
 
 from absl import app
@@ -494,7 +495,9 @@ def launch_alphafold2(fasta_path: str,
     FLAGS.use_gpu_relax = True
 
     app.parse_flags_with_usage(['alphafold'])
+
     app.run(main)
+
 
 
 if __name__ == '__main__':

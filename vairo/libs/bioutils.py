@@ -158,7 +158,7 @@ def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
             handle.write(pdb_dump)
         return True
     except Exception as e:
-        logging.debug(f'Something went wrong adding the CRYST1 record to the pdb at {pdb_in_path}')
+        logging.info(f'Something went wrong adding the CRYST1 record to the pdb at {pdb_in_path}')
         return False
 
 
@@ -199,7 +199,7 @@ def extract_sequence(fasta_path: str) -> str:
 
 
 def extract_sequences(fasta_path: str) -> Dict:
-    logging.debug(f'Extracting sequences from {fasta_path}')
+    logging.info(f'Extracting sequences from {fasta_path}')
     records = list(SeqIO.parse(fasta_path, 'fasta'))
     return dict([(rec.id, str(rec.seq)) for rec in records])
 
@@ -238,7 +238,7 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
                 value = str(record.seq.replace("X", "-"))
                 results_dict[key] = value
     except Exception as e:
-        logging.debug('Something went wrong extracting the fasta record from the pdb at', file_path)
+        logging.info('Something went wrong extracting the fasta record from the pdb at', file_path)
         pass
     return results_dict
 
@@ -488,7 +488,7 @@ def generate_ramachandran(pdb_path, output_dir: str = None) -> bool:
         percentage = len(analysis) / len(phi_psi_angles) * 100
     else:
         percentage = 0
-    logging.debug(
+    logging.info(
         f'{round(percentage, 2)}% of outliers in the ramachandran analysis of {utils.get_file_name(pdb_path)}.')
     if percentage > percentage_minimum:
         return False, percentage
@@ -537,20 +537,18 @@ def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures
                                binaries_path=binaries_path,
                                output_dir=os.path.join(output_dir, 'hinges'))
 
-    templates_cluster =  [pdbs]
-
     pdbs_accepted_list = [template_in for template_list in templates_cluster for template_in in template_list]
     num_templates = len(pdbs_accepted_list)
 
 
     if num_templates >= 5:
-        logging.debug(
+        logging.info(
             f'Running ccanalysis with the following templates: {" ".join([pdb.name for pdb in pdbs_accepted_list])}')
         templates_cluster2, analysis_dict2 = cc_analysis(pdbs=pdbs_accepted_list,
                                                          cc_analysis_paths=binaries_path,
                                                          output_dir=os.path.join(output_dir, 'ccanalysis'))
     else:
-        logging.debug('Less than 5 templates recognised by hinges. Skipping ccanalysis.')
+        logging.info('Less than 5 templates recognised by hinges. Skipping ccanalysis.')
 
     # if len(templates_cluster) > 1 and templates_cluster2:
     if templates_cluster2:
@@ -579,7 +577,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
     threshold_identity_upper = 90
     threshold_identity_down = 20
 
-    logging.debug('Starting hinges analysis')
+    logging.info('Starting hinges analysis')
     accepted_pdbs = []
     uncompleted_pdbs = []
     completed_pdbs = []
@@ -605,34 +603,34 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
         compactness_decision, _ = run_spong(pdb_in_path=pdb.split_path, spong_path=binaries_path.spong_path)
         if completeness and validate_geometry and compactness_decision and not only_ca and identity:
             accepted_pdbs.append(pdb)
-            logging.debug(f'PDB {pdb.name} has been accepted')
+            logging.info(f'PDB {pdb.name} has been accepted')
             if num_residues > pdb_complete_value:
                 pdb_complete_value = num_residues
                 pdb_complete = pdb
         else:
             uncompleted_pdbs.append(pdb)
-            logging.debug(f'PDB {pdb.name} has been filtered:')
+            logging.info(f'PDB {pdb.name} has been filtered:')
             if not completeness:
-                logging.debug(f'    Not complete enough')
+                logging.info(f'    Not complete enough')
             if not validate_geometry:
-                logging.debug(f'    Ramachandran above limit')
+                logging.info(f'    Ramachandran above limit')
             if not compactness_decision:
-                logging.debug(f'    Compactness below limit')
+                logging.info(f'    Compactness below limit')
             if not identity:
-                logging.debug(f'    Too low/high identity with the query sequence')
+                logging.info(f'    Too low/high identity with the query sequence')
             if only_ca:
-                logging.debug(f'    Only CA')
+                logging.info(f'    Only CA')
         if isinstance(pdb, structures.TemplateExtracted) and pdb.percentage_list:
             if any(number > threshold_completeness2 for number in pdb.percentage_list):
                 completed_pdbs.append(pdb)
         else:
             completed_pdbs.append(pdb)
 
-    logging.debug(f'There are {len(accepted_pdbs)} complete pdbs.')
+    logging.info(f'There are {len(accepted_pdbs)} complete pdbs.')
     if len(accepted_pdbs) < 2:
-        logging.debug(f'Skipping hinges.')
+        logging.info(f'Skipping hinges.')
         return [completed_pdbs]
-    logging.debug(f'Using hinges to create groups.')
+    logging.info(f'Using hinges to create groups.')
 
     # Run hinges all-against-all, store the results in a dict.
     results_rmsd = {pdb.name: {} for pdb in accepted_pdbs}
@@ -668,7 +666,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
                         if selected_group not in groups_names or len(groups_names[group[0]]) > len(
                                 groups_names[selected_group]):
                             selected_group = group[0]
-                        logging.debug(f'{key2} into group {selected_group} because of {selected_for} with {key1}')
+                        logging.info(f'{key2} into group {selected_group} because of {selected_for} with {key1}')
 
         groups_names[selected_group].append(key1)
     groups_names = [values for values in groups_names.values() if len(values) > 1]
@@ -699,21 +697,21 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
 
     if len(groups_names) > 1 or (len(groups_names) == 1 and len(groups_names[0]) > 1):
         # Return the groups that has generated
-        logging.debug(f'Hinges has created {len(groups_names)} group/s:')
+        logging.info(f'Hinges has created {len(groups_names)} group/s:')
         for i, values in enumerate(groups_names):
-            logging.debug(f'Group {i}: {",".join(values)}')
+            logging.info(f'Group {i}: {",".join(values)}')
         return [[pdb for pdb in pdbs if pdb.name in group] for group in groups_names]
     elif len(list(results_rmsd.keys())) > 1:
         # Create two groups, more different and completes pdbs
         more_different = list(results_rmsd[pdb_complete.name].keys())[-1]
         pdb_diff = [pdb for pdb in pdbs if pdb.name == more_different][0]
-        logging.debug(f'Hinges could not create any groups')
-        logging.debug(f'Creating two groups: The more completed pdb: {pdb_complete.name} '
+        logging.info(f'Hinges could not create any groups')
+        logging.info(f'Creating two groups: The more completed pdb: {pdb_complete.name} '
                       f'and the more different one: {pdb_diff.name}')
         return [[pdb_complete], [pdb_diff]]
     else:
         # Return the original list of pdbs
-        logging.debug('Not enough pdbs for hinges.')
+        logging.info('Not enough pdbs for hinges.')
         return [completed_pdbs]
 
 
@@ -948,7 +946,7 @@ def split_chains_assembly(pdb_in_path: str,
     chains = list(set(get_chains(pdb_in_path)))
 
     if len(chains) > 1:
-        logging.debug(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
+        logging.info(f'PDB: {pdb_in_path} is already split in several chains: {chains}')
         try:
             shutil.copy2(pdb_in_path, pdb_out_path)
         except shutil.SameFileError:
@@ -1067,10 +1065,10 @@ def generate_multimer_chains(pdb_path: str, template_dict: Dict) -> Dict:
     chain_list, transformations_list = read_remark_350(pdb_path)
     multimer_dict = {}
 
-    logging.debug(
+    logging.info(
         'Assembly can be build using chain(s) ' + str(chain_list) + ' by applying the following transformations:')
     for matrix in transformations_list:
-        logging.debug(str(matrix))
+        logging.info(str(matrix))
 
     for chain in chain_list:
         if chain in template_dict.keys():
@@ -1138,7 +1136,7 @@ def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
         with open(pdb_out_path, 'w') as f_out:
             f_out.write(pdb_output)
     except:
-        logging.debug(f'PDBFixer did not finish correctly for {utils.get_file_name(pdb_in_path)}. Skipping.')
+        logging.info(f'PDBFixer did not finish correctly for {utils.get_file_name(pdb_in_path)}. Skipping.')
         shutil.copy2(pdb_in_path, pdb_out_path)
         pass
 
@@ -1288,7 +1286,7 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
     with open(pisa_general_txt, 'w') as f_out:
         f_out.write(pisa_output)
     if pisa_output == '' or 'NO INTERFACES FOUND' in pisa_output or 'no chains found in input file' in pisa_text:
-        logging.debug(f'No interfaces found in pisa for pdb {pdb_in_path}')
+        logging.info(f'No interfaces found in pisa for pdb {pdb_in_path}')
     else:
         interfaces_list = utils.parse_pisa_general_multimer(pisa_output)
         for interface in interfaces_list:
