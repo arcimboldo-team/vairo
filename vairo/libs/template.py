@@ -112,7 +112,7 @@ class Template:
         #   - Build the new template merging all the templates.
         #   - Create features for the new template.
 
-        logging.debug(f'Generating features of template {self.pdb_id}')
+        logging.info(f'Generating features of template {self.pdb_id}')
         self.template_chains_struct.apply_changes()
 
         merge_list = []

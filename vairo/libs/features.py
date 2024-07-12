@@ -153,7 +153,7 @@ class Features:
         return self.template_features['template_sequence'][index].decode()
 
     def merge_features(self) -> Dict[Any, Any]:
-        logging.debug(f'Merging sequence, msa and template features!')
+        logging.info(f'Merging sequence, msa and template features!')
         return {**self.sequence_features, **self.msa_features, **self.template_features, **self.extra_info}
 
     def get_template_by_index(self, index: int) -> Dict:

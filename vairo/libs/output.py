@@ -88,7 +88,7 @@ class OutputStructure:
         for template in self.templates_list:
             template.add_percentage(vairo_struct.sequence_assembled.get_percentages(template.path))
             if sum(template.percentage_list) == 0:
-                logging.debug('Template {template.name} does not have any sequence coverage. Skipping')
+                logging.info('Template {template.name} does not have any sequence coverage. Skipping')
                 continue
             template.set_split_path(os.path.join(self.templates_path, f'{template.name}.pdb'))
             template.set_sequence_msa(list(bioutils.extract_sequence_msa_from_pdb(template.path).values())[0])
@@ -249,7 +249,7 @@ class OutputStructure:
                     ranked.set_potential_energy(
                         bioutils.run_openmm(pdb_in_path=ranked.split_path, pdb_out_path=ranked.minimized_path))
                 except:
-                    logging.debug(f'Not possible to calculate the energies for pdb {ranked.path}')
+                    logging.info(f'Not possible to calculate the energies for pdb {ranked.path}')
                 found = False
                 for ranked2 in self.ranked_list:
                     if ranked2.filtered and ranked2.name != ranked.name \
