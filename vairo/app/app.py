@@ -4,6 +4,7 @@ import io
 import os
 import pickle
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -15,7 +16,7 @@ from werkzeug.utils import secure_filename
 target_directory = os.path.dirname(Path(__file__).absolute().parent.parent)
 sys.path.append(target_directory)
 from vairo import libs
-from libs import bioutils, features
+from libs import bioutils, features, utils
 from tools import utilities
 
 app = Flask(__name__)
@@ -76,18 +77,17 @@ def form_vairo():
     try:
         input_dict = transform_dict(request.form)
         files_dict = transform_dict(request.files)
-        print(input_dict)
-        print(files_dict)
         output_path = input_dict.get('output')
         config_file = os.path.join(output_path, 'config.yml')
         files_path = os.path.join(output_path, 'input_files')
         if not os.path.exists(files_path):
             os.makedirs(files_path)
-        config_str = ''
-        config_str += f'mode: {input_dict.get("mode")}\n'
+
+        runaf2 = True if input_dict.get('runaf2') is not None else False
+        config_str = f'mode: {input_dict.get("mode")}\n'
         config_str += f'output_dir: {output_path}\n'
         config_str += f'af2_dbs_path: {input_dict.get("databases")}\n'
-        config_str += f'run_af2: True\n'
+        config_str += f"run_af2: {runaf2}\n"
 
         if 'template' in input_dict:
             config_str += 'templates:\n'
@@ -129,9 +129,11 @@ def form_vairo():
                                 if select == 'residue':
                                     config_str += f"        by: {select}\n"
                                 else:
-                                    file = files_dict['template'][template_id]['modify'][modify_id]['amino'][amino_id].get('fasta')
+                                    file = files_dict['template'][template_id]['modify'][modify_id]['amino'][
+                                        amino_id].get('fasta')
                                     filename = secure_filename(file.filename)
-                                    fasta_path = os.path.join(files_path, f'{template_id}_{modify_id}_{amino_id}_{filename}')
+                                    fasta_path = os.path.join(files_path,
+                                                              f'{template_id}_{modify_id}_{amino_id}_{filename}')
                                     file.save(fasta_path)
                                     config_str += f"        by: {fasta_path}\n"
 
@@ -223,10 +225,14 @@ def form_vairo():
         with open(config_file, 'w') as f_out:
             f_out.write(config_str)
 
+        run_vairo_path = os.path.join(target_directory, 'run_vairo.py')
+        subprocess.Popen(["nq", run_vairo_path, config_file])
+        print(run_vairo_path, config_file)
         return jsonify({})
     except Exception as e:
         print(e)
         return jsonify({}), 500
+
 
 @app.route('/generate-multimer', methods=["POST"])
 def generate_multimer():
@@ -247,6 +253,7 @@ def generate_multimer():
     except Exception as e:
         print(e)
         return jsonify({}), 500
+
 
 @app.route('/read-pkl', methods=["POST"])
 def read_pkl():
@@ -269,15 +276,10 @@ def read_pkl():
 def read_output():
     try:
         path = request.form.get('path')
-        print(path)
         config_path = os.path.join(path, 'config.yml')
-        output_path = os.path.join(path, 'output', 'output.html')
-        if not os.path.exists(output_path):
-            output_path = 'Output path does not exist'
+        output_path = os.path.join(path, 'output.html')
 
         if os.path.exists(config_path):
-            print(config_path)
-            config_info = ''
             with open(config_path, 'r') as f_in:
                 config_info = f_in.read()
             return {
@@ -286,7 +288,6 @@ def read_output():
                 'output_path': output_path
             }
         else:
-            print('exxx')
             raise Exception
     except Exception as e:
         print(e)

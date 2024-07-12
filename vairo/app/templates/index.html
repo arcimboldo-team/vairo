@@ -15,18 +15,24 @@
                                 <div class="form-group">
                                     <label class="form-label">Select mode
                                         <div class="form-check">
-                                            <input class="form-check-input" type="radio" value="guided" name="general-mode" id="guided-radio" checked>
+                                            <input class="form-check-input" type="radio" value="guided" name="general-mode" id="guided-radio" onchange="checkMode()" checked>
                                             <label class="form-check-label" for="guided-radio">
                                                 Guided
                                             </label>
                                         </div>
                                         <div class="form-check">
-                                            <input class="form-check-input" type="radio" value="naive" name="general-mode" id="naive-radio">
+                                            <input class="form-check-input" type="radio" value="naive" name="general-mode" id="naive-radio" onchange="checkMode()">
                                             <label class="form-check-label" for="naive-radio">
                                                 Naive
                                             </label>
                                         </div>
                                     </label>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-auto">
+                                        <input type="checkbox" id="general-runaf2" name="general-runaf2" value="true">
+                                        <label class="form-label" for="general-runaf2">Run AlphaFold2</label>
+                                    </div>
                                 </div>
                                 <div class="row row-margin">
                                     <div class="form-group">
