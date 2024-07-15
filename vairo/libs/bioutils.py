@@ -1136,7 +1136,7 @@ def run_vairo(yml_path: str, input_path: str):
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
-s    if not utils.read_rankeds(input_path=input_path):
+    if not utils.read_rankeds(input_path=input_path):
         raise Exception(f'VAIRO cluster did not finish correctly. Please check the log in the following directory: {input_path}')
     else:
         logging.error('VAIRO cluster run finished successfully.')
