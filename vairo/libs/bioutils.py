@@ -1130,13 +1130,16 @@ def run_pdbfixer(pdb_in_path: str, pdb_out_path: str):
         pass
 
 
-def run_vairo(yml_path: str):
+def run_vairo(yml_path: str, input_path: str):
     vairo_path = os.path.join(utils.get_main_path(), 'run_vairo.py')
     command_line = f'{vairo_path} {yml_path}'
     p = subprocess.Popen(command_line, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
-    logging.error('VAIRO cluster run finished successfully.')
+s    if not utils.read_rankeds(input_path=input_path):
+        raise Exception(f'VAIRO cluster did not finish correctly. Please check the log in the following directory: {input_path}')
+    else:
+        logging.error('VAIRO cluster run finished successfully.')
 
 
 def run_openmm(pdb_in_path: str, pdb_out_path: str) -> float:

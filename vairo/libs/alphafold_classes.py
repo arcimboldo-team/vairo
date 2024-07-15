@@ -64,7 +64,9 @@ class AlphaFoldRun:
                 pass
             except:
                 raise Exception('AlphaFold2 stopped abruptly. Check the logfile')
+                            
             logging.error('AlphaFold2 has finished successfully. Proceeding to analyse the results')
+
         else:
             logging.error('AlphaFold2 run skipped. Proceeding to analyse the results')
 

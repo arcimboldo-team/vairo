@@ -616,7 +616,7 @@ class MainStructure:
                     logging.error('Without templates')
                 counter += 1
                 yml_path = self.create_cluster(job_path=new_path, templates=cluster_paths)
-                bioutils.run_vairo(yml_path=yml_path)
+                bioutils.run_vairo(yml_path=yml_path, input_path=new_path)
                 rankeds = utils.read_rankeds(input_path=new_path)
 
                 results_path = os.path.join(new_path, os.path.basename(self.run_dir),
@@ -739,7 +739,7 @@ class MainStructure:
             f_out.write(f'     replace:\n')
             f_out.write(f'     - residues: 1-100000\n')
             f_out.write(f'       by: ALA\n')
-        bioutils.run_vairo(yml_path=yml_path)
+        bioutils.run_vairo(yml_path=yml_path, input_dir=mutations_dir)
         if os.path.exists(old_results_dir):
             shutil.rmtree(old_results_dir)
         shutil.move(self.results_dir, old_results_dir)
