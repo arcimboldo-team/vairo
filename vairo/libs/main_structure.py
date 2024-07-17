@@ -402,6 +402,8 @@ class MainStructure:
                 render_dict['ranked_list'] = self.output.ranked_list
             if self.output.group_ranked_by_qscore_dict:
                 render_dict['ranked_by_qscore'] = self.output.group_ranked_by_qscore_dict
+            if self.output.filtered_ranked_reason_dict:
+                render_dict['filtered_ranked_reason'] = self.output.filtered_ranked_reason_dict
             if conclusion_dict:
                 render_dict['conclusion_dict'] = conclusion_dict
                 render_dict['conclusion_type'] = conclusion_type

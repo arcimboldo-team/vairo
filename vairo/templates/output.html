@@ -415,7 +415,14 @@
                         {% endif %}
                     {% endfor %}
                 {% endif %}
-
+                {% if data.filtered_ranked_reason %}
+                    <p>The following predictions have been filtered:</p>
+                    <ul>
+                        {% for key, value in data.filtered_ranked_reason.items() %}
+                            <li> <span style="color: red"> {{ key }}: {{ value }} </span> </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
             <div id="input" class="section-div">
                 <h2>Input</h2>

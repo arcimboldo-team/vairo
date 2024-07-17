@@ -58,6 +58,7 @@ class OutputStructure:
         self.templates_selected: List = []
         self.dendogram_struct: structures.Dendogram = None
         self.num_interfaces: int = 0
+        self.filtered_ranked_reason_dict: dict = {}
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
@@ -153,12 +154,15 @@ class OutputStructure:
             else:
                 ranked.set_filtered(False)
                 logging.error(f'Prediction {ranked.name} has been filtered:')
-                if not accepted_ramachandran:
-                    logging.error(f'    Ramachandran above limit')
-                if not accepted_compactness:
-                    logging.error(f'    Compactness below limit')
-                if ranked.plddt < (PERCENTAGE_FILTER * max_plddt):
-                    logging.error(f'    PLDDT too low')
+                conditions = [
+                    (not accepted_ramachandran, 'Ramachandran above limit'),
+                    (not accepted_compactness, 'Compactness below limit'),
+                    (ranked.plddt < (PERCENTAGE_FILTER * max_plddt), 'PLDDT too low')
+                ]
+                error_messages = [msg for condition, msg in conditions if condition]
+                error_str = ', '.join(error_messages)
+                self.filtered_ranked_reason_dict[ranked.name] = error_str
+                logging.error(f'    {error_str}')
 
         # Superpose the experimental pdb with all the rankeds and templates
         logging.error('Superposing experimental pdbs with predictions and templates')
