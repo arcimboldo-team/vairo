@@ -159,8 +159,8 @@ class OutputStructure:
                     (not accepted_compactness, 'Compactness below limit'),
                     (ranked.plddt < (PERCENTAGE_FILTER * max_plddt), 'PLDDT too low')
                 ]
-                error_messages = [msg for condition, msg in conditions if condition]
-                error_str = ', '.join(error_messages)
+                error_str = [msg for condition, msg in conditions if condition]
+                error_str = ', '.join(error_str)
                 self.filtered_ranked_reason_dict[ranked.name] = error_str
                 logging.error(f'    {error_str}')
 
