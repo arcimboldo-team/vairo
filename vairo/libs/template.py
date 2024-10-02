@@ -157,8 +157,11 @@ class Template:
             template_chains_aux = bioutils.split_pdb_in_chains(output_dir=self.template_chains_dir, pdb_path=self.pdb_path)
             for chain, template_chain_path in template_chains_aux.items():
                 if self.generate_multimer:
-                    chain_dict = bioutils.generate_multimer_chains(self.pdb_path, {chain: template_chain_path})
-                    path_list = chain_dict[chain]
+                    try:
+                        chain_dict = bioutils.generate_multimer_chains(self.pdb_path, {chain: template_chain_path})
+                        path_list = chain_dict[chain]
+                    except:
+                        path_list = [template_chain_path]
                 else:
                     path_list = [template_chain_path]
                 if not self.selected_positions:
