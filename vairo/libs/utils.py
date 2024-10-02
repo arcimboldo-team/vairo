@@ -482,11 +482,11 @@ def get_input_value(name: str, section: str, input_dict: Dict, override_default=
         'sequence': 'sequence_input',
         'template': 'template_input',
         'modifications': 'modifications_input',
+        'features': 'features_input',
         'replace': 'replace_input',
         'append_library': 'append_library_input',
     }
     chosen_dict = INPUT_PARAMETERS.get(mapping.get(section))
-
     value_dict = chosen_dict.get(name)
     value = input_dict.get(name)
     if value is None and value_dict['required']:
