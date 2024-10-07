@@ -755,7 +755,7 @@ class MainStructure:
             f_out.write(f'  change_res:\n')
             f_out.write(f'  - All: 1-100000\n')
             f_out.write(f'    resname: ALA\n')
-        bioutils.run_vairo(yml_path=yml_path, input_dir=mutations_dir)
+        bioutils.run_vairo(yml_path=yml_path, input_path=mutations_dir)
         if os.path.exists(old_results_dir):
             shutil.rmtree(old_results_dir)
         shutil.move(self.results_dir, old_results_dir)
