@@ -76,9 +76,12 @@ def extract_features_info(features_path: str, region: str = None, ini_identity: 
     merged_dict = {**features_info_dict['msa'],**features_info_dict['templates']}
     print(f'Accepted sequences tanking into account the identity have been stored in: {store_fasta_path}')
     with open(store_fasta_path, 'w') as file:
+        duplicate_list = []
         for key, values in merged_dict.items():
-            file.write(f'\n>{key}\n')
-            file.write(f'{values["seq"]}')
+            if values["seq"] not in duplicate_list:
+                file.write(f'\n>{key}\n')
+                file.write(f'{values["seq"]}')
+                duplicate_list.append(values["seq"])
     print('\n================================')
     files_info.append(store_fasta_path)
 
@@ -97,7 +100,9 @@ def extract_features_info(features_path: str, region: str = None, ini_identity: 
     templates_keys = list(features_info_dict['templates'].keys())
     msa_keys = list(features_info_dict['msa'].keys())
     uniprot_description_statistics = collections.defaultdict(int)
-    uniprot_identity_statistics = collections.defaultdict(int)
+    uniprot_organism_statistics = collections.defaultdict(int)
+    uniprot_desidentity_statistics = collections.defaultdict(int)
+    uniprot_orgidentity_statistics = collections.defaultdict(int)
     for key, value in results_uniprot.items():
         if key in templates_keys:
             features_info_dict['templates'][key]['uniprot'] = value
@@ -107,14 +112,24 @@ def extract_features_info(features_path: str, region: str = None, ini_identity: 
         for uni_element in value:
             protein_description = uni_element['uniprot_protein_description']
             uniprot_description_statistics[protein_description] += 1
-            uniprot_identity_statistics[protein_description] = max(uniprot_identity_statistics[protein_description],
+            uniprot_desidentity_statistics[protein_description] = max(uniprot_desidentity_statistics[protein_description],
                                                                    int(uni_element['uniprot_identity']))
 
-    combined_uniprot_dict = {k: {'description': v, 'identity': uniprot_identity_statistics[k]}
+            organism_description = uni_element['uniprot_organism']
+            uniprot_organism_statistics[organism_description] += 1
+            uniprot_orgidentity_statistics[organism_description] = max(uniprot_orgidentity_statistics[organism_description],
+                                                                   int(uni_element['uniprot_identity']))
+
+    combined_uniprot_dict = {k: {'description': v, 'identity': uniprot_desidentity_statistics[k]}
                              for k, v in uniprot_description_statistics.items()}
 
-    features_info_dict['uniprot_statistics'] = dict(
+    combined_org_uniprot_dict = {k: {'organism': v, 'identity': uniprot_orgidentity_statistics[k]}
+                             for k, v in uniprot_organism_statistics.items()}
+
+    features_info_dict['uniprot_description_statistics'] = dict(
         sorted(combined_uniprot_dict.items(), key=lambda item: item[1]['description'], reverse=True))
+    features_info_dict['uniprot_organism_statistics'] = dict(
+        sorted(combined_org_uniprot_dict.items(), key=lambda item: item[1]['organism'], reverse=True))
 
     features_info_dict['general_information'] = {}
     features_info_dict['general_information']['query_sequence'] = query

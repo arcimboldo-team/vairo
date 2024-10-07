@@ -128,8 +128,8 @@ function createCoveragePlot(infoDict, regionsList){
 
 function createDescriptionPlot(infoDict){
     const generalPlotsDiv = document.getElementById("modfeatures-description-plot");
-    var keys = Object.keys(infoDict.uniprot_statistics);
-    var values = Object.values(infoDict.uniprot_statistics);
+    var keys = Object.keys(infoDict.uniprot_description_statistics);
+    var values = Object.values(infoDict.uniprot_description_statistics);
     var descriptions = values.map(item => item.description);
     var identities = values.map(item => item.identity);
     var maxVal = Math.max(...identities);
@@ -155,9 +155,52 @@ function createDescriptionPlot(infoDict){
     };
     var plotData = [trace];
     var layout = {
+        autosize: true,
         title: 'Sequence descriptions',
         xaxis: {
             title: 'Description',
+            tickangle: -45,
+        },
+        yaxis: {
+              title: 'Total',
+        },
+    };
+    Plotly.newPlot(generalPlotsDiv, plotData, layout);
+}
+
+function createOrganismPlot(infoDict){
+    const generalPlotsDiv = document.getElementById("modfeatures-organism-plot");
+    var keys = Object.keys(infoDict.uniprot_organism_statistics);
+    var values = Object.values(infoDict.uniprot_organism_statistics);
+    var organisms = values.map(item => item.organism);
+    var identities = values.map(item => item.identity);
+    var maxVal = Math.max(...identities);
+    var colorScale = 'Viridis';
+    var hoverText = values.map((val, index) => `Identity: ${identities[index]}, Description: ${organisms[index]}`);
+
+    var trace = {
+        x: keys,
+        y: organisms,
+        type: 'bar',
+        text: organisms.map(String),
+        hovertext: hoverText,
+        textposition: 'inside',
+        marker: {
+            color: identities,
+            colorscale: colorScale,
+            cmin: 0,
+            cmax: maxVal,
+            colorbar: {
+                title: 'Identity',
+            },
+        },
+    };
+    var plotData = [trace];
+    var layout = {
+        autosize: true,
+        title: 'Sequence organism',
+        xaxis: {
+            title: 'Organism',
             tickangle: -45,
         },
         yaxis: {
@@ -231,8 +274,10 @@ async function updateModFeatures(){
     const regionsList = extendedNumbers(rangeFeatures);
     document.getElementById('modfeatures-templates-table').innerHTML = '';
     document.getElementById('modfeatures-msa-table').innerHTML = '';
+    document.getElementById('modfeatures-download-button').innerHTML = '';
     document.getElementById('modfeatures-general-info').innerHTML = '';
     document.getElementById('modfeatures-description-plot').innerHTML = '';
+    document.getElementById('modfeatures-organism-plot').innerHTML = '';
     document.getElementById('modfeatures-coverage-plot').innerHTML = '';
 
     if(Object.keys(resultsFeatures).length){
@@ -250,6 +295,7 @@ async function updateModFeatures(){
             const request = objectStore.add(new_object, objectKey);
             createCoveragePlot(resultsFeatures, regionsList);
             createDescriptionPlot(resultsFeatures);
+            createOrganismPlot(resultsFeatures);
             document.getElementById('accordion-table').removeAttribute('hidden');
             document.getElementById('modfeatures-templates-text').textContent = `TEMPLATES (${resultsFeatures.coverage.num_templates} models)`;
             document.getElementById('modfeatures-msa-text').textContent = `MSA (${resultsFeatures.coverage.num_msa} sequences)`;
@@ -260,11 +306,30 @@ async function updateModFeatures(){
                 <p class="text-break">The full query sequence is:<br> ${resultsFeatures.general_information.query_sequence}</p>
                 <p class="text-break">The search region of the query sequence is:<br> ${resultsFeatures.general_information.query_search}<p>
             `;
+            createDownloadButton(resultsFeatures);
             document.getElementById("modfeatures-general-info").innerHTML = generalMessage;
             document.getElementById("modfeatures-run-button").removeAttribute("disabled");
         }
     }
 }
+
+// Function to dynamically create a button and append it to the DOM
+function createDownloadButton(resultsFeatures) {
+    const button = document.createElement('button');
+    button.id = 'modfeatures-download-json';
+    button.textContent = 'Download JSON results';
+    document.getElementById('modfeatures-download-button').appendChild(button);
+    button.addEventListener('click', function() {
+        const jsonString = JSON.stringify(resultsFeatures);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'results.json';
+        document.body.appendChild(link);
+        link.click();
+    });
+}
+
 
 function updateModFeaturesInfo(key, modFeaturesParams) {
     const modFeaturesInfoDiv = document.getElementById('modfeaturesinfo-data');
@@ -318,7 +383,6 @@ async function deleteModFeatures(){
     resultsFeatures = await runDeleteFeatures(inputDict);
     document.getElementById("modfeatures-delete-button").removeAttribute("disabled");
 }
-
 
 document.addEventListener("DOMContentLoaded", function() {
     if (window.location.pathname.endsWith("modfeaturesinfo")) {
