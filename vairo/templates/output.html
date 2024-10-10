@@ -375,7 +375,7 @@
                 {% endif %}
 
                 {% if 'templates_list' in data %}
-                    {% for template in data.templates_list if template.modifications_struct.modifications_list %}
+                    {% for template in data.templates_list if template.modifications_struct and template.modifications_struct.modifications_list %}
                         {% if loop.first %}
                             <p>The following changes have been made to the sequence of the templates:</p>
                             <ul>
