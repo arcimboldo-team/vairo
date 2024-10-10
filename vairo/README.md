@@ -1,7 +1,10 @@
 Requires HH-suite and CCP4 suite installation.
 Using AlphaFold2 and ALEPH.
 
-Usage: vairo.py configuration.bor
+Usage: run_vairo.py [-h] [-check] input_path
+
+Flags:
+ [-check]: Check the .bor information and if is well parsed.
 
 The configuration.bor has to be a file with YAML format and can contain the following
 parameters:
@@ -33,6 +36,7 @@ sequences:
   name:
   mutations:
     - 'G': 10, 20
+  predict
 
 Several features.pkl can be merged to the final features.pkl. It is possible to select the amount of templates and sequences to be inserted.
 Delete specific regions of the MSA, replace the sequence of the templates and insert the features in specific regions in the final features.

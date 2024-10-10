@@ -5,6 +5,8 @@ os.environ['XLA_PYTHON_CLIENT_PREALLOCATE'] = 'false'
 import sys
 import logging
 import yaml
+import argparse
+
 from datetime import datetime
 from libs import features, main_structure, utils, bioutils, pymol_script
 
@@ -16,15 +18,20 @@ def main():
         logging.error('VAIRO')
         logging.error('--------------')
         logging.error('')
-        try:
-            input_path = os.path.abspath(sys.argv[1])
-            if not os.path.isfile(input_path):
-                raise Exception
-        except Exception as e:
+        parser = argparse.ArgumentParser(description='Process configuration file and optional check flag.')
+        parser.add_argument('input_path', nargs='?', help='Path to the input file (.yml)')
+        parser.add_argument('-check', action='store_true', help='Check the input file and exit')
+        args = parser.parse_args()
+        # If config_file is not provided, print the README and exit
+        if not args.input_path:
             logging.error('USAGE')
             logging.error('------')
             logging.error(open(utils.get_readme()).read())
             raise SystemExit
+
+        # Retrieve the values
+        input_path = args.input_path
+        check_mode = args.check
 
         logging.error('Starting VAIRO...')
         logging.error(f'Timestamp: {datetime.now()}')
@@ -40,6 +47,9 @@ def main():
                 input_load = yaml.load(f, Loader=yaml.SafeLoader)
         except Exception as e:
             raise Exception('It has not been possible to read the input file')
+        if check_mode:
+            logging.error(f'Input file is CORRECT')
+            raise SystemExit
 
         utils.check_input(input_load)
         a_air = main_structure.MainStructure(parameters_dict=input_load)
