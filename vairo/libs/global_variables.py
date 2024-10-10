@@ -268,11 +268,11 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': None
         },
-        'positions_features': {
+        'numbering_features': {
             'required': False,
             'default': None
         },
-        'positions_query': {
+        'numbering_query': {
             'required': False,
             'default': None
         },
@@ -280,6 +280,10 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': None
         },
+        'mutations': {
+            'required': False,
+            'default': None
+        }
     },
     'append_library_input': {
       'path': {
@@ -297,11 +301,11 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': False
       },
-      'positions_library': {
+      'numbering_library': {
             'required': False,
             'default': None
       },
-      'positions_query': {
+      'numbering_query': {
             'required': False,
             'default': None
       },

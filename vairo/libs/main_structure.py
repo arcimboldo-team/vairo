@@ -4,7 +4,8 @@ import logging
 import os
 import shutil
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, output, template, utils, features, sequence, structures, plots, template_modifications
+from libs import alphafold_classes, bioutils, output, template, utils, features, sequence, structures, plots, \
+    template_modifications
 from jinja2 import Environment, FileSystemLoader
 
 MIN_RMSD_SPLIT = 5
@@ -146,30 +147,33 @@ class MainStructure:
             add_to_msa = utils.get_input_value(name='add_to_msa', section='append_library', input_dict=library)
             add_to_templates = utils.get_input_value(name='add_to_templates', section='append_library',
                                                      input_dict=library)
-            positions_query = utils.get_input_value(name='positions_query', section='append_library',
+            numbering_query = utils.get_input_value(name='numbering_query', section='append_library',
                                                     input_dict=library)
-            positions_library = utils.get_input_value(name='positions_library', section='append_library',
+            numbering_library = utils.get_input_value(name='numbering_library', section='append_library',
                                                       input_dict=library)
-            
+
             if os.path.exists(path):
                 self.library_list.append(structures.Library(path=path, aligned=aligned,
                                                             add_to_msa=add_to_msa,
                                                             add_to_templates=add_to_templates,
-                                                            positions_query=positions_query,
-                                                            positions_library=positions_library))
+                                                            numbering_query=numbering_query,
+                                                            numbering_library=numbering_library))
             else:
                 raise Exception(f'Path {path} does not exist. Check the input append_library parameter.')
 
         for parameters_features in utils.get_input_value(name='features', section='global', input_dict=parameters_dict):
-            positions_features = utils.get_input_value(name='positions_features', section='features',
+            numbering_features = utils.get_input_value(name='numbering_features', section='features',
                                                        input_dict=parameters_features)
 
             positions = utils.get_input_value(name='positions', section='features', input_dict=parameters_features)
-            positions_query = utils.get_input_value(name='positions_query', section='features',
+            numbering_query = utils.get_input_value(name='numbering_query', section='features',
                                                     input_dict=parameters_features)
-            if positions_query is None and positions is not None:
-                positions_query = f'{self.sequence_assembled.get_starting_length(positions - 1) + 1}'
+            if numbering_query is None and positions is not None:
+                numbering_query = f'{self.sequence_assembled.get_starting_length(positions - 1) + 1}'
 
+            mutations = utils.get_input_value(name='mutations', section='features', input_dict=parameters_features)
+            if mutations:
+                mutations = utils.read_mutations_dict(mutations)
             self.features_input.append(structures.FeaturesInput(
                 path=utils.get_input_value(name='path', section='features', input_dict=parameters_features),
                 keep_msa=utils.get_input_value(name='keep_msa', section='features', input_dict=parameters_features),
@@ -177,8 +181,9 @@ class MainStructure:
                                                      input_dict=parameters_features),
                 msa_mask=utils.expand_residues(
                     utils.get_input_value(name='msa_mask', section='features', input_dict=parameters_features)),
-                positions_features=positions_features,
-                positions_query=positions_query,
+                numbering_features=numbering_features,
+                numbering_query=numbering_query,
+                mutate_residues=mutations,
                 replace_sequence=bioutils.check_sequence_path(
                     utils.get_input_value(name='sequence', section='features', input_dict=parameters_features))
             ))
@@ -294,7 +299,7 @@ class MainStructure:
 
         if self.templates_list:
             render_dict['templates_list'] = self.templates_list
-            
+
         if self.feature:
             if self.mode != 'naive':
                 info_input_list = []
@@ -327,7 +332,6 @@ class MainStructure:
             else:
                 render_dict['num_msa'] = self.feature.get_msa_length()
                 render_dict['num_templates'] = self.feature.get_templates_length()
-
 
         if self.output.ranked_list:
             render_dict['table'] = {}
@@ -463,7 +467,6 @@ class MainStructure:
                 return temp
         return None
 
-
     def append_line_in_templates(self, new_list: List):
         # Add line to the template's matrix.
         # The list contains the position of the chains
@@ -569,12 +572,13 @@ class MainStructure:
                     inm_cut = int(best_list[2][1])
 
                     delete_residues = template_modifications.TemplateModifications()
-                    delete_residues.append_modification(chains=['A'], delete_residues=[*range(inf_cut + 1, len_sequence + 1, 1)])
+                    delete_residues.append_modification(chains=['A'],
+                                                        delete_residues=[*range(inf_cut + 1, len_sequence + 1, 1)])
                     delete_residues.modify_template(pdb_in_path=inf_path, pdb_out_path=inf_path, type_modify=['delete'])
                     delete_residues = template_modifications.TemplateModifications()
                     delete_residues.append_modification(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
                     delete_residues.modify_template(pdb_in_path=pdb_out, pdb_out_path=pdb_out, type_modify=['delete'])
-                                       
+
                     merge_pdbs_list.append(pdb_out)
                     inf_path = pdb_out
 
@@ -834,9 +838,9 @@ class MainStructure:
                         f_out.write(f'  add_to_msa: {library.add_to_msa}\n')
                     if library.add_to_templates:
                         f_out.write(f'  add_to_templates: {library.add_to_templates}\n')
-                    if library.positions_query and library.positions_library:
-                        f_out.write(f'  positions_query: {library.positions_query}\n')
-                        f_out.write(f'  positions_library: {library.positions_library}\n')
+                    if library.numbering_query and library.numbering_library:
+                        f_out.write(f'  numbering_query: {library.numbering_query}\n')
+                        f_out.write(f'  numbering_library: {library.numbering_library}\n')
             if self.features_input:
                 f_out.write(f'\nfeatures:\n')
                 for feat in self.features_input:
@@ -846,11 +850,16 @@ class MainStructure:
                     f_out.write(f'  keep_templates: {feat.keep_templates}\n')
                     if feat.msa_mask:
                         f_out.write(f'  msa_mask: {",".join(map(str, feat.msa_mask))}\n')
-                    f_out.write(f'  positions_query: {feat.positions_query}\n')
+                    f_out.write(f'  numbering_query: {feat.numbering_query}\n')
                     f_out.write(
-                        f'  positions_features: {feat.positions_features}\n')
+                        f'  numbering_features: {feat.numbering_features}\n')
                     if feat.replace_sequence is not None:
                         f_out.write(f'  sequence: {feat.replace_sequence}\n')
+
+                    if feat.mutate_residues:
+                        f_out.write(f'  mutations:\n')
+                        for residue, values in feat.mutate_residues.items():
+                            f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_assembled.sequence_list:
                 f_out.write('-')
@@ -878,12 +887,14 @@ class MainStructure:
                         f_out.write(f'  modifications:\n')
                         for modification in template_in.modifications_struct.modifications_list:
                             f_out.write(f'  - chain: {modification.chain}\n')
-                            if modification.position+1:
-                                f_out.write(f'    position: {modification.position+1}\n')
+                            if modification.position + 1:
+                                f_out.write(f'    position: {modification.position + 1}\n')
                             if modification.maintain_residues:
-                                f_out.write(f'    maintain_residues: {", ".join(map(str, modification.maintain_residues))}\n')
+                                f_out.write(
+                                    f'    maintain_residues: {", ".join(map(str, modification.maintain_residues))}\n')
                             if modification.delete_residues:
-                                f_out.write(f'    delete_residues: {", ".join(map(str, modification.delete_residues))}\n')
+                                f_out.write(
+                                    f'    delete_residues: {", ".join(map(str, modification.delete_residues))}\n')
                             f_out.write(f'      when: {modification.when}\n')
 
                             if modification.mutations:
@@ -891,7 +902,6 @@ class MainStructure:
                                 for mutation in modification.mutations:
                                     f_out.write(f'      - residues: {", ".join(map(str, mutation.residues))}\n')
                                     f_out.write(f'        by: {mutation.by}\n')
-                                    
 
     def __repr__(self) -> str:
         return f' \

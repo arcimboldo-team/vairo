@@ -228,7 +228,7 @@ def extract_sequence_from_file(file_path: str) -> List[str]:
         extraction = 'cif-atom'
     else:
         extraction = 'pdb-atom'
-        
+
     try:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
@@ -704,7 +704,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
         pdb_diff = [pdb for pdb in pdbs if pdb.name == more_different][0]
         logging.info(f'Hinges could not create any groups')
         logging.info(f'Creating two groups: The more completed pdb: {pdb_complete.name} '
-                      f'and the more different one: {pdb_diff.name}')
+                     f'and the more different one: {pdb_diff.name}')
         return [[pdb_complete], [pdb_diff]]
     else:
         # Return the original list of pdbs
@@ -735,7 +735,8 @@ def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.Binari
                         bfactors_dict[chain][i] = round(bfactors_dict[chain][i] - 70.0, 2)
 
             modify_bfactors = template_modifications.TemplateModifications()
-            modify_bfactors.append_modification(chains=list(bfactors_dict.keys()), bfactors=list(bfactors_dict.values()))
+            modify_bfactors.append_modification(chains=list(bfactors_dict.keys()),
+                                                bfactors=list(bfactors_dict.values()))
             modify_bfactors.modify_template(pdb_in_path=path, pdb_out_path=path, type_modify=['bfactors'])
 
         new_path = os.path.join(output_dir, f'orig.{str(index)}.pdb')
@@ -1137,7 +1138,8 @@ def run_vairo(yml_path: str, input_path: str):
                          stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     if not utils.read_rankeds(input_path=input_path):
-        raise Exception(f'VAIRO cluster did not finish correctly. Please check the log in the following directory: {input_path}')
+        raise Exception(
+            f'VAIRO cluster did not finish correctly. Please check the log in the following directory: {input_path}')
     else:
         logging.error('VAIRO cluster run finished successfully.')
 
@@ -1356,7 +1358,7 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     split_dimers_in_pdb(pdb_in_path=pdb_in_path,
                         pdb_out_path=pdb_out_path,
                         chain_list=[interface.chain1, interface.chain2])
-    
+
     change = template_modifications.TemplateModifications()
     change.append_modification(chains=list(add_domains_dict.keys()), maintain_residues=list(add_domains_dict.values()))
     change.modify_template(pdb_in_path=pdb_out_path, pdb_out_path=pdb_out_path, type_modify=['delete'])
@@ -1449,6 +1451,7 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     modify_bfactors = template_modifications.TemplateModifications()
     modify_bfactors.append_modification(chains=[chain], bfactors=conservation_list.tolist())
     modify_bfactors.modify_template(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path, type_modify=['bfactors'])
+
 
 def calculate_coverage(query_seq: str, sequences: List[str], only_match: bool) -> List[str]:
     # Coverage of the sequences. It is divided by the number of sequences.

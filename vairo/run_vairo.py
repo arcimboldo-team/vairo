@@ -88,12 +88,13 @@ def main():
                 feat_aux = features.create_features_from_file(pkl_in_path=feat.path)
                 num_msa = 0
                 num_templates = 0
-                modifications_list = utils.modification_list(query=feat.positions_query, target=feat.positions_features,
+                modifications_list = utils.modification_list(query=feat.numbering_query, target=feat.numbering_features,
                                                              length=a_air.sequence_assembled.length)
                 # Delete the residues before expanding, so we avoid shifting them
                 feat_aux.delete_residues_msa(delete_positions=feat.msa_mask)
                 feat_aux.replace_sequence_template(sequence_in=feat.replace_sequence)
-                # Cut and expand the features, in order to fit the generat features.pkl
+                feat_aux.mutate_residues(change_dict=feat.mutate_residues)
+                # Cut and expand the features, in order to fit the general features.pkl
                 feat_aux = feat_aux.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled,
                                                         modifications_list=modifications_list)
                 if feat.keep_msa != 0:
@@ -107,13 +108,14 @@ def main():
                                                                         finish=feat.keep_templates)
                     logging.error(f'     Adding {num_templates} template/s to templates')
                 feat.add_information(num_msa=num_msa, num_templates=num_templates)
+
             for i, library in enumerate(a_air.library_list):
                 logging.error(f'Reading library {library.path}')
                 aux_list = [os.path.join(library.path, file) for file in os.listdir(library.path)] if os.path.isdir(
                     library.path) else [library.path]
                 paths = [path for path in aux_list if utils.get_file_extension(path) in ['.pdb', '.fasta']]
-                modifications_list = utils.modification_list(query=library.positions_query,
-                                                             target=library.positions_library,
+                modifications_list = utils.modification_list(query=library.numbering_query,
+                                                             target=library.numbering_library,
                                                              length=a_air.sequence_assembled.length)
                 lib_feat = features.Features(query_sequence=a_air.sequence_assembled.sequence_mutated_assembled)
                 for aux_path in paths:

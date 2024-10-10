@@ -61,8 +61,9 @@ class FeaturesInput:
     keep_templates: int
     msa_mask: List[int]
     replace_sequence: str
-    positions_features: List[int]
-    positions_query: List[int]
+    numbering_features: List[int]
+    numbering_query: List[int]
+    mutate_residues: dict
     num_msa: int = dataclasses.field(default=0)
     num_templates: int = dataclasses.field(default=0)
 
@@ -77,8 +78,8 @@ class Library:
     aligned: str
     add_to_msa: bool
     add_to_templates: bool
-    positions_query: List[int]
-    positions_library: List[int]
+    numbering_query: List[int]
+    numbering_library: List[int]
     num_msa: int = dataclasses.field(default=0)
     num_templates: int = dataclasses.field(default=0)
 

@@ -186,7 +186,7 @@ def form_vairo():
                 if regionfeat is not None:
                     config_str += f"  positions_feature: {regionfeat}\n"
                 if regionquery is not None:
-                    config_str += f"  positions_query: {regionquery}\n"
+                    config_str += f"  numbering_query: {regionquery}\n"
                 if msa_mask is not None:
                     config_str += f"  msa_mask: {msa_mask}\n"
                 if sequence is not None:
@@ -217,9 +217,9 @@ def form_vairo():
                 regionlib = library_info.get('lib')
                 regionquery = library_info.get('query')
                 if regionlib is not None:
-                    config_str += f"  positions_library: {regionlib}\n"
+                    config_str += f"  numbering_library: {regionlib}\n"
                 if regionquery is not None:
-                    config_str += f"  positions_query: {regionquery}\n"
+                    config_str += f"  numbering_query: {regionquery}\n"
 
         with open(config_file, 'w') as f_out:
             f_out.write(config_str)

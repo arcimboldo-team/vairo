@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Tuple
 from sklearn import preprocessing
 from libs import structures
 from libs.global_variables import INPUT_PARAMETERS
+from alphafold.common import residue_constants
 
 
 def scale_values(input_list: List[int]) -> List[int]:
@@ -514,9 +515,9 @@ def modification_list(query: List[int], target: List[int], length: int) -> List[
         raise ValueError('The number of query positions and library positions mismatch')
     for query_value, target_range in zip(query, target):
         start, end = target_range
-        for i in range(start, end+1):
-            if query_value-1 < length:
-                result[query_value-1] = i
+        for i in range(start, end + 1):
+            if query_value - 1 < length:
+                result[query_value - 1] = i
                 query_value += 1
     return result
 
@@ -574,3 +575,16 @@ def generate_random_code(length: int):
     letters = string.ascii_letters
     random_code = ''.join(random.choice(letters) for i in range(length))
     return random_code
+
+
+def read_mutations_dict(input_mutations: list):
+    mutations_dict: Dict = {}
+    for mutation in input_mutations:
+        key = list(mutation.keys())[0]
+        values = expand_residues(list(mutation.values())[0])
+        if key not in list(residue_constants.restype_1to3.keys()):
+            raise Exception(
+                f'Mutation residues {"".join(values)} in {key} could not be possible. Residue {key} does not '
+                f'exist')
+        mutations_dict.setdefault(key, []).extend(values)
+    return mutations_dict

@@ -54,17 +54,12 @@ class Sequence:
         self.sequence_mutated = list(self.sequence)
         mutations = utils.get_input_value(name='mutations', section='sequence', input_dict=parameters_dict)
         if mutations:
-            for mutation in mutations:
-                key = list(mutation.keys())[0]
-                values = utils.expand_residues(list(mutation.values())[0])
-                if key not in list(residue_constants.restype_1to3.keys()):
-                    raise Exception(
-                        f'Mutation residues {"".join(values)} in {key} could not be possible. Residue {key} does not '
-                        f'exist')
-                self.mutations_dict.setdefault(key, []).extend(values)
-                for value in values:
+            self.mutations_dict = utils.read_mutations_dict(input_mutations=mutations)
+            for residue, numbering in self.mutations_dict.items():
+                for value in numbering:
                     if value <= len(self.sequence):
-                        self.sequence_mutated[value - 1] = key
+                        self.sequence_mutated[value - 1] = residue
+
         self.sequence_mutated = ''.join(self.sequence_mutated)
 
         mutated_name = f'{self.name}_mutated'
