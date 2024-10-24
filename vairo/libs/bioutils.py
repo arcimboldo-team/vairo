@@ -565,6 +565,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
     # If it has generated more than one group with length > 1-> Return those groups that has generated
     # If there is no group generated -> Return the one more completed and the one more different to that template
     # Otherwise, return all the paths
+    return [pdbs]
     utils.create_dir(output_dir, delete_if_exists=True)
     threshold_completeness = 0.6
     threshold_completeness2 = 0.3
