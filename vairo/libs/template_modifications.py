@@ -68,7 +68,6 @@ class ChainModifications:
                 break
         return name
 
-
     def get_deleted_residues(self) -> List[int]:
         return_list = []
         if self.delete_residues:
@@ -124,7 +123,8 @@ class TemplateModifications:
 
     def get_modifications_by_chain(self, chain: str = 'all', when: str = '') -> List[ChainModifications]:
         return [modification for modification in self.modifications_list if
-                (chain in [modification.chain, 'all'] or modification.chain == 'all') and (when == '' or modification.when == when)]
+                (chain in [modification.chain, 'all'] or modification.chain == 'all') and (
+                            when == '' or modification.when == when)]
 
     def get_modifications_by_chain_and_position(self, position: int, chain: str = 'all') -> List[ChainModifications]:
         # Return all the matches for a specific chain and position

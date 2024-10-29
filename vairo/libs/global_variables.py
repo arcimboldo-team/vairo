@@ -209,6 +209,10 @@ INPUT_PARAMETERS = {
         'mutations': {
             'required': False,
             'default': None
+        },
+        'predict_region': {
+            'required': False,
+            'default': []
         }
     },
     'template_input': {

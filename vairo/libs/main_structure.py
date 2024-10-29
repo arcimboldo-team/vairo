@@ -30,6 +30,7 @@ class MainStructure:
         self.af2_dbs_path: str
         self.binaries_paths: structures.BinariesPath
         self.sequence_assembled = sequence.SequenceAssembled
+        self.sequence_predicted_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
         self.templates_list: List[template.Template] = []
@@ -49,6 +50,7 @@ class MainStructure:
         self.mosaic_partition: List[int]
         self.mosaic_seq_partition: List[int]
         self.feature: Union[features.Features, None] = None
+        self.feature_predicted: Union[features.Features, None] = None
         self.output: output.OutputStructure
         self.state: int = 0
         self.features_input: List[structures.FeaturesInput] = []
@@ -139,7 +141,8 @@ class MainStructure:
                                                          input_dict=parameters_dict):
             new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir)
             sequence_list.append(new_sequence)
-        self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
+        self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines, predicted=False)
+        self.sequence_predicted_assembled = sequence.SequenceAssembled(sequence_list, self.glycines, predicted=True)
 
         for library in utils.get_input_value(name='append_library', section='global', input_dict=parameters_dict):
             path = utils.get_input_value(name='path', section='append_library', input_dict=library)
@@ -230,14 +233,39 @@ class MainStructure:
                 self.reference = self.templates_list[0]
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
 
+    def resize_features_predicted_sequence(self):
+        self.feature_predicted = copy.copy(self.feature)
+        for i, sequence_in in enumerate(reversed(self.sequence_predicted_assembled.sequence_list_expanded)):
+            real_i = len(self.sequence_predicted_assembled.sequence_list_expanded) - i - 1
+            if sequence_in.predict_region:
+                ini = self.sequence_predicted_assembled.get_real_residue_number(i=real_i,
+                                                                                residue=sequence_in.predict_region[0])
+                end = self.sequence_predicted_assembled.get_real_residue_number(i=real_i,
+                                                                                residue=sequence_in.predict_region[1])
+                self.feature_predicted.slice_features(ini=ini, end=end)
+        return self.features_list
+
+    def expand_features_predicted_sequence(self):
+        self.feature_predicted = copy.copy(self.feature)
+        for i, sequence_in in enumerate(reversed(self.sequence_predicted_assembled.sequence_list_expanded)):
+            real_i = len(self.sequence_predicted_assembled.sequence_list_expanded) - i - 1
+            if sequence_in.predict_region:
+                ini = self.sequence_predicted_assembled.get_real_residue_number(i=real_i,
+                                                                                residue=sequence_in.predict_region[0])
+                end = self.sequence_predicted_assembled.get_real_residue_number(i=real_i,
+                                                                                residue=sequence_in.predict_region[1])
+                self.feature_predicted.slice_features(ini=ini, end=end)
+        return self.features_list
+
+
     def partition_mosaic(self) -> List[features.Features]:
         if not self.mosaic_partition:
-            self.chunk_list = self.sequence_assembled.partition(number_partitions=self.mosaic,
-                                                                overlap=self.mosaic_overlap)
+            self.chunk_list = self.sequence_predicted_assembled.partition(number_partitions=self.mosaic,
+                                                                          overlap=self.mosaic_overlap)
         else:
             [self.chunk_list.append((partition[0] - 1, partition[1])) for partition in self.mosaic_partition]
-        if self.feature is not None:
-            self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
+        if self.feature_predicted is not None:
+            self.features_list = self.feature_predicted.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
 
     def render_output(self, reduced: bool):
@@ -481,10 +509,10 @@ class MainStructure:
                 name = f'{self.name_results_dir}{i}'
             path = os.path.join(self.run_dir, name)
             if self.cluster_templates and self.mode == 'naive':
-                sequence_chunk = self.sequence_assembled.sequence_assembled[
+                sequence_chunk = self.sequence_predicted_assembled.sequence_assembled[
                                  self.chunk_list[i][0]:self.chunk_list[i][1]]
             else:
-                sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[
+                sequence_chunk = self.sequence_predicted_assembled.sequence_mutated_assembled[
                                  self.chunk_list[i][0]:self.chunk_list[i][1]]
             run_af2 = False if self.mode == 'guided' and self.cluster_templates else self.run_af2
             stop_after_msa = True if self.mode == 'naive' and self.cluster_templates else False
@@ -788,6 +816,8 @@ class MainStructure:
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
+                if sequence_in.predict_region:
+                    f_out.write(f'  predict_region: {"-".join(map(str, sequence_in.predict_region))}\n')
                 if sequence_in.mutations_dict.items():
                     f_out.write(f'  mutations:\n')
                     for residue, values in sequence_in.mutations_dict.items():
