@@ -242,20 +242,26 @@ class MainStructure:
                                                                                 residue=sequence_in.predict_region[0])
                 end = self.sequence_predicted_assembled.get_real_residue_number(i=real_i,
                                                                                 residue=sequence_in.predict_region[1])
-                self.feature_predicted.slice_features(ini=ini, end=end)
-        return self.features_list
+                self.feature_predicted = self.feature_predicted.slice_features(ini=ini, end=end)
+
 
     def expand_features_predicted_sequence(self):
-        self.feature_predicted = copy.copy(self.feature)
-        for i, sequence_in in enumerate(reversed(self.sequence_predicted_assembled.sequence_list_expanded)):
-            real_i = len(self.sequence_predicted_assembled.sequence_list_expanded) - i - 1
+        numbering_query = []
+        numbering_target = []
+        for i, sequence_in in enumerate(self.sequence_predicted_assembled.sequence_list_expanded):
             if sequence_in.predict_region:
-                ini = self.sequence_predicted_assembled.get_real_residue_number(i=real_i,
+                ini = self.sequence_predicted_assembled.get_real_residue_number(i=i,
                                                                                 residue=sequence_in.predict_region[0])
-                end = self.sequence_predicted_assembled.get_real_residue_number(i=real_i,
+                end = self.sequence_predicted_assembled.get_real_residue_number(i=i,
                                                                                 residue=sequence_in.predict_region[1])
-                self.feature_predicted.slice_features(ini=ini, end=end)
-        return self.features_list
+                starting_seq = self.sequence_predicted_assembled.get_starting_length(i)
+                numbering_query.append(starting_seq+1)
+                numbering_target.append(tuple([ini,end]))
+
+        print(numbering_query)
+        print(numbering_target)
+        modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target, length=self.sequence_assembled.length)
+        self.feature = self.feature_predicted.cut_expand_features(self, self.sequence_assembled, modifications_list)
 
 
     def partition_mosaic(self) -> List[features.Features]:

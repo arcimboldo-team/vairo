@@ -168,7 +168,7 @@ def main():
         a_air.change_state(state=2)
         a_air.generate_output()
         logging.error('All input information has been processed correctly')
-        a_air.run_alphafold(features_list=features_list)
+        a_air.run_alphafold(features_list=features_list)        
         if len(features_list) > 1:
             a_air.merge_results()
         features_path = os.path.join(a_air.results_dir, 'features.pkl')
@@ -183,12 +183,12 @@ def main():
             a_air.feature.select_msa_templates(sequence_assembled=a_air.sequence_assembled)
             a_air.extract_results()
             a_air.templates_clustering()
-            a_air.extract_results()
         else:
             a_air.extract_results()
             if a_air.sequence_assembled.mutated:
                 a_air.delete_mutations()
-                a_air.extract_results()
+        a_air.expand_features_predicted_sequence()
+        a_air.extract_results()
         a_air.analyse_output()
         a_air.change_state(state=3)
         pymol_script.create_pymol_session(a_air)

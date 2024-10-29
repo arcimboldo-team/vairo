@@ -502,7 +502,6 @@ def get_input_value(name: str, section: str, input_dict: Dict, override_default=
 
 def modification_list(query: List[int], target: List[int], length: int) -> List[int]:
     # Create a list of length LENGTH. Where each value, is the value that it should has in the target
-    result = [None] * length
     if query is None:
         query = '1'
     query = list(map(int, str(query).replace(' ', '').split(',')))
@@ -513,6 +512,12 @@ def modification_list(query: List[int], target: List[int], length: int) -> List[
         target = [tuple(map(int, r.split('-'))) for r in target]
     if len(query) != len(target):
         raise ValueError('The number of query positions and library positions mismatch')
+
+    return generate_modification_list(query=query, target=target, length=length)
+
+
+def generate_modification_list(query: List[int], target: List[int], length: int) -> List[int]:
+    result = [None] * length
     for query_value, target_range in zip(query, target):
         start, end = target_range
         for i in range(start, end + 1):
