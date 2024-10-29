@@ -79,8 +79,8 @@ class Sequence:
             predict_values = list(map(int, str(predict_aux).replace(' ', '').split('-')))
             if len(predict_values) == 2:
                 self.predict_region = [predict_values[0], predict_values[1]]
-                self.sequence_predicted_mutated = self.sequence_mutated[self.predict_region[0]-1:self.predict_region[1]+1]
-                self.sequence_predicted = self.sequence[self.predict_region[0]-1:self.predict_region[1]+1]
+                self.sequence_predicted_mutated = self.sequence_mutated[self.predict_region[0]-1:self.predict_region[1]]
+                self.sequence_predicted = self.sequence[self.predict_region[0]-1:self.predict_region[1]]
                 self.predicted_length = len(self.sequence)
             else:
                 raise Exception(f'predict_values input paramter should have an starting value and an ending value')

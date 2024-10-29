@@ -268,6 +268,7 @@ class MainStructure:
             self.features_list = self.feature_predicted.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
 
+
     def render_output(self, reduced: bool):
         render_dict = {}
 
