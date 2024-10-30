@@ -194,10 +194,10 @@ def main():
         pymol_script.create_pymol_session(a_air)
         logging.error(f'Timestamp: {datetime.now()}')
         logging.error('VAIRO has finished successfully')
-        a_air.generate_output()
         if a_air.feature is not None:
             a_air.feature.set_extra_info()
             a_air.feature.write_pkl(pkl_path=features_path)
+        a_air.generate_output()
 
     except SystemExit as e:
         sys.exit(e)

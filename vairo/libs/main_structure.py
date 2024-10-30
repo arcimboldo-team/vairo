@@ -136,13 +136,17 @@ class MainStructure:
                         f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
+        sequence_prediced_list = []
         logging.error('Building query sequence')
         for parameters_sequence in utils.get_input_value(name='sequences', section='global',
                                                          input_dict=parameters_dict):
-            new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir)
+            new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir, predicted=False)
             sequence_list.append(new_sequence)
-        self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines, predicted=False)
-        self.sequence_predicted_assembled = sequence.SequenceAssembled(sequence_list, self.glycines, predicted=True)
+            new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir, predicted=True)
+            sequence_prediced_list.append(new_sequence)
+
+        self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
+        self.sequence_predicted_assembled = sequence.SequenceAssembled(sequence_prediced_list, self.glycines)
 
         for library in utils.get_input_value(name='append_library', section='global', input_dict=parameters_dict):
             path = utils.get_input_value(name='path', section='append_library', input_dict=library)
@@ -234,34 +238,32 @@ class MainStructure:
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
 
     def resize_features_predicted_sequence(self):
-        self.feature_predicted = copy.copy(self.feature)
-        for i, sequence_in in enumerate(reversed(self.sequence_predicted_assembled.sequence_list_expanded)):
-            real_i = len(self.sequence_predicted_assembled.sequence_list_expanded) - i - 1
+        numbering_query = []
+        numbering_target = []
+        for i, sequence_in in enumerate(self.sequence_predicted_assembled.sequence_list_expanded):
             if sequence_in.predict_region:
-                ini = self.sequence_predicted_assembled.get_real_residue_number(i=real_i,
-                                                                                residue=sequence_in.predict_region[0])
-                end = self.sequence_predicted_assembled.get_real_residue_number(i=real_i,
-                                                                                residue=sequence_in.predict_region[1])
-                self.feature_predicted = self.feature_predicted.slice_features(ini=ini, end=end)
+                ini = self.sequence_assembled.get_real_residue_number(i=i,residue=sequence_in.predict_region[0])
+                end = self.sequence_assembled.get_real_residue_number(i=i,residue=sequence_in.predict_region[1])
+                starting_seq = self.sequence_predicted_assembled.get_starting_length(i)
+                numbering_query.append(starting_seq+1)
+                numbering_target.append(tuple([ini,end]))
+        modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target, length=self.sequence_predicted_assembled.length)
+        self.feature_predicted = self.feature.cut_expand_features(self.sequence_predicted_assembled.sequence_assembled, modifications_list)
 
-
+        
     def expand_features_predicted_sequence(self):
         numbering_query = []
         numbering_target = []
         for i, sequence_in in enumerate(self.sequence_predicted_assembled.sequence_list_expanded):
             if sequence_in.predict_region:
-                ini = self.sequence_predicted_assembled.get_real_residue_number(i=i,
-                                                                                residue=sequence_in.predict_region[0])
-                end = self.sequence_predicted_assembled.get_real_residue_number(i=i,
-                                                                                residue=sequence_in.predict_region[1])
-                starting_seq = self.sequence_predicted_assembled.get_starting_length(i)
+                ini = self.sequence_predicted_assembled.get_starting_length(i)+1
+                end = self.sequence_predicted_assembled.get_finishing_length(i)+1
+                starting_seq = self.sequence_assembled.get_starting_length(i)+sequence_in.predict_region[0]-1
                 numbering_query.append(starting_seq+1)
                 numbering_target.append(tuple([ini,end]))
 
-        print(numbering_query)
-        print(numbering_target)
         modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target, length=self.sequence_assembled.length)
-        self.feature = self.feature_predicted.cut_expand_features(self, self.sequence_assembled, modifications_list)
+        self.feature = self.feature_predicted.cut_expand_features(self.sequence_assembled.sequence_assembled, modifications_list)
 
 
     def partition_mosaic(self) -> List[features.Features]:
@@ -270,7 +272,8 @@ class MainStructure:
                                                                           overlap=self.mosaic_overlap)
         else:
             [self.chunk_list.append((partition[0] - 1, partition[1])) for partition in self.mosaic_partition]
-        if self.feature_predicted is not None:
+        if self.feature is not None:
+            self.resize_features_predicted_sequence()
             self.features_list = self.feature_predicted.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
 
@@ -817,14 +820,12 @@ class MainStructure:
                     txt_aux.append("-".join(map(str, partition)))
                 f_out.write(f'mosaic_partition: {",".join(map(str, txt_aux))}\n')
             f_out.write(f'\nsequences:\n')
-            for sequence_in in self.sequence_assembled.sequence_list:
+            for sequence_in in self.sequence_predicted_assembled.sequence_list:
                 f_out.write('-')
                 f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
-                if sequence_in.predict_region:
-                    f_out.write(f'  predict_region: {"-".join(map(str, sequence_in.predict_region))}\n')
                 if sequence_in.mutations_dict.items():
                     f_out.write(f'  mutations:\n')
                     for residue, values in sequence_in.mutations_dict.items():
@@ -898,12 +899,14 @@ class MainStructure:
                         for residue, values in feat.mutate_residues.items():
                             f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
             f_out.write(f'\nsequences:\n')
-            for sequence_in in self.sequence_assembled.sequence_list:
+            for sequence_in in self.sequence_predicted_assembled.sequence_list:
                 f_out.write('-')
                 f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
+                if sequence_in.predict_region:
+                    f_out.write(f'  predict_region: {"-".join(map(str, sequence_in.predict_region))}\n')
                 if sequence_in.mutations_dict.items():
                     f_out.write(f'  mutations:\n')
                     for residue, values in sequence_in.mutations_dict.items():

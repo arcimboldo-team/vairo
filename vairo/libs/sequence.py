@@ -8,16 +8,14 @@ from alphafold.common import residue_constants
 
 
 class Sequence:
-    def __init__(self, parameters_dict: Dict, input_dir: str, run_dir: str):
+    def __init__(self, parameters_dict: Dict, input_dir: str, run_dir: str, predicted: bool):
         self.fasta_path: str
         self.fasta_mutated_path: str
         self.sequence: str
         self.sequence_predicted: str
         self.sequence_mutated: str
-        self.sequence_predicted_mutated: str
         self.name: str
         self.length: int
-        self.predicted_length: int
         self.num_of_copies: int
         self.positions: List[int] = []
         self.mutations_dict: Dict = {}
@@ -75,22 +73,19 @@ class Sequence:
         utils.create_dir(self.alignment_dir, delete_if_exists=True)
 
         predict_aux = utils.get_input_value(name='predict_region', section='sequence', input_dict=parameters_dict)
-        if predict_aux:
+        if predict_aux and predicted:
             predict_values = list(map(int, str(predict_aux).replace(' ', '').split('-')))
             if len(predict_values) == 2:
                 self.predict_region = [predict_values[0], predict_values[1]]
-                self.sequence_predicted_mutated = self.sequence_mutated[self.predict_region[0]-1:self.predict_region[1]]
-                self.sequence_predicted = self.sequence[self.predict_region[0]-1:self.predict_region[1]]
-                self.predicted_length = len(self.sequence)
+                self.sequence_mutated = self.sequence_mutated[self.predict_region[0]-1:self.predict_region[1]]
+                self.sequence = self.sequence[self.predict_region[0]-1:self.predict_region[1]]
+                self.length = len(self.sequence)
             else:
                 raise Exception(f'predict_values input paramter should have an starting value and an ending value')
-        else:
-            self.sequence_predicted_mutated = self.sequence_mutated
-            self.sequence_predicted = self.sequence
 
 
 class SequenceAssembled:
-    def __init__(self, sequence_list: List[Sequence], glycines: int, predicted: bool):
+    def __init__(self, sequence_list: List[Sequence], glycines: int):
         self.sequence_assembled: str = ''
         self.sequence_mutated_assembled: str = ''
         self.sequence_list: List[Sequence] = []
@@ -119,10 +114,8 @@ class SequenceAssembled:
             if position is None:
                 self.sequence_list_expanded[i] = positions_to_fill.pop(0)
 
-            sequence_part = self.sequence_list_expanded[i].sequence_predicted if predicted else \
-                self.sequence_list_expanded[i].sequence
-            sequence_mutated_part = self.sequence_list_expanded[i].sequence_predicted_mutated if predicted else \
-                self.sequence_list_expanded[i].sequence_mutated
+            sequence_part = self.sequence_list_expanded[i].sequence
+            sequence_mutated_part = self.sequence_list_expanded[i].sequence_mutated
 
             self.sequence_assembled += sequence_part + 'G' * self.glycines
             self.sequence_mutated_assembled += sequence_mutated_part + 'G' * self.glycines
