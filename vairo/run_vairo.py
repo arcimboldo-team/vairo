@@ -180,14 +180,14 @@ def main():
             # store results features before trimming
             old_features_path = os.path.join(a_air.results_dir, 'alphafold_features.pkl')
             a_air.feature.write_pkl(pkl_path=old_features_path)
-            a_air.feature.select_msa_templates(sequence_assembled=a_air.sequence_assembled)
+            a_air.feature.select_msa_templates(sequence_assembled=a_air.sequence_predicted_assembled)
             a_air.extract_results()
             a_air.templates_clustering()
         else:
             a_air.extract_results()
-            if a_air.sequence_assembled.mutated:
+            a_air.expand_features_predicted_sequence()
+            if a_air.sequence_predicted_assembled.mutated:
                 a_air.delete_mutations()
-        a_air.expand_features_predicted_sequence()
         a_air.extract_results()
         a_air.analyse_output()
         a_air.change_state(state=3)
