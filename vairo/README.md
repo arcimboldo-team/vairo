@@ -36,7 +36,7 @@ sequences:
   name:
   mutations:
     - 'G': 10, 20
-  predict
+  predict_region: 
 
 Several features.pkl can be merged to the final features.pkl. It is possible to select the amount of templates and sequences to be inserted.
 Delete specific regions of the MSA, replace the sequence of the templates and insert the features in specific regions in the final features.

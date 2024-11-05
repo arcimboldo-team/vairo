@@ -69,6 +69,7 @@ def extract_features_info(features_path: str, region: str = None, ini_identity: 
     for r in region_list:
         start, end = map(int, r.split('-'))
         region_result.append((int(start), int(end)))
+
     
     ini_identity = int(ini_identity)
     end_identity = int(end_identity)

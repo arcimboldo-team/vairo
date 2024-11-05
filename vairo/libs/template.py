@@ -192,7 +192,6 @@ class Template:
                 if pos in chain_dict:
                     modification_pos_list = template_modifications.TemplateModifications(
                         self.modifications_struct.get_modifications_by_chain_and_position(chain=pos, position=i))
-                    print(len(modification_pos_list.modifications_list))
                     modification_pos_list.append_modification(chains=[pos], position=i)
                     self.template_chains_struct.new_chain_sequence(path=chain_dict[pos],
                                                                    sequence=sequence_assembled.get_sequence_name(i),

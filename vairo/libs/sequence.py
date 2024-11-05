@@ -8,10 +8,11 @@ from alphafold.common import residue_constants
 
 
 class Sequence:
-    def __init__(self, parameters_dict: Dict, input_dir: str, run_dir: str):
+    def __init__(self, parameters_dict: Dict, input_dir: str, run_dir: str, predicted: bool):
         self.fasta_path: str
         self.fasta_mutated_path: str
         self.sequence: str
+        self.sequence_predicted: str
         self.sequence_mutated: str
         self.name: str
         self.length: int
@@ -19,6 +20,7 @@ class Sequence:
         self.positions: List[int] = []
         self.mutations_dict: Dict = {}
         self.alignment_dir: str
+        self.predict_region: List[int] = []
 
         fasta_path = utils.get_input_value(name='fasta_path', section='sequence', input_dict=parameters_dict)
         positions = utils.get_input_value(name='positions', section='sequence', input_dict=parameters_dict)
@@ -70,10 +72,20 @@ class Sequence:
         self.alignment_dir = os.path.join(run_dir, self.name)
         utils.create_dir(self.alignment_dir, delete_if_exists=True)
 
+        predict_aux = utils.get_input_value(name='predict_region', section='sequence', input_dict=parameters_dict)
+        if predict_aux and predicted:
+            predict_values = list(map(int, str(predict_aux).replace(' ', '').split('-')))
+            if len(predict_values) == 2:
+                self.predict_region = [predict_values[0], predict_values[1]]
+                self.sequence_mutated = self.sequence_mutated[self.predict_region[0]-1:self.predict_region[1]]
+                self.sequence = self.sequence[self.predict_region[0]-1:self.predict_region[1]]
+                self.length = len(self.sequence)
+            else:
+                raise Exception(f'predict_values input paramter should have an starting value and an ending value')
+
 
 class SequenceAssembled:
     def __init__(self, sequence_list: List[Sequence], glycines: int):
-
         self.sequence_assembled: str = ''
         self.sequence_mutated_assembled: str = ''
         self.sequence_list: List[Sequence] = []
@@ -100,10 +112,14 @@ class SequenceAssembled:
 
         for i, position in enumerate(self.sequence_list_expanded):
             if position is None:
-                sequence = positions_to_fill.pop(0)
-                self.sequence_list_expanded[i] = sequence
-            self.sequence_assembled += self.sequence_list_expanded[i].sequence + self.glycines * 'G'
-            self.sequence_mutated_assembled += self.sequence_list_expanded[i].sequence_mutated + self.glycines * 'G'
+                self.sequence_list_expanded[i] = positions_to_fill.pop(0)
+
+            sequence_part = self.sequence_list_expanded[i].sequence
+            sequence_mutated_part = self.sequence_list_expanded[i].sequence_mutated
+
+            self.sequence_assembled += sequence_part + 'G' * self.glycines
+            self.sequence_mutated_assembled += sequence_mutated_part + 'G' * self.glycines
+
         self.sequence_assembled = self.sequence_assembled[:-self.glycines]
         self.sequence_mutated_assembled = self.sequence_mutated_assembled[:-self.glycines]
         self.length = len(self.sequence_assembled)
@@ -146,7 +162,7 @@ class SequenceAssembled:
     def get_position_by_residue_number(self, res_num: int) -> int:
         # Get the number of a residue. Return the position of the sequence it belongs
         for i in range(0, self.total_copies):
-            if self.get_starting_length(i) <= res_num-1 <= self.get_finishing_length(i):
+            if self.get_starting_length(i) <= res_num - 1 <= self.get_finishing_length(i):
                 return i
         return None
 

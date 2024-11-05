@@ -240,6 +240,10 @@ class Features:
                 if mod is not None and mod <= len(self.query_sequence):
                     msa_dict['msa'][i][j] = self.msa_features['msa'][i + 1][mod - 1]
                     msa_dict['deletion_matrix_int'][i][j] = self.msa_features['deletion_matrix_int'][i + 1][mod - 1]
+            msa_dict['accession_ids'][i] = self.msa_features['accession_ids'][i + 1]
+            msa_dict['num_alignments'][i] = np.full(self.msa_features['num_alignments'].shape,
+                                                      len(self.msa_features['msa']))
+
         if len(msa_dict['msa']) > 0:
             new_features.append_row_in_msa_from_features(msa_dict)
 
