@@ -65,7 +65,12 @@ class OutputStructure:
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
-    def extract_results(self, vairo_struct):
+    def extract_results(self, vairo_struct, region_predicted):
+        if region_predicted:
+            assembled_seq = vairo_struct.sequence_predicted_assembled
+        else:
+            assembled_seq = vairo_struct.sequence_assembled
+
         # Read all templates and rankeds, if there are no ranked, raise an error
         self.results_dir = vairo_struct.results_dir
         self.templates_nonsplit_dir = f'{self.results_dir}/templates_nonsplit'
@@ -87,17 +92,17 @@ class OutputStructure:
 
         # Split the templates with chains
         for template in self.templates_list:
-            template.add_percentage(vairo_struct.sequence_assembled.get_percentages(template.path))
+            template.add_percentage(assembled_seq.get_percentages(template.path))
             if sum(template.percentage_list) == 0:
                 logging.info('Template {template.name} does not have any sequence coverage. Skipping')
                 continue
             template.set_split_path(os.path.join(self.templates_path, f'{template.name}.pdb'))
             template.set_sequence_msa(list(bioutils.extract_sequence_msa_from_pdb(template.path).values())[0])
             template.set_identity(
-                bioutils.sequence_identity(template.sequence_msa, vairo_struct.sequence_assembled.sequence_assembled))
+                bioutils.sequence_identity(template.sequence_msa, assembled_seq.sequence_assembled))
             bioutils.split_chains_assembly(pdb_in_path=template.path,
                                            pdb_out_path=template.split_path,
-                                           sequence_assembled=vairo_struct.sequence_assembled)
+                                           sequence_assembled=assembled_seq)
             _, compactness = bioutils.run_spong(pdb_in_path=template.path,
                                                 spong_path=vairo_struct.binaries_paths.spong_path)
             template.set_compactness(compactness)
@@ -120,8 +125,11 @@ class OutputStructure:
 
         # Create a plot with the ranked pLDDTs, also, calculate the maximum pLDDT
         bioutils.write_sequence(sequence_name=utils.get_file_name(self.sequence_path),
-                                sequence_amino=vairo_struct.sequence_assembled.sequence_assembled,
+                                sequence_amino=assembled_seq.sequence_assembled,
                                 sequence_path=self.sequence_path)
+
+        #if region_predicted:
+
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
@@ -132,12 +140,12 @@ class OutputStructure:
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
             bioutils.split_chains_assembly(pdb_in_path=ranked.path,
                                            pdb_out_path=ranked.split_path,
-                                           sequence_assembled=vairo_struct.sequence_assembled)
+                                           sequence_assembled=assembled_seq)
             ranked.set_plddt()
 
         plots.plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
         max_plddt = max([ranked.plddt for ranked in self.ranked_list])
-        
+
         for ranked in self.ranked_list:
             accepted_ramachandran, perc = bioutils.generate_ramachandran(pdb_path=ranked.split_path,
                                                                          output_dir=self.plots_path)
@@ -200,13 +208,13 @@ class OutputStructure:
         else:
             self.ranked_list = sorted_ranked_list
 
-
         if vairo_struct.feature is not None:
             self.conservation_ranked_path = os.path.join(self.results_dir, f'{ranked.name}_conservation.pdb')
-            bioutils.conservation_pdb(self.ranked_list[0].path, self.conservation_ranked_path, vairo_struct.feature.get_msa_sequences())
+            bioutils.conservation_pdb(self.ranked_list[0].path, self.conservation_ranked_path,
+                                      vairo_struct.feature.get_msa_sequences())
             bioutils.split_chains_assembly(pdb_in_path=self.conservation_ranked_path,
                                            pdb_out_path=self.conservation_ranked_path,
-                                           sequence_assembled=vairo_struct.sequence_assembled)
+                                           sequence_assembled=assembled_seq)
 
     def analyse_output(self, sequence_assembled: sequence.SequenceAssembled, experimental_pdbs: List[str],
                        binaries_paths):
@@ -380,7 +388,8 @@ class OutputStructure:
 
         if sequence_assembled.total_copies > 1:
             if self.best_experimental is not None:
-                exp = [experimental for experimental in self.experimental_list if experimental.name == self.best_experimental][0]
+                exp = [experimental for experimental in self.experimental_list if
+                       experimental.name == self.best_experimental][0]
                 self.num_interfaces = len(exp.interfaces)
                 exp.set_accepted_interfaces(True)
             else:

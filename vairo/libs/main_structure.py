@@ -50,7 +50,6 @@ class MainStructure:
         self.mosaic_partition: List[int]
         self.mosaic_seq_partition: List[int]
         self.feature: Union[features.Features, None] = None
-        self.feature_predicted: Union[features.Features, None] = None
         self.output: output.OutputStructure
         self.state: int = 0
         self.features_input: List[structures.FeaturesInput] = []
@@ -242,29 +241,34 @@ class MainStructure:
         numbering_target = []
         for i, sequence_in in enumerate(self.sequence_predicted_assembled.sequence_list_expanded):
             if sequence_in.predict_region:
-                ini = self.sequence_assembled.get_real_residue_number(i=i,residue=sequence_in.predict_region[0])
-                end = self.sequence_assembled.get_real_residue_number(i=i,residue=sequence_in.predict_region[1])
+                ini = self.sequence_assembled.get_real_residue_number(i=i, residue=sequence_in.predict_region[0])
+                end = self.sequence_assembled.get_real_residue_number(i=i, residue=sequence_in.predict_region[1])
                 starting_seq = self.sequence_predicted_assembled.get_starting_length(i)
-                numbering_query.append(starting_seq+1)
-                numbering_target.append(tuple([ini,end]))
-        modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target, length=self.sequence_predicted_assembled.length)
-        self.feature_predicted = self.feature.cut_expand_features(self.sequence_predicted_assembled.sequence_assembled, modifications_list)
+                numbering_query.append(starting_seq + 1)
+                numbering_target.append(tuple([ini, end]))
+        modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target,
+                                                              length=self.sequence_predicted_assembled.length)
 
-        
+        self.feature.modify_query_sequence(new_query_sequence=self.sequence_predicted_assembled.sequence_assembled)
+        self.feature = self.feature.cut_expand_features(self.sequence_predicted_assembled.sequence_assembled,
+                                                        modifications_list)
+
     def expand_features_predicted_sequence(self):
         numbering_query = []
         numbering_target = []
         for i, sequence_in in enumerate(self.sequence_predicted_assembled.sequence_list_expanded):
             if sequence_in.predict_region:
-                ini = self.sequence_predicted_assembled.get_starting_length(i)+1
-                end = self.sequence_predicted_assembled.get_finishing_length(i)+1
-                starting_seq = self.sequence_assembled.get_starting_length(i)+sequence_in.predict_region[0]-1
-                numbering_query.append(starting_seq+1)
-                numbering_target.append(tuple([ini,end]))
+                ini = self.sequence_predicted_assembled.get_starting_length(i) + 1
+                end = self.sequence_predicted_assembled.get_finishing_length(i) + 1
+                starting_seq = self.sequence_assembled.get_starting_length(i) + sequence_in.predict_region[0] - 1
+                numbering_query.append(starting_seq + 1)
+                numbering_target.append(tuple([ini, end]))
 
-        modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target, length=self.sequence_assembled.length)
-        self.feature = self.feature_predicted.cut_expand_features(self.sequence_assembled.sequence_assembled, modifications_list)
+        modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target,
+                                                              length=self.sequence_assembled.length)
 
+        self.feature.modify_query_sequence(new_query_sequence=self.sequence_assembled.sequence_assembled)
+        self.feature = self.feature.cut_expand_features(self.sequence_assembled.sequence_assembled, modifications_list)
 
     def partition_mosaic(self) -> List[features.Features]:
         if not self.mosaic_partition:
@@ -274,9 +278,10 @@ class MainStructure:
             [self.chunk_list.append((partition[0] - 1, partition[1])) for partition in self.mosaic_partition]
         if self.feature is not None:
             self.resize_features_predicted_sequence()
-            self.features_list = self.feature_predicted.slicing_features(chunk_list=self.chunk_list)
+            self.feature.select_msa_templates(sequence_assembled=self.sequence_predicted_assembled,
+                                              minimum_percentage=0.01)
+            self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
-
 
     def render_output(self, reduced: bool):
         render_dict = {}
@@ -716,8 +721,8 @@ class MainStructure:
         if self.sequence_assembled.total_copies > 1:
             plots.plot_sequence(plot_path=self.output.sequence_plot_path, a_air=self)
 
-    def extract_results(self):
-        self.output.extract_results(vairo_struct=self)
+    def extract_results(self, region_predicted: bool):
+        self.output.extract_results(vairo_struct=self, region_predicted=region_predicted)
 
     def analyse_output(self):
         self.output.analyse_output(

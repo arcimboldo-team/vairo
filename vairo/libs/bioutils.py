@@ -1467,3 +1467,5 @@ def calculate_coverage_scaled(query_seq: str, sequences: List[str]):
     sequences_coverage = calculate_coverage(query_seq=query_seq, sequences=sequences, only_match=False)
     new_sequences = utils.scale_values(sequences_coverage)
     return new_sequences
+
+

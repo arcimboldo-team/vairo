@@ -31,6 +31,12 @@ class Features:
                            'num_templates:': 0
                            }
 
+    def modify_query_sequence(self, new_query_sequence: str):
+        self.query_sequence = new_query_sequence
+        self.sequence_features = pipeline.make_sequence_features(sequence=self.query_sequence,
+                                                                 description='Query',
+                                                                 num_res=len(self.query_sequence))
+
     def append_new_template_features(self, new_template_features: Dict, custom_sum_prob: int = None) -> Dict:
         self.template_features['template_all_atom_positions'] = np.vstack(
             [self.template_features['template_all_atom_positions'],
@@ -242,7 +248,7 @@ class Features:
                     msa_dict['deletion_matrix_int'][i][j] = self.msa_features['deletion_matrix_int'][i + 1][mod - 1]
             msa_dict['accession_ids'][i] = self.msa_features['accession_ids'][i + 1]
             msa_dict['num_alignments'][i] = np.full(self.msa_features['num_alignments'].shape,
-                                                      len(self.msa_features['msa']))
+                                                    len(self.msa_features['msa']))
 
         if len(msa_dict['msa']) > 0:
             new_features.append_row_in_msa_from_features(msa_dict)
@@ -320,10 +326,10 @@ class Features:
             logging.error(f'Query sequence has the following size: {chunk_list[0][0]}-{chunk_list[0][1]}')
         return features_list
 
-    def select_msa_templates(self, sequence_assembled):
+    def select_msa_templates(self, sequence_assembled, minimum_percentage: float = 0.50):
         # Trim the templates that has a 50% percentage of it in the glycines part
         # Trim the msa sequences that has a 50% percentage of it in the glycines part
-        minimum_percentage = 0.50
+
         delete_msa = []
         for i in range(self.get_msa_length()):
             sequence_in = self.msa_features['msa'][i]
@@ -652,7 +658,7 @@ def extract_template_features_from_aligned_pdb_and_sequence(query_sequence: str,
     return template_features
 
 
-def write_template_in_features(template_features: Dict, template_code: str, output_path: str, chain='A'):
+def write_template_in_features(template_features: Dict, template_code: str, output_path: str, chain='A') -> bool:
     with open(output_path, 'w') as output_pdb:
         template_domain_index = np.where(template_features['template_domain_names'] == template_code)[0][0]
         atom_num_int = 0
@@ -689,6 +695,11 @@ def write_template_in_features(template_features: Dict, template_code: str, outp
                                                    atype=atom_type)
                 output_pdb.write(atom_line)
 
+    if os.stat(output_path).st_size == 0:
+        return False
+    else:
+        return True
+
 
 def write_templates_in_features(template_features: Dict, output_dir: str, chain='A', print_number=True) -> Dict:
     templates_dict = {}
@@ -696,9 +707,12 @@ def write_templates_in_features(template_features: Dict, output_dir: str, chain=
         pdb = pdb_name.decode('utf-8')
         number = '1' if print_number else ''
         pdb_path = os.path.join(output_dir, f'{pdb}{number}.pdb')
-        templates_dict[utils.get_file_name(pdb_path)] = pdb_path
-        write_template_in_features(template_features=template_features, template_code=pdb_name, output_path=pdb_path,
-                                   chain=chain)
+        written = write_template_in_features(template_features=template_features, template_code=pdb_name,
+                                             output_path=pdb_path,
+                                             chain=chain)
+        if written:
+            templates_dict[utils.get_file_name(pdb_path)] = pdb_path
+
     return templates_dict
 
 

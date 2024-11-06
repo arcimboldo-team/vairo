@@ -181,14 +181,15 @@ def main():
             old_features_path = os.path.join(a_air.results_dir, 'alphafold_features.pkl')
             a_air.feature.write_pkl(pkl_path=old_features_path)
             a_air.feature.select_msa_templates(sequence_assembled=a_air.sequence_predicted_assembled)
-            a_air.extract_results()
+            a_air.extract_results(region_predicted=True)
             a_air.templates_clustering()
         else:
-            a_air.extract_results()
-            a_air.expand_features_predicted_sequence()
+            a_air.extract_results(region_predicted=True)
             if a_air.sequence_predicted_assembled.mutated:
                 a_air.delete_mutations()
-        a_air.extract_results()
+
+        a_air.expand_features_predicted_sequence()
+        a_air.extract_results(region_predicted=False)
         a_air.analyse_output()
         a_air.change_state(state=3)
         pymol_script.create_pymol_session(a_air)
