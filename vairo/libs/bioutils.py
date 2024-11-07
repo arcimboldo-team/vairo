@@ -1446,6 +1446,7 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     sequences_dict = extract_sequence_msa_from_pdb(pdb_path=pdb_in_path)
     chain = get_chains(pdb_in_path)[0]
     whole_seq = "".join([seq for seq in sequences_dict.values()])
+    whole_seq += '-' * (len(msa_list[0]) - len(whole_seq))
     conservation_list = calculate_coverage(query_seq=whole_seq, sequences=msa_list, only_match=True)
     conservation_list = conservation_list * 100
     modify_bfactors = template_modifications.TemplateModifications()
@@ -1469,3 +1470,29 @@ def calculate_coverage_scaled(query_seq: str, sequences: List[str]):
     return new_sequences
 
 
+def shift_pdb(pdb_in_path: str, sequence_predicted_assembled, sequence_assembled):
+    # Given a list of shifts, one for each chain, apply them to each chain and return de pdb.
+    shifts = sequence_predicted_assembled.get_region_starting_shifts()
+    new_structure = Structure.Structure(utils.get_file_name(pdb_in_path))
+    new_model = Model.Model('model')
+    new_chain = Chain.Chain('A')
+    new_structure.add(new_model)
+    new_model.add(new_chain)
+    structure = get_structure(pdb_in_path)
+    chain = next(structure.get_chains())
+    residues = chain.get_unpacked_list()
+    for residue in residues:
+        seq_position = sequence_predicted_assembled.get_position_by_residue_number(residue.id[1])
+        if seq_position is not None:
+            starting_position_original = sequence_assembled.get_starting_length(seq_position)
+            starting_position_predicted = sequence_predicted_assembled.get_starting_length(seq_position)
+            residue = copy.copy(residue)
+            residue.parent = None
+            new_id = starting_position_original + shifts[seq_position] - starting_position_predicted + residue.id[1]
+            residue.id = (residue.id[0], new_id, residue.id[2])
+            new_chain.add(residue)
+            residue.parent = new_chain
+
+    io = PDBIO() 
+    io.set_structure(new_structure) 
+    io.save(pdb_in_path)

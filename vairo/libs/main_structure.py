@@ -246,12 +246,13 @@ class MainStructure:
                 starting_seq = self.sequence_predicted_assembled.get_starting_length(i)
                 numbering_query.append(starting_seq + 1)
                 numbering_target.append(tuple([ini, end]))
-        modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target,
-                                                              length=self.sequence_predicted_assembled.length)
 
-        self.feature.modify_query_sequence(new_query_sequence=self.sequence_predicted_assembled.sequence_assembled)
-        self.feature = self.feature.cut_expand_features(self.sequence_predicted_assembled.sequence_assembled,
-                                                        modifications_list)
+        if numbering_query and numbering_target:
+            modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target,
+                                                                length=self.sequence_predicted_assembled.length)
+
+            self.feature = self.feature.cut_expand_features(self.sequence_predicted_assembled.sequence_assembled,
+                                                            modifications_list)
 
     def expand_features_predicted_sequence(self):
         numbering_query = []
@@ -264,11 +265,10 @@ class MainStructure:
                 numbering_query.append(starting_seq + 1)
                 numbering_target.append(tuple([ini, end]))
 
-        modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target,
-                                                              length=self.sequence_assembled.length)
-
-        self.feature.modify_query_sequence(new_query_sequence=self.sequence_assembled.sequence_assembled)
-        self.feature = self.feature.cut_expand_features(self.sequence_assembled.sequence_assembled, modifications_list)
+        if numbering_query and numbering_target:
+            modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target,
+                                                                length=self.sequence_assembled.length)
+            self.feature = self.feature.cut_expand_features(self.sequence_assembled.sequence_assembled, modifications_list)
 
     def partition_mosaic(self) -> List[features.Features]:
         if not self.mosaic_partition:

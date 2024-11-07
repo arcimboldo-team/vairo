@@ -128,12 +128,15 @@ class OutputStructure:
                                 sequence_amino=assembled_seq.sequence_assembled,
                                 sequence_path=self.sequence_path)
 
-        #if region_predicted:
-
 
         # Copy the rankeds to the without mutations directory and remove the query sequences mutations from them
         for ranked in self.ranked_list:
             ranked.set_path(shutil.copy2(ranked.path, self.rankeds_nonsplit_dir))
+
+            if not region_predicted:
+                bioutils.shift_pdb(pdb_in_path=ranked.path, sequence_predicted_assembled=vairo_struct.sequence_predicted_assembled, 
+                                   sequence_assembled=vairo_struct.sequence_assembled)
+
             accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path,
                                                                    spong_path=vairo_struct.binaries_paths.spong_path)
             ranked.set_compactness(compactness)
