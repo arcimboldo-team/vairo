@@ -247,3 +247,13 @@ class SequenceAssembled:
 
     def get_region_starting_shifts(self) -> List[int]:
         return [(seq.predict_region[0] - 1) if seq.predict_region else 0 for seq in self.sequence_list_expanded]
+    
+    def get_list_linker_numbering(self) -> List[int]:
+        # Return a list with the numbering of all the residues that are linkers
+        linkers_list = []
+        for i in range(0, self.total_copies):
+            ini = self.get_finishing_length(i) + 2
+            end = self.get_finishing_length(i) + 1 + self.glycines
+            linkers_list.extend(utils.expand_residues(f'{ini}-{end}'))
+        return linkers_list
+                

@@ -281,9 +281,7 @@ class Features:
         return new_features
 
     def slice_features(self, ini: int, end: int) -> List:
-        sequence_in = (
-            ''.join([residue_constants.ID_TO_HHBLITS_AA[res] for res in self.msa_features['msa'][0].tolist()]))
-        new_features = Features(query_sequence=sequence_in[ini:end])
+        new_features = Features(query_sequence=self.query_sequence[ini:end])
         msa_dict = create_empty_msa_list(self.get_msa_length() - 1)
         for i in range(self.get_msa_length() - 1):
             msa_dict['msa'][i] = self.msa_features['msa'][i + 1][ini:end]
@@ -334,7 +332,8 @@ class Features:
         for i in range(self.get_msa_length()):
             sequence_in = self.msa_features['msa'][i]
             res_num, perc = sequence_assembled.get_percentage_sequence(sequence_in)
-            if sum(res_num) < len(sequence_in) * minimum_percentage:
+            length_sequence = len(sequence_in[sequence_in != 21]) * minimum_percentage
+            if sum(res_num) < length_sequence:
                 delete_msa.append(i)
         if delete_msa:
             logging.error(f'{len(delete_msa)} sequences filtered from the MSA due to not enough sequence coverage')
@@ -343,7 +342,8 @@ class Features:
         for i in range(self.get_templates_length()):
             sequence_in = self.template_features['template_sequence'][i].decode()
             res_num, perc = sequence_assembled.get_percentage_sequence(sequence_in)
-            if sum(res_num) < len(sequence_in) * minimum_percentage:
+            length_sequence = len(sequence_in[sequence_in != 21]) * minimum_percentage
+            if sum(res_num) < length_sequence:
                 logging.error(
                     f'Template {self.template_features["template_domain_names"][i].decode()} has been filtered:')
                 logging.error(f'    Not enough sequence coverage')
@@ -351,6 +351,14 @@ class Features:
 
         if delete_templates:
             self.delete_templates(delete_templates)
+
+        self.delete_linkers_regions(sequence_assembled)
+
+
+    def delete_linkers_regions(self, sequence_assembled):
+        delete_positions = sequence_assembled.get_list_linker_numbering()
+        self.delete_residues_msa(delete_positions=delete_positions, starting=1)
+
 
     def delete_by_id(self, id_list: List[str]):
         # Given a list of ids, check if it belongs to a msa or a templates. Delete them.
@@ -411,10 +419,10 @@ class Features:
         else:
             self.extra_info['msa_coverage'] = [0] * len(self.query_sequence)
 
-    def delete_residues_msa(self, delete_positions: List[int]):
+    def delete_residues_msa(self, delete_positions: List[int], starting: int = 0):
         # Delete the specifics residues in the msa.
         if delete_positions:
-            for i in range(self.get_msa_length()):
+            for i in range(starting, self.get_msa_length()):
                 for delete in delete_positions:
                     if delete <= self.msa_features['msa'][i].size:
                         self.msa_features['msa'][i][delete - 1] = 21

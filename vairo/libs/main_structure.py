@@ -278,8 +278,7 @@ class MainStructure:
             [self.chunk_list.append((partition[0] - 1, partition[1])) for partition in self.mosaic_partition]
         if self.feature is not None:
             self.resize_features_predicted_sequence()
-            self.feature.select_msa_templates(sequence_assembled=self.sequence_predicted_assembled,
-                                              minimum_percentage=0.01)
+            self.feature.select_msa_templates(sequence_assembled=self.sequence_predicted_assembled)
             self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
 

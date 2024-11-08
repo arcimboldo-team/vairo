@@ -157,7 +157,7 @@ def main():
                 if num_msa > 0:
                     logging.error(f'     Adding {num_msa} sequence/s to the MSA')
                 library.add_information(num_msa=num_msa, num_templates=num_templates)
-
+        
             features_list = a_air.partition_mosaic()
         else:
             a_air.generate_output()
@@ -171,10 +171,12 @@ def main():
         a_air.run_alphafold(features_list=features_list)        
         if len(features_list) > 1:
             a_air.merge_results()
+
         features_path = os.path.join(a_air.results_dir, 'features.pkl')
         if a_air.feature is None and os.path.exists(features_path):
             new_features = features.create_features_from_file(features_path)
             a_air.set_feature(new_features)
+
         # a_air.align_experimental_pdbs()
         if a_air.mode == 'naive' and a_air.run_af2 and a_air.cluster_templates:
             # store results features before trimming
