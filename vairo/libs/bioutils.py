@@ -614,7 +614,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
             if not compactness_decision:
                 logging.info(f'    Compactness below limit')
             if not identity:
-                logging.info(f'    Too low/high identity with the query sequence')
+                logging.info(f'    Too low/high identity with the query sequence ({pdb.identity})')
             if only_ca:
                 logging.info(f'    Only CA')
         if isinstance(pdb, structures.TemplateExtracted) and pdb.percentage_list:
