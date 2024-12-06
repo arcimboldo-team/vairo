@@ -191,6 +191,8 @@ class OutputStructure:
                     if pdb in self.ranked_list:
                         strct = structures.PdbRanked(experimental, rmsd, aligned_residues, total_residues, quality_q)
                         pdb.add_experimental(strct)
+                else:
+                    aux_dict[pdb.name] = structures.PdbRanked(pdb.path, None, None, None, None)
             self.experimental_dict[utils.get_file_name(experimental)] = aux_dict
 
         # Select the best ranked
@@ -480,8 +482,11 @@ class OutputStructure:
                 data = {'experimental': self.experimental_dict.keys()}
                 for keys_pdbs in self.experimental_dict.values():
                     for key, value in keys_pdbs.items():
-                        data.setdefault(key, []).append(
-                            f'{value.rmsd} ({value.aligned_residues} of {value.total_residues}), {value.qscore}')
+                        if value.rmsd is not None:
+                            data.setdefault(key, []).append(
+                                f'{value.rmsd} ({value.aligned_residues} of {value.total_residues}), {value.qscore}')
+                        else:
+                            data.setdefault(key, []).append('None')
                 df = pd.DataFrame(data)
                 f_in.write(df.to_markdown())
 
