@@ -111,6 +111,9 @@ def get_key_by_value(value: str, search_dict: Dict) -> List[str]:
         if isinstance(element, str):
             if element == value:
                 matching_keys.append(key)
+        elif isinstance(element, int):
+            if element == value:
+                matching_keys.append(key)
         else:
             if value in element:
                 matching_keys.append(key)
