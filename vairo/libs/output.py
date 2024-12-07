@@ -291,7 +291,7 @@ class OutputStructure:
         templates_nonsplit_paths_list = [template.path for template in self.templates_list]
         dendogram_file = os.path.join(self.tmp_dir, 'dendogram.txt')
         dendogram_plot = os.path.join(self.tmp_dir, 'clustering_dendogram_angles.png')
-        if len(self.templates_list) > 1:
+        if len(self.templates_list) > 1 and len(self.templates_list) <= 15:
             logging.error('Creating dendogram and clusters with ALEPH')
             with open(dendogram_file, 'w') as sys.stdout:
                 _, _, _, _, _, _, _, _, dendogram_list = ALEPH.frobenius(references=templates_nonsplit_paths_list,
