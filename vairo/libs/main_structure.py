@@ -492,6 +492,7 @@ class MainStructure:
         elif self.output.ranked_list:
             render_dict['pymol'] = None
 
+        jinja_template.globals['print_consecutive_numbers'] = utils.print_consecutive_numbers
         with open(write_output, 'w') as f_out:
             f_out.write(jinja_template.render(data=render_dict))
 
@@ -942,10 +943,10 @@ class MainStructure:
                             f_out.write(f'      when: {modification.when}\n')
 
                             if modification.mutations:
-                                f_out.write(f'      replace:\n')
+                                f_out.write(f'      mutations:\n')
                                 for mutation in modification.mutations:
-                                    f_out.write(f'      - residues: {", ".join(map(str, mutation.residues))}\n')
-                                    f_out.write(f'        by: {mutation.by}\n')
+                                    f_out.write(f'      - numbering_residues: {", ".join(map(str, mutation.mutate_residues_number))}\n')
+                                    f_out.write(f'        mutate_with: {mutation.mutate_with}\n')
 
     def __repr__(self) -> str:
         return f' \

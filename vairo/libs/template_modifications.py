@@ -6,24 +6,26 @@ from Bio.PDB import Select, PDBIO
 from alphafold.common import residue_constants
 
 
-class ResidueReplace:
-    def __init__(self, residues: List[int], by: str):
-        self.residues: List[int]
-        self.by: str
+class ResidueMutate:
+    def __init__(self, mutate_residues_number: List[int], mutate_with: str):
+        self.mutate_residues_number: List[int]
+        self.mutate_residues_number_print: str
+        self.mutate_with: str
         self.isSequence: bool = False
 
-        self.residues = residues
-        self.by = by
-        if by not in global_variables.ID_TO_HHBLITS_AA_3LETTER_CODE.values():
+        self.mutate_residues_number = mutate_residues_number
+        self.mutate_with = mutate_with
+        if mutate_with not in global_variables.ID_TO_HHBLITS_AA_3LETTER_CODE.values():
             self.isSequence = True
-            if os.path.exists(by):
-                self.by = bioutils.extract_sequence(fasta_path=by)
+            if os.path.exists(mutate_with):
+                self.mutate_with = bioutils.extract_sequence(fasta_path=mutate_with)
+        self.mutate_residues_number_print = utils.print_consecutive_numbers(mutate_residues_number)
 
 
 class ChainModifications:
     def __init__(self, chain: str, bfactors: List[float] = [], position: int = -1,
                  maintain_residues: List[int] = [], delete_residues: List[int] = [],
-                 mutations: List[ResidueReplace] = [], when: str = 'after_alignment'):
+                 mutations: List[ResidueMutate] = [], when: str = 'after_alignment'):
         # It will define the changes to apply to a template.
         # A list with all the chains that those changes will be applied.
         # A list of bfactors for each chain.
@@ -35,7 +37,7 @@ class ChainModifications:
         self.position: int = -1
         self.maintain_residues: List[int] = []
         self.delete_residues: List[int] = []
-        self.mutations: List[ResidueReplace] = []
+        self.mutations: List[ResidueMutate] = []
         self.when: str = 'after_alignment'
 
         self.chain = chain
@@ -54,17 +56,17 @@ class ChainModifications:
         self.maintain_residues = convert(self.maintain_residues, mapping)
         self.delete_residues = convert(self.delete_residues, mapping)
         for mutation in self.mutations:
-            mutation.residues = convert(mutation.residues, mapping)
+            mutation.mutate_residues_number = convert(mutation.mutate_residues_number, mapping)
 
     def get_change(self, resseq: int, when: str = '') -> str:
         name = None
         for mutation in self.mutations:
-            if resseq in mutation.residues:
-                if mutation.isSequence and len(mutation.by) > resseq - 1 and (self.when == when or when == ''):
-                    name = utils.get_key_by_value(value=mutation.by[resseq - 1],
+            if resseq in mutation.mutate_residues_number:
+                if mutation.isSequence and len(mutation.mutate_with) > resseq - 1 and (self.when == when or when == ''):
+                    name = utils.get_key_by_value(value=mutation.mutate_with[resseq - 1],
                                                   search_dict=residue_constants.restype_3to1)[0]
                 else:
-                    name = mutation.by
+                    name = mutation.mutate_with
                 break
         return name
 
@@ -84,7 +86,7 @@ class TemplateModifications:
             self.modifications_list = modifications_list
 
     def append_modification(self, chains: List[str], position: int = -1, maintain_residues: List[List[int]] = [],
-                            delete_residues: List[List[int]] = [], mutations: List[ResidueReplace] = [],
+                            delete_residues: List[List[int]] = [], mutations: List[ResidueMutate] = [],
                             bfactors: List[List[float]] = [], when: str = 'after_alignment'):
 
         for i, chain in enumerate(chains):
@@ -147,9 +149,9 @@ class TemplateModifications:
         for modification in modification_chain:
             for mutation in modification.mutations:
                 if mutation.isSequence:
-                    fasta.update(mutation.residues)
+                    fasta.update(mutation.mutate_residues_number)
                 else:
-                    resname.update(mutation.residues)
+                    resname.update(mutation.mutate_residues_number)
         return list(resname), list(fasta)
 
     def get_deleted_residues(self, chain: str = 'all') -> List[int]:

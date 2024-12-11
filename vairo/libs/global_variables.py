@@ -334,16 +334,16 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': 'after_alignment',
         },
-        'replace': {
+        'mutations': {
             'required': False,
             'default': None,
         },
     },
-    'replace_input': {
-        'residues': {
+    'mutations_input': {
+        'numbering_residues': {
             'required': True,
         },
-        'by': {
+        'mutate_with': {
             'required': True,
         },
     },

@@ -80,14 +80,12 @@ class Template:
             when = utils.get_input_value(name='when', section='modifications', input_dict=parameter_modification)
 
             replace_list = []
-            parameter_replace = utils.get_input_value(name='replace', section='modifications',
-                                                      input_dict=parameter_modification)
+            parameter_replace = utils.get_input_value(name='mutations', section='modifications', input_dict=parameter_modification)
             if parameter_replace:
                 for replace in parameter_replace:
-                    residues = utils.expand_residues(
-                        utils.get_input_value(name='residues', section='replace', input_dict=replace))
-                    by = utils.get_input_value(name='by', section='replace', input_dict=replace)
-                    replace_list.append(template_modifications.ResidueReplace(residues=residues, by=by))
+                    residues = utils.expand_residues(utils.get_input_value(name='numbering_residues', section='mutations', input_dict=replace))
+                    mutate_with = utils.get_input_value(name='mutate_with', section='mutations', input_dict=replace)
+                    replace_list.append(template_modifications.ResidueMutate(mutate_residues_number=residues, mutate_with=mutate_with))
 
             chains = utils.get_input_value(name='chain', section='modifications', input_dict=parameter_modification)
             if chains.lower() == 'all' or self.legacy:

@@ -136,15 +136,22 @@ def get_paths_by_chain(path_list: List[str], search_chain: str) -> List[str]:
     return return_list
 
 
-def get_consecutive_numbers(number_list: List[int]) -> List[Tuple[int, int]]:
+def print_consecutive_numbers(number_list: List[int]) -> str:
     # Given an integer list, return ranges of consecutive numbers
-    result_list = []
-    for _, g in groupby(enumerate(number_list), lambda x: x[0] - x[1]):
-        group = (map(itemgetter(1), g))
-        group = list(map(int, group))
-        result_list.append((group[0], group[-1]))
+    if not number_list:
+        return ""
 
-    return result_list
+    nums = sorted(set(number_list))  # Sort and remove duplicates
+    ranges = []
+    start = nums[0]
+
+    for i in range(1, len(nums)):
+        if nums[i] != nums[i - 1] + 1:
+            ranges.append(f"{start}" if start == nums[i - 1] else f"{start}-{nums[i - 1]}")
+            start = nums[i]
+
+    ranges.append(f"{start}" if start == nums[-1] else f"{start}-{nums[-1]}")
+    return ", ".join(ranges)
 
 
 def get_chain_and_number(path_pdb: str) -> Tuple[str, int]:
@@ -487,7 +494,7 @@ def get_input_value(name: str, section: str, input_dict: Dict, override_default=
         'template': 'template_input',
         'modifications': 'modifications_input',
         'features': 'features_input',
-        'replace': 'replace_input',
+        'mutations': 'mutations_input',
         'append_library': 'append_library_input',
     }
     chosen_dict = INPUT_PARAMETERS.get(mapping.get(section))
@@ -515,7 +522,6 @@ def modification_list(query: List[int], target: List[int], length: int) -> List[
         target = [tuple(map(int, r.split('-'))) for r in target]
     if len(query) != len(target):
         raise ValueError('The number of query positions and library positions mismatch')
-
     return generate_modification_list(query=query, target=target, length=length)
 
 

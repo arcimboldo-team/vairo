@@ -393,10 +393,10 @@
                                     Modifications have been done after an alignment chain {{ change.chain }}:
                                 {% endif %}                               
                                 {% if change.delete_residues %}
-                                    Deleted residues: {{ change.delete_residues|join(', ') }}
+                                    Deleted residues: {{ print_consecutive_numbers(change.delete_residues) }}
                                 {% endif %} 
                                 {% if change.maintain_residues %}
-                                    Maintained residues: {{ change.maintain_residues|join(', ') }}
+                                    Maintained residues: {{ print_consecutive_numbers(change.maintain_residues) }}
                                 {% endif %} 
                                 {% if change.position != -1 %}
                                     Selected position: {{ change.position }}
@@ -406,8 +406,8 @@
                                         <ul>
                                     {% endif %}
                                         <li>
-                                            It has mutated the following residues: {{ mutation.residues|join(', ') }}
-                                            by: {{ mutation.by }}
+                                            It has mutated the following residues: {{ print_consecutive_numbers(mutation.mutate_residues_number) }}
+                                            with: {{ mutation.mutate_with }}
                                         </li>
                                     {% if loop.last  %}
                                         </ul>
