@@ -16,11 +16,12 @@ import requests
 import csv
 from alphafold.data import parsers, templates, mmcif_parsing
 from Bio.Blast import NCBIWWW
+from alphafold.common import residue_constants
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
 sys.path.append(target_directory)
-from vairo.libs import features, bioutils, plots, utils, structures, change_res
+from vairo.libs import features, bioutils, plots, utils, structures, template_modifications, global_variables
 
 
 def write_features(features_path: str, output_dir: str = None):
@@ -48,7 +49,19 @@ def print_sequence_info(seq_dict: dict, seq_type: str, ini: int = 0, end: int = 
     return accepted_identity_elements
 
 
-def extract_features_info(features_path: str, region: str = None, ini_identity: int = 0, end_identity: int = 100, run_uniprot: bool = False):
+def mutate_features(features_path: str):
+    feature = features.create_features_from_file(pkl_in_path=features_path)
+    for i in range(feature.get_msa_length()):
+        feature.msa_features['msa'][i][190] = residue_constants.HHBLITS_AA_TO_ID['N']
+        feature.msa_features['msa'][i][161] = residue_constants.HHBLITS_AA_TO_ID['N']
+        feature.msa_features['msa'][i][162] = residue_constants.HHBLITS_AA_TO_ID['T']
+        feature.msa_features['msa'][i][244] = residue_constants.HHBLITS_AA_TO_ID['Y']
+        feature.msa_features['msa'][i][40] = residue_constants.HHBLITS_AA_TO_ID['I']
+    feature.write_pkl(features_path)
+
+
+def extract_features_info(features_path: str, region: str = None, ini_identity: int = 0, end_identity: int = 100,
+                          run_uniprot: bool = False):
     if region is None or region == "":
         region = '1-10000'
     region_list = region.replace(" ", "").split(',')
@@ -57,6 +70,10 @@ def extract_features_info(features_path: str, region: str = None, ini_identity: 
         start, end = map(int, r.split('-'))
         region_result.append((int(start), int(end)))
 
+    
+    ini_identity = int(ini_identity)
+    end_identity = int(end_identity)
+                              
     features_info_dict, region_query, query = features.extract_features_info(pkl_in_path=features_path,
                                                                              regions_list=region_result)
     files_info = []
@@ -67,18 +84,23 @@ def extract_features_info(features_path: str, region: str = None, ini_identity: 
 
     if features_info_dict['msa']:
         print('\nMSA:')
-        features_info_dict['msa'] = print_sequence_info(features_info_dict['msa'], 'Sequences', ini=ini_identity, end=end_identity)
+        features_info_dict['msa'] = print_sequence_info(features_info_dict['msa'], 'Sequences', ini=ini_identity,
+                                                        end=end_identity)
     if features_info_dict['templates']:
         print('\nTEMPLATES:')
-        features_info_dict['templates'] = print_sequence_info(features_info_dict['templates'], 'Templates', ini=ini_identity, end=end_identity)
+        features_info_dict['templates'] = print_sequence_info(features_info_dict['templates'], 'Templates',
+                                                              ini=ini_identity, end=end_identity)
 
     store_fasta_path = os.path.join(os.getcwd(), f'accepted_sequences_{region}.fasta')
-    merged_dict = {**features_info_dict['msa'],**features_info_dict['templates']}
+    merged_dict = {**features_info_dict['msa'], **features_info_dict['templates']}
     print(f'Accepted sequences tanking into account the identity have been stored in: {store_fasta_path}')
     with open(store_fasta_path, 'w') as file:
+        duplicate_list = []
         for key, values in merged_dict.items():
-            file.write(f'\n>{key}\n')
-            file.write(f'{values["seq"]}')
+            if values["seq"] not in duplicate_list:
+                file.write(f'\n>{key}\n')
+                file.write(f'{values["seq"]}')
+                duplicate_list.append(values["seq"])
     print('\n================================')
     files_info.append(store_fasta_path)
 
@@ -97,7 +119,9 @@ def extract_features_info(features_path: str, region: str = None, ini_identity: 
     templates_keys = list(features_info_dict['templates'].keys())
     msa_keys = list(features_info_dict['msa'].keys())
     uniprot_description_statistics = collections.defaultdict(int)
-    uniprot_identity_statistics = collections.defaultdict(int)
+    uniprot_organism_statistics = collections.defaultdict(int)
+    uniprot_desidentity_statistics = collections.defaultdict(int)
+    uniprot_orgidentity_statistics = collections.defaultdict(int)
     for key, value in results_uniprot.items():
         if key in templates_keys:
             features_info_dict['templates'][key]['uniprot'] = value
@@ -107,28 +131,40 @@ def extract_features_info(features_path: str, region: str = None, ini_identity: 
         for uni_element in value:
             protein_description = uni_element['uniprot_protein_description']
             uniprot_description_statistics[protein_description] += 1
-            uniprot_identity_statistics[protein_description] = max(uniprot_identity_statistics[protein_description],
-                                                                   int(uni_element['uniprot_identity']))
+            uniprot_desidentity_statistics[protein_description] = max(
+                uniprot_desidentity_statistics[protein_description],
+                int(uni_element['uniprot_identity']))
 
-    combined_uniprot_dict = {k: {'description': v, 'identity': uniprot_identity_statistics[k]}
+            organism_description = uni_element['uniprot_organism']
+            uniprot_organism_statistics[organism_description] += 1
+            uniprot_orgidentity_statistics[organism_description] = max(
+                uniprot_orgidentity_statistics[organism_description],
+                int(uni_element['uniprot_identity']))
+
+    combined_uniprot_dict = {k: {'description': v, 'identity': uniprot_desidentity_statistics[k]}
                              for k, v in uniprot_description_statistics.items()}
 
-    features_info_dict['uniprot_statistics'] = dict(
+    combined_org_uniprot_dict = {k: {'organism': v, 'identity': uniprot_orgidentity_statistics[k]}
+                                 for k, v in uniprot_organism_statistics.items()}
+
+    features_info_dict['uniprot_description_statistics'] = dict(
         sorted(combined_uniprot_dict.items(), key=lambda item: item[1]['description'], reverse=True))
+    features_info_dict['uniprot_organism_statistics'] = dict(
+        sorted(combined_org_uniprot_dict.items(), key=lambda item: item[1]['organism'], reverse=True))
 
     features_info_dict['general_information'] = {}
     features_info_dict['general_information']['query_sequence'] = query
     features_info_dict['general_information']['query_search'] = region_query
-    
-    templates_coverage = [0]*len(query)
-    msa_coverage = [0]*len(query)
+
+    templates_coverage = [0] * len(query)
+    msa_coverage = [0] * len(query)
     if len(features_info_dict['templates']):
         templates_seq_list = [seq['seq'] for seq in features_info_dict['templates'].values()]
         templates_coverage = bioutils.calculate_coverage_scaled(query_seq=query, sequences=templates_seq_list)
     if len(features_info_dict['msa']):
         msa_seq_list = [seq['seq'] for seq in features_info_dict['msa'].values()]
         msa_coverage = bioutils.calculate_coverage_scaled(query_seq=query, sequences=msa_seq_list)
-       
+
     features_info_dict['coverage'] = {
         'msa_coverage': msa_coverage,
         'num_msa': len(features_info_dict['msa']),
@@ -294,11 +330,14 @@ def merge_pdbs(pdb1_path: str, pdb2_path: str, inf_ini, inf_end, inm_ini, inm_en
 
     inf_cut = int(best_list[1][3])
     inm_cut = int(best_list[2][1])
-    delete_residues = change_res.ChangeResidues(
-        chain_res_dict={'A': [*range(inf_cut + 1, 10000 + 1, 1)]})
-    delete_residues.delete_residues(pdb_in_path=pdb1_path, pdb_out_path=aux_pdb1_path)
-    delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
-    delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
+
+    delete_residues = template_modifications.TemplateModifications()
+    delete_residues.append_modification(chains=['A'], delete_residues=[*range(inf_cut + 1, 10000 + 1, 1)])
+    delete_residues.modify_template(pdb_in_path=pdb1_path, pdb_out_path=aux_pdb1_path, type_modify='delete')
+    delete_residues = template_modifications.TemplateModifications()
+    delete_residues.append_modification(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
+    delete_residues.modify_template(pdb_in_path=pdb_out, pdb_out_path=pdb_out, type_modify='delete')
+
     merge_pdbs_list.append(pdb_out)
     bioutils.merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge=merge_pdbs_list,
                                      pdb_out_path=os.path.join(best_rankeds_dir, 'merged.pdb'))
@@ -415,7 +454,7 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
                 temp_file.flush()
                 blastp_path = shutil.which('blastp')
                 blast_folder = os.path.dirname(blastp_path)
-                blastp_cmd = f'{blastp_path} -db {os.path.join(blast_folder,"swissprot")} -query {temp_file.name} -outfmt 5'
+                blastp_cmd = f'{blastp_path} -db {os.path.join(blast_folder, "swissprot")} -query {temp_file.name} -outfmt 5'
                 result = subprocess.Popen(blastp_cmd, stdout=subprocess.PIPE, shell=True)
                 blastp_output = result.communicate()[0].decode('utf-8')
                 root = ET.fromstring(blastp_output)

@@ -1,0 +1,107 @@
+.tab-ul{
+  height: 100%;
+  width: 100%;
+}
+.tab-li{
+  padding: 10px;
+  padding-left: 25px;
+  padding-right: 25px;
+  display: inline-block;
+  color: white;
+  background-color: #343a40;
+  border-radius: 0;
+}
+.tab-li:hover {
+  color: white;
+  background-color: #697581;
+}
+.tab-li:focus {
+  color: white;
+  background-color: #697581;
+}
+
+.layout-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  flex-grow: 1;
+  min-height: calc(100vh);
+  padding-top: 70px;
+}
+
+.nav-fixed {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1000;
+
+}
+
+fieldset {
+    border: 0px;
+    padding: 0px;
+}
+
+.delete-icon-format {
+  color: red;
+  cursor: pointer;
+  border-radius: 50%;
+  font-size: 0.95em;
+  padding: 8px;
+  box-sizing: border-box;
+  transition: 150ms ease-out;
+  box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.25);
+}
+
+.delete-icon-format:hover {
+  box-shadow: 0 0 4px 2px rgba(0, 0, 0, 0.25);
+  transition: 150ms ease-in;
+}
+
+.delete-icon-margin::after {
+    margin-left: 1.1rem;
+}
+
+.element-line-padding{
+  padding: 3px;
+}
+
+.link-line-padding{
+  padding-top: 10px;
+  padding-left: 32px;
+}
+
+.card{
+  margin-bottom: 20px;
+}
+
+.radio-container {
+  display: flex;
+  align-items: center;
+}
+
+.radio-container input {
+  margin-right: 7px;
+}
+
+.delete-mutations {
+  display: flex;
+  align-items: end;
+}
+
+.hidden {
+  display: none;
+}
+
+.row-margin {
+  margin-top: 16px;
+}
+
+.row-margin-after-check {
+  margin-top: 10px;
+}
+
+#menu .panel{position: relative}
+#menu .fa-close{position: absolute; right:15px; top:15px; cursor:pointer;}

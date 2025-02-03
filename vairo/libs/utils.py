@@ -7,10 +7,10 @@ from itertools import groupby
 from operator import itemgetter
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
-import numpy as np
 from sklearn import preprocessing
-from libs import structures, bioutils
+from libs import structures
 from libs.global_variables import INPUT_PARAMETERS
+from alphafold.common import residue_constants
 
 
 def scale_values(input_list: List[int]) -> List[int]:
@@ -111,6 +111,9 @@ def get_key_by_value(value: str, search_dict: Dict) -> List[str]:
         if isinstance(element, str):
             if element == value:
                 matching_keys.append(key)
+        elif isinstance(element, int):
+            if element == value:
+                matching_keys.append(key)
         else:
             if value in element:
                 matching_keys.append(key)
@@ -133,15 +136,22 @@ def get_paths_by_chain(path_list: List[str], search_chain: str) -> List[str]:
     return return_list
 
 
-def get_consecutive_numbers(number_list: List[int]) -> List[Tuple[int, int]]:
+def print_consecutive_numbers(number_list: List[int]) -> str:
     # Given an integer list, return ranges of consecutive numbers
-    result_list = []
-    for _, g in groupby(enumerate(number_list), lambda x: x[0] - x[1]):
-        group = (map(itemgetter(1), g))
-        group = list(map(int, group))
-        result_list.append((group[0], group[-1]))
+    if not number_list:
+        return ""
 
-    return result_list
+    nums = sorted(set(number_list))  # Sort and remove duplicates
+    ranges = []
+    start = nums[0]
+
+    for i in range(1, len(nums)):
+        if nums[i] != nums[i - 1] + 1:
+            ranges.append(f"{start}" if start == nums[i - 1] else f"{start}-{nums[i - 1]}")
+            start = nums[i]
+
+    ranges.append(f"{start}" if start == nums[-1] else f"{start}-{nums[-1]}")
+    return ", ".join(ranges)
 
 
 def get_chain_and_number(path_pdb: str) -> Tuple[str, int]:
@@ -160,7 +170,7 @@ def replace_last_number(text: str, value: int) -> str:
 def expand_residues(res: str) -> List:
     # Expand a str formatted like this: 10-12, 32, 34
     # To a list: [10,11,12,32,34]
-    if res == '':
+    if not res or res == '':
         return []
     modified_list = str(res).replace(' ', '').split(',')
     return_list = []
@@ -482,12 +492,12 @@ def get_input_value(name: str, section: str, input_dict: Dict, override_default=
         'global': 'global_input',
         'sequence': 'sequence_input',
         'template': 'template_input',
-        'change_res': 'change_res_input',
-        'match': 'match_input',
+        'modifications': 'modifications_input',
+        'features': 'features_input',
+        'mutations': 'mutations_input',
         'append_library': 'append_library_input',
     }
-    chosen_dict = INPUT_PARAMETERS.get(mapping.get(section, 'features_input'))
-
+    chosen_dict = INPUT_PARAMETERS.get(mapping.get(section))
     value_dict = chosen_dict.get(name)
     value = input_dict.get(name)
     if value is None and value_dict['required']:
@@ -502,7 +512,6 @@ def get_input_value(name: str, section: str, input_dict: Dict, override_default=
 
 def modification_list(query: List[int], target: List[int], length: int) -> List[int]:
     # Create a list of length LENGTH. Where each value, is the value that it should has in the target
-    result = [None] * length
     if query is None:
         query = '1'
     query = list(map(int, str(query).replace(' ', '').split(',')))
@@ -513,11 +522,16 @@ def modification_list(query: List[int], target: List[int], length: int) -> List[
         target = [tuple(map(int, r.split('-'))) for r in target]
     if len(query) != len(target):
         raise ValueError('The number of query positions and library positions mismatch')
+    return generate_modification_list(query=query, target=target, length=length)
+
+
+def generate_modification_list(query: List[int], target: List[int], length: int) -> List[int]:
+    result = [None] * length
     for query_value, target_range in zip(query, target):
         start, end = target_range
-        for i in range(start, end+1):
-            if query_value-1 < length:
-                result[query_value-1] = i
+        for i in range(start, end + 1):
+            if query_value - 1 < length:
+                result[query_value - 1] = i
                 query_value += 1
     return result
 
@@ -575,3 +589,16 @@ def generate_random_code(length: int):
     letters = string.ascii_letters
     random_code = ''.join(random.choice(letters) for i in range(length))
     return random_code
+
+
+def read_mutations_dict(input_mutations: list):
+    mutations_dict: Dict = {}
+    for mutation in input_mutations:
+        key = list(mutation.keys())[0]
+        values = expand_residues(list(mutation.values())[0])
+        if key not in list(residue_constants.restype_1to3.keys()):
+            raise Exception(
+                f'Mutation residues {"".join(values)} in {key} could not be possible. Residue {key} does not '
+                f'exist')
+        mutations_dict.setdefault(key, []).extend(values)
+    return mutations_dict

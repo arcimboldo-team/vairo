@@ -4,8 +4,8 @@ import logging
 import os
 import shutil
 from typing import List, Dict, Union
-from libs import alphafold_classes, bioutils, change_res, output, pymol_script, template, utils, features, sequence, \
-    structures, plots
+from libs import alphafold_classes, bioutils, output, template, utils, features, sequence, structures, plots, \
+    template_modifications
 from jinja2 import Environment, FileSystemLoader
 
 MIN_RMSD_SPLIT = 5
@@ -30,6 +30,7 @@ class MainStructure:
         self.af2_dbs_path: str
         self.binaries_paths: structures.BinariesPath
         self.sequence_assembled = sequence.SequenceAssembled
+        self.sequence_predicted_assembled = sequence.SequenceAssembled
         self.afrun_list: List[alphafold_classes.AlphaFoldRun] = []
         self.alphafold_paths: alphafold_classes.AlphaFoldPaths
         self.templates_list: List[template.Template] = []
@@ -134,12 +135,17 @@ class MainStructure:
                         f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
+        sequence_prediced_list = []
         logging.error('Building query sequence')
         for parameters_sequence in utils.get_input_value(name='sequences', section='global',
                                                          input_dict=parameters_dict):
-            new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir)
+            new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir, predicted=False)
             sequence_list.append(new_sequence)
+            new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir, predicted=True)
+            sequence_prediced_list.append(new_sequence)
+
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
+        self.sequence_predicted_assembled = sequence.SequenceAssembled(sequence_prediced_list, self.glycines)
 
         for library in utils.get_input_value(name='append_library', section='global', input_dict=parameters_dict):
             path = utils.get_input_value(name='path', section='append_library', input_dict=library)
@@ -147,30 +153,33 @@ class MainStructure:
             add_to_msa = utils.get_input_value(name='add_to_msa', section='append_library', input_dict=library)
             add_to_templates = utils.get_input_value(name='add_to_templates', section='append_library',
                                                      input_dict=library)
-            positions_query = utils.get_input_value(name='positions_query', section='append_library',
+            numbering_query = utils.get_input_value(name='numbering_query', section='append_library',
                                                     input_dict=library)
-            positions_library = utils.get_input_value(name='positions_library', section='append_library',
+            numbering_library = utils.get_input_value(name='numbering_library', section='append_library',
                                                       input_dict=library)
-            
+
             if os.path.exists(path):
                 self.library_list.append(structures.Library(path=path, aligned=aligned,
                                                             add_to_msa=add_to_msa,
                                                             add_to_templates=add_to_templates,
-                                                            positions_query=positions_query,
-                                                            positions_library=positions_library))
+                                                            numbering_query=numbering_query,
+                                                            numbering_library=numbering_library))
             else:
                 raise Exception(f'Path {path} does not exist. Check the input append_library parameter.')
 
         for parameters_features in utils.get_input_value(name='features', section='global', input_dict=parameters_dict):
-            positions_features = utils.get_input_value(name='positions_features', section='features',
+            numbering_features = utils.get_input_value(name='numbering_features', section='features',
                                                        input_dict=parameters_features)
 
             positions = utils.get_input_value(name='positions', section='features', input_dict=parameters_features)
-            positions_query = utils.get_input_value(name='positions_query', section='features',
+            numbering_query = utils.get_input_value(name='numbering_query', section='features',
                                                     input_dict=parameters_features)
-            if positions_query is None and positions is not None:
-                positions_query = f'{self.sequence_assembled.get_starting_length(positions - 1) + 1}'
+            if numbering_query is None and positions is not None:
+                numbering_query = f'{self.sequence_assembled.get_starting_length(positions - 1) + 1}'
 
+            mutations = utils.get_input_value(name='mutations', section='features', input_dict=parameters_features)
+            if mutations:
+                mutations = utils.read_mutations_dict(mutations)
             self.features_input.append(structures.FeaturesInput(
                 path=utils.get_input_value(name='path', section='features', input_dict=parameters_features),
                 keep_msa=utils.get_input_value(name='keep_msa', section='features', input_dict=parameters_features),
@@ -178,8 +187,9 @@ class MainStructure:
                                                      input_dict=parameters_features),
                 msa_mask=utils.expand_residues(
                     utils.get_input_value(name='msa_mask', section='features', input_dict=parameters_features)),
-                positions_features=positions_features,
-                positions_query=positions_query,
+                numbering_features=numbering_features,
+                numbering_query=numbering_query,
+                mutate_residues=mutations,
                 replace_sequence=bioutils.check_sequence_path(
                     utils.get_input_value(name='sequence', section='features', input_dict=parameters_features))
             ))
@@ -220,18 +230,55 @@ class MainStructure:
                 self.templates_list.append(new_template)
                 self.reference = new_template if new_template.pdb_id == self.reference else self.reference
 
-            [element.set_reference_templates(self) for element in self.templates_list]
-            self.order_templates_with_restrictions()
-            self.reference = self.templates_list[0] if self.reference is None else self.reference
+            if self.reference is not None:
+                self.templates_list.insert(0, self.templates_list.pop(self.reference))
+            else:
+                self.reference = self.templates_list[0]
         self.alphafold_paths = alphafold_classes.AlphaFoldPaths(af2_dbs_path=self.af2_dbs_path)
+
+    def resize_features_predicted_sequence(self):
+        numbering_query = []
+        numbering_target = []
+        for i, sequence_in in enumerate(self.sequence_predicted_assembled.sequence_list_expanded):
+            if sequence_in.predict_region:
+                ini = self.sequence_assembled.get_real_residue_number(i=i, residue=sequence_in.predict_region[0])
+                end = self.sequence_assembled.get_real_residue_number(i=i, residue=sequence_in.predict_region[1])
+                starting_seq = self.sequence_predicted_assembled.get_starting_length(i)
+                numbering_query.append(starting_seq + 1)
+                numbering_target.append(tuple([ini, end]))
+
+        if numbering_query and numbering_target:
+            modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target,
+                                                                length=self.sequence_predicted_assembled.length)
+
+            self.feature = self.feature.cut_expand_features(self.sequence_predicted_assembled.sequence_assembled,
+                                                            modifications_list)
+
+    def expand_features_predicted_sequence(self):
+        numbering_query = []
+        numbering_target = []
+        for i, sequence_in in enumerate(self.sequence_predicted_assembled.sequence_list_expanded):
+            if sequence_in.predict_region:
+                ini = self.sequence_predicted_assembled.get_starting_length(i) + 1
+                end = self.sequence_predicted_assembled.get_finishing_length(i) + 1
+                starting_seq = self.sequence_assembled.get_starting_length(i) + sequence_in.predict_region[0] - 1
+                numbering_query.append(starting_seq + 1)
+                numbering_target.append(tuple([ini, end]))
+
+        if numbering_query and numbering_target:
+            modifications_list = utils.generate_modification_list(query=numbering_query, target=numbering_target,
+                                                                length=self.sequence_assembled.length)
+            self.feature = self.feature.cut_expand_features(self.sequence_assembled.sequence_assembled, modifications_list)
 
     def partition_mosaic(self) -> List[features.Features]:
         if not self.mosaic_partition:
-            self.chunk_list = self.sequence_assembled.partition(number_partitions=self.mosaic,
-                                                                overlap=self.mosaic_overlap)
+            self.chunk_list = self.sequence_predicted_assembled.partition(number_partitions=self.mosaic,
+                                                                          overlap=self.mosaic_overlap)
         else:
             [self.chunk_list.append((partition[0] - 1, partition[1])) for partition in self.mosaic_partition]
         if self.feature is not None:
+            self.resize_features_predicted_sequence()
+            self.feature.select_msa_templates(sequence_assembled=self.sequence_predicted_assembled)
             self.features_list = self.feature.slicing_features(chunk_list=self.chunk_list)
         return self.features_list
 
@@ -291,6 +338,9 @@ class MainStructure:
 
             if self.cluster_list:
                 render_dict['cluster_list'] = self.cluster_list
+
+        if self.templates_list:
+            render_dict['templates_list'] = self.templates_list
 
         if self.feature:
             if self.mode != 'naive':
@@ -396,8 +446,6 @@ class MainStructure:
             render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
             render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_filtered_list}
 
-            if self.templates_list:
-                render_dict['templates_list'] = self.templates_list
             if self.output.ranked_list:
                 render_dict['ranked_list'] = self.output.ranked_list
             if self.output.group_ranked_by_qscore_dict:
@@ -444,6 +492,7 @@ class MainStructure:
         elif self.output.ranked_list:
             render_dict['pymol'] = None
 
+        jinja_template.globals['print_consecutive_numbers'] = utils.print_consecutive_numbers
         with open(write_output, 'w') as f_out:
             f_out.write(jinja_template.render(data=render_dict))
 
@@ -461,29 +510,6 @@ class MainStructure:
                 return temp
         return None
 
-    def order_templates_with_restrictions(self):
-        # Order the templates list to meet the required dependencies
-        # All the templates are going to be in order, so the references will be calculated
-        # before needed
-        new_templates_list = []
-        old_templates_list = self.templates_list
-
-        if self.reference is not None:
-            new_templates_list.append(self.reference)
-            old_templates_list.remove(self.reference)
-
-        while old_templates_list:
-            deleted_items = []
-            for temp in old_templates_list:
-                reference_list = temp.get_templates_references()
-                if set(reference_list).issubset(new_templates_list):
-                    new_templates_list.append(temp)
-                    deleted_items.append(temp)
-            old_templates_list = [x for x in old_templates_list if (x not in deleted_items)]
-            if not deleted_items:
-                raise Exception('The match conditions could not be applied, there is an endless loop')
-        self.templates_list = new_templates_list
-
     def append_line_in_templates(self, new_list: List):
         # Add line to the template's matrix.
         # The list contains the position of the chains
@@ -498,10 +524,10 @@ class MainStructure:
                 name = f'{self.name_results_dir}{i}'
             path = os.path.join(self.run_dir, name)
             if self.cluster_templates and self.mode == 'naive':
-                sequence_chunk = self.sequence_assembled.sequence_assembled[
+                sequence_chunk = self.sequence_predicted_assembled.sequence_assembled[
                                  self.chunk_list[i][0]:self.chunk_list[i][1]]
             else:
-                sequence_chunk = self.sequence_assembled.sequence_mutated_assembled[
+                sequence_chunk = self.sequence_predicted_assembled.sequence_mutated_assembled[
                                  self.chunk_list[i][0]:self.chunk_list[i][1]]
             run_af2 = False if self.mode == 'guided' and self.cluster_templates else self.run_af2
             stop_after_msa = True if self.mode == 'naive' and self.cluster_templates else False
@@ -587,11 +613,15 @@ class MainStructure:
 
                     inf_cut = int(best_list[1][3])
                     inm_cut = int(best_list[2][1])
-                    delete_residues = change_res.ChangeResidues(
-                        chain_res_dict={'A': [*range(inf_cut + 1, len_sequence + 1, 1)]})
-                    delete_residues.delete_residues(pdb_in_path=inf_path, pdb_out_path=inf_path)
-                    delete_residues = change_res.ChangeResidues(chain_res_dict={'A': [*range(1, inm_cut, 1)]})
-                    delete_residues.delete_residues(pdb_in_path=pdb_out, pdb_out_path=pdb_out)
+
+                    delete_residues = template_modifications.TemplateModifications()
+                    delete_residues.append_modification(chains=['A'],
+                                                        delete_residues=[*range(inf_cut + 1, len_sequence + 1, 1)])
+                    delete_residues.modify_template(pdb_in_path=inf_path, pdb_out_path=inf_path, type_modify=['delete'])
+                    delete_residues = template_modifications.TemplateModifications()
+                    delete_residues.append_modification(chains=['A'], delete_residues=[*range(1, inm_cut, 1)])
+                    delete_residues.modify_template(pdb_in_path=pdb_out, pdb_out_path=pdb_out, type_modify=['delete'])
+
                     merge_pdbs_list.append(pdb_out)
                     inf_path = pdb_out
 
@@ -691,8 +721,8 @@ class MainStructure:
         if self.sequence_assembled.total_copies > 1:
             plots.plot_sequence(plot_path=self.output.sequence_plot_path, a_air=self)
 
-    def extract_results(self):
-        self.output.extract_results(vairo_struct=self)
+    def extract_results(self, region_predicted: bool):
+        self.output.extract_results(vairo_struct=self, region_predicted=region_predicted)
 
     def analyse_output(self):
         self.output.analyse_output(
@@ -752,9 +782,12 @@ class MainStructure:
             f_out.write('-')
             f_out.write(f' pdb: {pdb_path}\n')
             f_out.write(f'  legacy: True\n')
-            f_out.write(f'  change_res:\n')
-            f_out.write(f'  - All: 1-100000\n')
-            f_out.write(f'    resname: ALA\n')
+            f_out.write(f'  modifications:\n')
+            f_out.write(f'  -  chain: all\n')
+            f_out.write(f'     replace:\n')
+            f_out.write(f'     - residues: 1-100000\n')
+            f_out.write(f'       by: ALA\n')
+
         bioutils.run_vairo(yml_path=yml_path, input_path=mutations_dir)
         if os.path.exists(old_results_dir):
             shutil.rmtree(old_results_dir)
@@ -793,7 +826,7 @@ class MainStructure:
                     txt_aux.append("-".join(map(str, partition)))
                 f_out.write(f'mosaic_partition: {",".join(map(str, txt_aux))}\n')
             f_out.write(f'\nsequences:\n')
-            for sequence_in in self.sequence_assembled.sequence_list:
+            for sequence_in in self.sequence_predicted_assembled.sequence_list:
                 f_out.write('-')
                 f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
@@ -849,9 +882,9 @@ class MainStructure:
                         f_out.write(f'  add_to_msa: {library.add_to_msa}\n')
                     if library.add_to_templates:
                         f_out.write(f'  add_to_templates: {library.add_to_templates}\n')
-                    if library.positions_query and library.positions_library:
-                        f_out.write(f'  positions_query: {library.positions_query}\n')
-                        f_out.write(f'  positions_library: {library.positions_library}\n')
+                    if library.numbering_query and library.numbering_library:
+                        f_out.write(f'  numbering_query: {library.numbering_query}\n')
+                        f_out.write(f'  numbering_library: {library.numbering_library}\n')
             if self.features_input:
                 f_out.write(f'\nfeatures:\n')
                 for feat in self.features_input:
@@ -861,18 +894,25 @@ class MainStructure:
                     f_out.write(f'  keep_templates: {feat.keep_templates}\n')
                     if feat.msa_mask:
                         f_out.write(f'  msa_mask: {",".join(map(str, feat.msa_mask))}\n')
-                    f_out.write(f'  positions_query: {feat.positions_query}\n')
+                    f_out.write(f'  numbering_query: {feat.numbering_query}\n')
                     f_out.write(
-                        f'  positions_features: {feat.positions_features}\n')
+                        f'  numbering_features: {feat.numbering_features}\n')
                     if feat.replace_sequence is not None:
                         f_out.write(f'  sequence: {feat.replace_sequence}\n')
+
+                    if feat.mutate_residues:
+                        f_out.write(f'  mutations:\n')
+                        for residue, values in feat.mutate_residues.items():
+                            f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
             f_out.write(f'\nsequences:\n')
-            for sequence_in in self.sequence_assembled.sequence_list:
+            for sequence_in in self.sequence_predicted_assembled.sequence_list:
                 f_out.write('-')
                 f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
+                if sequence_in.predict_region:
+                    f_out.write(f'  predict_region: {"-".join(map(str, sequence_in.predict_region))}\n')
                 if sequence_in.mutations_dict.items():
                     f_out.write(f'  mutations:\n')
                     for residue, values in sequence_in.mutations_dict.items():
@@ -888,37 +928,26 @@ class MainStructure:
                     f_out.write(f'  aligned: {template_in.aligned}\n')
                     f_out.write(f'  legacy: {template_in.legacy}\n')
                     f_out.write(f'  strict: {template_in.strict}\n')
-                    if template_in.reference is not None:
-                        f_out.write(f'  reference: {self.reference}\n')
-                    if template_in.change_res_struct.change_residues_list:
-                        f_out.write(f'  change_res:\n')
-                        for change in template_in.change_res_struct.change_residues_list:
-                            f_out.write('  -')
-                            if change.resname is not None:
-                                f_out.write(f' resname: {change.resname}\n')
-                            elif change.sequence is not None:
-                                if change.fasta_path is not None:
-                                    f_out.write(f' fasta_path: {change.fasta_path}\n')
-                                else:
-                                    f_out.write(f' fasta_path: {change.sequence}\n')
-                            f_out.write(f'    when: {change.when}\n')
-                            for key, value in change.chain_group_res_dict.items():
-                                f_out.write(f'    {key}: {", ".join(map(str, value))}\n')
 
-                    if template_in.match_restrict_struct.match_restrict_list:
-                        f_out.write(f'  match:\n')
-                        for match in template_in.match_restrict_struct.match_restrict_list:
-                            f_out.write('  -')
-                            f_out.write(f' chain: {match.chain}\n')
-                            f_out.write(
-                                f'    position: {match.position + 1 if match.position != -1 else match.position}\n')
-                            if match.residues is not None:
+                    if template_in.modifications_struct.modifications_list:
+                        f_out.write(f'  modifications:\n')
+                        for modification in template_in.modifications_struct.modifications_list:
+                            f_out.write(f'  - chain: {modification.chain}\n')
+                            if modification.position + 1:
+                                f_out.write(f'    position: {modification.position + 1}\n')
+                            if modification.maintain_residues:
                                 f_out.write(
-                                    f'    residues: {",".join(map(str, list(match.residues.chain_res_dict.values())[0]))}\n')
-                            if match.reference is not None:
-                                f_out.write(f'    reference: {match.reference}\n')
-                            if match.reference_chain is not None:
-                                f_out.write(f'    reference_chain: {match.reference_chain}\n')
+                                    f'    maintain_residues: {", ".join(map(str, modification.maintain_residues))}\n')
+                            if modification.delete_residues:
+                                f_out.write(
+                                    f'    delete_residues: {", ".join(map(str, modification.delete_residues))}\n')
+                            f_out.write(f'      when: {modification.when}\n')
+
+                            if modification.mutations:
+                                f_out.write(f'      mutations:\n')
+                                for mutation in modification.mutations:
+                                    f_out.write(f'      - numbering_residues: {", ".join(map(str, mutation.mutate_residues_number))}\n')
+                                    f_out.write(f'        mutate_with: {mutation.mutate_with}\n')
 
     def __repr__(self) -> str:
         return f' \

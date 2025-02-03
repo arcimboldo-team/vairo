@@ -1,0 +1,17 @@
+<nav class="navbar navbar-expand navbar-dark bg-dark nav-fixed">
+    <!-- Navbar Brand-->
+    <a class="navbar-brand ps-3" href="index.html">VAIRO</a>
+    <!-- Sidebar Toggle-->
+    <button class="btn btn-link btn-sm" style="padding-right: 40px;"id="sidebarToggle" href="#!"><i class="fas fa-bars"></i></button>
+  <ul class="navbar-nav">
+    <li class="nav-item">
+      <a class="nav-link" href="{{ url_for('index') }}">Input</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="">Output</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="{{ url_for('show_modfeatures') }}">Features</a>
+    </li>
+  </ul>
+</nav>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+    {% include 'header.html' %}
+    <body>
+        {% include 'nav.html' %}
+            <div class="layout-main">
+                <main id="vairo-output">
+                    
+
+                </main>
+            </div>
+        {% include 'footer.html' %}
+        <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/output.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/plotly.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/ngl.js') }}"></script>
+    </body>
+</html>

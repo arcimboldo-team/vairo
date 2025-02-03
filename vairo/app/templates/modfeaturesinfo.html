@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+    {% include 'header.html' %}
+    <body>
+        {% include 'nav.html' %}
+        <div class="layout-main d-flex justify-content-center align-items-center">
+            <div class="container-fluid px-4">
+                <div id="modfeaturesinfo-data">
+                </div>
+            </div>
+            <div id="viewport" style="width:600px; height:600px;"></div>
+        </div>
+        {% include 'footer.html' %}
+    </body>
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/plotly.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ngl.js') }}"></script>
+    <script src="{{ url_for('static', filename='components/modfeatures.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</html>

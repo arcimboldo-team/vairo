@@ -13,7 +13,7 @@ from ALEPH.aleph.core import ALEPH
 from alphafold.common import residue_constants
 from alphafold.relax import cleanup, amber_minimize
 from simtk import unit
-from libs import change_res, hhsearch, structures, utils, plots, global_variables, sequence, structures
+from libs import hhsearch, structures, utils, plots, global_variables, sequence, template_modifications
 
 
 def download_pdb(pdb_id: str, pdb_path: str) -> str:
@@ -167,25 +167,22 @@ def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
     model = structure[0]
     sequences = {}
     for chain in model:
-        residue_numbers = set()
-        for residue in chain:
-            residue_numbers.add(residue.get_id()[1])
-        sequence_ext = ""
+        sequence_with_gaps = ""
         prev_residue_number = 0
         for residue in chain:
             residue_number = residue.get_id()[1]
             if residue_number - prev_residue_number > 1:
-                for missing_number in range(prev_residue_number + 1, residue_number):
-                    sequence_ext += "-"
+                sequence_with_gaps += "-" * (residue_number - prev_residue_number - 1)
             try:
+                # Convert MSE to M
                 if residue.get_resname() == 'MSE':
-                    sequence_ext += 'M'
+                    sequence_with_gaps += 'M'
                 else:
-                    sequence_ext += residue_constants.restype_3to1[residue.get_resname()]
-            except Exception as e:
+                    sequence_with_gaps += residue_constants.restype_3to1[residue.get_resname()]
+            except KeyError:
                 pass
             prev_residue_number = residue_number
-        sequences[chain.id] = sequence_ext
+        sequences[chain.id] = sequence_with_gaps
     return sequences
 
 
@@ -227,10 +224,11 @@ def read_seqres(pdb_path: str) -> str:
 def extract_sequence_from_file(file_path: str) -> List[str]:
     results_dict = {}
     extension = utils.get_file_extension(file_path)
-    if extension == '.pdb':
-        extraction = 'pdb-atom'
-    else:
+    if extension == '.cif':
         extraction = 'cif-atom'
+    else:
+        extraction = 'pdb-atom'
+
     try:
         with open(file_path, 'r') as f_in:
             for record in SeqIO.parse(f_in, extraction):
@@ -617,7 +615,8 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
             if not compactness_decision:
                 logging.info(f'    Compactness below limit')
             if not identity:
-                logging.info(f'    Too low/high identity with the query sequence')
+                logging.info(f'    Too low/high identity with the query sequence ({pdb.identity})')
+
             if only_ca:
                 logging.info(f'    Only CA')
         if isinstance(pdb, structures.TemplateExtracted) and pdb.percentage_list:
@@ -707,7 +706,8 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
         pdb_diff = [pdb for pdb in pdbs if pdb.name == more_different][0]
         logging.info(f'Hinges could not create any groups')
         logging.info(f'Creating two groups: The more completed pdb: {pdb_complete.name} '
-                      f'and the more different one: {pdb_diff.name}')
+                     f'and the more different one: {pdb_diff.name}')
+
         return [[pdb_complete], [pdb_diff]]
     else:
         # Return the original list of pdbs
@@ -736,9 +736,12 @@ def cc_analysis(pdbs: List[structures.Pdb], cc_analysis_paths: structures.Binari
                 for i in range(len(residues)):
                     if bfactors_dict[chain][i] is not None:
                         bfactors_dict[chain][i] = round(bfactors_dict[chain][i] - 70.0, 2)
-            residues_dict = read_residues_from_pdb(path)
-            change = change_res.ChangeResidues(chain_res_dict=residues_dict, chain_bfactors_dict=bfactors_dict)
-            change.change_bfactors(path, path)
+
+            modify_bfactors = template_modifications.TemplateModifications()
+            modify_bfactors.append_modification(chains=list(bfactors_dict.keys()),
+                                                bfactors=list(bfactors_dict.values()))
+            modify_bfactors.modify_template(pdb_in_path=path, pdb_out_path=path, type_modify=['bfactors'])
+
         new_path = os.path.join(output_dir, f'orig.{str(index)}.pdb')
         os.rename(os.path.join(output_dir, path), new_path)
         # Create a translation dictionary, with and index and the pdb name
@@ -983,16 +986,6 @@ def split_chains_assembly(pdb_in_path: str,
     return chains_return
 
 
-def change_sequence_pdb(pdb_in_path: str, pdb_out_path: str, sequence_list: List[str]):
-    chain_list = get_chains(pdb_in_path)
-    shutil.copy2(pdb_in_path, pdb_out_path)
-    for i, chain in enumerate(chain_list, start=0):
-        if sequence_list[i] is not None:
-            change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(sequence_list[i]) + 1, 1)]},
-                                               sequence=sequence_list[i])
-            change.change_residues(pdb_in_path=pdb_out_path, pdb_out_path=pdb_out_path)
-
-
 def split_pdb_in_chains(pdb_path: str, chain: str = None, output_dir: str = None) -> Dict:
     # Given a pdb_in and an optional chain, write one or several
     # pdbs containing each one a chain.
@@ -1148,7 +1141,8 @@ def run_vairo(yml_path: str, input_path: str):
                          stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
     if not utils.read_rankeds(input_path=input_path):
-        raise Exception(f'VAIRO cluster did not finish correctly. Please check the log in the following directory: {input_path}')
+        raise Exception(
+            f'VAIRO cluster did not finish correctly. Please check the log in the following directory: {input_path}')
     else:
         logging.error('VAIRO cluster run finished successfully.')
 
@@ -1367,8 +1361,10 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
     split_dimers_in_pdb(pdb_in_path=pdb_in_path,
                         pdb_out_path=pdb_out_path,
                         chain_list=[interface.chain1, interface.chain2])
-    change = change_res.ChangeResidues(chain_res_dict=add_domains_dict)
-    change.delete_residues_inverse(pdb_out_path, pdb_out_path)
+
+    change = template_modifications.TemplateModifications()
+    change.append_modification(chains=list(add_domains_dict.keys()), maintain_residues=list(add_domains_dict.values()))
+    change.modify_template(pdb_in_path=pdb_out_path, pdb_out_path=pdb_out_path, type_modify=['delete'])
 
     return add_domains_dict
 
@@ -1453,11 +1449,12 @@ def conservation_pdb(pdb_in_path: str, pdb_out_path: str, msa_list: List[str]):
     sequences_dict = extract_sequence_msa_from_pdb(pdb_path=pdb_in_path)
     chain = get_chains(pdb_in_path)[0]
     whole_seq = "".join([seq for seq in sequences_dict.values()])
+    whole_seq += '-' * (len(msa_list[0]) - len(whole_seq))
     conservation_list = calculate_coverage(query_seq=whole_seq, sequences=msa_list, only_match=True)
     conservation_list = conservation_list * 100
-    change = change_res.ChangeResidues(chain_res_dict={chain: [*range(1, len(whole_seq) + 1, 1)]},
-                                       chain_bfactors_dict={chain: conservation_list})
-    change.change_bfactors(pdb_in_path, pdb_out_path)
+    modify_bfactors = template_modifications.TemplateModifications()
+    modify_bfactors.append_modification(chains=[chain], bfactors=conservation_list.tolist())
+    modify_bfactors.modify_template(pdb_in_path=pdb_in_path, pdb_out_path=pdb_out_path, type_modify=['bfactors'])
 
 
 def calculate_coverage(query_seq: str, sequences: List[str], only_match: bool) -> List[str]:
@@ -1474,3 +1471,31 @@ def calculate_coverage_scaled(query_seq: str, sequences: List[str]):
     sequences_coverage = calculate_coverage(query_seq=query_seq, sequences=sequences, only_match=False)
     new_sequences = utils.scale_values(sequences_coverage)
     return new_sequences
+
+
+def shift_pdb(pdb_in_path: str, sequence_predicted_assembled, sequence_assembled):
+    # Given a list of shifts, one for each chain, apply them to each chain and return de pdb.
+    shifts = sequence_predicted_assembled.get_region_starting_shifts()
+    new_structure = Structure.Structure(utils.get_file_name(pdb_in_path))
+    new_model = Model.Model('model')
+    new_chain = Chain.Chain('A')
+    new_structure.add(new_model)
+    new_model.add(new_chain)
+    structure = get_structure(pdb_in_path)
+    chain = next(structure.get_chains())
+    residues = chain.get_unpacked_list()
+    for residue in residues:
+        seq_position = sequence_predicted_assembled.get_position_by_residue_number(residue.id[1])
+        if seq_position is not None:
+            starting_position_original = sequence_assembled.get_starting_length(seq_position)
+            starting_position_predicted = sequence_predicted_assembled.get_starting_length(seq_position)
+            residue = copy.copy(residue)
+            residue.parent = None
+            new_id = starting_position_original + shifts[seq_position] - starting_position_predicted + residue.id[1]
+            residue.id = (residue.id[0], new_id, residue.id[2])
+            new_chain.add(residue)
+            residue.parent = new_chain
+
+    io = PDBIO() 
+    io.set_structure(new_structure) 
+    io.save(pdb_in_path)

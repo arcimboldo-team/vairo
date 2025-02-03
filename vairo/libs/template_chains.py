@@ -1,37 +1,46 @@
-import copy
-import logging
 import os
 import shutil
-from typing import Union, List, Dict
-
-from libs import match_restrictions, utils, bioutils, structures
+from typing import List
+from libs import utils, bioutils, structures, template_modifications, hhsearch
 
 
 class TemplateChain:
     def __init__(self,
                  chain: str,
                  path: str,
-                 path_before_changes: str,
                  code: str,
                  sequence: str,
-                 match: match_restrictions.MatchRestrictions = None,
-                 alignment: Union[None, structures.Alignment] = None,
-                 deleted_residues: List[int] = [],
-                 changed_residues: List[int] = [],
-                 fasta_residues: List[int] = [],
-                 sequence_before_changes: str = ''
+                 modifications_list: template_modifications.TemplateModifications = None,
                  ):
         self.chain = chain
         self.path = path
-        self.path_before_changes = path_before_changes
         self.code = code
         self.sequence = sequence
-        self.match = match
-        self.alignment = alignment
-        self.deleted_residues = deleted_residues
-        self.changed_residues = changed_residues
-        self.fasta_residues = fasta_residues
-        self.sequence_before_changes = sequence_before_changes
+        self.modifications_list = modifications_list
+        self.path_before_changes = None
+        self.alignment = {}
+        self.deleted_residues = []
+        self.changed_residues = []
+        self.fasta_residues = []
+        self.sequence_before_changes = ''
+        self.sequence_before_alignment = ''
+
+    def apply_changes(self, when: str):
+        if when == 'before_alignment':
+            self.modifications_list.modify_template(pdb_in_path=self.path, pdb_out_path=self.path,
+                                                    type_modify=['mutate', 'delete'], when='before_alignment')
+            self.sequence_before_alignment = list(bioutils.extract_sequence_msa_from_pdb(self.path).values())[0]
+        else:
+            self.sequence_before_changes = list(bioutils.extract_sequence_msa_from_pdb(self.path).values())[0]
+            self.path_before_changes = os.path.join(os.path.dirname(self.path),
+                                                    f'{utils.get_file_name(self.path)}_originalseq.pdb')
+            if os.path.exists(self.path_before_changes):
+                os.remove(self.path_before_changes)
+            shutil.copy2(self.path, self.path_before_changes)
+            self.modifications_list.modify_template(pdb_in_path=self.path, pdb_out_path=self.path,
+                                                    type_modify=['mutate', 'delete'], when='after_alignment')
+            self.deleted_residues = self.modifications_list.get_deleted_residues()
+            self.changed_residues, self.fasta_residues = self.modifications_list.get_residues_changed_by_chain()
 
     def get_chain_code(self) -> List:
         return self.chain, self.code
@@ -49,6 +58,24 @@ class TemplateChain:
             return True
         return True
 
+    def set_alignment(self, alignment: structures.Alignment):
+        structure = bioutils.get_structure(self.path)
+        residues_list = list(structure[0][self.chain].get_residues())
+        idres_list = list([bioutils.get_resseq(res) for res in residues_list])
+        mapping_keys = list(map(lambda x: x + 1, list(alignment.mapping.keys())))
+        mapping_values = list(map(lambda x: x + 1, list(alignment.mapping.values())))
+        mapping = dict(zip(mapping_keys, mapping_values))
+        if idres_list != mapping_keys and len(idres_list) == len(mapping_keys):
+            self.modifications_list.apply_mapping(mapping=mapping)
+        self.alignment = alignment
+
+    def check_position(self):
+        return self.modifications_list.check_position()
+
+    
+    def set_extracted_chain(self, extracted_path: str):
+        self.path = extracted_path
+
     def __repr__(self):
         # Print class
         return f'pdb_path: {self.path}'
@@ -62,7 +89,7 @@ class TemplateChainsList:
         chain1, code1 = utils.get_chain_and_number(pdb_path)
         pdb_dirname = os.path.dirname(pdb_path)
         for template_chain in self.template_chains_list:
-            # if there is alignment, we check the directory too, because it can be from different alignments
+            # if there is an alignment, we check the directory too, because it can be from different alignments
             if pdb_dirname == os.path.dirname(
                     template_chain.path) and chain1 == template_chain.chain and code1 == template_chain.code:
                 return template_chain
@@ -87,9 +114,9 @@ class TemplateChainsList:
 
     def get_alignment_by_path(self, pdb_path: str):
         # Search for the alignment that has the same name as the pdb_path
-        template_chain = self.get_template_chain(pdb_path)
-        if template_chain is not None and template_chain.alignment:
-            return template_chain.alignment
+        temp_chain = self.get_template_chain(pdb_path)
+        if temp_chain is not None and temp_chain.alignment:
+            return temp_chain.alignment
         return None
 
     def get_chains_not_in_list(self, input_list: List[str]) -> List[TemplateChain]:
@@ -97,108 +124,30 @@ class TemplateChainsList:
         # This can be used to eliminate duplicates in case there is more than one database.
         input_chains = [(utils.get_chain_and_number(path)[0], utils.get_chain_and_number(path)[1]) for path in
                         input_list if path is not None]
-        return [template_chain for template_chain in self.template_chains_list if
-                (template_chain.chain, template_chain.code) not in input_chains]
-
-    def get_chains_with_matches_ref(self) -> List[TemplateChain]:
-        # Get all the chains that has a match with references
-        return [template_chain for template_chain in self.template_chains_list if
-                template_chain.match is not None and template_chain.match.check_references()]
+        return [temp_chain for temp_chain in self.template_chains_list if
+                (temp_chain.chain, temp_chain.code) not in input_chains]
 
     def get_chains_with_matches_pos(self) -> List[TemplateChain]:
-        # Get all the chains that has a match with a determinate position.
-        return [template_chain for template_chain in self.template_chains_list if
-                template_chain.match is not None and template_chain.match.check_position()]
+        # Get all the chains that have a match with a determinate position.(
+        return [temp_chain for temp_chain in self.template_chains_list if temp_chain.check_position() != -1]
 
-    def from_dict_to_struct(self, chain_dict: Dict, alignment_dict: Dict, sequence: str, change_res_list,
-                            match_restrict_list: match_restrictions.MatchRestrictionsList,
-                            generate_multimer: bool = False, pdb_path: str = ''):
-        # Given a dict, with all the information of a Chain (there can be more than one chain in case of multimer)
-        # Read all the information, and create as many TemplateChains as paths and append them to the list.
+    def apply_changes(self, when: str = 'after_alignment'):
+        for temp_chain in self.template_chains_list:
+            temp_chain.apply_changes(when)
 
-        if not chain_dict:
-            return chain_dict
+    def new_chain_sequence(self, path: str,
+                           sequence: str,
+                           modifications_list: template_modifications.TemplateModifications):
+        chain, number = utils.get_chain_and_number(path)
+        template_chain_struct = TemplateChain(chain=chain, path=path, code=number, sequence=sequence,
+                                              modifications_list=modifications_list)
+        template_chain_struct.apply_changes('before_alignment')
+        self.template_chains_list.append(template_chain_struct)
 
-        if generate_multimer:
-            try:
-                chain_dict = bioutils.generate_multimer_chains(pdb_path, chain_dict)
-            except Exception as e:
-                logging.error(f'Not possible to generate multimer for {pdb_path}')
-        for chain, paths in chain_dict.items():
-            path_list = []
-            if isinstance(paths, list):
-                for path in paths:
-                    path_list.append(path)
-            else:
-                path_list.append(paths)
-
-            match_restrict_copy = copy.deepcopy(match_restrict_list)
-            if isinstance(match_restrict_copy, match_restrictions.MatchRestrictionsList):
-                match_list = match_restrict_copy.get_matches_by_chain(chain=chain)
-            else:
-                match_list = [match_restrict_copy]
-                filtered_list = list(filter(lambda x: x not in [y.path for y in self.template_chains_list], path_list))
-                if filtered_list:
-                    path_list = [filtered_list[0]]
-                else:
-                    path_list = [path_list[0]]
-
-            alignment = alignment_dict.get(chain)
-            for path in path_list:
-                change_res_copy = copy.deepcopy(change_res_list)
-                change_list = change_res_copy.get_changes_by_chain(chain=chain, when='after_alignment')
-                match = None
-                # If there is an alignment, there might be a mapping. It is necessary to apply that mapping
-                # to change_res (match can have a change_res too) because the residues numbering has changed during
-                # the alignment
-                if alignment:
-                    structure = bioutils.get_structure(path)
-                    residues_list = list(structure[0][chain].get_residues())
-                    idres_list = list([bioutils.get_resseq(res) for res in residues_list])
-                    mapping_keys = list(map(lambda x: x + 1, list(alignment.mapping.keys())))
-                    mapping_values = list(map(lambda x: x + 1, list(alignment.mapping.values())))
-                    mapping = dict(zip(mapping_keys, mapping_values))
-                    if idres_list != mapping_keys and len(idres_list) == len(mapping_keys):
-                        for match in match_list:
-                            if match.residues is not None:
-                                match.residues.apply_mapping(chain, mapping)
-                        for res in change_list:
-                            res.apply_mapping(chain, mapping)
-
-                # We just use one match per chain. As that chain just can be in one position. All the delete residues
-                # has to be in a one line sentence also.
-                for match in match_list:
-                    if match.residues:
-                        match.residues.delete_residues_inverse(path, path)
-                    match = match_list.pop(0)
-                    break
-
-                # Store the sequence before changing the residues, as if we want to add it in the MSA, it would not
-                # make sense
-                sequence_before_changes = list(bioutils.extract_sequence_msa_from_pdb(path).values())[0]
-                path_before_changes = os.path.join(os.path.dirname(path),
-                                                   f'{utils.get_file_name(path)}_originalseq.pdb')
-                if os.path.exists(path_before_changes):
-                    os.remove(path_before_changes)
-                shutil.copy2(path, path_before_changes)
-                for change in change_list:
-                    change.change_residues(path, path)
-
-                deleted_residues = []
-                if match:
-                    deleted_residues = match.get_deleted_residues(chain=chain)
-                changed_residues, fasta_residues = change_res_copy.get_residues_changed_by_chain(chain)
-                chain, number = utils.get_chain_and_number(path)
-
-                if not self.get_template_chain(path):
-                    self.template_chains_list.append(TemplateChain(chain=chain,
-                                                                   path=path,
-                                                                   path_before_changes=path_before_changes,
-                                                                   code=number,
-                                                                   sequence=sequence,
-                                                                   match=match,
-                                                                   alignment=alignment,
-                                                                   deleted_residues=deleted_residues,
-                                                                   changed_residues=changed_residues,
-                                                                   fasta_residues=fasta_residues,
-                                                                   sequence_before_changes=sequence_before_changes))
+    def set_same_alignment(self, chain_struct: TemplateChain):
+        # If some chain struct share the same alignment, as they have the same sequence,
+        # copy the same information, otherwise, the alignment should have to be done.
+        for chain_s in self.template_chains_list:
+            if chain_s.alignment and chain_s.sequence_before_alignment == chain_struct.sequence_before_alignment and chain_s.sequence == chain_struct.sequence:
+                return chain_s.alignment.hhr_path
+        return None

@@ -374,44 +374,53 @@
                     </ul>
                 {% endif %}
 
-                {% if data.templates_list %}
-                    {% for template in data.templates_list if template.change_res_struct.change_residues_list %}
+                {% if 'templates_list' in data %}
+                    {% for template in data.templates_list if template.modifications_struct and template.modifications_struct.modifications_list %}
                         {% if loop.first %}
                             <p>The following changes have been made to the sequence of the templates:</p>
                             <ul>
                         {% endif %}
 
-                        {% for change in template.change_res_struct.change_residues_list %}
-
+                        {% for change in template.modifications_struct.modifications_list %}
                             {% if loop.first  %}
                                 <li> {{ template.pdb_id }}:
                                 <ul>
                             {% endif %}
-                                    <li>
-                                        {% if change.when == 'before_alignment'  %}
-                                            Before alignment
-                                        {% else %}
-                                            After alignment of the templates, sequence has been replaced with
-                                        {% endif %}
-                                        {% if change.resname is not none  %}
-                                            {{ change.resname }}
-                                        {% else %}
-                                            the query sequence in {{change.fasta_path }}
-                                        {% endif %}
-                                        in the following residues:
+                            <p>
+                                {% if change.when == 'before_alignment' %}
+                                    Modifications have been done before alignment in a chain {{ change.chain }}:
+                                {% else %}
+                                    Modifications have been done after an alignment chain {{ change.chain }}:
+                                {% endif %}                               
+                                {% if change.delete_residues %}
+                                    Deleted residues: {{ print_consecutive_numbers(change.delete_residues) }}
+                                {% endif %} 
+                                {% if change.maintain_residues %}
+                                    Maintained residues: {{ print_consecutive_numbers(change.maintain_residues) }}
+                                {% endif %} 
+                                {% if change.position != -1 %}
+                                    Selected position: {{ change.position }}
+                                {% endif %}
+                                {% for mutation in change.mutations %}
+                                    {% if loop.first  %}
                                         <ul>
-                                        {% for key, value in change.chain_group_res_dict.items() %}
-                                            <li> Chain {{ key }}: {{ value|join(', ') }}</li>
-                                        {% endfor %}
+                                    {% endif %}
+                                        <li>
+                                            It has mutated the following residues: {{ print_consecutive_numbers(mutation.mutate_residues_number) }}
+                                            with: {{ mutation.mutate_with }}
+                                        </li>
+                                    {% if loop.last  %}
                                         </ul>
-                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                            </p>
                             {% if loop.last  %}
                                 </ul>
                             </li>
                             {% endif %}
                         {% endfor %}
                         {% if loop.last %}
-                                        </ul>
+                            </ul>
                         {% endif %}
                     {% endfor %}
                 {% endif %}

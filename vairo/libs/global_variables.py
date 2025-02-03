@@ -209,6 +209,10 @@ INPUT_PARAMETERS = {
         'mutations': {
             'required': False,
             'default': None
+        },
+        'predict_region': {
+            'required': False,
+            'default': []
         }
     },
     'template_input': {
@@ -243,15 +247,7 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': False
         },
-        'reference': {
-            'required': False,
-            'default': None
-        },
-        'change_res': {
-            'required': False,
-            'default': []
-        },
-        'match': {
+        'modifications': {
             'required': False,
             'default': []
         },
@@ -276,11 +272,11 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': None
         },
-        'positions_features': {
+        'numbering_features': {
             'required': False,
             'default': None
         },
-        'positions_query': {
+        'numbering_query': {
             'required': False,
             'default': None
         },
@@ -288,6 +284,10 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': None
         },
+        'mutations': {
+            'required': False,
+            'default': None
+        }
     },
     'append_library_input': {
       'path': {
@@ -305,52 +305,46 @@ INPUT_PARAMETERS = {
             'required': False,
             'default': False
       },
-      'positions_library': {
+      'numbering_library': {
             'required': False,
             'default': None
       },
-      'positions_query': {
+      'numbering_query': {
             'required': False,
             'default': None
       },
     },
-    'change_res_input': {
-        'resname': {
-            'required': False,
-            'default': None
-        },
-        'fasta_path': {
-            'required': False,
-            'default': None
-        },
-        'when': {
-            'required': False,
-            'default': 'after_alignment'
-        }
-    },
-    'match_input': {
+    'modifications_input': {
         'chain': {
-            'required': True
+            'required': True,
         },
         'position': {
             'required': False,
-            'default': -1
+            'default': -1,
         },
-        'mask_msa': {
+        'maintain_residues': {
             'required': False,
-            'default': False
+            'default': [],
         },
-        'residues': {
+        'delete_residues': {
             'required': False,
-            'default': None
+            'default': [],
         },
-        'reference': {
+        'when': {
             'required': False,
-            'default': None
+            'default': 'after_alignment',
         },
-        'reference_chain': {
+        'mutations': {
             'required': False,
-            'default': None
-        }
-    }
+            'default': None,
+        },
+    },
+    'mutations_input': {
+        'numbering_residues': {
+            'required': True,
+        },
+        'mutate_with': {
+            'required': True,
+        },
+    },
 }
