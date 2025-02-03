@@ -128,6 +128,7 @@ class Template:
         bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=utils.sort_by_digit(merge_list),
                             merged_pdb_path=self.template_path)
 
+
         aux_path_list = []
         chain_name = 'A'
         for path in self.results_path_position:

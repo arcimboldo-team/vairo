@@ -538,6 +538,7 @@ def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures
     pdbs_accepted_list = [template_in for template_list in templates_cluster for template_in in template_list]
     num_templates = len(pdbs_accepted_list)
 
+
     if num_templates >= 5:
         logging.info(
             f'Running ccanalysis with the following templates: {" ".join([pdb.name for pdb in pdbs_accepted_list])}')
@@ -615,6 +616,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
                 logging.info(f'    Compactness below limit')
             if not identity:
                 logging.info(f'    Too low/high identity with the query sequence ({pdb.identity})')
+
             if only_ca:
                 logging.info(f'    Only CA')
         if isinstance(pdb, structures.TemplateExtracted) and pdb.percentage_list:
@@ -705,6 +707,7 @@ def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, o
         logging.info(f'Hinges could not create any groups')
         logging.info(f'Creating two groups: The more completed pdb: {pdb_complete.name} '
                      f'and the more different one: {pdb_diff.name}')
+
         return [[pdb_complete], [pdb_diff]]
     else:
         # Return the original list of pdbs
