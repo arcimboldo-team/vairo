@@ -73,7 +73,7 @@ else
   fi
 fi
 
-pip install absl-py==1.0.0 biopython==1.79 chex==0.0.7 dm-haiku==0.0.9 dm-tree==0.1.6 immutabledict==2.0.0 ml-collections==0.1.0 numpy==1.21.6 scipy==1.7.0 protobuf==3.20.1 pandas==1.3.4 tensorflow==2.9.0 tensorflow-cpu==2.9.0 matplotlib==3.6.2 python-igraph==0.9.10 pyyaml future csb psutil paramiko scikit-learn pickle5 jinja2 flask vairo
+pip install absl-py==1.0.0 biopython==1.79 chex==0.0.7 dm-haiku==0.0.9 dm-tree==0.1.6 immutabledict==2.0.0 ml-collections==0.1.0 numpy==1.21.6 scipy==1.7.0 protobuf==3.20.1 pandas==1.3.4 tensorflow==2.9.0 tensorflow-cpu==2.9.0 matplotlib==3.6.2 python-igraph==0.9.10 pyyaml future csb psutil paramiko scikit-learn pickle5 jinja2 flask
 pip install jax==0.3.25 jaxlib==0.3.25+cuda11.cudnn805 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 pip install git+https://github.com/deepmind/alphafold.git@v2.2.4
 path=$(python -c "import site; print(site.getsitepackages()[0])")
@@ -84,10 +84,5 @@ patch -p0 < "$tmpfile"
 rm "$tmpfile"
 wget -q -P "${path}"/alphafold/common/ https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
 
-echo "******"
-echo "VAIRO HAS BEEN SUCCESSFULLY INSTALLED"
-echo "A conda environment with the name ""$env_name"" has been created. To run VAIRO, you must first activate the new environment (conda activate ""$env_name"") and type VAIROGUI. This will run the program and show the different options for creating a job."
+echo "A conda environment with the name ""$env_name"" has been created. To run VAIRO, you must first activate the new environment (conda activate ""$env_name"") and type VAIRO. This will run the program and show the different options for creating a job."
 echo "Before running VAIRO, please ensure that the libraries of AlphaFold2 are installed. If they have not been installed, please download them using the following script.: https://github.com/deepmind/alphafold/blob/v2.2.4/scripts/download_all_data.sh"
-echo "Run the following commands:"
-echo "conda activate ""$env_name"""
-echo "VAIROGUI"

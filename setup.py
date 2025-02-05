@@ -57,7 +57,7 @@ setup(
     # This field corresponds to the "Description" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#description-optional
     long_description=long_description,  # Optional
-    long_description_content_type="text/markdown",
+
     # This should be a valid link to your project's main homepage.
 
     # This field corresponds to the "Home-Page" metadata field:
@@ -87,6 +87,7 @@ setup(
         'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
+        'Intended Audience :: Science/Research ',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
 
         # Pick your license as you wish
@@ -100,9 +101,6 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
-        'Programming Language :: Python :: 3.11',
-        'Programming Language :: Python :: 3.12',
-        'Programming Language :: Python :: 3.13',
     ],
 
     # This field adds keywords for your project which will appear on the
@@ -120,22 +118,18 @@ setup(
     #
     #   py_modules=["my_module"],
     #
-    use_scm_version={  # ← enable Git-based versioning
-        "root": ".",  # project root
-        "relative_to": __file__,  # locate pyproject.toml
-    },
-    setup_requires=["setuptools-scm"],
-    packages=find_packages(),
+    packages=['vairo', 'vairo.ALEPH', 'vairo.ALEPH.aleph',
+              'vairo.ALEPH.aleph.core'],
     include_package_data=True,
-    entry_points={
+    package_data={  # Optional
+        'vairo': ['binaries/*', 'libs/*', 'templates/*', 'README.md'],
+    },
+    entry_points={  # Optional
         'console_scripts': [
             'VAIRO=vairo.run_vairo:main',
-            'vairo=vairo.run_vairo:main',
-            'VAIROGUI=vairo.app.app:main',
-            'vairogui=vairo.app.app:main'
+            'vairo=vairo.run_vairo:main'
         ],
     },
-    license_files = ('LICENSE'),
     # This field lists other packages that your project depends on to run.
     # Any package you put here will be installed by pip when your project is
     # installed, so they must be valid existing projects.
@@ -143,5 +137,29 @@ setup(
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
+        'absl-py==1.0.0',
+        'biopython==1.79',
+        'chex==0.0.7',
+        'dm-haiku==0.0.9',
+        'dm-tree==0.1.6',
+        'immutabledict==2.0.0',
+        'ml-collections==0.1.0',
+        'numpy==1.21.6',
+        'scipy==1.7.0',
+        'protobuf==3.20.1',
+        'pandas==1.3.4',
+        'tensorflow==2.9.0',
+        'tensorflow-cpu==2.9.0',
+        'matplotlib==3.6.2',
+        'python-igraph==0.9.10',
+        'pyyaml',
+        'future',
+        'csb',
+        'psutil',
+        'paramiko',
+        'scikit-learn',
+        'pickle5',
+        'jinja2',
+        'flask',
     ],
     python_requires='>=3.6')
