@@ -158,7 +158,6 @@ setup(
         'psutil',
         'paramiko',
         'scikit-learn',
-        'pickle5',
         'jinja2',
         'flask',
     ],
