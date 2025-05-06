@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#For some reason, in Debian 11 I have an error If I do not import this before importing alphafold
+import tensorflow.compat.v1 as tf
+
 """Full AlphaFold protein structure prediction script."""
 import enum
 import json
@@ -42,7 +45,6 @@ from alphafold.model import model
 from alphafold.relax import relax
 import jax.numpy as jnp
 import numpy as np
-
 
 
 # Internal import (7716).

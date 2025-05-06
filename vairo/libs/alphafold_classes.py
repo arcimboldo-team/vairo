@@ -102,10 +102,8 @@ class AlphaFoldPaths:
                 self.bfd_db_path = '_'.join(glob.glob(f'{self.af2_dbs_path}/{db}/*', recursive=True)[0].split('_')[:-1])
                 logging.info(f'BFD DB path: {self.bfd_db_path}')
             elif 'uniref30' == db:
-                for file in glob.glob(f'{self.af2_dbs_path}/{db}/*', recursive=True):
-                    if '.cs219' in file[-6:]:
-                        self.uniref30_db_path = file.split('.')[:-1][0]
-                        logging.info(f'Uniref30 DB path: {self.uniref30_db_path}')
+                self.uniref30_db_path = f'{self.af2_dbs_path}/{db}/UniRef30_2021_03'
+                logging.info(f'Uniref30 DB path: {self.uniref30_db_path}')
             elif 'pdb70' == db:
                 self.pdb70_db_path = f'{self.af2_dbs_path}/{db}/pdb70'
                 logging.info(f'PDB70 DB path: {self.pdb70_db_path}')
