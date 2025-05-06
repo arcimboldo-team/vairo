@@ -6,6 +6,7 @@ import sys
 import logging
 import yaml
 import argparse
+import numpy
 
 from datetime import datetime
 from libs import features, main_structure, utils, bioutils, pymol_script
