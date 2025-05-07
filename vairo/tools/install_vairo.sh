@@ -57,6 +57,7 @@ echo 'Creating VAIRO Conda environment.'
 read -p "Enter the Conda environment name: " env_name
 conda create -y -n "$env_name" python=3.11
 conda activate "$env_name"
+conda install -y --quiet --channel nvidia cudatoolkit=11.8
 conda install -y -c conda-forge pdbfixer==1.8 openmm=8.0.0
 conda install -y -c conda-forge cudnn=8.9
 conda install -y -c bioconda hmmer hhsuite==3.3.0 kalign2
@@ -68,24 +69,10 @@ pip install --no-dependencies git+https://github.com/deepmind/alphafold.git
 
 conda clean --all --force-pkgs-dirs --yes
 
-# Check if ptxas command exists
-echo "Checking ptxas..."
-if command -v ptxas &> /dev/null; then
-    echo "ptxas command is installed. Skipping cudatoolkit-dev installation."
-else
-  if conda install -y --quiet -c conda-forge "cudatoolkit-dev=11.7"; then
-      echo "Cudatoolkit-dev installed."
-  else
-      echo "Conda installation of cudatoolkit-dev failed. In order to continue, download and install cudatoolkit: https://developer.nvidia.com/cuda-toolkit"
-      exit 1
-  fi
-fi
-
 pip install --no-dependencies git+https://github.com/deepmind/alphafold.git
 path=$(python -c "import site; print(site.getsitepackages()[0])")
 cd "$path" || exit
 wget -q -P "${path}"/alphafold/common/ https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
-conda clean --all --force-pkgs-dirs --yes
 
 echo "A Conda environment named \"$env_name\" has been successfully created."
 echo "To run VAIRO, activate the new environment using: conda activate \"$env_name\""
