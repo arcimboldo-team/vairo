@@ -58,11 +58,12 @@ read -p "Enter the Conda environment name: " env_name
 conda create -y -n "$env_name" python=3.11
 conda activate "$env_name"
 conda install -y -c conda-forge pdbfixer==1.8 openmm=8.0.0
+conda install -y -c conda-forge cudnn=8.9
 conda install -y -c bioconda hmmer hhsuite==3.3.0 kalign2
 pip3 install --upgrade --no-cache-dir \
       jax==0.4.26 \
       jaxlib==0.4.26+cuda12.cudnn89 \
-      optax flax orbax-checkpoint docker absl-py==1.0.0 biopython==1.79 chex==0.1.86 dm-haiku==0.0.12 ml_dtypes==0.3.1 dm-tree==0.1.8 immutabledict==2.0.0 ml-collections==0.1.0 numpy==1.26.4 scipy==1.11.1 pandas==2.0.3 tensorflow==2.16.1 matplotlib==3.6.2 python-igraph pyyaml future csb psutil paramiko scikit-learn jinja2 flask -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+      optax flax orbax-checkpoint docker absl-py==1.0.0 biopython==1.79 chex==0.1.86 dm-haiku==0.0.12 ml_dtypes==0.3.1 dm-tree==0.1.8 immutabledict==2.0.0 ml-collections==0.1.0 numpy==1.26.4 scipy==1.11.1 pandas==2.0.3 tensorflow==2.16.1 tensorflow-cpu==2.16.1 matplotlib==3.6.2 python-igraph pyyaml future csb psutil paramiko scikit-learn jinja2 flask -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 pip install --no-dependencies git+https://github.com/deepmind/alphafold.git
 
 conda clean --all --force-pkgs-dirs --yes
@@ -84,6 +85,16 @@ pip install --no-dependencies git+https://github.com/deepmind/alphafold.git
 path=$(python -c "import site; print(site.getsitepackages()[0])")
 cd "$path" || exit
 wget -q -P "${path}"/alphafold/common/ https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
+conda clean --all --force-pkgs-dirs --yes
 
-echo "A conda environment with the name ""$env_name"" has been created. To run VAIRO, you must first activate the new environment (conda activate ""$env_name"") and type VAIRO. This will run the program and show the different options for creating a job."
-echo "Before running VAIRO, please ensure that the libraries of AlphaFold2 are installed. If they have not been installed, please download them using the following script.: https://github.com/deepmind/alphafold/blob/v2.3.2/scripts/download_all_data.sh"
+echo "A Conda environment named \"$env_name\" has been successfully created."
+echo "To run VAIRO, activate the new environment using: conda activate \"$env_name\""
+echo "Then, type 'VAIRO' to start the program and view available job creation options."
+
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+echo "Consider adding the following line to your ~/.bashrc or ~/.zshrc:"
+echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$CONDA_PREFIX/lib"
+
+echo "Before running VAIRO, ensure that the AlphaFold2 libraries are installed."
+echo "If they are not installed, download them using the following script:"
+echo "https://github.com/deepmind/alphafold/blob/v2.3.2/scripts/download_all_data.sh"
