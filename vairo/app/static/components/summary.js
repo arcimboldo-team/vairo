@@ -380,7 +380,6 @@ async function updatePlot() {
                 'changesFasta': []
             });
         }
-
         for (const [key, values] of Object.entries(featuresDict)) {
             const addMSA =  document.getElementById(`feature-addmsa-${key}`).checked;
             const addTemplates =  document.getElementById(`feature-addtemplates-${key}`).checked;

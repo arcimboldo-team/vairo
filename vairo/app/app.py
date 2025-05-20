@@ -333,6 +333,7 @@ def modify_pkl():
                     mimetype='image/plain',
                     as_attachment=True,
                     download_name='modified_features.pkl')
+        return jsonify({}), 500
     except Exception as e:
         print(e)
         return jsonify({}), 500
