@@ -16,7 +16,7 @@ async function readLibrary(id){
         const addTemplates = document.getElementById(`library-addtemplates-${id}`).checked;
         var files = folder.files;
         for (let i = 0; i < files.length; i++) {
-            const file = files[i];            
+            const file = files[i];
             if (file.name.endsWith('.pdb')) {
                 if(addMsa)
                     counterMsa += 1;
@@ -49,7 +49,7 @@ function insertModify(id){
     const selectedRadio = document.querySelector(`input[type=radio][name="library-input-${id}"]:checked`);
     const divHide = document.getElementById(`library-addtemplates-div-${id}`);
     divHide.classList.toggle('hidden', selectedRadio.value === 'fasta');
-    
+
     const addMsa = document.getElementById(`library-addmsa-${id}`);
     if(!addMsa.checked){
         addMsa.checked = true;
@@ -73,8 +73,8 @@ class libraryTable extends HTMLElement {
     }
 
     render() {
-        this.innerHTML =  `            
-            <fieldset name="library-field" class="row g-3"> 
+        this.innerHTML =  `
+            <fieldset name="library-field" class="row g-3">
                 <div class="form-group">
                     <label class="form-label" for="library-folder-${this.libraryID}">Insert library from</label>
                     <div class="form-check radio-container">
@@ -93,7 +93,7 @@ class libraryTable extends HTMLElement {
                         </div>
                         <div class="col-md-9">
                             <input type="file" accept=".fasta" class="form-control" name="library-fasta-${this.libraryID}" id="library-fasta-${this.libraryID}" title="Choose fasta file with sequences" onchange="readLibrary('${this.libraryID}')">
-                        </div>  
+                        </div>
                     </div>
                 </div>
                 <div class="row">
