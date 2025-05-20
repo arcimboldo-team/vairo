@@ -24,7 +24,7 @@ class Accordion {
             this.addAccordionItem();
         });
 
-        $(`#${this.wrapper}`).on("click", ".delete-table", function(e) { 
+        $(`#${this.wrapper}`).on("click", ".delete-table", function(e) {
             e.preventDefault();
             const id = $(this).closest('.accordion-item').attr('id');
             const parts = id.split('-');
@@ -55,12 +55,12 @@ class Accordion {
                             ${name}
                             <div class="ms-auto">
                                 <span class="fa fa-trash-alt delete-table delete-icon-format" data-app-id="${this.type}-item-${this.counter}" data-content-id="${this.type}-item-${this.counter}" aria-hidden="true"></span>
-                            </div> 
+                            </div>
                         </div>
                     </h2>
                     <div id="${this.type}-collapse-${this.counter}" class="accordion-collapse collapse show" aria-labelledby="${this.type}-header-${this.counter}" data-bs-parent="#${this.type}">
                         <div class="accordion-body">
-                            <${this.type}-component ${this.type}ID=${this.counter}></${this.type}-component>
+                            <${this.type}-component ${this.type}-id=${this.counter}></${this.type}-component>
                         </div>
                     </div>
                 </div>

@@ -156,7 +156,7 @@ class templateTable extends HTMLElement {
     constructor() {
         super();
         this.attachInternals();
-        this.templateID = this.getAttribute('templateID');
+        this.templateID = this.getAttribute('template-id');
         this.modificationID = 1;
         this.modAminoacidsID = 1;
     }
