@@ -4,6 +4,25 @@ function createLi(text) {
     return li;
 }
 
+const featuresDict = {};
+const librariesDict = {};
+const templatesDict = {};
+
+function deleteInDict(type, id) {
+    switch(type) {
+        case 'template':
+            delete templatesDict[id];
+            break;
+        case 'library':
+            delete librariesDict[id];
+            break;
+        case 'feature':
+            delete featuresDict[id];
+            break;
+    }
+    updatePlot();
+}
+
 class Summary {
     constructor() {
         this.wrapper = "summary";

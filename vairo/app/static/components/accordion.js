@@ -30,17 +30,7 @@ class Accordion {
             const parts = id.split('-');
             const idNum = parts[parts.length - 1];
             $(this).closest('.accordion-item').remove();
-            switch(type) {
-                case 'template':
-                    deleteTemplate(idNum);
-                    break;
-                case 'library':
-                        deleteLibrary(idNum);
-                    break;
-                case 'feature':
-                    deleteFeatures(idNum);
-                    break;
-            }
+            deleteInDict(type, idNum)
             updatePlot();
         });
     }
