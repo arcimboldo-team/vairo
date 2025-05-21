@@ -5,7 +5,7 @@ class sequenceTable extends HTMLElement {
     constructor() {
         super();
         this.attachInternals();
-        this.sequenceID = this.getAttribute('sequenceID');
+        this.sequenceID = this.getAttribute('sequence-id');
         this.mutationID = 1;
     }
 

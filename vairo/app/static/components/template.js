@@ -1,154 +1,3 @@
-const templatesDict = {};
-
-
-function toggleModify(templateID, modificationID) {
-    const selection = document.getElementById(`template-modify-residues-${templateID}-${modificationID}`).checked;
-    const divHide = document.getElementById(`modaminoacids-div-${templateID}-${modificationID}`);
-    divHide.classList.toggle('hidden', !selection);
-    updatePlot();
-}
-
-function toggleChainSelection(templateID, modificationID) {
-    const selection = document.getElementById(`template-modify-where-${templateID}-${modificationID}`).value;
-    const specificChar = document.querySelectorAll(`div[name=chain-div-${templateID}-${modificationID}]`);
-    specificChar.forEach(div => {
-        div.classList.toggle('hidden', selection === 'all');
-    });
-    updatePlot();
-}
-
-function selectModify(id) {
-    const selection = document.getElementById(`template-modify-amino-select-${id}`).value;
-    const fastaHide = document.getElementById(`modify-div-fasta-${id}`);
-    const resnameHide = document.getElementById(`modify-div-resname-${id}`);
-    fastaHide.classList.toggle('hidden', selection === 'residue');
-    resnameHide.classList.toggle('hidden', selection !== 'residue');
-    updatePlot();
-}
-
-async function generateMultimer(key, templateName="undefined", templateData="undefined") {
-    if(!templatesDict.hasOwnProperty(key) && templateData === "undefined") return;
-    if(templateData === "undefined"){
-        templateData = templatesDict[key].templateData;
-        templateName = templatesDict[key].templateName;
-    }
-    let chainSeq = getSequences(templateData);
-    for (let key in chainSeq) {
-        chainSeq[key] = [chainSeq[key]];
-    }
-    check = document.getElementById(`template-multimer-${key}`);
-    if(check.checked){
-        try{
-            chainSeq = await postData('/generate-multimer', {'templateData': templateData});
-        } catch (error) {
-            alert('It has not been possible to generate the multimer. Unchecking it');
-            check.checked = false;
-            console.error('Error:', error);
-        }
-    }
-    templatesDict[key] = {"templateName": templateName, "templateData": templateData, "chainSequences": chainSeq};
-    updatePlot();
-    populateChainSelect(key);
-}
-
-function deleteTemplate(id){
-    delete templatesDict[id];
-    updatePlot();
-}
-
-async function readTemplate(id){
-    var templateData;
-    var templateName;
-    const selected = document.querySelector(`input[name="template-input-${id}"]:checked`);
-    if (selected.value === "file") {
-        const pdbFileInput = document.getElementById(`template-file-${id}`)?.files?.[0];
-        if (pdbFileInput === null || pdbFileInput === undefined) return;
-        templateName  = pdbFileInput.name.split('.')[0];
-        if (id in templatesDict && templatesDict[id].templateName === templateName) return;
-        templateData = await readFile(pdbFileInput);
-    } else {
-        templateName = document.getElementById(`template-code-${id}`).value;
-        if ((id in templatesDict && templatesDict[id].templateName === templateName) || (templateName === "")) return;
-        const fetchPromise = fetchPDB(templateName);
-        const timeoutPromise = new Promise((resolve, reject) => {
-            setTimeout(() => reject(new Error('Timeout')), 60000);
-        });
-        try {
-            templateData = await Promise.race([fetchPromise, timeoutPromise]);
-        } catch (error) {
-            console.error('Error fetching PDB:', error);
-            alert('The request has timed out. Please try again later.');
-            document.getElementById(`template-code-${id}`).value = "";
-            return;
-        }
-    }
-    generateMultimer(id, templateName, templateData);
-}
-
-
-function getRestrictions(templateID){
-    const divs = document.querySelectorAll(`li[id^=modify-${templateID}-]`);
-    const modificationsDict = {};
-    let positionsAccepted = false;
-    divs.forEach(div => {
-        const selection = div.querySelector(`select[id^=template-modify-where-${templateID}-]`).value;
-        if(selection === "") return;
-        modificationsDict[selection] = modificationsDict[selection] || {};
-        let positionKey = ''
-        if(selection !== "all"){
-            positionKey = div.querySelector(`select[id^=template-modify-pos-${templateID}-]`).value;
-            if(positionKey !== 'ANY'){
-                positionsAccepted = true;
-            }
-        }
-        else{
-            positionKey = 'ANY'
-        }
-        modificationsDict[selection][positionKey] = modificationsDict[selection][positionKey] || {};
-
-        const residues = div.querySelector(`input[id^=template-modify-delete-${templateID}-]`).value.trim();
-        if(residues){
-            if (!modificationsDict[selection][positionKey].hasOwnProperty('delete')) {
-                modificationsDict[selection][positionKey]["delete"] = new Set();
-            }
-            const oldValues = modificationsDict[selection][positionKey]["delete"];
-            const newValues = extendedNumbers(residues).sort(function(a, b) { return a - b });
-            modificationsDict[selection][positionKey]["delete"] = new Set(...oldValues, [...newValues]);
-        }
-        const changeAminoacids = div.querySelectorAll(`li[id^=modaminoacids-${templateID}-]`);
-        changeAminoacids.forEach(change => {
-            const positions = change.querySelector(`input[id^=template-modify-amino-pos-${templateID}]`).value.trim();
-            const sequence = change.querySelector(`input[id^=template-modify-amino-fasta-${templateID}-]`);
-            const choose = change.querySelector(`select[id^=template-modify-amino-select-${templateID}-]`).value;
-            if(positions && ((choose === "residue") || (choose === "fasta" && sequence.files.length > 0))){
-                const positionsArray = extendedNumbers(positions);
-                modificationsDict[selection][positionKey][choose] = [...new Set([...(modificationsDict[selection][positionKey][choose] || []), ...positionsArray])];
-            }
-        });
-    });
-    return [modificationsDict, positionsAccepted];
-}
-
-function populateChainSelect(templateID) {
-    let options = '';
-    if(templatesDict.hasOwnProperty(templateID)){
-        const chains = templatesDict[templateID].chainSequences;
-        const uniqueChains = Object.keys(chains)
-        options = `<option value="all">All chains</option>` + uniqueChains.map(chain => `<option value="${chain}">${chain} (${chains[chain].length} copies)</option>`).join('');
-    } else {
-        options = `<option value="all">All chains</option>`;
-    }
-    const modifications = document.querySelectorAll(`select[id^=template-modify-where-${templateID}-]`);
-    modifications.forEach(modification => {
-        const oldValue = modification.value;
-        modification.innerHTML = options;
-        const optionExists = Array.from(modification.options).some(option => option.value === oldValue);
-        if(optionExists){
-            modification.value = oldValue;
-        }
-    });
-}
-
 class templateTable extends HTMLElement {
     static formAssociated = true;
     static observedAttributes = ['value'];
@@ -162,25 +11,131 @@ class templateTable extends HTMLElement {
     }
 
     connectedCallback() {
+        const id = this.templateID;
         this.render();
-        this.querySelector(`#add-modification-${this.templateID}`).addEventListener('click', () => this.addModificationLine());
-        document.getElementById(`template-code-${this.templateID}`).addEventListener("change", async () => {
-            await readTemplate(this.templateID); 
+        this.querySelector(`#add-modification-${id}`).addEventListener('click', () => this.addModificationLine());
+        document.getElementById(`template-code-${id}`).addEventListener("change", async () => {
+            await this.readTemplate(id);
         });
-        document.getElementById(`template-file-${this.templateID}`).addEventListener("change", async () => {
-            await readTemplate(this.templateID); 
-        });      
-        const radioInputTemplate = this.querySelectorAll(`input[name=template-input-${this.templateID}]`);
+        document.getElementById(`template-file-${id}`).addEventListener("change", async () => {
+            await this.readTemplate(id);
+        });
+        const radioInputTemplate = this.querySelectorAll(`input[name=template-input-${id}]`);
         radioInputTemplate.forEach(radio => {
             radio.addEventListener("change", async () => {
-                await readTemplate(this.templateID);
+                await this.readTemplate(id);
             });
         });
     }
 
+    toggleModify(templateID, modificationID) {
+        const selection = document.getElementById(`template-modify-residues-${templateID}-${modificationID}`).checked;
+        const divHide = document.getElementById(`modaminoacids-div-${templateID}-${modificationID}`);
+        divHide.classList.toggle('hidden', !selection);
+        this.triggerUpdatePlot();
+    }
+
+    toggleChainSelection(templateID, modificationID) {
+        const selection = document.getElementById(`template-modify-where-${templateID}-${modificationID}`).value;
+        const specificChar = document.querySelectorAll(`div[name=chain-div-${templateID}-${modificationID}]`);
+        specificChar.forEach(div => {
+            div.classList.toggle('hidden', selection === 'all');
+        });
+        this.triggerUpdatePlot();
+    }
+
+    selectModify(id) {
+        const selection = document.getElementById(`template-modify-amino-select-${id}`).value;
+        const fastaHide = document.getElementById(`modify-div-fasta-${id}`);
+        const resnameHide = document.getElementById(`modify-div-resname-${id}`);
+        fastaHide.classList.toggle('hidden', selection === 'residue');
+        resnameHide.classList.toggle('hidden', selection !== 'residue');
+        this.triggerUpdatePlot();
+    }
+
+    triggerUpdatePlot() {
+        updatePlot()
+    }
+
+    async generateMultimer(key, templateName="undefined", templateData="undefined") {
+        if(!templatesDict.hasOwnProperty(key) && templateData === "undefined") return;
+        if(templateData === "undefined"){
+            templateData = templatesDict[key].templateData;
+            templateName = templatesDict[key].templateName;
+        }
+        let chainSeq = getSequences(templateData);
+        for (let key in chainSeq) {
+            chainSeq[key] = [chainSeq[key]];
+        }
+        check = document.getElementById(`template-multimer-${key}`);
+        if(check.checked){
+            try{
+                chainSeq = await postData('/generate-multimer', {'templateData': templateData});
+            } catch (error) {
+                alert('It has not been possible to generate the multimer. Unchecking it');
+                check.checked = false;
+                console.error('Error:', error);
+            }
+        }
+        templatesDict[key] = {"templateName": templateName, "templateData": templateData, "chainSequences": chainSeq};
+        updatePlot();
+        populateChainSelect(key);
+    }
+
+    async readTemplate(id){
+        var templateData;
+        var templateName;
+        const selected = document.querySelector(`input[name="template-input-${id}"]:checked`);
+        if (selected.value === "file") {
+            const pdbFileInput = document.getElementById(`template-file-${id}`)?.files?.[0];
+            if (pdbFileInput === null || pdbFileInput === undefined) return;
+            templateName  = pdbFileInput.name.split('.')[0];
+            if (id in templatesDict && templatesDict[id].templateName === templateName) return;
+            templateData = await readFile(pdbFileInput);
+        } else {
+            templateName = document.getElementById(`template-code-${id}`).value;
+            if ((id in templatesDict && templatesDict[id].templateName === templateName) || (templateName === "")) return;
+            const fetchPromise = fetchPDB(templateName);
+            const timeoutPromise = new Promise((resolve, reject) => {
+                setTimeout(() => reject(new Error('Timeout')), 60000);
+            });
+            try {
+                templateData = await Promise.race([fetchPromise, timeoutPromise]);
+            } catch (error) {
+                console.error('Error fetching PDB:', error);
+                alert('The request has timed out. Please try again later.');
+                document.getElementById(`template-code-${id}`).value = "";
+                return;
+            }
+        }
+        this.generateMultimer(id, templateName, templateData);
+    }
+
+
+    function populateChainSelect(templateID) {
+        let options = '';
+        if(templatesDict.hasOwnProperty(templateID)){
+            const chains = templatesDict[templateID].chainSequences;
+            const uniqueChains = Object.keys(chains)
+            options = `<option value="all">All chains</option>` + uniqueChains.map(chain => `<option value="${chain}">${chain} (${chains[chain].length} copies)</option>`).join('');
+        } else {
+            options = `<option value="all">All chains</option>`;
+        }
+        const modifications = document.querySelectorAll(`select[id^=template-modify-where-${templateID}-]`);
+        modifications.forEach(modification => {
+            const oldValue = modification.value;
+            modification.innerHTML = options;
+            const optionExists = Array.from(modification.options).some(option => option.value === oldValue);
+            if(optionExists){
+                modification.value = oldValue;
+            }
+        });
+    }
+
+
     render() {
         this.innerHTML =  `
-            <fieldset name="template-field" class="row g-3"> 
+            <fieldset name="template-field" class="row g-3">
                 <div class="row row-margin">
                     <div class="form-group">
                         <label class="form-label" for="template-code-${this.templateID}">Insert template PDB</label>
@@ -314,7 +269,7 @@ class templateTable extends HTMLElement {
         this.querySelector(`#add-modaminoacids-${this.templateID}-${this.modificationID}`).addEventListener('click', () => this.addModAminoacidsLine(currentModificationValue));
         this.addModAminoacidsLine(this.modificationID, true)
         ++this.modificationID;
-        populateChainSelect(this.templateID, true);
+        this.populateChainSelect(this.templateID, true);
     }
 }
 customElements.define('template-component', templateTable);

@@ -35,7 +35,7 @@ class Accordion {
                     deleteTemplate(idNum);
                     break;
                 case 'library':
-                    deleteLibrary(idNum);
+                        deleteLibrary(idNum);
                     break;
                 case 'feature':
                     deleteFeatures(idNum);

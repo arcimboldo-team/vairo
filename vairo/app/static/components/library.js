@@ -1,126 +1,214 @@
-const librariesDict = {};
 
 
-function deleteLibrary(id){
-    delete librariesDict[id];
-    updatePlot();
-}
+class LibraryTable extends HTMLElement {
+  static formAssociated = true;
+  static observedAttributes = ['value'];
 
-async function readLibrary(id){
-    const selectedRadio = document.querySelector(`input[type=radio][name="library-input-${id}"]:checked`);
+  constructor() {
+    super();
+    this.attachInternals();
+    this.libraryID = this.getAttribute('library-id');
+
+    this.boundHandlers = {
+      handleRadioChange: this.handleRadioChange.bind(this),
+      handleFolderChange: this.handleFolderChange.bind(this),
+      handleFastaChange: this.handleFastaChange.bind(this),
+      handleAddMsaChange: this.handleAddMsaChange.bind(this),
+      handleAddTemplatesChange: this.handleAddTemplatesChange.bind(this),
+      handleQueryChange: this.handleQueryChange.bind(this),
+    };
+
+    this.handlers = [
+      ['radioFolder', 'change', 'handleRadioChange'],
+      ['radioFasta', 'change', 'handleRadioChange'],
+      ['folderInput', 'change', 'handleFolderChange'],
+      ['fastaInput', 'change', 'handleFastaChange'],
+      ['addMsa', 'change', 'handleAddMsaChange'],
+      ['addTemplates', 'change', 'handleAddTemplatesChange'],
+      ['queryPositions', 'change', 'handleQueryChange'],
+    ];
+  }
+
+  connectedCallback() {
+    this.render();
+    this.cacheElements();
+    this.attachEventListeners();
+  }
+
+  disconnectedCallback() {
+    this.detachEventListeners();
+  }
+
+  cacheElements() {
+    const id = this.libraryID;
+    this._elements = {
+      radioFolder: this.querySelector(`input[type="radio"][value="folder"]`),
+      radioFasta: this.querySelector(`input[type="radio"][value="fasta"]`),
+      folderInput: this.querySelector(`#library-folder-${id}`),
+      fastaInput: this.querySelector(`#library-fasta-${id}`),
+      addMsa: this.querySelector(`#library-addmsa-${id}`),
+      addTemplates: this.querySelector(`#library-addtemplates-${id}`),
+      templatesDiv: this.querySelector(`#library-addtemplates-div-${id}`),
+      libPositions: this.querySelector(`#library-lib-${id}`),
+      queryPositions: this.querySelector(`#library-query-${id}`)
+    };
+  }
+
+  attachEventListeners() {
+    if (!this._elements) return;
+    this.handlers.forEach(([key, evt, handler]) => {
+      const el = this._elements[key];
+      if (el && typeof this.boundHandlers[handler] === 'function') {
+        el.addEventListener(evt, this.boundHandlers[handler]);
+      }
+    });
+  }
+
+    disconnectedCallback() {
+    if (!this._elements) return;
+    this.handlers.forEach(([key, evt, handler]) => {
+      const el = this._elements[key];
+      if (el && typeof this.boundHandlers[handler] === 'function') {
+        el.removeEventListener(evt, this.boundHandlers[handler]);
+      }
+    });
+    }
+
+  async readLibrary() {
+    const id = this.libraryID;
+    const selectedRadio = this.querySelector(`input[type="radio"][name="library-input-${id}"]:checked`);
     let counterMsa = 0;
     let counterTemplates = 0;
-    const addMsa = document.getElementById(`library-addmsa-${id}`).checked;
-    if(selectedRadio.value === 'folder'){
-        const folder = document.getElementById(`library-folder-${id}`);
-        const addTemplates = document.getElementById(`library-addtemplates-${id}`).checked;
-        var files = folder.files;
+    const addMsa = this._elements.addMsa.checked;
+
+    if (selectedRadio.value === 'folder') {
+      const folder = this._elements.folderInput;
+      const addTemplates = this._elements.addTemplates.checked;
+      const files = folder.files;
+      if (files) {
         for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (file.name.endsWith('.pdb')) {
-                if(addMsa)
-                    counterMsa += 1;
-                if(addTemplates)
-                    counterTemplates += 1;
-            }
-            else if ((file.name.endsWith('.fasta') ||  file.name.endsWith('.seq')) && addMsa){
-                counterMsa += 1;
-            }
+          const file = files[i];
+          if (file.name.endsWith('.pdb')) {
+            if (addMsa) counterMsa++;
+            if (addTemplates) counterTemplates++;
+          } else if ((file.name.endsWith('.fasta') || file.name.endsWith('.seq')) && addMsa) {
+            counterMsa++;
+          }
         }
+      }
     } else {
-        const fileInput = document.getElementById(`library-fasta-${id}`)?.files?.[0];
-        if(fileInput !== "undefined"){
-            const fileData = await readFile(fileInput);
-            const lines = fileData.split('\n');
-            if(addMsa){
-                for (let i = 0; i < lines.length; i++) {
-                    if (lines[i][0] !== '>') {
-                        counterMsa++;
-                    }
-                }
+      const fileInput = this._elements.fastaInput?.files?.[0];
+      if (fileInput) {
+        const fileData = await readFile(fileInput);
+        const lines = fileData.split('\n');
+        if (addMsa) {
+          for (let i = 0; i < lines.length; i++) {
+            if (lines[i][0] !== '>') {
+              counterMsa++;
             }
+          }
         }
+      }
     }
-    librariesDict[id] = {"msa": counterMsa, "templates": counterTemplates};
-    updatePlot();
+    librariesDict[id] = { "msa": counterMsa, "templates": counterTemplates };
+    this.triggerUpdatePlot();
+  }
+
+  handleRadioChange() {
+    this.insertModify();
+  }
+
+  insertModify() {
+    const id = this.libraryID;
+    const selectedRadio = this.querySelector(`input[type="radio"][name="library-input-${id}"]:checked`);
+    this._elements.templatesDiv.classList.toggle('hidden', selectedRadio.value === 'fasta');
+
+    if (!this._elements.addMsa.checked) {
+      this._elements.addMsa.checked = true;
+    }
+    this.readLibrary();
+  }
+
+  handleFolderChange() {
+    this.readLibrary();
+  }
+
+  handleFastaChange() {
+    this.readLibrary();
+  }
+
+  handleAddMsaChange() {
+    this.readLibrary();
+  }
+
+  handleAddTemplatesChange() {
+    this.readLibrary();
+  }
+
+  handleQueryChange() {
+    this.triggerUpdatePlot();
+  }
+
+  triggerUpdatePlot() {
+    updatePlot()
+  }
+
+  render() {
+    const id = this.libraryID;
+    this.innerHTML = `
+      <fieldset name="library-field" class="row g-3">
+        <div class="form-group">
+          <label class="form-label" for="library-folder-${id}">Insert library from</label>
+          <div class="form-check radio-container">
+            <div class="col-md-auto">
+              <input class="form-check-input" type="radio" name="library-input-${id}" value="folder" checked>
+              <label class="form-label" for="library-folder-${id}" style="margin-right: 10px;">Folder</label>
+            </div>
+            <div class="col-md-9">
+              <input class="form-control" name="library-folder-${id}" id="library-folder-${id}" aria-describedby="library-folder-desc-${id}" type="file" webkitdirectory directory multiple title="Choose a folder containing FASTA files or PDBs">
+                <small id="library-folder-desc-${id}" class="form-text text-muted">
+                    Choose a folder containing FASTA files or PDBs.
+                </small>
+            </div>
+          </div>
+          <div class="form-check radio-container">
+            <div class="col-md-auto">
+              <input class="form-check-input" type="radio" name="library-input-${id}" value="fasta">
+              <label class="form-label" for="library-fasta-${id}" style="margin-right: 10px;">FASTA</label>
+            </div>
+            <div class="col-md-9">
+              <input type="file" accept=".fasta" class="form-control" name="library-fasta-${id}" id="library-fasta-${id}" aria-describedby="library-fasta-desc-${id}" title="Choose a FASTA file containing sequences">
+                <small id="library-fasta-desc-${id}" class="form-text text-muted">
+                    Choose a FASTA file containing sequences.
+                </small>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="col-md-auto">
+            <input type="checkbox" id="library-addmsa-${id}" name="library-addmsa-${id}" value="true">
+            <label class="form-label" for="library-addmsa-${id}"> Add to MSA</label>
+          </div>
+        </div>
+        <div class="row" id="library-addtemplates-div-${id}">
+          <div class="col-md-auto">
+            <input type="checkbox" id="library-addtemplates-${id}" name="library-addtemplates-${id}" value="true" checked>
+            <label class="form-label" for="library-addtemplates-${id}"> Add to templates</label>
+          </div>
+        </div>
+        <div class="row row-margin">
+          <div class="col-md-auto">
+            <label class="form-label" for="library-lib-${id}">Library positions</label>
+            <input type="text" class="form-control" id="library-lib-${id}" name="library-lib-${id}" placeholder="1, 3-10" title="Select the residues numbers from the library">
+          </div>
+          <div class="col-md-auto">
+            <label class="form-label" for="library-query-${id}">Query positions</label>
+            <input type="text" class="form-control" id="library-query-${id}" name="library-query-${id}" placeholder="1, 3-10" title="Select the positions to insert it in the query sequence">
+          </div>
+        </div>
+      </fieldset>
+    `;
+  }
 }
 
-function insertModify(id){
-    const selectedRadio = document.querySelector(`input[type=radio][name="library-input-${id}"]:checked`);
-    const divHide = document.getElementById(`library-addtemplates-div-${id}`);
-    divHide.classList.toggle('hidden', selectedRadio.value === 'fasta');
-
-    const addMsa = document.getElementById(`library-addmsa-${id}`);
-    if(!addMsa.checked){
-        addMsa.checked = true;
-    }
-    readLibrary(id);
-}
-
-
-class libraryTable extends HTMLElement {
-    static formAssociated = true;
-    static observedAttributes = ['value'];
-
-    constructor() {
-        super();
-        this.attachInternals();
-        this.libraryID = this.getAttribute('libraryID');
-    }
-
-    connectedCallback() {
-        this.render();
-    }
-
-    render() {
-        this.innerHTML =  `
-            <fieldset name="library-field" class="row g-3">
-                <div class="form-group">
-                    <label class="form-label" for="library-folder-${this.libraryID}">Insert library from</label>
-                    <div class="form-check radio-container">
-                        <div class="col-md-auto">
-                            <input class="form-check-input" type="radio" name="library-input-${this.libraryID}" value="folder" onchange="insertModify('${this.libraryID}')" checked>
-                            <label class="form-label" for="library-folder-${this.libraryID}" style="margin-right: 10px;">Folder with PDB or FASTA Files</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input class="form-control" name="library-folder-${this.libraryID}" id="library-folder-${this.libraryID}" type="file" webkitdirectory directory multiple title="Choose a folder containing PDB or FASTA files" onchange="readLibrary('${this.libraryID}')">
-                        </div>
-                    </div>
-                    <div class="form-check radio-container">
-                        <div class="col-md-auto">
-                            <input class="form-check-input" type="radio" name="library-input-${this.libraryID}" value="fasta" onchange="insertModify('${this.libraryID}')">
-                            <label class="form-label" for="library-fasta-${this.libraryID}" style="margin-right: 10px;">FASTA file with sequences</label>
-                        </div>
-                        <div class="col-md-9">
-                            <input type="file" accept=".fasta" class="form-control" name="library-fasta-${this.libraryID}" id="library-fasta-${this.libraryID}" title="Choose fasta file with sequences" onchange="readLibrary('${this.libraryID}')">
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-auto">
-                        <input type="checkbox" id="library-addmsa-${this.libraryID}" name="library-addmsa-${this.libraryID}" value="true" onchange="readLibrary('${this.libraryID}')">
-                        <label class="form-label" for="library-addmsa-${this.libraryID}"> Add to MSA</label>
-                    </div>
-                </div>
-                <div class="row" id="library-addtemplates-div-${this.libraryID}">
-                    <div class="col-md-auto">
-                        <input type="checkbox" id="library-addtemplates-${this.libraryID}" name="library-addtemplates-${this.libraryID}" value="true" onchange="readLibrary('${this.libraryID}')" checked>
-                        <label class="form-label" for="library-addtemplates-${this.libraryID}"> Add to templates</label>
-                    </div>
-                </div>
-                <div class="row row-margin">
-                    <div class="col-md-auto">
-                        <label class="form-label" for="library-lib-${this.libraryID}">Library positions</label>
-                        <input type="text" class="form-control" id="library-lib-${this.libraryID}" name="library-lib-${this.libraryID}" placeholder="1, 3-10" title="Select the residues numbers from the library">
-                    </div>
-                    <div class="col-md-auto">
-                        <label class="form-label" for="library-query-${this.libraryID}">Query positions</label>
-                        <input type="text" class="form-control" id="library-query-${this.libraryID}" name="library-query-${this.libraryID}" onchange="updatePlot()" placeholder="1, 3-10" title="Select the positions to insert it in the query sequence">
-                    </div>
-                </div>
-            </fieldset>
-        `;
-    }
-}
-
-customElements.define('library-component', libraryTable);
+customElements.define('library-component', LibraryTable);
