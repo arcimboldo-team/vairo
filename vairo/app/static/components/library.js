@@ -1,5 +1,3 @@
-
-
 class LibraryTable extends HTMLElement {
   static formAssociated = true;
   static observedAttributes = ['value'];

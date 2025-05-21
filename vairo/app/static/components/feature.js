@@ -1,29 +1,3 @@
-const featuresDict = {};
-
-deleteFeatures() {
-  const id = this.featureID;
-  delete featuresDict[id];
-  updatePlot();
-}
-
-// Global dictionary remains for state tracking.
-const librariesDict = {};
-
-deleteLibrary() {
-    const id = this.libraryID;
-    delete librariesDict[id];
-    updatePlot();
-}
-
-
-const templatesDict = {};
-function deleteTemplate(id){
-    delete templatesDict[id];
-    updatePlot();
-}
-
-
-
 class FeatureTable extends HTMLElement {
   static formAssociated = true;
   static observedAttributes = ['value'];

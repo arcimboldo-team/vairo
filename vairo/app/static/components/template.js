@@ -78,8 +78,8 @@ class templateTable extends HTMLElement {
             }
         }
         templatesDict[key] = {"templateName": templateName, "templateData": templateData, "chainSequences": chainSeq};
-        updatePlot();
-        populateChainSelect(key);
+        triggerUpdatePlot();
+        this.populateChainSelect(key);
     }
 
     async readTemplate(id){
@@ -112,7 +112,7 @@ class templateTable extends HTMLElement {
     }
 
 
-    function populateChainSelect(templateID) {
+    populateChainSelect(templateID) {
         let options = '';
         if(templatesDict.hasOwnProperty(templateID)){
             const chains = templatesDict[templateID].chainSequences;
