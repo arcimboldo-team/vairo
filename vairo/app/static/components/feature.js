@@ -1,5 +1,29 @@
 const featuresDict = {};
 
+deleteFeatures() {
+  const id = this.featureID;
+  delete featuresDict[id];
+  updatePlot();
+}
+
+// Global dictionary remains for state tracking.
+const librariesDict = {};
+
+deleteLibrary() {
+    const id = this.libraryID;
+    delete librariesDict[id];
+    updatePlot();
+}
+
+
+const templatesDict = {};
+function deleteTemplate(id){
+    delete templatesDict[id];
+    updatePlot();
+}
+
+
+
 class FeatureTable extends HTMLElement {
   static formAssociated = true;
   static observedAttributes = ['value'];
@@ -19,17 +43,18 @@ class FeatureTable extends HTMLElement {
     };
 
     this.handlers = [
-          ['fileInput', 'change', 'readFeatures'],
-          ['addmsa', 'change', 'checkFeaturesMSA'],
-          ['addtemplates', 'change', 'checkFeaturesTemplates'],
-          ['modePos', 'change', 'togglePositionFeatures'],
-          ['modeRegion', 'change', 'togglePositionFeatures'],
-          ['positionSelect', 'change', 'handleInputChange'],
-          ['featureRegionfeat', 'change', 'handleInputChange'],
-          ['featureRegionquery', 'change', 'handleInputChange'],
-          ['featureFasta', 'change', 'handleInputChange'],
-        ];
+      ['fileInput', 'change', 'readFeatures'],
+      ['addmsa', 'change', 'checkFeaturesMSA'],
+      ['addtemplates', 'change', 'checkFeaturesTemplates'],
+      ['modePos', 'change', 'togglePositionFeatures'],
+      ['modeRegion', 'change', 'togglePositionFeatures'],
+      ['positionSelect', 'change', 'handleInputChange'],
+      ['featureRegionfeat', 'change', 'handleInputChange'],
+      ['featureRegionquery', 'change', 'handleInputChange'],
+      ['featureFasta', 'change', 'handleInputChange'],
+    ];
   }
+
 
   connectedCallback() {
     this.render();
@@ -38,7 +63,13 @@ class FeatureTable extends HTMLElement {
   }
 
   disconnectedCallback() {
-    this.detachEventListeners();
+    if (!this._elements) return;
+    this.handlers.forEach(([key, evt, handler]) => {
+      const el = this._elements[key];
+      if (el && typeof this.boundHandlers[handler] === 'function') {
+        el.removeEventListener(evt, this.boundHandlers[handler]);
+      }
+    });
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -70,26 +101,15 @@ class FeatureTable extends HTMLElement {
     };
   }
 
-
-
   attachEventListeners() {
-      this.handlers.forEach(([key, evt, handler]) => {
-        const el = this._elements[key];
-        if (el && typeof this[handler] === 'function') {
-          el.addEventListener(evt, this[handler]);
-        }
-      });
+    if (!this._elements) return;
+    this.handlers.forEach(([key, evt, handler]) => {
+      const el = this._elements[key];
+      if (el && typeof this.boundHandlers[handler] === 'function') {
+        el.addEventListener(evt, this.boundHandlers[handler]);
+      }
+    });
   }
-
-    disconnectedCallback() {
-      if (!this._elements) return;
-      this.handlers.forEach(([key, evt, handler]) => {
-        const el = this._elements[key];
-        if (el && typeof this[handler] === 'function') {
-          el.removeEventListener(evt, this[handler]);
-        }
-      });
-    }
 
   showError(message) {
     const { errorMessage } = this._elements;
@@ -147,7 +167,7 @@ class FeatureTable extends HTMLElement {
   }
 
   triggerUpdatePlot() {
-    this.dispatchEvent(new CustomEvent('plot-update', { bubbles: true }));
+    updatePlot()
   }
 
   render() {
@@ -213,7 +233,7 @@ class FeatureTable extends HTMLElement {
         <div class="row row-margin" id="feature-fasta-div-${id}">
           <div class="col-md-auto">
             <label class="form-label" for="feature-fasta-${id}">Replace templates sequence with the following sequence</label>
-            <input class="form-control" type="file" accept=".fasta, .seq, .sequence" name="feature-fasta-${id}" id="feature-fasta-${id}" title="Choose sequence file (fasta format) to replace the templates sequences">
+            <input class="form-control" type="file" accept=".fasta, .seq, .sequence" name="feature-fasta-${id}" id="feature-fasta-${id}" aria-describedby="feature-fasta-desc-${id}" title="Choose sequence file (fasta format) to replace the templates sequences">
             <small id="feature-fasta-desc-${id}" class="form-text text-muted">
               Choose a fasta file.
             </small>

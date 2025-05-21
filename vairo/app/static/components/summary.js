@@ -62,6 +62,49 @@ class Summary {
     }
 }
 
+function getTemplateRestrictions(templateID){
+    const divs = document.querySelectorAll(`li[id^=modify-${templateID}-]`);
+    const modificationsDict = {};
+    let positionsAccepted = false;
+    divs.forEach(div => {
+        const selection = div.querySelector(`select[id^=template-modify-where-${templateID}-]`).value;
+        if(selection === "") return;
+        modificationsDict[selection] = modificationsDict[selection] || {};
+        let positionKey = ''
+        if(selection !== "all"){
+            positionKey = div.querySelector(`select[id^=template-modify-pos-${templateID}-]`).value;
+            if(positionKey !== 'ANY'){
+                positionsAccepted = true;
+            }
+        }
+        else{
+            positionKey = 'ANY'
+        }
+        modificationsDict[selection][positionKey] = modificationsDict[selection][positionKey] || {};
+
+        const residues = div.querySelector(`input[id^=template-modify-delete-${templateID}-]`).value.trim();
+        if(residues){
+            if (!modificationsDict[selection][positionKey].hasOwnProperty('delete')) {
+                modificationsDict[selection][positionKey]["delete"] = new Set();
+            }
+            const oldValues = modificationsDict[selection][positionKey]["delete"];
+            const newValues = extendedNumbers(residues).sort(function(a, b) { return a - b });
+            modificationsDict[selection][positionKey]["delete"] = new Set(...oldValues, [...newValues]);
+        }
+        const changeAminoacids = div.querySelectorAll(`li[id^=modaminoacids-${templateID}-]`);
+        changeAminoacids.forEach(change => {
+            const positions = change.querySelector(`input[id^=template-modify-amino-pos-${templateID}]`).value.trim();
+            const sequence = change.querySelector(`input[id^=template-modify-amino-fasta-${templateID}-]`);
+            const choose = change.querySelector(`select[id^=template-modify-amino-select-${templateID}-]`).value;
+            if(positions && ((choose === "residue") || (choose === "fasta" && sequence.files.length > 0))){
+                const positionsArray = extendedNumbers(positions);
+                modificationsDict[selection][positionKey][choose] = [...new Set([...(modificationsDict[selection][positionKey][choose] || []), ...positionsArray])];
+            }
+        });
+    });
+    return [modificationsDict, positionsAccepted];
+}
+
 async function updatePlot() {
     const gatherInfo = {};
     let msaTemplatesNum = 0;
@@ -241,7 +284,7 @@ async function updatePlot() {
             let changesFasta = Array(totalNumberCopies).fill([]);
             let deleteResidues = Array(totalNumberCopies).fill(new Set());
 
-            const resValues = getRestrictions(key);
+            const resValues = getTemplateRestrictions(key);
             const positionsAccepted = resValues[1]
             const restrictionsDict = resValues[0]
 
