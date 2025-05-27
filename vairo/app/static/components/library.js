@@ -48,7 +48,9 @@ class LibraryTable extends HTMLElement {
       addTemplates: this.querySelector(`#library-addtemplates-${id}`),
       templatesDiv: this.querySelector(`#library-addtemplates-div-${id}`),
       libPositions: this.querySelector(`#library-lib-${id}`),
-      queryPositions: this.querySelector(`#library-query-${id}`)
+      queryPositions: this.querySelector(`#library-query-${id}`),
+      folderSection: this.querySelector(`#library-folder-section-${id}`),
+      fastaSection: this.querySelector(`#library-fasta-section-${id}`),
     };
   }
 
@@ -62,7 +64,7 @@ class LibraryTable extends HTMLElement {
     });
   }
 
-    disconnectedCallback() {
+  disconnectedCallback() {
     if (!this._elements) return;
     this.handlers.forEach(([key, evt, handler]) => {
       const el = this._elements[key];
@@ -70,7 +72,7 @@ class LibraryTable extends HTMLElement {
         el.removeEventListener(evt, this.boundHandlers[handler]);
       }
     });
-    }
+  }
 
   async readLibrary() {
     const id = this.libraryID;
@@ -113,6 +115,14 @@ class LibraryTable extends HTMLElement {
   }
 
   handleRadioChange() {
+    const { radioFolder, folderSection, fastaSection } = this._elements;
+    if (radioFolder?.checked) {
+      folderSection.style.display = '';
+      fastaSection.style.display = 'none';
+    } else {
+      folderSection.style.display = 'none';
+      fastaSection.style.display = '';
+    }
     this.insertModify();
   }
 
@@ -154,54 +164,77 @@ class LibraryTable extends HTMLElement {
   render() {
     const id = this.libraryID;
     this.innerHTML = `
-      <fieldset name="library-field" class="row g-3">
-        <div class="form-group">
-          <label class="form-label" for="library-folder-${id}">Insert library from</label>
-          <div class="form-check radio-container">
-            <div class="col-md-auto">
-              <input class="form-check-input" type="radio" name="library-input-${id}" value="folder" checked>
-              <label class="form-label" for="library-folder-${id}" style="margin-right: 10px;">Folder</label>
-            </div>
-            <div class="col-md-9">
-              <input class="form-control" name="library-folder-${id}" id="library-folder-${id}" aria-describedby="library-folder-desc-${id}" type="file" webkitdirectory directory multiple title="Choose a folder containing FASTA files or PDBs">
-                <small id="library-folder-desc-${id}" class="form-text text-muted">
-                    Choose a folder containing FASTA files or PDBs.
-                </small>
-            </div>
-          </div>
-          <div class="form-check radio-container">
-            <div class="col-md-auto">
-              <input class="form-check-input" type="radio" name="library-input-${id}" value="fasta">
-              <label class="form-label" for="library-fasta-${id}" style="margin-right: 10px;">FASTA</label>
-            </div>
-            <div class="col-md-9">
-              <input type="file" accept=".fasta" class="form-control" name="library-fasta-${id}" id="library-fasta-${id}" aria-describedby="library-fasta-desc-${id}" title="Choose a FASTA file containing sequences">
-                <small id="library-fasta-desc-${id}" class="form-text text-muted">
-                    Choose a FASTA file containing sequences.
-                </small>
-            </div>
-          </div>
+      <fieldset name="library-field">
+        <div class="form-group mb-2">
+          <label class="me-3">Insert library from</label>
+        <div class="form-check form-check-inline">
+          <input
+            class="form-check-input"
+            type="radio"
+            name="library-input-${id}"
+            id="library-radio-folder-${id}"
+            value="folder"
+            checked
+          >
+          <label class="form-check-label" for="library-radio-folder-${id}">Folder</label>
         </div>
-        <div class="row">
-          <div class="col-md-auto">
-            <input type="checkbox" id="library-addmsa-${id}" name="library-addmsa-${id}" value="true">
-            <label class="form-label" for="library-addmsa-${id}"> Add to MSA</label>
-          </div>
+        <div class="form-check form-check-inline">
+          <input
+            class="form-check-input"
+            type="radio"
+            name="library-input-${id}"
+            id="library-radio-fasta-${id}"
+            value="fasta"
+          >
+          <label class="form-check-label" for="library-radio-fasta-${id}">FASTA</label>
         </div>
-        <div class="row" id="library-addtemplates-div-${id}">
-          <div class="col-md-auto">
-            <input type="checkbox" id="library-addtemplates-${id}" name="library-addtemplates-${id}" value="true" checked>
-            <label class="form-label" for="library-addtemplates-${id}"> Add to templates</label>
+          <div id="library-folder-section-${id}" class="form-group mb-2">
+              <input
+                class="form-control"
+                name="library-folder-${id}"
+                id="library-folder-${id}"
+                type="file"
+                webkitdirectory directory
+                multiple
+                title="Choose a folder containing FASTA files or PDBs"
+                aria-describedby="library-folder-desc-${id}"
+              >
+              <small id="library-folder-desc-${id}" class="form-text text-muted">
+                Choose a folder containing FASTA files or PDBs.
+              </small>
           </div>
+          <div id="library-fasta-section-${id}" class="form-group mb-2" style="display: none;">
+              <input
+                type="file"
+                accept=".fasta"
+                class="form-control"
+                name="library-fasta-${id}"
+                id="library-fasta-${id}"
+                title="Choose a FASTA file containing sequences"
+                aria-describedby="library-fasta-desc-${id}"
+              >
+              <small id="library-fasta-desc-${id}" class="form-text text-muted">
+                Choose a FASTA file containing sequences.
+              </small>
+          </div>
+
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" id="library-addmsa-${id}" name="library-addmsa-${id}" value="true">
+            <label class="form-check-label" for="library-addmsa-${id}"> Add to MSA</label>
         </div>
-        <div class="row row-margin">
+        <div class="form-check mb-2" id="library-addtemplates-div-${id}">
+            <input class="form-check-input" type="checkbox" id="library-addtemplates-${id}" name="library-addtemplates-${id}" value="true" checked>
+            <label class="form-check-label" for="library-addtemplates-${id}"> Add to templates</label>
+        </div>
+
+        <div class="form-group mb-2 row">
           <div class="col-md-auto">
-            <label class="form-label" for="library-lib-${id}">Library positions</label>
-            <input type="text" class="form-control" id="library-lib-${id}" name="library-lib-${id}" placeholder="1, 3-10" title="Select the residues numbers from the library">
+            <label for="library-lib-${id}">Library positions</label>
+            <input type="text" class="form-control" id="library-lib-${id}" name="library-lib-${id}" placeholder="e.g. 1, 3-10" title="Select the residue numbers from the library">
           </div>
           <div class="col-md-auto">
-            <label class="form-label" for="library-query-${id}">Query positions</label>
-            <input type="text" class="form-control" id="library-query-${id}" name="library-query-${id}" placeholder="1, 3-10" title="Select the positions to insert it in the query sequence">
+            <label for="library-query-${id}">Query sequence positions</label>
+            <input type="text" class="form-control" id="library-query-${id}" name="library-query-${id}" placeholder="e.g. 1, 3-10" title="Select the positions to insert it in the query sequence">
           </div>
         </div>
       </fieldset>

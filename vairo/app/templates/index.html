@@ -12,39 +12,34 @@
                                 <h2 class="card-title">General options</h2>
                             </div>
                             <div class="card-body">
-                                <div class="form-group">
-                                    <label class="form-label">Select mode
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" value="guided" name="general-mode" id="guided-radio" onchange="checkMode()" checked>
-                                            <label class="form-check-label" for="guided-radio">
-                                                Guided
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" value="naive" name="general-mode" id="naive-radio" onchange="checkMode()">
-                                            <label class="form-check-label" for="naive-radio">
-                                                Naive
-                                            </label>
-                                        </div>
-                                    </label>
+                                <div class="form-group mb-2">
+                                  <label class="me-3">Select mode: </label>
+                                  <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" value="guided" name="general-mode" id="guided-radio" onchange="checkMode()" checked>
+                                    <label class="form-check-label" for="guided-radio">Guided</label>
+                                  </div>
+                                  <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" value="naive" name="general-mode" id="naive-radio" onchange="checkMode()">
+                                    <label class="form-check-label" for="naive-radio">Naive</label>
+                                  </div>
                                 </div>
-                                <div class="row">
-                                    <div class="col-md-auto">
-                                        <input type="checkbox" id="general-runaf2" name="general-runaf2" value="true">
-                                        <label class="form-label" for="general-runaf2">Run AlphaFold2</label>
-                                    </div>
+                                <div class="form-check mb-2">
+                                  <input class="form-check-input" type="checkbox" id="general-runaf2" name="general-runaf2" value="true" checked>
+                                  <label class="form-check-label" for="general-runaf2">Run AlphaFold2</label>
                                 </div>
-                                <div class="row row-margin">
-                                    <div class="form-group">
-                                        <label class="form-label" for="general-output">Select output folder path</label>
-                                        <input class="form-control" name="general-output" type="text"  id="general-output" placeholder="path/to/folder" required>
-                                    </div>
+                                <div class="form-group mb-2">
+                                  <label for="general-output">Output folder</label>
+                                  <input class="form-control form-control-sm" name="general-output" type="text" id="general-output" placeholder="e.g /path/to/databases" aria-describedby="general-output-desc" required>
+                                  <small id="general-output-desc}" class="form-text text-muted">
+                                    Choose a path to store the output.
+                                  </small>
                                 </div>
-                                <div class="row row-margin">
-                                    <div class="form-group">
-                                        <label class="form-label" for="general-databases">Select AlphaFold2 databases path</label>
-                                        <input class="form-control" name="general-databases" type="text"  id="general-databases" placeholder="path/to/databases" required>
-                                    </div>
+                                <div class="form-group mb-2">
+                                  <label for="general-databases">Databases path</label>
+                                  <input class="form-control form-control-sm" name="general-databases" type="text" id="general-databases" aria-describedby="general-databases-desc" placeholder="e.g /path/to/output" required>
+                                  <small id="general-databases-desc" class="form-text text-muted">
+                                    Choose a folder containing all the databases for AlphaFold2.
+                                  </small>
                                 </div>
                             </div>
                         </div>
