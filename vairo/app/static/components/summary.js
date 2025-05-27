@@ -148,7 +148,7 @@ async function updatePlot() {
     let numberResidues = 1;
 
     for (const component of sequenceComponents) {
-        const sequenceID = component.getAttribute('sequenceID');
+        const sequenceID = component.getAttribute('sequence-id');
         const selected = component.querySelector(`input[name=sequence-input-${sequenceID}]:checked`);
         let sequenceInput = '';
         let nameQuery = `seq-${sequenceID}`;
