@@ -225,7 +225,7 @@ class TemplateComponent extends HTMLElement {
                         <label class="form-check-label" for="template-aligned-${id}"> Align template to query sequence</label>
                 </div>
                 <div class="mb-2">
-                  <label>Modify Template:</label>
+                  <label>Template modifications:</label>
                   <div id="modifications-container-${id}" role="region" aria-live="polite"></div>
                   <a class="link-opacity-100" style="display: inline-block; margin-top: 10px;" id="add-modification-${id}" href="javascript:void(0)">Add modification</a>
                 </div>

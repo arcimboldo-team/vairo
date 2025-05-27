@@ -11,64 +11,142 @@ class sequenceTable extends HTMLElement {
 
     connectedCallback() {
         this.render();
-        const addButton = this.querySelector(`#add-mutation-${this.sequenceID}`);
-        addButton.addEventListener('click', this.addMutationLine.bind(this));
+        this.attachEventListeners();
     }
 
+    attachEventListeners() {
+        const id =  this.sequenceID;
+
+        this.querySelector(`#add-mutation-${id}`).addEventListener('click', () => {
+            this.addMutationLine();
+        });
+        document.querySelectorAll(`[name="sequence-input-${id}"]`).forEach(radio => {
+            radio.addEventListener("change", async () => {
+                this.handleRadioChange();
+                this.triggerUpdatePlot();
+            });
+        });
+        this.querySelector(`#sequence-fasta-${id}`).addEventListener("change", async () => {
+            this.triggerUpdatePlot();
+        });
+        this.querySelector(`#sequence-text-${id}`).addEventListener("change", async () => {
+            this.triggerUpdatePlot();
+        });
+    }
+
+    triggerUpdatePlot() {
+        updatePlot();
+    }
+
+
+      handleRadioChange() {
+        const id = this.sequenceID;
+        const radioFile = this.querySelector(`input[type="radio"][value="file"]`);
+        const fastaSection = this.querySelector(`#sequence-fasta-section-${id}`);
+        const textSection = this.querySelector(`#sequence-text-section-${id}`);
+        if (radioFile?.checked) {
+          fastaSection.style.display = '';
+          textSection.style.display = 'none';
+        } else {
+          fastaSection.style.display = 'none';
+          textSection.style.display = '';
+        }
+      }
+
     render() {
+        const id = this.sequenceID;
         this.innerHTML =  `            
-            <fieldset name="sequence-field" class="row g-3"> 
-                <div class="row row-margin">
-                    <div class="form-group">
-                        <label class="form-label" for="sequence-fasta-${this.sequenceID}">Insert sequence</label>
-                        <div class="form-check radio-container">
-                            <input class="form-check-input" type="radio" name="sequence-input-${this.sequenceID}" value="file" onchange="updatePlot()" checked>
-                            <input class="form-control" type="file" name="sequence-fasta-${this.sequenceID}" accept=".fasta, .seq, .sequence" id="sequence-fasta-${this.sequenceID}" title="Choose sequence file (fasta format)" onchange="updatePlot()">
-                        </div>
-                        <div class="form-check radio-container">
-                            <input class="form-check-input" type="radio" name="sequence-input-${this.sequenceID}" value="text" onchange="updatePlot()">
-                            <input class="form-control" type="text" name="sequence-text-${this.sequenceID}" id="sequence-text-${this.sequenceID}"  title="Write amino acid sequence" placeholder="Sequence: MQHLRFLHYIDAVARCGSIRAA" onchange="updatePlot()">
-                        </div>
-                    </div>
+            <fieldset name="sequence-field">
+                <div class="form-group mb-2">
+                  <label class="me-3">Read sequence from</label>
+                <div class="form-check form-check-inline">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    accept=".seq, .fasta, .sequence"
+                    name="sequence-input-${id}"
+                    id="sequence-radio-fasta-${id}"
+                    value="file"
+                    checked
+                  >
+                  <label class="form-check-label" for="sequence-radio-fasta-${id}">File</label>
                 </div>
-                <div class="row row-margin">
+                <div class="form-check form-check-inline">
+                  <input
+                    class="form-check-input"
+                    type="radio"
+                    name="sequence-input-${id}"
+                    id="sequence-radio-text-${id}"
+                    value="text"
+                  >
+                  <label class="form-check-label" for="sequence-radio-text-${id}">Text</label>
+                </div>
+
+         <div id="sequence-fasta-section-${id}" class="form-group mb-2">
+              <label class="form-check-label" for="sequence-fasta-${id}">Sequence file</label>
+              <input
+                class="form-control"
+                name="sequence-fasta-${id}"
+                id="sequence-fasta-${id}"
+                type="file"
+                title=" Choose a sequence file"
+                aria-describedby="sequence-fasta-desc-${id}"
+              >
+              <small id="sequence-fasta-desc-${id}" class="form-text text-muted">
+                Choose a sequence file.
+              </small>
+          </div>
+          <div id="sequence-text-section-${id}" class="form-group mb-2" style="display: none;">
+                <label class="form-check-label" for="sequence-text-${id}">Sequence</label>
+              <input
+                type="text"
+                class="form-control"
+                name="sequence-text-${id}"
+                id="sequence-text-${id}"
+                title="Insert a sequence"
+                aria-describedby="sequence-text-desc-${id}"
+                placeholder="e.g. MQHLRFLHYIDAVARCGSIRAA"
+              >
+              <small id="sequence-text-desc-${id}" class="form-text text-muted">
+                Insert a sequence.
+              </small>
+          </div>
+                <div class="row mb-2">
                     <div class="col-md-auto">
-                        <label class="form-label" for="sequence-copies-${this.sequenceID}">Number of copies</label>
-                        <input type="text" class="form-control" id="sequence-copies-${this.sequenceID}" name="sequence-copies-${this.sequenceID}" min="1" data-bind="value:replyNumber" value="1" maxlength="1" onchange="updatePlot()" title="Number of copies of the query sequence" required>
+                        <label for="sequence-copies-${id}">Number of copies</label>
+                        <input type="text" class="form-control" id="sequence-copies-${id}" style="width:100px;" name="sequence-copies-${id}" min="1" data-bind="value:replyNumber" value="1" maxlength="1" onchange="updatePlot()" title="Number of copies of the query sequence" required>
                         <div class="invalid-feedback">
                             Mandatory field
                         </div>
                     </div>
                     <div class="col-md-auto">
-                        <label class="form-label" for="sequence-positions-${this.sequenceID}">Positions</label>
-                        <input type="text" class="form-control" name="sequence-positions-${this.sequenceID}" id="sequence-positions-${this.sequenceID}" name="sequence-positions-${this.sequenceID}" onchange="updatePlot()" placeholder="1, 3, 5" title="(Optional) Specify any position inside the query sequence.">
+                        <label for="sequence-positions-${id}">Positions</label>
+                        <input type="text" class="form-control" name="sequence-positions-${id}" id="sequence-positions-${id}" name="sequence-positions-${id}" onchange="updatePlot()" placeholder="e.g. 1, 3, 5" title="Specify any position inside the query sequence.">
                     </div>
                 </div>
-                <div class="row row-margin">
-                    <label>Mutations:</label>
-                    <div class="col-md-auto">
-                        <ul id="ul-mutation-${this.sequenceID}"></ul>
-                        <a class="link-opacity-100 link-line-padding" name="add-mutation-${this.sequenceID}" id="add-mutation-${this.sequenceID}" href="javascript:void(0)">Add mutation</a>
-                    </div>
+                <div class="mb-2">
+                  <label>Sequence mutations:</label>
+                  <div id="mutations-container-${id}" role="region" aria-live="polite"></div>
+                  <a class="link-opacity-100" style="display: inline-block; margin-top: 10px;" id="add-mutation-${id}" name="add-mutation-${id}" href="javascript:void(0)">Add mutation</a>
                 </div>
             </fieldset>
         `;
     }
 
     addMutationLine() {
-        const addMutationButton = this.querySelector(`#ul-mutation-${this.sequenceID}`);
+        const addMutationButton = this.querySelector(`#mutations-container-${this.sequenceID}`);
         const mutationLine = document.createElement('li');
-        mutationLine.classList.add('row', 'g-3', 'element-line-padding');
+        mutationLine.classList.add('row', 'p-2');
         mutationLine.id = `li-mutation-${this.sequenceID}-${this.mutationID}`;
         mutationLine.innerHTML = `
             <div class="col-md-auto">
-                <label class="form-label" for="sequence-mutations-res-${this.sequenceID}-${this.mutationID}"> Type</label>
+                <label for="sequence-mutations-res-${this.sequenceID}-${this.mutationID}"> Type</label>
                 <select class="form-select" name="sequence-mutations-res-${this.sequenceID}-${this.mutationID}" id="sequence-mutations-res-${this.sequenceID}-${this.mutationID}" class="form-control" title="Aminoacid (e.g. G)">
                     ${aminoacidSelect}
                 </select>
             </div>
             <div class="col-md-auto">
-                <label class="form-label" for="sequence-mutations-pos-${this.sequenceID}-${this.mutationID}"> Residue number</label>
+                <label for="sequence-mutations-pos-${this.sequenceID}-${this.mutationID}"> Residue number</label>
                 <input type="text" name="sequence-mutations-pos-${this.sequenceID}-${this.mutationID}" id="sequence-mutations-pos-${this.sequenceID}-${this.mutationID}" class="form-control" placeholder="E.g. 1, 2-100" title="Residues to replace (e.g. 1, 2-100)" onchange="updatePlot()" required>
             </div>
             <div class="col-md-auto delete-mutations">
