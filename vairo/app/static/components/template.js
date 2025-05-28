@@ -27,6 +27,7 @@ class TemplateComponent extends HTMLElement {
             templateCode: this.querySelector(`#template-code-${id}`),
             templateFile: this.querySelector(`#template-file-${id}`),
             templateMultimer: this.querySelector(`#template-multimer-${id}`),
+
         };
       }
 
@@ -42,14 +43,19 @@ class TemplateComponent extends HTMLElement {
                 await this.readTemplate();
             });
         });
+
         this._elements.templateCode.addEventListener("change", async () => {
             await this.readTemplate();
         });
+
         this._elements.templateFile.addEventListener("change", async () => {
             await this.readTemplate();
         });
-    }
 
+        this._elements.templateMultimer.addEventListener("change", async () => {
+            await this.generateMultimer();
+        });
+    }
       handleRadioChange() {
         const id = this.templateID;
         const { radioFile, fileSection, codeSection } = this._elements;
@@ -112,7 +118,6 @@ class TemplateComponent extends HTMLElement {
         templatesDict[id] = {"templateName": this.templateName, "templateData": this.templateData, "chainSequences": this.chainSeq};
         this.triggerUpdatePlot();
         this.populateChainSelect();
-        console.log(templatesDict);
     }
 
     populateChainSelect() {
@@ -161,23 +166,24 @@ class TemplateComponent extends HTMLElement {
                     class="form-check-input"
                     type="radio"
                     name="template-radio-${id}"
-                    id="template-radio-code-${id}"
-                    value="code"
+                    id="template-radio-file-${id}"
+                    value="file"
                     checked
                   >
-                  <label class="form-check-label" for="template-radio-code-${id}">Code</label>
+                  <label class="form-check-label" for="template-radio-file-${id}">File</label>
                 </div>
                 <div class="form-check form-check-inline">
                   <input
                     class="form-check-input"
                     type="radio"
                     name="template-radio-${id}"
-                    id="template-radio-file-${id}"
-                    value="file"
+                    id="template-radio-code-${id}"
+                    value="code"
                   >
-                  <label class="form-check-label" for="template-radio-file-${id}">File</label>
+                  <label class="form-check-label" for="template-radio-code-${id}">Code</label>
                 </div>
-         <div id="template-code-section-${id}" class="form-group mb-2">
+
+         <div id="template-code-section-${id}" class="form-group mb-2" style="display: none;">
               <label class="form-check-label" for="template-code-${id}">PDB code</label>
               <input
                 class="form-control"
@@ -193,7 +199,7 @@ class TemplateComponent extends HTMLElement {
                 Choose an existing PDB code.
               </small>
           </div>
-          <div id="template-file-section-${id}" class="form-group mb-2" style="display: none;">
+          <div id="template-file-section-${id}" class="form-group mb-2">
                 <label class="form-check-label" for="template-file-${id}">PDB file</label>
               <input
                 type="file"
@@ -217,7 +223,7 @@ class TemplateComponent extends HTMLElement {
                         <label class="form-check-label" for="template-addmsa-${id}"> Add to MSA</label>
                 </div>
                 <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="template-multimer-${id}" name="template-multimer-${id}" value="true" onchange="generateMultimer(${id})">
+                        <input class="form-check-input" type="checkbox" id="template-multimer-${id}" name="template-multimer-${id}" value="true"">
                         <label class="form-check-label" for="template-multimer-${id}"> Generate multimer</label>
                 </div>
                 <div class="form-check mb-2">
@@ -225,9 +231,8 @@ class TemplateComponent extends HTMLElement {
                         <label class="form-check-label" for="template-aligned-${id}"> Align template to query sequence</label>
                 </div>
                 <div class="mb-2">
-                  <label>Template modifications:</label>
+                  <a class="link-opacity-100" style="display: inline-block; margin-top: 10px;" id="add-modification-${id}" href="javascript:void(0)">Add template modification</a>
                   <div id="modifications-container-${id}" role="region" aria-live="polite"></div>
-                  <a class="link-opacity-100" style="display: inline-block; margin-top: 10px;" id="add-modification-${id}" href="javascript:void(0)">Add modification</a>
                 </div>
             </fieldset>
         `;
@@ -251,7 +256,6 @@ class ModificationComponent extends HTMLElement {
         this.modificationID = this.getAttribute('modification-id');
 
         this.render();
-        this.addModAminoacid(true)
         this.attachEventListeners();
     }
 
@@ -267,9 +271,6 @@ class ModificationComponent extends HTMLElement {
             this.toggleChainSelection();
         });
 
-        this.querySelector(`#template-modify-residues-${this.templateID}-${this.modificationID}`).addEventListener('change', () => {
-            this.toggleModify();
-        });
 
         this.querySelector(`#add-modaminoacids-${this.templateID}-${this.modificationID}`).addEventListener('click', () => {
             this.addModAminoacid();
@@ -297,14 +298,13 @@ class ModificationComponent extends HTMLElement {
         this.triggerUpdatePlot();
     }
 
-    addModAminoacid(isFirst = false) {
+    addModAminoacid() {
         const aminoacidsContainer = this.querySelector(`#aminoacids-container-${this.templateID}-${this.modificationID}`);
         const modAminoacidComponent = document.createElement('mod-aminoacids-component');
 
         modAminoacidComponent.setAttribute('template-id', this.templateID);
         modAminoacidComponent.setAttribute('modification-id', this.modificationID);
         modAminoacidComponent.setAttribute('aminoacid-id', this.modAminoacidsID);
-        modAminoacidComponent.setAttribute('is-first', isFirst);
 
         aminoacidsContainer.appendChild(modAminoacidComponent);
         this.triggerUpdatePlot();
@@ -329,23 +329,22 @@ class ModificationComponent extends HTMLElement {
                         <label for="template-modify-delete-${this.templateID}-${this.modificationID}"> Delete residues</label>
                         <input type="text" class="form-control" id="template-modify-delete-${this.templateID}-${this.modificationID}" name="template-modify-delete-${this.templateID}-${this.modificationID}" placeholder="e.g. 1, 3-10" title="Select residue numbers to delete in the chain, the rest will be kept" onchange="updatePlot()">
                     </div>
-                    <div class="hidden col-md-auto" name="chain-div-${this.templateID}-${this.modificationID}">
+                    <div class=" col-md-auto" name="chain-div-${this.templateID}-${this.modificationID}">
                         <label for="template-modify-pos-${this.templateID}-${this.modificationID}">Position</label>
                         <select class="form-select" id="template-modify-pos-${this.templateID}-${this.modificationID}" name="template-modify-pos-${this.templateID}-${this.modificationID}" title="Choose position of the query sequence to insert the chain" onchange="updatePlot()">
                         </select>
                     </div>
+                    <div class="col-md-auto delete-mutations">
+                        <span class="fa fa-trash-alt delete-icon-format delete-icon delete-modification"></span>
+                    </div>
                 </div>
                 <div class="mb-2">
-                    <input class="form-check-input" type="checkbox" name="template-modify-residues-${this.templateID}-${this.modificationID}" id="template-modify-residues-${this.templateID}-${this.modificationID}" value="true">
-                    <label class="form-check-label" for="template-modify-residues-${this.templateID}-${this.modificationID}"> Modify amino acids</label>
+                    <a class="link-opacity-100" style="display: inline-block; margin-top: 10px;" id="add-modaminoacids-${this.templateID}-${this.modificationID}" href="javascript:void(0)">Replace amino acids</a>
                 </div>
-                <div class="mb-2 hidden" id="modaminoacids-div-${this.templateID}-${this.modificationID}">
+                <div class="mb-2" id="modaminoacids-div-${this.templateID}-${this.modificationID}">
                   <div id="aminoacids-container-${this.templateID}-${this.modificationID}" role="region" aria-live="polite"></div>
-                  <a class="link-opacity-100" style="display: inline-block; margin-top: 10px;" id="add-modaminoacids-${this.templateID}-${this.modificationID}" href="javascript:void(0)">Add amino acid change</a>
                 </div>
-                <div class="mb-2 offset-md-6 delete-mutations">
-                    <span class="fa fa-trash-alt delete-icon-format delete-icon delete-modification"></span>
-                </div>
+
                 <hr class="solid" style="margin-bottom: 0px; margin-top: 0px">
             </li>
         `;
@@ -357,11 +356,12 @@ customElements.define('modification-component', ModificationComponent);
 
 class ModAminoacidsComponent extends HTMLElement {
     static formAssociated = true;
-    static observedAttributes = ['template-id', 'modification-id', 'aminoacid-id', 'is-first', 'value'];
+    static observedAttributes = ['template-id', 'modification-id', 'aminoacid-id', 'value'];
 
     constructor() {
         super();
         this.attachInternals();
+
     }
 
     connectedCallback() {
@@ -369,17 +369,8 @@ class ModAminoacidsComponent extends HTMLElement {
         this.modificationID = this.getAttribute('modification-id');
         this.aminoacidID = this.getAttribute('aminoacid-id');
         this.id = `${this.templateID}-${this.modificationID}-${this.aminoacidID}`;
-        this.isFirst = this.getAttribute('is-first') === 'true';
-
         this.render();
         this.attachEventListeners();
-    }
-
-    attributeChangedCallback(name, oldValue, newValue) {
-        if (oldValue !== newValue) {
-            this.render();
-            this.attachEventListeners();
-        }
     }
 
     attachEventListeners() {
@@ -390,12 +381,10 @@ class ModAminoacidsComponent extends HTMLElement {
             this.triggerUpdatePlot();
         });
 
-        if (!this.isFirst) {
-            this.querySelector('.delete-aminoacid').addEventListener('click', () => {
-                this.remove();
-                this.triggerUpdatePlot();
-            });
-        }
+        this.querySelector('.delete-aminoacid').addEventListener('click', () => {
+            this.remove();
+            this.triggerUpdatePlot();
+        });
     }
 
     selectModify() {
@@ -412,7 +401,7 @@ class ModAminoacidsComponent extends HTMLElement {
     }
 
     render() {
-        let html = `
+        this.innerHTML = `
             <li class="row mb-2" id="modaminoacids-${this.id}">
                 <div class="col-md-auto">
                     <label for="template-modify-amino-pos-${this.id}">Residue numbers</label>
@@ -434,17 +423,11 @@ class ModAminoacidsComponent extends HTMLElement {
                     <select class="form-select" id="template-modify-amino-resname-${this.id}" name="template-modify-amino-resname-${this.id}" class="form-control" title="Three letter amino acid to replace">
                         ${aminoacidSelect}
                     </select>
-                </div>`;
-
-        if (!this.isFirst) {
-            html += `
+                </div>
                 <div class="col-md-auto delete-mutations">
                     <span class="fa fa-trash-alt delete-icon-format delete-icon delete-aminoacid"></span>
-                </div>`;
-        }
-
-        html += `</li>`;
-        this.innerHTML = html;
+                </div>
+            </li>`;
     }
 }
 customElements.define('mod-aminoacids-component', ModAminoacidsComponent);
