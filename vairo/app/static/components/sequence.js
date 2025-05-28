@@ -125,9 +125,8 @@ class sequenceTable extends HTMLElement {
                     </div>
                 </div>
                 <div class="mb-2">
-                  <label>Sequence mutations:</label>
+                  <a class="link-opacity-100" style="display: inline-block; margin-top: 10px;" id="add-mutation-${id}" name="add-mutation-${id}" href="javascript:void(0)">Add sequence mutation</a>
                   <div id="mutations-container-${id}" role="region" aria-live="polite"></div>
-                  <a class="link-opacity-100" style="display: inline-block; margin-top: 10px;" id="add-mutation-${id}" name="add-mutation-${id}" href="javascript:void(0)">Add mutation</a>
                 </div>
             </fieldset>
         `;
