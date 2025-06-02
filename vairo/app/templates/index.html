@@ -3,73 +3,42 @@
     {% include 'header.html' %}
     <body>
         {% include 'nav.html' %}
-        <div class="layout-main">
-            <main id="vairo-input">
-                <form id="vairo-form">
-                    <div class="container-fluid px-4">
-                        <div class="card" id="general-input">
-                            <div class="card-header">
-                                <h2 class="card-title">General options</h2>
-                            </div>
-                            <div class="card-body">
-                                <div class="form-group mb-2">
-                                  <label class="me-3">Select mode: </label>
-                                  <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" value="guided" name="general-mode" id="guided-radio" onchange="checkMode()" checked>
-                                    <label class="form-check-label" for="guided-radio">Guided</label>
-                                  </div>
-                                  <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" value="naive" name="general-mode" id="naive-radio" onchange="checkMode()">
-                                    <label class="form-check-label" for="naive-radio">Naive</label>
-                                  </div>
-                                </div>
-                                <div class="form-check mb-2">
-                                  <input class="form-check-input" type="checkbox" id="general-runaf2" name="general-runaf2" value="true" checked>
-                                  <label class="form-check-label" for="general-runaf2">Run AlphaFold2</label>
-                                </div>
-                                <div class="form-group mb-2">
-                                  <label for="general-output">Output folder</label>
-                                  <input class="form-control form-control-sm" name="general-output" type="text" id="general-output" placeholder="e.g /path/to/databases" aria-describedby="general-output-desc" required>
-                                  <small id="general-output-desc}" class="form-text text-muted">
-                                    Choose a path to store the output.
-                                  </small>
-                                </div>
-                                <div class="form-group mb-2">
-                                  <label for="general-databases">Databases path</label>
-                                  <input class="form-control form-control-sm" name="general-databases" type="text" id="general-databases" aria-describedby="general-databases-desc" placeholder="e.g /path/to/output" required>
-                                  <small id="general-databases-desc" class="form-text text-muted">
-                                    Choose a folder containing all the databases for AlphaFold2.
-                                  </small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card" id="summary">                            
-                        </div>
-                        <div class="card" id=sequence>
-                        </div>
-                        <div class="card" id=template>
-                        </div>
-                        <div class="card" id=library>
-                        </div>
-                        <div class="card" id=feature>
-                        </div>
-                    <button class="btn btn-primary" type="submit">RUN</button>
-                    </div>
-                </form>
-            </main>
+      <main id="vairo-main" class="layout-main">
+        <h1 class="title">VAIRO</h1>
+        <div class="content">
+          <p>
+            To solve the folding problem, the attention algorithm, encoded
+            in the transformer succeeded in relating pairwise evolutionary
+            conservation and structural data in the PDB. AlphaFold succeeded in
+            harnessing this knowledge, in many cases matching the accuracy of
+            close homologs in its predictions, as assessed in CASP14 experiments.
+            AlphaFold derives information from three sources: learned parameters
+            capturing intrinsic amino acid secondary structure and environment
+            propensity; models of related proteins providing structural templates;
+            and aligned sequences encoding profiles and concerted evolutionary
+            changes of residues involved in contacts. Our method uses these three
+            channels to include prior knowledge, through site-specific variants,
+            predefined alignments and templates.
+          </p>
+          <p>
+            We have implemented a way to analyze and modify the information
+            underlying AlphaFold predictions. Our program, VAIRO, allows to
+            selectively constrain structure conferring targeted degrees of freedom
+            and setting boundary conditions. I will demonstrate how to use it in
+            order to integrate predictions and biochemical and structural data as
+            a route to broadly relate knowledge across experimental cases.
+          </p>
+          <img
+            src="{{ url_for('static', filename='/images/vairo_scheme.png') }}"
+            alt="VAIRO scheme"
+          />
         </div>
-        {% include 'footer.html' %}
+      </main>
+      {% include 'footer.html' %}
+        <script src="{{ url_for('static', filename='js/main.js') }}"></script>
         <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
         <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-        <script src="{{ url_for('static', filename='js/input.js') }}"></script>
         <script src="{{ url_for('static', filename='js/plotly.js') }}"></script>
         <script src="{{ url_for('static', filename='js/ngl.js') }}"></script>
-        <script src="{{ url_for('static', filename='components/summary.js') }}"></script>
-        <script src="{{ url_for('static', filename='components/accordion.js') }}"></script>
-        <script src="{{ url_for('static', filename='components/sequence.js') }}"></script>
-        <script src="{{ url_for('static', filename='components/template.js') }}"></script>
-        <script src="{{ url_for('static', filename='components/library.js') }}"></script>
-        <script src="{{ url_for('static', filename='components/feature.js') }}"></script>
     </body>
 </html>
