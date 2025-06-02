@@ -52,24 +52,44 @@ def transform_dict(inputDict: dict):
 
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def show_index():
+    return render_template('index.html', active_page="index", sub_page=None)
 
+@app.route('/input')
+def show_input():
+    return render_template('input.html', active_page="run", sub_page="input")
 
 @app.route('/output')
 def show_output():
-    return render_template('output.html')
+    return render_template('output.html', active_page="run", sub_page="output")
 
 
 @app.route('/features')
 def show_modfeatures():
-    return render_template('modfeatures.html')
+    return render_template('modfeatures.html', active_page="tools", sub_page=None)
 
 
 @app.route('/modfeaturesinfo')
 def show_modfeaturesinfo():
-    return render_template('modfeaturesinfo.html')
+    return render_template('modfeaturesinfo.html', active_page="tools", sub_page=None)
 
+
+@app.route('/check_html', methods=['POST'])
+def check_html():
+    folder = request.form.get('folder')
+
+    if folder and os.path.isdir(folder):
+        files = os.listdir(folder)
+        html_files = [f for f in files if f.lower().endswith('.html')]
+        if html_files:
+            return jsonify({
+                "exists": True,
+                "message": "Go to output to check the html files"
+            })
+
+    return jsonify({
+        "exists": False,
+        "message": ""
 
 @app.route('/form-vairo', methods=["POST"])
 def form_vairo():

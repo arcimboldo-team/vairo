@@ -1,3 +1,7 @@
+html, body{
+   font-size:1.2em;
+}
+
 .tab-ul{
   height: 100%;
   width: 100%;
@@ -30,6 +34,28 @@
   padding-top: 70px;
 }
 
+.title {
+    font-size: 3rem;
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.content {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto; /* Centers the container horizontally */
+    text-align: left; /* Keeps the text inside aligned to the left */
+    padding: 0 15px;
+    line-height: 1.6;
+}
+.content img {
+    display: block;
+    margin: 20px auto;
+    width: 100%;
+    height: auto;
+}
+
 .nav-fixed {
   position: fixed;
   top: 0;
@@ -37,6 +63,28 @@
   left: 0;
   z-index: 1000;
 
+}
+
+.nav-button {
+  transition: background-color 0.3s ease, color 0.3s ease;
+  cursor: pointer;
+  background-color: #000 !important;
+  color: #fff !important;
+}
+.nav-button:hover,
+.nav-button:focus {
+  background-color: #fff !important;
+  color: #000 !important;
+}
+.nav-button.active {
+  border: 2px solid blue !important;
+
+}
+.subnav {
+  background-color: #343a40;
+  border-top: 1px solid #444;
+  padding: 0.5rem 1rem;
+  margin: 0;
 }
 
 fieldset {
