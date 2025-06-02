@@ -175,7 +175,7 @@ async function updatePlot() {
         if(sequenceInput === "") continue;
 
         let mutationsArray = [];
-        const ulMutation = document.getElementById(`ul-mutation-${sequenceID}`);
+        const ulMutation = document.getElementById(`mutations-container-${sequenceID}`);
         const posmutationInputs = ulMutation.querySelectorAll(`input[id^=sequence-mutations-pos-${sequenceID}-]`);
         posmutationInputs.forEach(input => {
             inputValue = input.value;
