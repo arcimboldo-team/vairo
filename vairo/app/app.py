@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 target_directory = os.path.dirname(Path(__file__).absolute().parent.parent)
 sys.path.append(target_directory)
 from vairo import libs
-from libs import bioutils, features, utils
+from libs import bioutils, features, utils, alphafold_classes
 from tools import utilities
 
 app = Flask(__name__)
@@ -77,19 +77,24 @@ def show_modfeaturesinfo():
 @app.route('/check_html', methods=['POST'])
 def check_html():
     folder = request.form.get('folder')
+    print(folder)
+    html_file = os.path.join(folder, 'output', 'output.html')
+    if folder and os.path.isdir(folder) and os.path.exists(html_file):
+        return jsonify({"exists": True})
+    return jsonify({"exists": False})
 
-    if folder and os.path.isdir(folder):
-        files = os.listdir(folder)
-        html_files = [f for f in files if f.lower().endswith('.html')]
-        if html_files:
-            return jsonify({
-                "exists": True,
-                "message": "Go to output to check the html files"
-            })
+@app.route('/check_databases', methods=['POST'])
+def check_databases():
+    folder = request.form.get('folder')
+    try:
+        af2_db = alphafold_classes.AlphaFoldPaths(af2_dbs_path=folder)
+        exist = af2_db.validate_db_paths()
+        if exist:
+            return jsonify({"exists": True})
+    except Exception as e:
+        pass
+    return jsonify({"exists": False})
 
-    return jsonify({
-        "exists": False,
-        "message": ""
 
 @app.route('/form-vairo', methods=["POST"])
 def form_vairo():

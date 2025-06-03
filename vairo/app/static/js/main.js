@@ -40,6 +40,54 @@ function updatePositionsModifications(totalPositions){
     });
 }
 
+async function inputFolderChanged() {
+    const inputElement = document.getElementById('general-output');
+    const folderPath = inputElement.value.trim();
+    clearValidationMessage('general-output');
+    const resultDict = await postData('/check_html', { 'folder': folderPath });
+    if(resultDict.exists){
+        updateValidationMessage('general-output', resultDict.exists, 'Folder already exists, check Output tab to see results');
+    }
+}
+
+async function databaseFolderChanged() {
+    const inputElement = document.getElementById('general-databases');
+    const folderPath = inputElement.value.trim();
+    clearValidationMessage('general-databases');
+    const resultDict = await postData('/check_databases', { 'folder': folderPath });
+    if(resultDict.exists){
+        updateValidationMessage('general-databases', resultDict.exists, 'Databases found');
+    } else {
+        updateValidationMessage('general-databases', false, 'Error validating databases, check folder.');
+    }
+}
+
+function updateValidationMessage(fieldId, exists, message) {
+    const inputElement = document.getElementById(fieldId);
+    let messageElement = document.getElementById(fieldId + '-validation');
+
+    if (!messageElement) {
+        messageElement = document.createElement('small');
+        messageElement.id = fieldId + '-validation';
+        messageElement.className = 'form-text';
+        inputElement.parentNode.appendChild(messageElement);
+    }
+    if (exists) {
+        messageElement.className = 'form-text text-success';
+        messageElement.innerHTML = '✓ ' + message;
+    } else {
+        messageElement.className = 'form-text text-danger';
+        messageElement.innerHTML = '✗ ' + message;
+    }
+}
+
+function clearValidationMessage(fieldId) {
+    const messageElement = document.getElementById(fieldId + '-validation');
+    if (messageElement) {
+        messageElement.remove();
+    }
+}
+
 
 function extendedNumbers(input){
   inputArray = input.split(',');
@@ -161,36 +209,48 @@ async function fetchPDB(pdbCode) {
     }
 }
 
-async function postData(url = '', dataDict, jsonData=true, alreadyForm=false) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            let formData = '';
-            if(alreadyForm){
-                formData = dataDict;
-            } else {
-                formData = new FormData();
-                for (const [key, value] of Object.entries(dataDict)) {
-                    formData.append(key, value);
-                }
-            }
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData,
-            });
-            if (!response.ok) {
-                throw new Error(`Server error`);
-            }
-            let result = {};
-            if (jsonData) {
-                result = await response.json();
-            } else {
-                result = await response.blob();
-            }
-            resolve(result);
-        } catch (error) {
-            reject(error);
+async function postData(url = '', dataDict, jsonData = true, alreadyForm = false) {
+    if (!url) throw new Error('URL is required');
+    let formData;
+    if (alreadyForm) {
+        if (!(dataDict instanceof FormData)) {
+            console.warn('Warning: dataDict is not a FormData object, but alreadyForm is true');
         }
-    });
+        formData = dataDict;
+    } else if (typeof dataDict === 'object' && dataDict !== null) {
+        formData = new FormData();
+        for (const [key, value] of Object.entries(dataDict)) {
+            formData.append(key, value);
+        }
+    } else {
+        throw new Error('dataDict must be an object or FormData');
+    }
+    let response;
+    try {
+        response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+        });
+    } catch (error) {
+        throw new Error(`Network error: ${error.message}`);
+    }
+    if (!response.ok) {
+        const status = response.status;
+        let errorMessage = `Server error: ${status} ${response.statusText}`;
+        try {
+            const errorText = await response.text();
+            if (errorText) {
+                errorMessage += `. ${errorText}`;
+            }
+        } catch {
+        }
+        throw new Error(errorMessage);
+    }
+    try {
+        return jsonData ? await response.json() : await response.blob();
+    } catch (error) {
+        throw new Error(`Error parsing response: ${error.message}`);
+    }
 }
 
 

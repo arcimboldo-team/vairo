@@ -133,7 +133,7 @@ class FeatureTable extends HTMLElement {
       <fieldset name="feature-field">
           <div class="form-group mb-2">
             <label for="feature-pkl-${id}">PKL file</label>
-            <input type="file" accept=".pkl" class="form-control form-control-sm" name="feature-pkl-${id}" id="feature-pkl-${id}" title="Choose an AlphaFold2 input file (pkl format)" aria-describedby="feature-pkl-desc-${id}">
+            <input type="file" accept=".pkl" class="form-control" name="feature-pkl-${id}" id="feature-pkl-${id}" title="Choose an AlphaFold2 input file (pkl format)" aria-describedby="feature-pkl-desc-${id}">
             <small id="feature-pkl-desc-${id}" class="form-text text-muted">
               Choose an AlphaFold2 input file in PKL format.
             </small>
@@ -169,14 +169,14 @@ class FeatureTable extends HTMLElement {
         <div class="form-group mb-2 row" id="region-section-${id}" style="display: none;">
           <div class="col-md-auto">
             <label for="feature-regionfeat-${id}">Select regions from features</label>
-            <input type="text" class="form-control form-control-sm" id="feature-regionfeat-${id}" aria-describedby="feature-regionfeat-desc-${id}" name="feature-regionfeat-${id}" placeholder="e.g. 1, 3-10" title="Select specific regions from the features file">
+            <input type="text" class="form-control" id="feature-regionfeat-${id}" aria-describedby="feature-regionfeat-desc-${id}" name="feature-regionfeat-${id}" placeholder="e.g. 1, 3-10" title="Select specific regions from the features file">
             <small id="feature-regionfeat-desc-${id}" class="form-text text-muted">
               Select specific regions from the features file.
             </small>
           </div>
           <div class="col-md-auto">
             <label for="feature-regionquery-${id}">Insert those regions in the following query sequence numbering</label>
-            <input type="text" class="form-control form-control-sm" id="feature-regionquery-${id}" name="feature-regionquery-${id}" placeholder="e.g.  1,3" aria-describedby="feature-regionquery-desc-${id}" title="Insert those regions in the corresponding query sequence numbering">
+            <input type="text" class="form-control" id="feature-regionquery-${id}" name="feature-regionquery-${id}" placeholder="e.g.  1,3" aria-describedby="feature-regionquery-desc-${id}" title="Insert those regions in the corresponding query sequence numbering">
             <small id="feature-regionquery-desc-${id}" class="form-text text-muted">
               Insert those regions in the corresponding query sequence numbering.
             </small>
@@ -185,7 +185,7 @@ class FeatureTable extends HTMLElement {
 
         <div class="form-group mb-2" id="feature-fasta-div-${id}">
             <label for="feature-fasta-${id}">Replace templates sequence with the following sequence</label>
-            <input class="form-control form-control-sm" type="file" accept=".fasta, .seq, .sequence" name="feature-fasta-${id}" id="feature-fasta-${id}" aria-describedby="feature-fasta-desc-${id}" title="Choose sequence file (fasta format) to replace the templates sequences">
+            <input class="form-control" type="file" accept=".fasta, .seq, .sequence" name="feature-fasta-${id}" id="feature-fasta-${id}" aria-describedby="feature-fasta-desc-${id}" title="Choose sequence file (fasta format) to replace the templates sequences">
             <small id="feature-fasta-desc-${id}" class="form-text text-muted">
               Choose a fasta file.
             </small>
@@ -193,7 +193,7 @@ class FeatureTable extends HTMLElement {
 
           <div class="form-group mb-2" id="feature-mask-div-${id}">
             <label for="feature-mask-${id}">Mask residues in the MSA</label>
-            <input type="text" class="form-control form-control-sm" id="feature-mask-${id}" name="feature-mask-${id}" placeholder="e.g. 1, 3-10" aria-describedby="feature-mask-desc-${id}" title="Select the numbering of residues to mask">
+            <input type="text" class="form-control" id="feature-mask-${id}" name="feature-mask-${id}" placeholder="e.g. 1, 3-10" aria-describedby="feature-mask-desc-${id}" title="Select the numbering of residues to mask">
             <small id="feature-mask-desc-${id}" class="form-text text-muted">
               Select the numbering of residues to mask.
             </small>
