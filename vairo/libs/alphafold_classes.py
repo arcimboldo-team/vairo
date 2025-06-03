@@ -113,6 +113,21 @@ class AlphaFoldPaths:
                 self.small_bfd_path = glob.glob(f'{self.af2_dbs_path}/{db}/*.fasta', recursive=True)[0]
                 logging.info(f'Small BFD path: {self.small_bfd_path}')
 
+    def validate_db_paths(self):
+        required_paths = {
+            'mgnify_db_path': self.mgnify_db_path,
+            'uniref90_db_path': self.uniref90_db_path,
+            'mmcif_db_path': self.mmcif_db_path,
+            'obsolete_mmcif_db_path': self.obsolete_mmcif_db_path,
+            'bfd_db_path': self.bfd_db_path,
+            'uniclust30_db_path': self.uniclust30_db_path,
+            'pdb70_db_path': self.pdb70_db_path,
+        }
+        print(self)
+        missing = [field_name for field_name, path in required_paths.items() if not path]
+        return len(missing) == 0
+
+
     def __repr__(self):
         return f' \
         af2_dbs_path: {self.af2_dbs_path} \n \

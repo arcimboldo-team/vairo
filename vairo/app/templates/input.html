@@ -28,15 +28,15 @@
                                   <label class="form-check-label" for="general-runaf2">Run AlphaFold2</label>
                                 </div>
                                 <div class="form-group mb-2">
-                                  <label for="general-output">Output folder</label>
-                                  <input class="form-control form-control-sm" name="general-output" type="text" id="general-output" placeholder="e.g /path/to/databases" aria-describedby="general-output-desc" required>
+                                  <label for="general-output">Results folder</label>
+                                  <input class="form-control" name="general-output" type="text" id="general-output" placeholder="e.g. /path/to/results" aria-describedby="general-output-desc" onchange="inputFolderChanged()" required>
                                   <small id="general-output-desc}" class="form-text text-muted">
-                                    Choose a path to store the output.
+                                    Choose a destination folder for the results.
                                   </small>
                                 </div>
                                 <div class="form-group mb-2">
-                                  <label for="general-databases">Databases path</label>
-                                  <input class="form-control form-control-sm" name="general-databases" type="text" id="general-databases" aria-describedby="general-databases-desc" placeholder="e.g /path/to/output" required>
+                                  <label for="general-databases">Databases folder</label>
+                                  <input class="form-control" name="general-databases" type="text" id="general-databases" aria-describedby="general-databases-desc" placeholder="e.g. /path/to/af2/databases" onchange="databaseFolderChanged()" required>
                                   <small id="general-databases-desc" class="form-text text-muted">
                                     Choose a folder containing all the databases for AlphaFold2.
                                   </small>
