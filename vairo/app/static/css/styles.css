@@ -108,6 +108,18 @@ fieldset {
   transition: 150ms ease-in;
 }
 
+.iframe-wrapper {
+  height: 85vh;
+  width: 100%;
+  overflow: hidden;
+}
+iframe {
+  height: 100%;
+  width: 100%;
+  border: none;
+  overflow: auto;
+}
+
 .delete-icon-margin::after {
     margin-left: 1.1rem;
 }

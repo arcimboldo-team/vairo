@@ -1,29 +1,30 @@
-async function displayOutput(){
+function startPollingIfElementExists() {
+    let consecutiveFailures = 0;
+    const maxFailures = 5;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const encodedData = urlParams.get('data');
-
-    if (encodedData) {
-        const decodedData = decodeURIComponent(encodedData);
-        try{
-            outputInfo = await postData('/read-output', {'path': decodedData});
-            const mainElement = document.getElementById('vairo-output');
-
-            mainElement.innerHTML = `
-                <p>Configuration file: ${outputInfo['config_path']}</p>
-                <pre>${outputInfo['config_info']}</pre>
-                <p>HTML output path: ${outputInfo['output_path']}</p>
-            `;
-
-        } catch (error) {
-            alert('It has not been possible to read the output');
-            console.error('Error:', error);
-            window.location.href = `/`;
-        }
-    }
+    (function poll() {
+        fetch('/check_update')
+            .then(response => response.json())
+            .then(data => {
+                consecutiveFailures = 0;
+                console.log(data);
+                if (data.changed && data.content) {
+                    document.getElementById('vairo-output-iframe').srcdoc = data.content;
+                    console.log(data.content);
+                }
+            })
+            .catch(error => {
+                consecutiveFailures++;
+                console.error('Error checking for updates:', error);
+                if (consecutiveFailures >= maxFailures) {
+                    console.error('Server could not be located. Stopping polling.');
+                    return;
+                }
+            })
+            .finally(() => setTimeout(poll, 10000));
+    })();
 }
 
-
-window.addEventListener('DOMContentLoaded', event => {
-    displayOutput();
+document.addEventListener('DOMContentLoaded', function() {
+    startPollingIfElementExists();
 });
