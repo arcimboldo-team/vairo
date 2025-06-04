@@ -44,9 +44,13 @@ async function inputFolderChanged() {
     const inputElement = document.getElementById('general-output');
     const folderPath = inputElement.value.trim();
     clearValidationMessage('general-output');
-    const resultDict = await postData('/check_html', { 'folder': folderPath });
-    if(resultDict.exists){
-        updateValidationMessage('general-output', resultDict.exists, 'Folder already exists, check Output tab to see results');
+    const resultDict = await postData('/check_html', { folder: folderPath });
+    const outputBtn = document.getElementById('outputButton');
+    if (resultDict.exists) {
+        updateValidationMessage('general-output', 'warning', 'Folder already exists, check Output tab to see results. The results will be overwritten.');
+        outputBtn.classList.remove("disabled");
+    } else {
+        outputBtn.classList.add("disabled");
     }
 }
 
@@ -56,13 +60,13 @@ async function databaseFolderChanged() {
     clearValidationMessage('general-databases');
     const resultDict = await postData('/check_databases', { 'folder': folderPath });
     if(resultDict.exists){
-        updateValidationMessage('general-databases', resultDict.exists, 'Databases found');
+        updateValidationMessage('general-databases', 'ok', 'Databases found');
     } else {
-        updateValidationMessage('general-databases', false, 'Error validating databases, check folder.');
+        updateValidationMessage('general-databases', 'nok', 'Error validating databases, check folder.');
     }
 }
 
-function updateValidationMessage(fieldId, exists, message) {
+function updateValidationMessage(fieldId, type, message) {
     const inputElement = document.getElementById(fieldId);
     let messageElement = document.getElementById(fieldId + '-validation');
 
@@ -72,9 +76,12 @@ function updateValidationMessage(fieldId, exists, message) {
         messageElement.className = 'form-text';
         inputElement.parentNode.appendChild(messageElement);
     }
-    if (exists) {
+    if (type == 'ok') {
         messageElement.className = 'form-text text-success';
         messageElement.innerHTML = '✓ ' + message;
+    } else if (type == 'warning') {
+        messageElement.className = 'form-text text-warning';
+        messageElement.innerHTML = '⚠ ' + message;
     } else {
         messageElement.className = 'form-text text-danger';
         messageElement.innerHTML = '✗ ' + message;

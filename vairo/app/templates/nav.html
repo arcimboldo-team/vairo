@@ -18,17 +18,18 @@
   </nav>
 
   <!-- Run Sub-Navigation: Only show when 'run' is active -->
-  {% if active_page == 'run' %}
-  <div class="subnav">
-    <div class="d-flex">
-      <a class="btn me-2 nav-button btn-outline-light  {% if sub_page == 'input' %}active{% endif %}"
-         href="{{ url_for('show_input') }}">
-        Input
-      </a>
-      <a class="btn nav-button btn-outline-light {% if sub_page == 'output' %}active{% endif %} disabled"
-         href="{{ url_for('show_output') }}">
-        Output
-      </a>
-    </div>
+{% if active_page == 'run' %}
+<div class="subnav">
+  <div class="d-flex">
+    <a class="btn me-2 nav-button btn-outline-light {% if sub_page == 'input' %}active{% endif %}"
+       href="{{ url_for('show_input') }}">
+      Input
+    </a>
+    <a id="outputButton"
+       class="btn nav-button btn-outline-light disabled {% if sub_page == 'output' %}active{% endif %}"
+       href="{{ url_for('show_output') }}">
+      Output
+    </a>
   </div>
-  {% endif %}
+</div>
+{% endif %}

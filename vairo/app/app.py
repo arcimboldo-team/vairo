@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import re
 from pathlib import Path
 
 from flask import Flask, render_template, request, jsonify, send_file
@@ -19,6 +20,8 @@ from libs import bioutils, features, utils, alphafold_classes
 from tools import utilities
 
 app = Flask(__name__)
+
+HTML_DICT = {'path': '', 'lastmodified': 0.0}
 
 
 def transform_dict(inputDict: dict):
@@ -63,7 +66,6 @@ def show_input():
 def show_output():
     return render_template('output.html', active_page="run", sub_page="output")
 
-
 @app.route('/features')
 def show_modfeatures():
     return render_template('modfeatures.html', active_page="tools", sub_page=None)
@@ -77,8 +79,9 @@ def show_modfeaturesinfo():
 @app.route('/check_html', methods=['POST'])
 def check_html():
     folder = request.form.get('folder')
-    print(folder)
     html_file = os.path.join(folder, 'output', 'output.html')
+    global HTML_DICT
+    HTML_DICT = {'path': html_file, 'lastmodified': 0.0}
     if folder and os.path.isdir(folder) and os.path.exists(html_file):
         return jsonify({"exists": True})
     return jsonify({"exists": False})
@@ -296,27 +299,24 @@ def read_pkl():
         return jsonify({}), 500
 
 
-@app.route('/read-output', methods=["POST"])
-def read_output():
-    try:
-        path = request.form.get('path')
-        config_path = os.path.join(path, 'config.yml')
-        output_path = os.path.join(path, 'output.html')
-
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f_in:
-                config_info = f_in.read()
-            return {
-                'config_path': config_path,
-                'config_info': config_info,
-                'output_path': output_path
-            }
-        else:
-            raise Exception
-    except Exception as e:
-        print(e)
-        return jsonify({}), 500
-
+@app.route('/check_update')
+def check_update():
+    global HTML_DICT
+    if not os.path.exists(HTML_DICT['path']):
+        return jsonify({'changed': False, 'error': 'File not found'})
+    last_modified = os.path.getmtime(HTML_DICT['path'])
+    changed = last_modified > HTML_DICT['lastmodified']
+    HTML_DICT['lastmodified'] = last_modified
+    if changed:
+        with open(HTML_DICT['path'], 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        body_content = re.sub(r'<footer\b[^>]*>.*?</footer>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+    else:
+        body_content = None
+    return jsonify({
+        'changed': changed,
+        'content': body_content
+    })
 
 @app.route('/read-features-info', methods=["POST"])
 def read_features():

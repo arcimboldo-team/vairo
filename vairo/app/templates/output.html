@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
     {% include 'header.html' %}
-    <body>
+    <body style="overflow: hidden">
         {% include 'nav.html' %}
-        <main id="vairo-output">
-
-
+        <main id="vairo-output" class="iframe-wrapper">
+            <iframe id="vairo-output-iframe" src="your-content.html"></iframe>
         </main>
         {% include 'footer.html' %}
         <script src="{{ url_for('static', filename='js/main.js') }}"></script>
