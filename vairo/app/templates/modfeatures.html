@@ -9,9 +9,9 @@
                     <div class="card-header">
                         <h2 class="card-title">INPUT</h2>
                     </div>
-                    <div class="card-body" style="height: 450px;">
+                    <div class="card-body">
                         <div class="form-group" style="padding-bottom: 20px;">
-                            <label class="form-label" for="modfeatures-pkl">Select an AlphaFold2 input file</label>
+                            <label for="modfeatures-pkl">Select an AlphaFold2 input file</label>
                             <input type="file" accept=".pkl" class="form-control" id="modfeatures-pkl" title="Choose an AlphaFold2 input file (pkl format)">
                         </div>
                         <ul class="nav nav-tabs border">
@@ -29,24 +29,24 @@
                                         <fieldset name="feature-field" class="row g-3">
                                             <div class="row row-margin">
                                                 <div class="col-md-auto form-group">
-                                                    <label class="form-label" for="modfeatures-range">Select a selection range (optional)</label>
-                                                    <input type="text" class="form-control" id="modfeatures-range" placeholder="1-10,50-100">
+                                                    <label for="modfeatures-range">Selection range</label>
+                                                    <input type="text" class="form-control" id="modfeatures-range" placeholder="e.g. 1-10, 50-100">
                                                 </div>
                                             </div>
                                             <div class="row row-margin">
                                                 <div class="col-md-auto form-group align-items-center">
-                                                    <label for="modfeatures-indentity-ini" class="form-label">Show identity from</label>
+                                                    <label for="modfeatures-indentity-ini">Show identity from</label>
                                                     <input type="number" id="modfeatures-indentity-ini" class="form-control" value="0" min="0" max="100">
                                                 </div>
                                                 <div class="col-md-auto form-group align-items-center">
-                                                    <label for="modfeatures-indentity-end" class="form-label">to</label>
+                                                    <label for="modfeatures-indentity-end">to</label>
                                                     <input type="number" id="modfeatures-indentity-end" class="form-control" value="100" min="0" max="100">
                                                 </div>
                                             </div>
                                             <div class="row row-margin">
                                                 <div class="col-md-auto form-group">
-                                                    <input type="checkbox" id="modfeatures-uniprot">
-                                                    <label class="form-label" for="modfeatures-uniprot">Run uniprot</label>
+                                                    <input class="form-check-input" type="checkbox" id="modfeatures-uniprot">
+                                                    <label class="form-check-label" for="modfeatures-uniprot">Run uniprot</label>
                                                 </div>
                                             </div>
                                             <div class="row row-margin">
@@ -64,17 +64,18 @@
                                         <fieldset name="feature-field" class="row g-3">
                                             <div class="row row-margin">
                                                 <div class="form-group">
-                                                    <label class="form-label" for="modfeatures-remove-list">Remove sequences IDS</label>
-                                                    <input type="text" class="form-control" id="modfeatures-remove-list" placeholder="Enter sequences ids to remove">
+                                                    <label for="modfeatures-remove-list">Remove sequences IDS</label>
+                                                    <input type="text" class="form-control" id="modfeatures-remove-list" aria-describedby="modfeatures-remove-list-desc" placeholder="e.g. 1, 2">
+                                                    <small id="modfeatures-remove-list-desc">The entered sequence IDs will be removed</small>
                                                 </div>
                                             </div>
                                             <div class="row row-margin">
                                                 <div class="col-md-auto form-group align-items-center">
-                                                    <label for="modfeatures-indentity-ini" class="form-label">Delete identity from</label>
+                                                    <label for="modfeatures-indentity-ini">Delete identity from</label>
                                                     <input type="number" id="modfeatures-identity-min" class="form-control" value="0" min="0" max="100">
                                                 </div>
                                                 <div class="col-md-auto form-group align-items-center">
-                                                    <label for="modfeatures-indentity-end" class="form-label">to</label>
+                                                    <label for="modfeatures-indentity-end">to</label>
                                                     <input type="number" id="modfeatures-identity-max" class="form-control" value="100" min="0" max="100">
                                                 </div>
                                             </div>

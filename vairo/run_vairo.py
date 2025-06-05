@@ -135,6 +135,7 @@ def main():
 
                     if library.add_to_msa:
                         extension = utils.get_file_extension(aux_path)
+                        sequence_list =  []
                         if extension in ['.pdb']:
                             sequence_list = bioutils.extract_sequence_msa_from_pdb(aux_path)
                             sequence_list = list(sequence_list.values())
@@ -203,7 +204,7 @@ def main():
         a_air.generate_output()
 
     except SystemExit as e:
-        sys.exit(e)
+        sys.exit()
     except Exception as e:
         logging.error(f'Timestamp: {datetime.now()}')
         logging.error('ERROR:', exc_info=True)

@@ -694,6 +694,7 @@ class MainStructure:
                     relative_path=os.path.join(os.path.basename(self.output_dir),
                                                os.path.relpath(new_path, self.output_dir),
                                                os.path.basename(self.output.html_path)),
+                    encoded_path=utils.encode_data(os.path.join(new_path, os.path.basename(self.output.html_path))),
                     rankeds={utils.get_file_name(ranked_path): ranked_path for ranked_path in rankeds_path_list},
                     templates={pdb.name: pdb.path for pdb in cluster}
                 ))

@@ -39,6 +39,7 @@ class Cluster:
     label: str
     path: str
     relative_path: str
+    encoded_path: bytes
     rankeds: Dict
     templates: Dict
 
