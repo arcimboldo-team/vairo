@@ -784,9 +784,9 @@ class MainStructure:
             f_out.write(f'  legacy: True\n')
             f_out.write(f'  modifications:\n')
             f_out.write(f'  -  chain: all\n')
-            f_out.write(f'     replace:\n')
-            f_out.write(f'     - residues: 1-100000\n')
-            f_out.write(f'       by: ALA\n')
+            f_out.write(f'     mutations:\n')
+            f_out.write(f'     - numbering_residues: 1-100000\n')
+            f_out.write(f'       mutate_with: ALA\n')
 
         bioutils.run_vairo(yml_path=yml_path, input_path=mutations_dir)
         if os.path.exists(old_results_dir):
