@@ -116,7 +116,7 @@ def form_vairo():
         if 'template' in input_dict:
             config_str += 'templates:\n'
             for template_id, template_info in input_dict['template'].items():
-                if template_info.get('input') == 'code':
+                if template_info.get('radio') == 'code':
                     pdb_path = template_info.get('code')
                 else:
                     file = files_dict['template'][template_id].get('file')
