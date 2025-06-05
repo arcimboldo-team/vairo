@@ -115,7 +115,7 @@ function getTemplateRestrictions(templateID){
             const positions = change.querySelector(`input[id^=template-modify-amino-pos-${templateID}]`).value.trim();
             const sequence = change.querySelector(`input[id^=template-modify-amino-fasta-${templateID}-]`);
             const choose = change.querySelector(`select[id^=template-modify-amino-select-${templateID}-]`).value;
-            if(positions && ((choose === "residue") || (choose === "fasta" && sequence.files.length > 0))){
+            if(positions && ((choose === "residue") || (choose === "fasta" && sequence.length > 0))){
                 const positionsArray = extendedNumbers(positions);
                 modificationsDict[selection][positionKey][choose] = [...new Set([...(modificationsDict[selection][positionKey][choose] || []), ...positionsArray])];
             }
@@ -229,6 +229,8 @@ async function updatePlot() {
             }, []);
         }
     }
+
+    updatePositionsModifications(totalNumberCopies);
 
     queryArray = queryArray.filter(item => item);
     const dataShape = queryArray.reduce((acc, queryDict, index) => {
@@ -651,7 +653,6 @@ async function updatePlot() {
     };
     
     Plotly.newPlot('gantt-plot', [], layout, config);
-    updatePositionsModifications(totalNumberCopies);
 
     let {msaLibraryValues, templatesLibraryValues} = Object.values(librariesDict).reduce((acc, val) => {
         if (val.msa) acc.msaLibraryValues += val.msa;
