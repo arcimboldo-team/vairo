@@ -162,7 +162,7 @@ def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
         return False
 
 
-def extract_sequence_msa_from_pdb(pdb_path: str) -> str:
+def extract_sequence_msa_from_pdb(pdb_path: str) -> dict:
     structure = get_structure(pdb_path)
     model = structure[0]
     sequences = {}
