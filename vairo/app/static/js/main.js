@@ -44,7 +44,7 @@ async function inputFolderChanged() {
     const inputElement = document.getElementById('general-output');
     const folderPath = inputElement.value.trim();
     clearValidationMessage('general-output');
-    const resultDict = await postData('/check_html', { folder: folderPath });
+    const resultDict = await postData('/check-html', { folder: folderPath });
     const outputBtn = document.getElementById('outputButton');
     if (resultDict.exists) {
         updateValidationMessage('general-output', 'warning', 'Folder already exists, check Output tab to see results. The results will be overwritten.');
@@ -58,7 +58,7 @@ async function databaseFolderChanged() {
     const inputElement = document.getElementById('general-databases');
     const folderPath = inputElement.value.trim();
     clearValidationMessage('general-databases');
-    const resultDict = await postData('/check_databases', { 'folder': folderPath });
+    const resultDict = await postData('/check-databases', { 'folder': folderPath });
     if(resultDict.exists){
         updateValidationMessage('general-databases', 'ok', 'Databases found');
     } else {
@@ -220,9 +220,6 @@ async function postData(url = '', dataDict, jsonData = true, alreadyForm = false
     if (!url) throw new Error('URL is required');
     let formData;
     if (alreadyForm) {
-        if (!(dataDict instanceof FormData)) {
-            console.warn('Warning: dataDict is not a FormData object, but alreadyForm is true');
-        }
         formData = dataDict;
     } else if (typeof dataDict === 'object' && dataDict !== null) {
         formData = new FormData();

@@ -19,7 +19,6 @@ function checkMode(){
 
 async function handleFormSubmission(event) {
     event.preventDefault();
-
     const formData = new FormData(event.target);
     resultFile = await postData('/form-vairo', formData, true, true);
     if (resultFile) {

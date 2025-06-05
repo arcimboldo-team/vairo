@@ -3,7 +3,7 @@ function startPollingIfElementExists() {
     const maxFailures = 5;
 
     (function poll() {
-        fetch('/check_update')
+        fetch('/check-update')
             .then(response => response.json())
             .then(data => {
                 consecutiveFailures = 0;

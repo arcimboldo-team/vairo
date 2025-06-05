@@ -23,7 +23,6 @@ app = Flask(__name__)
 
 HTML_DICT = {'path': '', 'lastmodified': 0.0}
 
-
 def transform_dict(inputDict: dict):
     result = {}
     repeatedKeys = {}
@@ -53,7 +52,6 @@ def transform_dict(inputDict: dict):
         current_level[labels[-1]] = value
     return result
 
-
 @app.route('/')
 def show_index():
     return render_template('index.html', active_page="index", sub_page=None)
@@ -70,13 +68,11 @@ def show_output():
 def show_modfeatures():
     return render_template('modfeatures.html', active_page="tools", sub_page=None)
 
-
 @app.route('/modfeaturesinfo')
 def show_modfeaturesinfo():
     return render_template('modfeaturesinfo.html', active_page="tools", sub_page=None)
 
-
-@app.route('/check_html', methods=['POST'])
+@app.route('/check-html', methods=['POST'])
 def check_html():
     folder = request.form.get('folder')
     html_file = os.path.join(folder, 'output', 'output.html')
@@ -86,7 +82,7 @@ def check_html():
         return jsonify({"exists": True})
     return jsonify({"exists": False})
 
-@app.route('/check_databases', methods=['POST'])
+@app.route('/check-databases', methods=['POST'])
 def check_databases():
     folder = request.form.get('folder')
     try:
@@ -98,24 +94,25 @@ def check_databases():
         pass
     return jsonify({"exists": False})
 
-
 @app.route('/form-vairo', methods=["POST"])
 def form_vairo():
     try:
         input_dict = transform_dict(request.form)
         files_dict = transform_dict(request.files)
+        print(input_dict)
+        print(files_dict)
         output_path = input_dict.get('output')
         config_file = os.path.join(output_path, 'config.yml')
         files_path = os.path.join(output_path, 'input_files')
         if not os.path.exists(files_path):
             os.makedirs(files_path)
-
+    
         runaf2 = True if input_dict.get('runaf2') is not None else False
         config_str = f'mode: {input_dict.get("mode")}\n'
         config_str += f'output_dir: {output_path}\n'
         config_str += f'af2_dbs_path: {input_dict.get("databases")}\n'
         config_str += f"run_af2: {runaf2}\n"
-
+    
         if 'template' in input_dict:
             config_str += 'templates:\n'
             for template_id, template_info in input_dict['template'].items():
@@ -131,7 +128,7 @@ def form_vairo():
                 config_str += f"  add_to_templates: {'True' if template_info.get('addtemplates') is not None else 'False'}\n"
                 config_str += f"  generate_multimer: {'True' if template_info.get('multimer') is not None else 'False'}\n"
                 config_str += f"  aligned: {'True' if template_info.get('aligned') is not None else 'False'}\n"
-
+    
                 modify = template_info.get('modify')
                 if modify is not None:
                     config_str += f"  modifications:\n"
@@ -147,14 +144,14 @@ def form_vairo():
                             config_str += f"      position: {pos}\n"
                         aminos = modify_info.get('amino')
                         if aminos is not None and modify_residues:
-                            config_str += f"  replace:\n"
+                            config_str += f"  mutations:\n"
                             for amino_id, amino_info in aminos.items():
                                 pos = amino_info.get('pos')
                                 select = amino_info.get('select')
                                 if pos is not None:
-                                    config_str += f"      - residues: {pos}\n"
+                                    config_str += f"      - numbering_residues: {pos}\n"
                                 if select == 'residue':
-                                    config_str += f"        by: {select}\n"
+                                    config_str += f"        mutate_with: {select}\n"
                                 else:
                                     file = files_dict['template'][template_id]['modify'][modify_id]['amino'][
                                         amino_id].get('fasta')
@@ -162,8 +159,8 @@ def form_vairo():
                                     fasta_path = os.path.join(files_path,
                                                               f'{template_id}_{modify_id}_{amino_id}_{filename}')
                                     file.save(fasta_path)
-                                    config_str += f"        by: {fasta_path}\n"
-
+                                    config_str += f"        mutate_with: {fasta_path}\n"
+    
         if 'sequence' in input_dict:
             config_str += 'sequences:\n'
             for seq_id, seq_info in input_dict['sequence'].items():
@@ -193,12 +190,12 @@ def form_vairo():
                         pos = mutation_info.get('pos')
                         if res is not None and pos is not None:
                             config_str += f"    -'{res}': {pos}\n"
-
+    
         if 'feature' in input_dict:
             config_str += 'features:\n'
             for feat_id, feat_info in input_dict['feature'].items():
                 file = files_dict['feature'][feat_id].get('pkl')
-                filename = secure_filename(sequence.filename)
+                filename = secure_filename(file.filename)
                 pkl_path = os.path.join(files_path, f'{feat_id}_{filename}')
                 file.save(pkl_path)
                 config_str += f'- path: {pkl_path}\n'
@@ -212,7 +209,7 @@ def form_vairo():
                 if pos is not None:
                     config_str += f"  positions: {pos}\n"
                 if regionfeat is not None:
-                    config_str += f"  positions_feature: {regionfeat}\n"
+                    config_str += f"  numbering_features: {regionfeat}\n"
                 if regionquery is not None:
                     config_str += f"  numbering_query: {regionquery}\n"
                 if msa_mask is not None:
@@ -222,7 +219,7 @@ def form_vairo():
                     feat_fasta_path = os.path.join(files_path, f'{feat_id}_{filename}')
                     sequence.save(feat_fasta_path)
                     config_str += f"  sequence: {feat_fasta_path}\n"
-
+    
         if 'library' in input_dict:
             config_str += 'append_library:\n'
             for library_id, library_info in input_dict['library'].items():
@@ -248,12 +245,12 @@ def form_vairo():
                     config_str += f"  numbering_library: {regionlib}\n"
                 if regionquery is not None:
                     config_str += f"  numbering_query: {regionquery}\n"
-
+    
         with open(config_file, 'w') as f_out:
             f_out.write(config_str)
-
+    
         run_vairo_path = os.path.join(target_directory, 'run_vairo.py')
-        subprocess.Popen(["nq", run_vairo_path, config_file])
+        #subprocess.Popen(["nq", run_vairo_path, config_file])
         print(run_vairo_path, config_file)
         return jsonify({})
     except Exception as e:
@@ -299,7 +296,7 @@ def read_pkl():
         return jsonify({}), 500
 
 
-@app.route('/check_update')
+@app.route('/check-update')
 def check_update():
     global HTML_DICT
     if not os.path.exists(HTML_DICT['path']):

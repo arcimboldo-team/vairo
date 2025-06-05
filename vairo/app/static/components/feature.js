@@ -125,10 +125,7 @@ class FeatureTable extends HTMLElement {
 
   render() {
     const id = this.featureID;
-    const optionsHTML = (window.selectPositionsArray || [])
-      .map(option => `<option value="${option}">${option}</option>`)
-      .join('');
-
+    const optionsHTML = selectPositionsArray.map(option => `<option value="${option}">${option}</option>`).join('');
     this.innerHTML = `
       <fieldset name="feature-field">
           <div class="form-group mb-2">
