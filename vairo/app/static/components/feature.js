@@ -158,7 +158,7 @@ class FeatureTable extends HTMLElement {
           </div>
           <div class="form-group mb-2" id="pos-section-${id}">
             <label for="feature-pos-${id}">Insert into query sequence position</label>
-                <select class="form-select form-select-sm"
+                <select class="form-select"
                         style="width: 80px;"
                         id="feature-pos-${id}"
                         name="feature-pos-${id}"

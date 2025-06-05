@@ -910,7 +910,7 @@
             <div id="citations" class="section-div">
                 <h2>Citations</h2>
                 <p>
-                    <a href="https://doi.org/10.1038/s41586-021-03819-2">Highly accurate protein structure prediction with AlphaFold.</a><br>
+                    <a href="https://doi.org/10.1038/s41586-021-03819-2" target="_blank">Highly accurate protein structure prediction with AlphaFold.</a><br>
                     Jumper, J., Evans, R., Pritzel, A.<br>
                     (2021) Nature 596, 583-589.
                 </p>
@@ -918,10 +918,10 @@
             <div id="support" class="section-div">
                 <h2>Support</h2>
                 <p>
-                For online documentation and tutorials visit <a href="http://chango.ibmb.csic.es">www.chango.ibmb.csic.es</a><br/>
-                For developer support email <a href="mailto:bugs-borges@ibmb.csic.es">bugs-borges@ibmb.csic.es</a><br/>
+                For online documentation and tutorials visit <a href="http://chango.ibmb.csic.es" target="_blank">www.chango.ibmb.csic.es</a><br/>
+                For developer support email <a href="mailto:bugs-borges@ibmb.csic.es" target="_blank">bugs-borges@ibmb.csic.es</a><br/>
                 Crystallographic Methods Group <br/> 
-                <a href="http://www.ibmb.csic.es/">Molecular Biology Institute of Barcelona </a></p>
+                <a href="http://www.ibmb.csic.es/" target="_blank">Molecular Biology Institute of Barcelona </a></p>
             </div>
         </section>
     </body>
@@ -935,17 +935,21 @@
         }
 
         function hideValues(tableId, button) {
-            var table = document.getElementById(tableId, this);
+            var table = document.getElementById(tableId);
+            if (!table) {return;}
             var elements = table.getElementsByClassName("hide-row");
             for (var i = 0; i < elements.length; i++) {
                 var element = elements[i];
                 element.style.display = element.style.display === "none" ? "" : "none";
             }
-            button.textContent = button.textContent === "Show all predictions"? "Hide bad predictions": "Show all predictions";
+            button.textContent = button.textContent === "Show all predictions"
+                ? "Hide bad predictions"
+                : "Show all predictions";
         }
 
-        function hideEmptyRows(tableId){
-            var table = document.getElementById(tableId, this);
+        function hideEmptyRows(tableId) {
+            var table = document.getElementById(tableId);
+            if (!table) {return;}
             var rows = table.getElementsByTagName("tr");
             for (var i = 1; i < rows.length; i++) {
                 var cells = rows[i].getElementsByTagName("td");
@@ -966,13 +970,17 @@
         }
 
         function hideInterfaces(tableId, button) {
-            var table = document.getElementById(tableId, this);
+            var table = document.getElementById(tableId);
+            if (!table) {return;}
             var elements = table.getElementsByClassName("hide-row");
             for (var i = 0; i < elements.length; i++) {
                 var element = elements[i];
                 element.style.display = element.style.display === "none" ? "" : "none";
             }
-            button.textContent = button.textContent === "Show all interfaces"? "Hide interfaces": "Show all interfaces";
+            button.textContent = button.textContent === "Show all interfaces"
+                ? "Hide interfaces"
+                : "Show all interfaces";
         }
+
     </script>
 </html>
