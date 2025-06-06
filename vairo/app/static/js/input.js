@@ -18,14 +18,70 @@ function checkMode(){
 }
 
 async function handleFormSubmission(event) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    resultFile = await postData('/form-vairo', formData, true, true);
-    if (resultFile) {
-        const vairoPath = document.getElementById('general-output').value;
-        const encodedPath = encodeURIComponent(vairoPath);
-        window.location.href = `/output?data=${encodedPath}`;
-    }
+  event.preventDefault();
+  clearErrors();
+  const errors = await validateForm(event.target);
+  console.log(errors);
+  console.log(errors.length > 0);
+  if (errors.length > 0) {
+    console.log('entra');
+    displayErrors(errors);
+    document.getElementById("error-container").scrollIntoView({ behavior: "smooth", block: "end" });
+    return;
+  }
+  //const formData = new FormData(event.target);
+  //const resultFile = await postData('/form-vairo', formData, true, true);
+  //if (resultFile) {
+  //  const vairoPath = document.getElementById('general-output').value;
+  //  const encodedPath = encodeURIComponent(vairoPath);
+  //  window.location.href = `/output?data=${encodedPath}`;
+  //}
+}
+
+async function validateForm(form) {
+  const errors = [];
+  const inputDir = document.getElementById('general-output').value;
+  if(inputDir === ""){
+    errors.push("Output folder not found.");
+  }
+  const folderPath = document.getElementById('general-databases').value;
+  const resultDict = await postData('/check-databases', { 'folder': folderPath });
+  if(!resultDict.exists){
+    errors.push("AlphaFold2 database not found.");
+  }
+
+  const sequenceComponents = Array.from(form.querySelectorAll('sequence-component'));
+  if (sequenceComponents.length === 0) {
+    errors.push("No query sequences added. There has to be at least one sequence.");
+  }
+  return errors;
+}
+
+function displayErrors(errors) {
+
+  const errorContainer = document.getElementById('error-container');
+  const errorMessages = document.getElementById('error-messages');
+  console.log(errorContainer);
+  console.log(errorMessages);
+  if (errorContainer && errorMessages) {
+    console.log('entra')
+    let html = '<ul>';
+    errors.forEach(error => {
+      html += `<li>${error}</li>`;
+    });
+    html += '</ul>';
+    errorMessages.innerHTML = html;
+    errorContainer.style.display = 'block';
+  }
+}
+
+function clearErrors() {
+  const errorContainer = document.getElementById('error-container');
+  const errorMessages = document.getElementById('error-messages');
+  if (errorContainer && errorMessages) {
+    errorMessages.innerHTML = '';
+    errorContainer.style.display = 'none';
+  }
 }
 
 window.addEventListener('DOMContentLoaded', event => {
