@@ -5,6 +5,11 @@
         {% include 'nav.html' %}
         <div class="layout-main">
             <main id="vairo-input">
+                <!-- Error container inserted after the form -->
+                <div id="error-container" class="error-container" style="display: none;">
+                  <button class="close-btn" onclick="clearErrors()">×</button>
+                  <div id="error-messages"></div>
+                </div>
                 <form id="vairo-form">
                     <div class="container-fluid px-4">
                         <div class="card" id="general-input">
@@ -53,9 +58,10 @@
                         </div>
                         <div class="card" id=feature>
                         </div>
-                    <button class="btn btn-primary" type="submit">RUN</button>
+                        <button class="btn btn-primary sticky-btn" type="submit" form="vairo-form">RUN VAIRO</button>
                     </div>
                 </form>
+
             </main>
         </div>
         {% include 'footer.html' %}
