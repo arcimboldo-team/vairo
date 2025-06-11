@@ -123,7 +123,6 @@ class AlphaFoldPaths:
             'uniclust30_db_path': self.uniclust30_db_path,
             'pdb70_db_path': self.pdb70_db_path,
         }
-        print(self)
         missing = [field_name for field_name, path in required_paths.items() if not path]
         return len(missing) == 0
 

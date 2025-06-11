@@ -40,61 +40,6 @@ function updatePositionsModifications(totalPositions){
     });
 }
 
-async function inputFolderChanged() {
-    const inputElement = document.getElementById('general-output');
-    const folderPath = inputElement.value.trim();
-    clearValidationMessage('general-output');
-    const resultDict = await postData('/check-html', { folder: folderPath });
-    const outputBtn = document.getElementById('outputButton');
-    if (resultDict.exists) {
-        updateValidationMessage('general-output', 'warning', 'Folder already exists, check Output tab to see results. The results will be overwritten.');
-        outputBtn.classList.remove("disabled");
-    } else {
-        outputBtn.classList.add("disabled");
-    }
-}
-
-async function databaseFolderChanged() {
-    const inputElement = document.getElementById('general-databases');
-    const folderPath = inputElement.value.trim();
-    clearValidationMessage('general-databases');
-    const resultDict = await postData('/check-databases', { 'folder': folderPath });
-    if(resultDict.exists){
-        updateValidationMessage('general-databases', 'ok', 'Databases found');
-    } else {
-        updateValidationMessage('general-databases', 'nok', 'Error validating databases, check folder.');
-    }
-}
-
-function updateValidationMessage(fieldId, type, message) {
-    const inputElement = document.getElementById(fieldId);
-    let messageElement = document.getElementById(fieldId + '-validation');
-
-    if (!messageElement) {
-        messageElement = document.createElement('small');
-        messageElement.id = fieldId + '-validation';
-        messageElement.className = 'form-text';
-        inputElement.parentNode.appendChild(messageElement);
-    }
-    if (type == 'ok') {
-        messageElement.className = 'form-text text-success';
-        messageElement.innerHTML = '✓ ' + message;
-    } else if (type == 'warning') {
-        messageElement.className = 'form-text text-warning';
-        messageElement.innerHTML = '⚠ ' + message;
-    } else {
-        messageElement.className = 'form-text text-danger';
-        messageElement.innerHTML = '✗ ' + message;
-    }
-}
-
-function clearValidationMessage(fieldId) {
-    const messageElement = document.getElementById(fieldId + '-validation');
-    if (messageElement) {
-        messageElement.remove();
-    }
-}
-
 
 function extendedNumbers(input){
   inputArray = input.split(',');
@@ -256,6 +201,4 @@ async function postData(url = '', dataDict, jsonData = true, alreadyForm = false
         throw new Error(`Error parsing response: ${error.message}`);
     }
 }
-
-
 

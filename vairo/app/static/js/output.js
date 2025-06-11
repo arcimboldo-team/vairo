@@ -1,9 +1,24 @@
+let pollingTimeoutId = null;
+let currentController = null;
+
 function startPollingIfElementExists() {
+    if (currentController) {
+        currentController.abort();
+    }
+
+    if (pollingTimeoutId) {
+        clearTimeout(pollingTimeoutId);
+        pollingTimeoutId = null;
+    }
+
+    currentController = new AbortController();
+    const signal = currentController.signal;
+
     let consecutiveFailures = 0;
     const maxFailures = 5;
 
     (function poll() {
-        fetch('/check-update')
+        fetch('/check-update', { signal })
             .then(response => response.json())
             .then(data => {
                 consecutiveFailures = 0;
@@ -14,6 +29,11 @@ function startPollingIfElementExists() {
                 }
             })
             .catch(error => {
+                if (error.name === 'AbortError') {
+                    console.log('Polling aborted - new instance started');
+                    return;
+                }
+
                 consecutiveFailures++;
                 console.error('Error checking for updates:', error);
                 if (consecutiveFailures >= maxFailures) {
@@ -21,7 +41,11 @@ function startPollingIfElementExists() {
                     return;
                 }
             })
-            .finally(() => setTimeout(poll, 10000));
+            .finally(() => {
+                if (!signal.aborted) {
+                    pollingTimeoutId = setTimeout(poll, 10000);
+                }
+            });
     })();
 }
 

@@ -10,7 +10,7 @@ import tempfile
 import re
 from pathlib import Path
 
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, session
 from werkzeug.utils import secure_filename
 
 target_directory = os.path.dirname(Path(__file__).absolute().parent.parent)
@@ -20,8 +20,7 @@ from libs import bioutils, features, utils, alphafold_classes
 from tools import utilities
 
 app = Flask(__name__)
-
-HTML_DICT = {'path': '', 'lastmodified': 0.0}
+app.secret_key = 'secret'
 
 def transform_dict(inputDict: dict):
     result = {}
@@ -54,33 +53,33 @@ def transform_dict(inputDict: dict):
 
 @app.route('/')
 def show_index():
-    return render_template('index.html', active_page="index", sub_page=None)
+    return render_template('index.html', active_page="index", sub_page=None, exists_html=None)
 
 @app.route('/input')
 def show_input():
-    return render_template('input.html', active_page="run", sub_page="input")
+    return render_template('input.html', active_page="run", sub_page="input", exists_html=None)
 
 @app.route('/output')
 def show_output():
-    return render_template('output.html', active_page="run", sub_page="output")
+    session['lastmodified'] = 0.0
+    return render_template('output.html', active_page="run", sub_page="output", exists_html=True)
 
 @app.route('/features')
 def show_modfeatures():
-    return render_template('modfeatures.html', active_page="tools", sub_page=None)
+    return render_template('modfeatures.html', active_page="tools", sub_page=None, exists_html=None)
 
 @app.route('/modfeaturesinfo')
 def show_modfeaturesinfo():
-    return render_template('modfeaturesinfo.html', active_page="tools", sub_page=None)
+    return render_template('modfeaturesinfo.html', active_page="tools", sub_page=None, exists_html=None)
 
 @app.route('/check-html', methods=['POST'])
 def check_html():
     folder = request.form.get('folder')
     html_file = os.path.join(folder, 'output', 'output.html')
-    global HTML_DICT
-    HTML_DICT = {'path': html_file, 'lastmodified': 0.0}
+    session['output_path'] = html_file
     if folder and os.path.isdir(folder) and os.path.exists(html_file):
-        return jsonify({"exists": True})
-    return jsonify({"exists": False})
+        return jsonify({"status": "success", "exists": True})
+    return jsonify({"status": "success", "exists": False})
 
 @app.route('/check-databases', methods=['POST'])
 def check_databases():
@@ -89,18 +88,18 @@ def check_databases():
         af2_db = alphafold_classes.AlphaFoldPaths(af2_dbs_path=folder)
         exist = af2_db.validate_db_paths()
         if exist:
-            return jsonify({"exists": True})
+            return jsonify({"status": "success", "exists": True})
     except Exception as e:
+        print(e)
         pass
-    return jsonify({"exists": False})
+    return jsonify({"status": "error", "exists": False})
 
 @app.route('/form-vairo', methods=["POST"])
 def form_vairo():
     try:
+        save_session(request.form)
         input_dict = transform_dict(request.form)
         files_dict = transform_dict(request.files)
-        print(input_dict)
-        print(files_dict)
         output_path = input_dict.get('output')
         config_file = os.path.join(output_path, 'config.yml')
         files_path = os.path.join(output_path, 'input_files')
@@ -252,10 +251,10 @@ def form_vairo():
         run_vairo_path = os.path.join(target_directory, 'run_vairo.py')
         #subprocess.Popen(["nq", run_vairo_path, config_file])
         print(run_vairo_path, config_file)
-        return jsonify({})
+        return jsonify({'status': 'success'})
     except Exception as e:
         print(e)
-        return jsonify({}), 500
+        return jsonify({'status': 'error'}), 500
 
 
 @app.route('/generate-multimer', methods=["POST"])
@@ -273,11 +272,10 @@ def generate_multimer():
                 for value in values:
                     results_dict[key].append(bioutils.extract_sequence_msa_from_pdb(value)[key])
 
-            return results_dict
+            return jsonify(results_dict)
     except Exception as e:
         print(e)
-        return jsonify({}), 500
-
+        return jsonify({'status': 'error'}), 500
 
 @app.route('/read-pkl', methods=["POST"])
 def read_pkl():
@@ -295,17 +293,15 @@ def read_pkl():
         print(e)
         return jsonify({}), 500
 
-
 @app.route('/check-update')
 def check_update():
-    global HTML_DICT
-    if not os.path.exists(HTML_DICT['path']):
+    if not os.path.exists(session['output_path']):
         return jsonify({'changed': False, 'error': 'File not found'})
-    last_modified = os.path.getmtime(HTML_DICT['path'])
-    changed = last_modified > HTML_DICT['lastmodified']
-    HTML_DICT['lastmodified'] = last_modified
+    last_modified = os.path.getmtime(session['output_path'])
+    changed = last_modified > session['lastmodified']
+    session['lastmodified'] = last_modified
     if changed:
-        with open(HTML_DICT['path'], 'r', encoding='utf-8') as f:
+        with open(session['output_path'], 'r', encoding='utf-8') as f:
             html_content = f.read()
         body_content = re.sub(r'<footer\b[^>]*>.*?</footer>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
     else:
@@ -327,11 +323,10 @@ def read_features():
             temp_file.write(pkl_file.stream.read())
             return_dict = utilities.extract_features_info(temp_file.name, region, ini_identity, end_identity,
                                                           run_uniprot)
-            return return_dict
+            return jsonify(return_dict)
     except Exception as e:
         print(e)
-        return jsonify({}), 500
-
+        return jsonify({'status': 'error'}), 500
 
 @app.route('/modify-pkl', methods=["POST"])
 def modify_pkl():
@@ -355,11 +350,28 @@ def modify_pkl():
                     mimetype='image/plain',
                     as_attachment=True,
                     download_name='modified_features.pkl')
-        return jsonify({}), 500
+        return jsonify({'status': 'error'}), 500
     except Exception as e:
         print(e)
-        return jsonify({}), 500
+        return jsonify({'status': 'error'}), 500
 
+
+@app.route('/save-form-data', methods=['POST'])
+def save_form_data():
+    try:
+        save_session(request.form)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        print(e)
+        return jsonify({'status': 'error'}), 500
+
+def save_session(input_dict: dict):
+    session['form_data'] = input_dict
+
+@app.route('/load-form-data', methods=['GET'])
+def load_form_data():
+    form_data = session.get('form_data', {})
+    return jsonify(form_data)
 
 if __name__ == '__main__':
     app.json.sort_keys = False
