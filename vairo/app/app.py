@@ -53,33 +53,41 @@ def transform_dict(inputDict: dict):
 
 @app.route('/')
 def show_index():
-    return render_template('index.html', active_page="index", sub_page=None, exists_html=None)
+    return render_template('index.html', active_page="index", sub_page=None)
+
+@app.route('/parameterization')
+def show_parameterization():
+    return render_template('parameterization.html', active_page="run", sub_page="parameterization")
 
 @app.route('/input')
 def show_input():
-    return render_template('input.html', active_page="run", sub_page="input", exists_html=None)
+    return render_template('input.html', active_page="run", sub_page="input")
 
 @app.route('/output')
 def show_output():
     session['lastmodified'] = 0.0
-    return render_template('output.html', active_page="run", sub_page="output", exists_html=True)
+    return render_template('output.html', active_page="run", sub_page="output")
 
 @app.route('/features')
 def show_modfeatures():
-    return render_template('modfeatures.html', active_page="tools", sub_page=None, exists_html=None)
+    return render_template('modfeatures.html', active_page="tools", sub_page=None)
 
 @app.route('/modfeaturesinfo')
 def show_modfeaturesinfo():
-    return render_template('modfeaturesinfo.html', active_page="tools", sub_page=None, exists_html=None)
+    return render_template('modfeaturesinfo.html', active_page="tools", sub_page=None)
 
-@app.route('/check-html', methods=['POST'])
-def check_html():
+@app.route('/check-output', methods=['POST'])
+def check_output():
     folder = request.form.get('folder')
-    html_file = os.path.join(folder, 'output', 'output.html')
-    session['output_path'] = html_file
-    if folder and os.path.isdir(folder) and os.path.exists(html_file):
-        return jsonify({"status": "success", "exists": True})
-    return jsonify({"status": "success", "exists": False})
+    html_path = os.path.join(folder, 'output', 'output.html')
+    yml_path = os.path.join(folder, 'config.yml')
+    session['html_path'] = html_path
+    session['yml_path'] = yml_path
+    if folder and os.path.isdir(folder):
+        html_exists = True if os.path.exists(html_path) else False
+        yml_exists = True if os.path.exists(yml_path) else False
+        return jsonify({"status": "success", "yml_exists": yml_exists, "html_exists": html_exists})
+    return jsonify({"status": "success", "yml_exists": False, "html_exists": False})
 
 @app.route('/check-databases', methods=['POST'])
 def check_databases():
@@ -94,27 +102,45 @@ def check_databases():
         pass
     return jsonify({"status": "error", "exists": False})
 
+@app.route('/read-yml', methods=["GET"])
+def read_yml():
+    config_file = os.path.join(session['yml_path'])
+    if os.path.exists(config_file):
+        read_data = open(config_file, 'r').read()
+        return jsonify({'status': 'error', "data": read_data})
+    else:
+        return jsonify({'status': 'error', "data": None})
+
+
+@app.route('/run-vairo', methods=["POST"])
+def run_vairo():
+    run_vairo_path = os.path.join(target_directory, 'run_vairo.py')
+    param_dict = transform_dict(request.form)
+    write_yml(output_path=session['yml_path'], output_str=param_dict.get('text'))
+    #subprocess.Popen(["nq", run_vairo_path, session['yml_path']])
+    return jsonify({'status': 'success'})
+
+
 @app.route('/form-vairo', methods=["POST"])
 def form_vairo():
     try:
         save_session(request.form)
-        input_dict = transform_dict(request.form)
+        param_dict = transform_dict(request.form)
         files_dict = transform_dict(request.files)
-        output_path = input_dict.get('output')
-        config_file = os.path.join(output_path, 'config.yml')
-        files_path = os.path.join(output_path, 'input_files')
+        output_path = param_dict.get('output')
+        files_path = os.path.join(output_path, 'param_files')
         if not os.path.exists(files_path):
             os.makedirs(files_path)
     
-        runaf2 = True if input_dict.get('runaf2') is not None else False
-        config_str = f'mode: {input_dict.get("mode")}\n'
+        runaf2 = True if param_dict.get('runaf2') is not None else False
+        config_str = f'mode: {param_dict.get("mode")}\n'
         config_str += f'output_dir: {output_path}\n'
-        config_str += f'af2_dbs_path: {input_dict.get("databases")}\n'
+        config_str += f'af2_dbs_path: {param_dict.get("databases")}\n'
         config_str += f"run_af2: {runaf2}\n"
     
-        if 'template' in input_dict:
+        if 'template' in param_dict:
             config_str += 'templates:\n'
-            for template_id, template_info in input_dict['template'].items():
+            for template_id, template_info in param_dict['template'].items():
                 if template_info.get('radio') == 'code':
                     pdb_path = template_info.get('code')
                 else:
@@ -160,9 +186,9 @@ def form_vairo():
                                     file.save(fasta_path)
                                     config_str += f"        mutate_with: {fasta_path}\n"
     
-        if 'sequence' in input_dict:
+        if 'sequence' in param_dict:
             config_str += 'sequences:\n'
-            for seq_id, seq_info in input_dict['sequence'].items():
+            for seq_id, seq_info in param_dict['sequence'].items():
                 if seq_info.get('input') == 'file':
                     file = files_dict['sequence'][seq_id].get('fasta')
                     filename = secure_filename(file.filename)
@@ -190,9 +216,9 @@ def form_vairo():
                         if res is not None and pos is not None:
                             config_str += f"    -'{res}': {pos}\n"
     
-        if 'feature' in input_dict:
+        if 'feature' in param_dict:
             config_str += 'features:\n'
-            for feat_id, feat_info in input_dict['feature'].items():
+            for feat_id, feat_info in param_dict['feature'].items():
                 file = files_dict['feature'][feat_id].get('pkl')
                 filename = secure_filename(file.filename)
                 pkl_path = os.path.join(files_path, f'{feat_id}_{filename}')
@@ -219,9 +245,9 @@ def form_vairo():
                     sequence.save(feat_fasta_path)
                     config_str += f"  sequence: {feat_fasta_path}\n"
     
-        if 'library' in input_dict:
+        if 'library' in param_dict:
             config_str += 'append_library:\n'
-            for library_id, library_info in input_dict['library'].items():
+            for library_id, library_info in param_dict['library'].items():
                 lib_path = os.path.join(files_path, f'lib_{library_id}')
                 if os.path.exists(lib_path):
                     shutil.rmtree(lib_path)
@@ -244,18 +270,16 @@ def form_vairo():
                     config_str += f"  numbering_library: {regionlib}\n"
                 if regionquery is not None:
                     config_str += f"  numbering_query: {regionquery}\n"
-    
-        with open(config_file, 'w') as f_out:
-            f_out.write(config_str)
-    
-        run_vairo_path = os.path.join(target_directory, 'run_vairo.py')
-        #subprocess.Popen(["nq", run_vairo_path, config_file])
-        print(run_vairo_path, config_file)
+
+        write_yml(output_path=session["yml_path"], output_str=config_str)
         return jsonify({'status': 'success'})
     except Exception as e:
         print(e)
         return jsonify({'status': 'error'}), 500
 
+def write_yml(output_path: str, output_str: str):
+    with open(output_path, 'w') as f_out:
+        f_out.write(output_str)
 
 @app.route('/generate-multimer', methods=["POST"])
 def generate_multimer():
@@ -293,15 +317,15 @@ def read_pkl():
         print(e)
         return jsonify({}), 500
 
-@app.route('/check-update')
+@app.route('/check-update', methods=["GET"])
 def check_update():
-    if not os.path.exists(session['output_path']):
+    if not os.path.exists(session['html_path']):
         return jsonify({'changed': False, 'error': 'File not found'})
-    last_modified = os.path.getmtime(session['output_path'])
+    last_modified = os.path.getmtime(session['html_path'])
     changed = last_modified > session['lastmodified']
     session['lastmodified'] = last_modified
     if changed:
-        with open(session['output_path'], 'r', encoding='utf-8') as f:
+        with open(session['html_path'], 'r', encoding='utf-8') as f:
             html_content = f.read()
         body_content = re.sub(r'<footer\b[^>]*>.*?</footer>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
     else:
@@ -371,7 +395,7 @@ def save_session(input_dict: dict):
 @app.route('/load-form-data', methods=['GET'])
 def load_form_data():
     form_data = session.get('form_data', {})
-    return jsonify(form_data)
+    return jsonify({'status': 'success', 'data': form_data})
 
 if __name__ == '__main__':
     app.json.sort_keys = False

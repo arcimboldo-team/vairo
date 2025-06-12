@@ -5,7 +5,7 @@
       <div class="navbar-collapse">
         <div class="d-flex align-items-center">
           <a class="btn me-2 btn-outline-light nav-button {% if active_page == 'run' %}active{% endif %}"
-             href="{{ url_for('show_input') }}">
+             href="{{ url_for('show_parameterization') }}">
             Run
           </a>
           <a class="btn nav-button btn-outline-light  {% if active_page == 'tools' %}active{% endif %}"
@@ -20,13 +20,18 @@
 {% if active_page == 'run' %}
 <div class="subnav">
   <div class="d-flex">
+    <a id="parameterization-button"
+       class="btn me-2 nav-button btn-outline-light {% if sub_page == 'parameterization' %}active{% endif %}"
+       href="{{ url_for('show_parameterization') }}">
+      Parameterization
+    </a>
     <a id="input-button"
-       class="btn me-2 nav-button btn-outline-light {% if sub_page == 'input' %}active{% endif %}"
+       class="btn me-2 nav-button btn-outline-light disabled {% if sub_page == 'input' %}active{% endif %}"
        href="{{ url_for('show_input') }}">
       Input
     </a>
     <a id="output-button"
-       class="btn nav-button btn-outline-light {% if exist_html == 'output' %}disabled{% endif %} {% if sub_page == 'output' %}active{% endif %}"
+       class="btn nav-button btn-outline-light disabled {% if sub_page == 'output' %}active{% endif %}"
        href="{{ url_for('show_output') }}">
       Output
     </a>

@@ -63,7 +63,6 @@ class sequenceTable extends HTMLElement {
                   <input
                     class="form-check-input"
                     type="radio"
-                    accept=".seq, .fasta, .sequence"
                     name="sequence-input-${id}"
                     id="sequence-radio-fasta-${id}"
                     value="file"
@@ -90,6 +89,7 @@ class sequenceTable extends HTMLElement {
                 id="sequence-fasta-${id}"
                 type="file"
                 title=" Choose a sequence file"
+                accept=".seq, .fasta, .sequence"
                 aria-describedby="sequence-fasta-desc-${id}"
               >
               <small id="sequence-fasta-desc-${id}" class="form-text text-muted">

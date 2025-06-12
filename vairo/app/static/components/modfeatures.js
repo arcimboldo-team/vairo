@@ -2,20 +2,20 @@ const objectStoreName = 'data';
 const nameDatabase = 'vairoFeaturesDatabase';
 const objectKey = 'dataInfo';
 
-async function runFeaturesInfo(inputDict){
+async function runFeaturesInfo(configurationDict){
     let resultDict = {};
     try{
-        resultDict = await postData('/read-features-info', inputDict);
+        resultDict = await postData('/read-features-info', configurationDict);
     } catch (error) {
         alert('It has not been possible to read features file');
     }
     return resultDict;
 }
 
-async function runDeleteFeatures(inputDict){
+async function runDeleteFeatures(configurationDict){
     let resultDict = {};
     try{
-        resultFile = await postData('/modify-pkl', inputDict, false);
+        resultFile = await postData('/modify-pkl', configurationDict, false);
         if (resultFile) {
             const url = window.URL.createObjectURL(resultFile);
             const a = document.createElement('a');
@@ -210,8 +210,8 @@ function createOrganismPlot(infoDict){
     Plotly.newPlot(generalPlotsDiv, plotData, layout);
 }
 
-function createTable(inputDict, typeDiv){
-    const sortedKeys = Object.keys(inputDict).sort((a, b) => inputDict[b].identity - inputDict[a].identity);
+function createTable(configurationDict, typeDiv){
+    const sortedKeys = Object.keys(configurationDict).sort((a, b) => inputDict[b].identity - inputDict[a].identity);
     const table = document.createElement('table');
     table.classList.add('table', 'table-bordered', 'table-hover')
     const thead = document.createElement('thead');

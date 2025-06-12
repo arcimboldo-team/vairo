@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+    {% include 'header.html' %}
+    <body>
+        {% include 'nav.html' %}
+        <div class="layout-main">
+            <main id="vairo-parameterization">
+                <div id="error-container" class="error-container" style="display: none;">
+                  <button class="close-btn" onclick="clearErrors()">×</button>
+                  <div id="error-messages"></div>
+                </div>
+                <form id="vairo-form">
+                    <div class="container-fluid px-4">
+                        <div class="card" id="general-parameterization">
+                            <div class="card-header">
+                                <h2 class="card-title">General options</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group mb-2">
+                                  <label class="me-3">Select mode: </label>
+                                  <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" value="guided" name="general-mode" id="guided-radio" onchange="checkMode()" checked>
+                                    <label class="form-check-label" for="guided-radio">Guided</label>
+                                  </div>
+                                  <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" value="naive" name="general-mode" id="naive-radio" onchange="checkMode()">
+                                    <label class="form-check-label" for="naive-radio">Naive</label>
+                                  </div>
+                                </div>
+                                <div class="form-check mb-2">
+                                  <input class="form-check-input" type="checkbox" id="general-runaf2" name="general-runaf2" value="true" checked>
+                                  <label class="form-check-label" for="general-runaf2">Run AlphaFold2</label>
+                                </div>
+                                <div class="form-group mb-2">
+                                  <label for="general-output">Results folder</label>
+                                  <input class="form-control" name="general-output" type="text" id="general-output" placeholder="e.g. /path/to/results" aria-describedby="general-output-desc" onchange="parameterizationFolderChanged()" required>
+                                  <small id="general-output-desc}" class="form-text text-muted">
+                                    Choose a destination folder for the results.
+                                  </small>
+                                </div>
+                                <div class="form-group mb-2">
+                                  <label for="general-databases">Databases folder</label>
+                                  <input class="form-control" name="general-databases" type="text" id="general-databases" aria-describedby="general-databases-desc" placeholder="e.g. /path/to/af2/databases" onchange="databaseFolderChanged()" required>
+                                  <small id="general-databases-desc" class="form-text text-muted">
+                                    Choose a folder containing all the databases for AlphaFold2.
+                                  </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card" id="summary">                            
+                        </div>
+                        <div class="card" id=sequence>
+                        </div>
+                        <div class="card" id=template>
+                        </div>
+                        <div class="card" id=library>
+                        </div>
+                        <div class="card" id=feature>
+                        </div>
+                        <button class="btn btn-primary sticky-btn" type="submit" form="vairo-form">GENERATE INPUT</button>
+                    </div>
+                </form>
+
+            </main>
+        </div>
+        {% include 'footer.html' %}
+        <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/parameterization.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/plotly.js') }}"></script>
+        <script src="{{ url_for('static', filename='js/ngl.js') }}"></script>
+        <script src="{{ url_for('static', filename='components/summary.js') }}"></script>
+        <script src="{{ url_for('static', filename='components/accordion.js') }}"></script>
+        <script src="{{ url_for('static', filename='components/sequence.js') }}"></script>
+        <script src="{{ url_for('static', filename='components/template.js') }}"></script>
+        <script src="{{ url_for('static', filename='components/library.js') }}"></script>
+        <script src="{{ url_for('static', filename='components/feature.js') }}"></script>
+    </body>
+</html>
