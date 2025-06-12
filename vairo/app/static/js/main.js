@@ -186,13 +186,6 @@ async function postData(url = '', dataDict, jsonData = true, alreadyForm = false
     if (!response.ok) {
         const status = response.status;
         let errorMessage = `Server error: ${status} ${response.statusText}`;
-        try {
-            const errorText = await response.text();
-            if (errorText) {
-                errorMessage += `. ${errorText}`;
-            }
-        } catch {
-        }
         throw new Error(errorMessage);
     }
     try {
@@ -201,4 +194,41 @@ async function postData(url = '', dataDict, jsonData = true, alreadyForm = false
         throw new Error(`Error parsing response: ${error.message}`);
     }
 }
+
+function enableNavButtons(ymlExists, htmlExists) {
+    localStorage.setItem('inputButtonEnabled', ymlExists);
+    localStorage.setItem('outputButtonEnabled', htmlExists);
+    const inputButton = document.getElementById('input-button');
+    const outputButton = document.getElementById('output-button');
+    if (ymlExists) {
+        inputButton.classList.remove('disabled');
+    } else {
+        inputButton.classList.add('disabled');
+    }
+    if (htmlExists) {
+        outputButton.classList.remove('disabled');
+    } else {
+        outputButton.classList.add('disabled');
+    }
+}
+
+function restoreButtonStates() {
+    const inputButton = document.getElementById('input-button');
+    const outputButton = document.getElementById('output-button');
+
+    const inputEnabled = localStorage.getItem('inputButtonEnabled') === 'true';
+    const outputEnabled = localStorage.getItem('outputButtonEnabled') === 'true';
+
+    if (inputEnabled) {
+        inputButton.classList.remove('disabled');
+    }
+
+    if (outputEnabled) {
+        outputButton.classList.remove('disabled');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', restoreButtonStates);
+
+
 
