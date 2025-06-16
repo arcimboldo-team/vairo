@@ -219,11 +219,11 @@ function restoreButtonStates() {
     const inputEnabled = localStorage.getItem('inputButtonEnabled') === 'true';
     const outputEnabled = localStorage.getItem('outputButtonEnabled') === 'true';
 
-    if (inputEnabled) {
+    if (inputButton && inputEnabled) {
         inputButton.classList.remove('disabled');
     }
 
-    if (outputEnabled) {
+    if (outputButton && outputEnabled) {
         outputButton.classList.remove('disabled');
     }
 }
