@@ -186,49 +186,19 @@ async function updatePlot() {
             }
         });
         const sequenceDict = {"name": nameQuery, "seq": sequenceInput, "mutations": mutationsArray.sort(function(a, b){return a-b})};
-        const positionsSeqInput = document.getElementById(`sequence-positions-${sequenceID}`).value;
-        const positionsSeq = positionsSeqInput.split(',').map(Number);
-        if (positionsSeq !== undefined && positionsSeq != 0) {
-            const maxPosition = Math.max(...positionsSeq);
-            if (maxPosition > queryArray.length) {
-                queryArray = queryArray.concat(Array(maxPosition - queryArray.length).fill(undefined));
-            }
-            const numUndefined = queryArray.filter(queryArray => queryArray === undefined).length;
-            if (numUndefined < positionsSeq.length) {
-                queryArray = queryArray.concat(Array(positionsSeq.length - numUndefined).fill(undefined));
-            }
-
-            positionsSeq.forEach(positionS => {
-                positionS = positionS - 1;
-                if (positionS < queryArray.length) {
-                    if (queryArray[positionS] === undefined) {
-                        queryArray[positionS] = sequenceDict;
-                    } else {
-                        let nextPosition = 0;
-                        const oldInfo = queryArray[positionS];
-                        queryArray[positionS] = sequenceDict;
-                        while (queryArray[nextPosition] !== undefined) {
-                            nextPosition++;
-                        }
-                        queryArray[nextPosition] = oldInfo;
-                    }
-                }
-            });
-        } else {
-            const numUndefined = queryArray.filter(queryArray => queryArray === undefined).length;
-            if (numUndefined < numberCopiesInput) {
-                queryArray = queryArray.concat(Array(numberCopiesInput - numUndefined).fill(undefined));
-            }
-            queryArray = queryArray.reduce((acc, curr, i) => {
-                if (curr === undefined && numberCopiesInput > 0) {
-                    acc[i] = sequenceDict;
-                    numberCopiesInput--;
-                } else {
-                    acc[i] = curr;
-                }
-                return acc;
-            }, []);
+        const numUndefined = queryArray.filter(queryArray => queryArray === undefined).length;
+        if (numUndefined < numberCopiesInput) {
+            queryArray = queryArray.concat(Array(numberCopiesInput - numUndefined).fill(undefined));
         }
+        queryArray = queryArray.reduce((acc, curr, i) => {
+            if (curr === undefined && numberCopiesInput > 0) {
+                acc[i] = sequenceDict;
+                numberCopiesInput--;
+            } else {
+                acc[i] = curr;
+            }
+            return acc;
+        }, []);
     }
 
     updatePositionsModifications(totalNumberCopies);
