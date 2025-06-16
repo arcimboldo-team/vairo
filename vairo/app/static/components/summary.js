@@ -145,6 +145,7 @@ async function updatePlot() {
     const xTicks = [];
     const valTicks = [0.5];
     const textTicks = ["Sequence"];
+    const guidedMode = document.getElementById('guided-radio').checked;
     let numberResidues = 1;
 
     for (const component of sequenceComponents) {
@@ -292,325 +293,340 @@ async function updatePlot() {
     }, []);
 
     if(dataShape.length > 0){
-        let msaSequenceTemplates = new Array(numberResidues).fill(0);
-        const arrayTemplates = [];
-        const msaSequences = [];
-        for (const [key, values] of Object.entries(templatesDict)) {
-            const addMSA = document.getElementById(`template-addmsa-${key}`).checked;
-            const addTemplate = document.getElementById(`template-addtemplates-${key}`).checked;
-            const chainsDict = Object.assign({}, values.chainSequences);
-            const resultsArray = Array(totalNumberCopies).fill("");
-            const resultsChainArray = Array(totalNumberCopies).fill("");
-            let changesResidue = Array(totalNumberCopies).fill([]);
-            let changesFasta = Array(totalNumberCopies).fill([]);
-            let deleteResidues = Array(totalNumberCopies).fill(new Set());
+        if(guidedMode){
+            let msaSequenceTemplates = new Array(numberResidues).fill(0);
+            const arrayTemplates = [];
+            const msaSequences = [];
+            for (const [key, values] of Object.entries(templatesDict)) {
+                const addMSA = document.getElementById(`template-addmsa-${key}`).checked;
+                const addTemplate = document.getElementById(`template-addtemplates-${key}`).checked;
+                const chainsDict = Object.assign({}, values.chainSequences);
+                const resultsArray = Array(totalNumberCopies).fill("");
+                const resultsChainArray = Array(totalNumberCopies).fill("");
+                let changesResidue = Array(totalNumberCopies).fill([]);
+                let changesFasta = Array(totalNumberCopies).fill([]);
+                let deleteResidues = Array(totalNumberCopies).fill(new Set());
 
-            const resValues = getTemplateRestrictions(key);
-            const positionsAccepted = resValues[1]
-            const restrictionsDict = resValues[0]
+                const resValues = getTemplateRestrictions(key);
+                const positionsAccepted = resValues[1]
+                const restrictionsDict = resValues[0]
 
-            if(!positionsAccepted){
-                let currentIndex = 0;
-                Object.keys(chainsDict).forEach((key) => {
-                    const valueList = chainsDict[key];
-                    for (let i = 0; i < valueList.length && currentIndex < totalNumberCopies; i++) {
-                        resultsArray[currentIndex] = valueList[i];
-                        resultsChainArray[currentIndex] = key;
-                        currentIndex++;
-                    }
-                });
-                
-            }
+                if(!positionsAccepted){
+                    let currentIndex = 0;
+                    Object.keys(chainsDict).forEach((key) => {
+                        const valueList = chainsDict[key];
+                        for (let i = 0; i < valueList.length && currentIndex < totalNumberCopies; i++) {
+                            resultsArray[currentIndex] = valueList[i];
+                            resultsChainArray[currentIndex] = key;
+                            currentIndex++;
+                        }
+                    });
 
-            for (const [restrictChain, restrictions] of Object.entries(restrictionsDict)) {
-                if (restrictChain === 'all') {
-                    if (restrictions['ANY'].hasOwnProperty('residue')){
-                        changesResidue = changesResidue.map(change =>
-                            new Set([...change, ...restrictions['ANY']['residue']])
-                        );
-                    } 
-                    if (restrictions['ANY'].hasOwnProperty('fasta')){
-                        changesFasta = changesFasta.map(change =>
-                            new Set([...change, ...restrictions['ANY']['fasta']])
-                        );           
-                    }
-                    if (restrictions['ANY'].hasOwnProperty('delete')){
-                        deleteResidues = deleteResidues.map(deleteres =>
-                            new Set([...deleteres, ...restrictions['ANY']['delete']])
-                        );           
-                    }
-                    if (restrictions['ANY'].hasOwnProperty('residue')){
-                        changesResidue = changesResidue.map(changes =>
-                            new Set([...changes, ...restrictions['ANY']['residue']])
-                        );           
-                    }
-                    if (restrictions['ANY'].hasOwnProperty('fasta')){
-                        changesFasta = changesFasta.map(fasta =>
-                            new Set([...fasta, ...restrictions['ANY']['fasta']])
-                        );           
-                    }
                 }
-                else{
-                    for (let [positionStr, values] of Object.entries(restrictions)) {
-                        if (!positionsAccepted) {
-                            for (let i = 0; i < resultsChainArray.length; i++) {
-                                if (resultsChainArray[i] === restrictChain) {
+
+                for (const [restrictChain, restrictions] of Object.entries(restrictionsDict)) {
+                    if (restrictChain === 'all') {
+                        if (restrictions['ANY'].hasOwnProperty('residue')){
+                            changesResidue = changesResidue.map(change =>
+                                new Set([...change, ...restrictions['ANY']['residue']])
+                            );
+                        }
+                        if (restrictions['ANY'].hasOwnProperty('fasta')){
+                            changesFasta = changesFasta.map(change =>
+                                new Set([...change, ...restrictions['ANY']['fasta']])
+                            );
+                        }
+                        if (restrictions['ANY'].hasOwnProperty('delete')){
+                            deleteResidues = deleteResidues.map(deleteres =>
+                                new Set([...deleteres, ...restrictions['ANY']['delete']])
+                            );
+                        }
+                        if (restrictions['ANY'].hasOwnProperty('residue')){
+                            changesResidue = changesResidue.map(changes =>
+                                new Set([...changes, ...restrictions['ANY']['residue']])
+                            );
+                        }
+                        if (restrictions['ANY'].hasOwnProperty('fasta')){
+                            changesFasta = changesFasta.map(fasta =>
+                                new Set([...fasta, ...restrictions['ANY']['fasta']])
+                            );
+                        }
+                    }
+                    else{
+                        for (let [positionStr, values] of Object.entries(restrictions)) {
+                            if (!positionsAccepted) {
+                                for (let i = 0; i < resultsChainArray.length; i++) {
+                                    if (resultsChainArray[i] === restrictChain) {
+                                        if (values.hasOwnProperty('residue')) {
+                                            changesResidue[i] = new Set([...changesResidue[i], ...values['residue']]);
+                                        }
+                                        if (values.hasOwnProperty('fasta')) {
+                                            changesFasta[i] = new Set([...changesFasta[i], ...values['fasta']]);
+                                        }
+                                        if (values.hasOwnProperty('delete')) {
+                                            deleteResidues[i] = new Set([...deleteResidues[i], ...values['delete']]);
+                                        }
+                                    }
+                                }
+                            } else {
+                                if(positionStr !== 'ANY'){
+                                    let position = parseInt(positionStr) - 1;
+                                    const sequence = chainsDict[restrictChain].shift();
+                                    chainsDict[restrictChain].push(sequence);
+                                    resultsArray[position] = sequence;
+                                    resultsChainArray[position] = restrictChain;
                                     if (values.hasOwnProperty('residue')) {
-                                        changesResidue[i] = new Set([...changesResidue[i], ...values['residue']]);
+                                        changesResidue[position] = new Set([...changesResidue[position], ...values['residue']]);
                                     }
                                     if (values.hasOwnProperty('fasta')) {
-                                        changesFasta[i] = new Set([...changesFasta[i], ...values['fasta']]);
+                                        changesFasta[position] = new Set([...changesFasta[position], ...values['fasta']]);
                                     }
                                     if (values.hasOwnProperty('delete')) {
-                                        deleteResidues[i] = new Set([...deleteResidues[i], ...values['delete']]);
+                                        deleteResidues[position] = new Set([...deleteResidues[position], ...values['delete']]);
                                     }
                                 }
                             }
-                        } else {
-                            if(positionStr !== 'ANY'){
-                                let position = parseInt(positionStr) - 1;
-                                const sequence = chainsDict[restrictChain].shift();
-                                chainsDict[restrictChain].push(sequence);
-                                resultsArray[position] = sequence;
-                                resultsChainArray[position] = restrictChain;
-                                if (values.hasOwnProperty('residue')) {
-                                    changesResidue[position] = new Set([...changesResidue[position], ...values['residue']]);
-                                }
-                                if (values.hasOwnProperty('fasta')) {
-                                    changesFasta[position] = new Set([...changesFasta[position], ...values['fasta']]);
-                                }
-                                if (values.hasOwnProperty('delete')) {
-                                    deleteResidues[position] = new Set([...deleteResidues[position], ...values['delete']]);
-                                }
-                            }
-                        }
-                    }
-                }                         
-            }
-
-            let trimmedSequences = '';
-            for (let i = 0; i < xTicks.length; i += 2) {
-                changesResidue[i/2] = Array.from(changesResidue[i/2]).map(value => value + (xTicks[i]-1));
-                changesFasta[i/2] = Array.from(changesFasta[i/2]).map(value => value + (xTicks[i]-1));
-                const chainName = resultsChainArray[i / 2];
-                let sequence = resultsArray[i / 2];
-                sequence = Array.from(sequence).map((char, index) => deleteResidues[i / 2].has(index + 1) ? '-' : char).join('');
-                const seqLength = xTicks[i+1] - xTicks[i];
-                let trimmedSeq = chainName !== '' && sequence
-                ? seqLength >= sequence.length ? sequence + '-'.repeat(seqLength - sequence.length) : sequence.substring(0, seqLength)
-                : '-'.repeat(seqLength);
-                trimmedSequences += trimmedSeq + '-'.repeat(linkerLength);
-            }  
-
-            if(addTemplate){
-                templatesTemplatesNum += 1;
-                let sequence = compareSequences(querySequence, trimmedSequences);
-                sequence = sequence.map(value => value / 6);
-                arrayTemplates.push({
-                    'name':values.templateName, 
-                    'seq': sequence, 
-                    'changesRes': changesResidue.flat().sort(function(a, b){return a-b}),
-                    'changesFasta': changesFasta.flat().sort(function(a, b){return a-b})
-                });
-            }
-            if(addMSA){
-                msaTemplatesNum += 1;
-                const msaSeq = compareSequences(querySequence, trimmedSequences);
-                msaSeq.forEach((value, index) => msaSequenceTemplates[index] += value);
-            }
-        }
-
-        if(msaTemplatesNum > 0){
-            msaSequenceTemplates = scaleValues(msaSequenceTemplates);
-            msaSequences.push([msaTemplatesNum,  msaSequenceTemplates]);
-        }
-
-
-        for (const [key, values] of Object.entries(librariesDict)) {
-            const positionLibrary =  document.getElementById(`library-query-${key}`).value;
-            let positionLibraryArray = []; 
-            if(positionLibrary !== ""){
-                positionLibraryArray = extendedNumbers(positionLibrary).filter(num => num <= numberResidues-1);
-            } else {
-                positionLibraryArray = extendedNumbers(`1-${numberResidues-1}`);
-            }
-            const seqArray = Array(numberResidues).fill(0);
-
-            positionLibraryArray.forEach(index => seqArray[index-1] = 1);
-            arrayTemplates.push({
-                'name': `lib-${key}`,
-                'seq': seqArray,
-                'changesRes': [],
-                'changesFasta': []
-            });
-        }
-        for (const [key, values] of Object.entries(featuresDict)) {
-            const addMSA =  document.getElementById(`feature-addmsa-${key}`).checked;
-            const addTemplates =  document.getElementById(`feature-addtemplates-${key}`).checked;
-            const featPosition = document.getElementById(`feature-pos-${key}`).value;
-            const shiftingArray = new Array(xTicks[(featPosition-1)*2]-1).fill(0);
-            const rangeFeatures = document.getElementById(`feature-regionfeat-${key}`).value;
-            const rangeQuery =  document.getElementById(`feature-regionquery-${key}`).value;
-            let arrayTemp = new Array(numberResidues).fill(0);
-            let arrayMsa = new Array(numberResidues).fill(0);
-
-            if(rangeFeatures && rangeQuery){
-                posQuery = rangeQuery.split(',').map(Number);
-                posFeat = rangeFeatures.split(',');
-                for (let i = 0; i < posQuery.length; i++) {
-                    let rangeFeat = posFeat[i].split('-');
-                    let startFeat = parseInt(rangeFeat[0]) - 1;
-                    let endFeat = parseInt(rangeFeat[1])-1 || startFeat;
-                    let posQ = posQuery[i] - 1;
-                    if (startFeat < 0) startFeat = 0;
-                    if (endFeat > numberResidues) endFeat = numberResidues;
-                    for (let j = startFeat; j <= endFeat; j++) {
-                        let newIndex = posQ + j - startFeat;
-                        if (j >= 0 && j < values['templates_coverage'].length) {
-                            arrayTemp[newIndex] = values['templates_coverage'][j];
-                            arrayMsa[newIndex] = values['msa_coverage'][j];
                         }
                     }
                 }
+
+                let trimmedSequences = '';
+                for (let i = 0; i < xTicks.length; i += 2) {
+                    changesResidue[i/2] = Array.from(changesResidue[i/2]).map(value => value + (xTicks[i]-1));
+                    changesFasta[i/2] = Array.from(changesFasta[i/2]).map(value => value + (xTicks[i]-1));
+                    const chainName = resultsChainArray[i / 2];
+                    let sequence = resultsArray[i / 2];
+                    sequence = Array.from(sequence).map((char, index) => deleteResidues[i / 2].has(index + 1) ? '-' : char).join('');
+                    const seqLength = xTicks[i+1] - xTicks[i];
+                    let trimmedSeq = chainName !== '' && sequence
+                    ? seqLength >= sequence.length ? sequence + '-'.repeat(seqLength - sequence.length) : sequence.substring(0, seqLength)
+                    : '-'.repeat(seqLength);
+                    trimmedSequences += trimmedSeq + '-'.repeat(linkerLength);
+                }
+
+                if(addTemplate){
+                    templatesTemplatesNum += 1;
+                    let sequence = compareSequences(querySequence, trimmedSequences);
+                    sequence = sequence.map(value => value / 6);
+                    arrayTemplates.push({
+                        'name':values.templateName,
+                        'seq': sequence,
+                        'changesRes': changesResidue.flat().sort(function(a, b){return a-b}),
+                        'changesFasta': changesFasta.flat().sort(function(a, b){return a-b})
+                    });
+                }
+                if(addMSA){
+                    msaTemplatesNum += 1;
+                    const msaSeq = compareSequences(querySequence, trimmedSequences);
+                    msaSeq.forEach((value, index) => msaSequenceTemplates[index] += value);
+                }
             }
-            else{
-                arrayTemp = [...shiftingArray, ...values['templates_coverage'].map(value => value)];
-                arrayMsa = [...shiftingArray, ...values['msa_coverage'].map(value => value)];
+
+            if(msaTemplatesNum > 0){
+                msaSequenceTemplates = scaleValues(msaSequenceTemplates);
+                msaSequences.push([msaTemplatesNum,  msaSequenceTemplates]);
             }
-            if(addTemplates){
+
+
+            for (const [key, values] of Object.entries(librariesDict)) {
+                const positionLibrary =  document.getElementById(`library-query-${key}`).value;
+                let positionLibraryArray = [];
+                if(positionLibrary !== ""){
+                    positionLibraryArray = extendedNumbers(positionLibrary).filter(num => num <= numberResidues-1);
+                } else {
+                    positionLibraryArray = extendedNumbers(`1-${numberResidues-1}`);
+                }
+                const seqArray = Array(numberResidues).fill(0);
+
+                positionLibraryArray.forEach(index => seqArray[index-1] = 1);
                 arrayTemplates.push({
-                    'name': `feat-${key}`, 
-                    'seq': arrayTemp, 
+                    'name': `lib-${key}`,
+                    'seq': seqArray,
                     'changesRes': [],
                     'changesFasta': []
                 });
-                templatesFeaturesValues += values['num_templates'];
             }
-            if(addMSA){
-                const numMsa = values['num_msa'];
-                msaFeaturesValues += values['num_msa'];
-                msaSequences.push([numMsa, arrayMsa]);
-            }
-        }
+            for (const [key, values] of Object.entries(featuresDict)) {
+                const addMSA =  document.getElementById(`feature-addmsa-${key}`).checked;
+                const addTemplates =  document.getElementById(`feature-addtemplates-${key}`).checked;
+                const featPosition = document.getElementById(`feature-pos-${key}`).value;
+                const shiftingArray = new Array(xTicks[(featPosition-1)*2]-1).fill(0);
+                const rangeFeatures = document.getElementById(`feature-regionfeat-${key}`).value;
+                const rangeQuery =  document.getElementById(`feature-regionquery-${key}`).value;
+                let arrayTemp = new Array(numberResidues).fill(0);
+                let arrayMsa = new Array(numberResidues).fill(0);
 
-        const hasMSA = msaSequences.length > 0;
-        if(hasMSA){
-            const totalSum = msaSequences.reduce((sum, item) => sum + item[0], 0);
-            const aggregatedMSA = msaSequences.reduce((result, [scale, array]) => {
-                const scaledArray = array.map(num => num * (scale / totalSum));
-                return result.map((sum, idx) => sum + (scaledArray[idx] || 0));
-            }, new Array(numberResidues).fill(0));
-            const posVertical = valTicks[valTicks.length - 1] + 2;
-            aggregatedMSA.forEach((value, index) => {
-                const color = gradient(value);
-                if(value !== 0 && index+1 < numberResidues){
-                    dataShape.push({
-                        type: 'rect',
-                        x0: index+1,
-                        x1: index+2,
-                        y0: posVertical-0.5,
-                        y1: posVertical+0.5,
-                        fillcolor: color,
-                        line: {
-                            width: 1,
-                            color: color,
-                        },
-                    });
+                if(rangeFeatures && rangeQuery){
+                    posQuery = rangeQuery.split(',').map(Number);
+                    posFeat = rangeFeatures.split(',');
+                    for (let i = 0; i < posQuery.length; i++) {
+                        let rangeFeat = posFeat[i].split('-');
+                        let startFeat = parseInt(rangeFeat[0]) - 1;
+                        let endFeat = parseInt(rangeFeat[1])-1 || startFeat;
+                        let posQ = posQuery[i] - 1;
+                        if (startFeat < 0) startFeat = 0;
+                        if (endFeat > numberResidues) endFeat = numberResidues;
+                        for (let j = startFeat; j <= endFeat; j++) {
+                            let newIndex = posQ + j - startFeat;
+                            if (j >= 0 && j < values['templates_coverage'].length) {
+                                arrayTemp[newIndex] = values['templates_coverage'][j];
+                                arrayMsa[newIndex] = values['msa_coverage'][j];
+                            }
+                        }
+                    }
                 }
-            });
-            valTicks.push(posVertical);
-            textTicks.push('MSA');
-        }
+                else{
+                    arrayTemp = [...shiftingArray, ...values['templates_coverage'].map(value => value)];
+                    arrayMsa = [...shiftingArray, ...values['msa_coverage'].map(value => value)];
+                }
+                if(addTemplates){
+                    arrayTemplates.push({
+                        'name': `feat-${key}`,
+                        'seq': arrayTemp,
+                        'changesRes': [],
+                        'changesFasta': []
+                    });
+                    templatesFeaturesValues += values['num_templates'];
+                }
+                if(addMSA){
+                    const numMsa = values['num_msa'];
+                    msaFeaturesValues += values['num_msa'];
+                    msaSequences.push([numMsa, arrayMsa]);
+                }
+            }
 
-        const hasTemplates = arrayTemplates.length > 0;
-        if(hasTemplates){
-            arrayTemplates.forEach(templateDict => {  
+            const hasMSA = msaSequences.length > 0;
+            if(hasMSA){
+                const totalSum = msaSequences.reduce((sum, item) => sum + item[0], 0);
+                const aggregatedMSA = msaSequences.reduce((result, [scale, array]) => {
+                    const scaledArray = array.map(num => num * (scale / totalSum));
+                    return result.map((sum, idx) => sum + (scaledArray[idx] || 0));
+                }, new Array(numberResidues).fill(0));
                 const posVertical = valTicks[valTicks.length - 1] + 2;
-                templateDict.seq.forEach((seqValue, index) => {
-                    if(seqValue !== 0 && index+1 < numberResidues){
+                aggregatedMSA.forEach((value, index) => {
+                    const color = gradient(value);
+                    if(value !== 0 && index+1 < numberResidues){
                         dataShape.push({
                             type: 'rect',
                             x0: index+1,
                             x1: index+2,
                             y0: posVertical-0.5,
                             y1: posVertical+0.5,
-                            fillcolor: gradient(seqValue),
+                            fillcolor: color,
                             line: {
                                 width: 1,
-                                color: gradient(seqValue),
+                                color: color,
                             },
                         });
-                        if(templateDict.changesRes.includes(index+1)){
-                            dataShape.push({
-                                type: 'rect',
-                                x0: index+1,
-                                x1: index+2,
-                                y0: posVertical+0.3,
-                                y1: posVertical+0.55,
-                                fillcolor: "yellow",
-                                line: {
-                                    width: 1,
-                                    color: "yellow",
-                                },
-                            });
-                        }
-                        if(templateDict.changesFasta.includes(index+1)){
-                            dataShape.push({
-                                type: 'rect',
-                                x0: index+1,
-                                x1: index+2,
-                                y0: posVertical+0.3,
-                                y1: posVertical+0.55,
-                                fillcolor: "red",
-                                line: {
-                                    width: 1,
-                                    color: "red",
-                                },
-                            });
-                        }
                     }
-                });  
+                });
                 valTicks.push(posVertical);
-                textTicks.push(templateDict.name.substring(0,6));
-            });
-        }
-
-        maxY = valTicks[valTicks.length - 1] > 8 ? valTicks[valTicks.length - 1] + 2 : maxY;
-        dataShape.push({
-            type: 'rect',
-            x0: 1-numberResidues*0.03,
-            x1: numberResidues+numberResidues*0.03,
-            y0: -0.5,
-            y1: hasMSA || hasTemplates ? 1.5 : maxY,
-            fillcolor: backgroundQueryColor,
-            layer: 'below',
-            line: {
-                width: 0
+                textTicks.push('MSA');
             }
-        });
 
-        if(hasMSA){
+            const hasTemplates = arrayTemplates.length > 0;
+            if(hasTemplates){
+                arrayTemplates.forEach(templateDict => {
+                    const posVertical = valTicks[valTicks.length - 1] + 2;
+                    templateDict.seq.forEach((seqValue, index) => {
+                        if(seqValue !== 0 && index+1 < numberResidues){
+                            dataShape.push({
+                                type: 'rect',
+                                x0: index+1,
+                                x1: index+2,
+                                y0: posVertical-0.5,
+                                y1: posVertical+0.5,
+                                fillcolor: gradient(seqValue),
+                                line: {
+                                    width: 1,
+                                    color: gradient(seqValue),
+                                },
+                            });
+                            if(templateDict.changesRes.includes(index+1)){
+                                dataShape.push({
+                                    type: 'rect',
+                                    x0: index+1,
+                                    x1: index+2,
+                                    y0: posVertical+0.3,
+                                    y1: posVertical+0.55,
+                                    fillcolor: "yellow",
+                                    line: {
+                                        width: 1,
+                                        color: "yellow",
+                                    },
+                                });
+                            }
+                            if(templateDict.changesFasta.includes(index+1)){
+                                dataShape.push({
+                                    type: 'rect',
+                                    x0: index+1,
+                                    x1: index+2,
+                                    y0: posVertical+0.3,
+                                    y1: posVertical+0.55,
+                                    fillcolor: "red",
+                                    line: {
+                                        width: 1,
+                                        color: "red",
+                                    },
+                                });
+                            }
+                        }
+                    });
+                    valTicks.push(posVertical);
+                    textTicks.push(templateDict.name.substring(0,6));
+                });
+            }
+
+            maxY = valTicks[valTicks.length - 1] > 8 ? valTicks[valTicks.length - 1] + 2 : maxY;
             dataShape.push({
                 type: 'rect',
                 x0: 1-numberResidues*0.03,
                 x1: numberResidues+numberResidues*0.03,
-                y0: 1.5,
-                y1: hasTemplates ? 3.5 : maxY,
-                fillcolor: backgroudMSAColor,
+                y0: -0.5,
+                y1: hasMSA || hasTemplates ? 1.5 : maxY,
+                fillcolor: backgroundQueryColor,
                 layer: 'below',
                 line: {
                     width: 0
                 }
-            }); 
-        }
-        if(hasTemplates){
+            });
+
+            if(hasMSA){
+                dataShape.push({
+                    type: 'rect',
+                    x0: 1-numberResidues*0.03,
+                    x1: numberResidues+numberResidues*0.03,
+                    y0: 1.5,
+                    y1: hasTemplates ? 3.5 : maxY,
+                    fillcolor: backgroudMSAColor,
+                    layer: 'below',
+                    line: {
+                        width: 0
+                    }
+                });
+            }
+            if(hasTemplates){
+                dataShape.push({
+                    type: 'rect',
+                    x0: 1-numberResidues*0.03,
+                    x1: numberResidues+numberResidues*0.03,
+                    y0: hasMSA ? 3.5 : 1.5,
+                    y1: maxY,
+                    fillcolor: backgroundTemplateColor,
+                    layer: 'below',
+                    line: {
+                        width: 0
+                    }
+                });
+            }
+        } else {
             dataShape.push({
                 type: 'rect',
                 x0: 1-numberResidues*0.03,
                 x1: numberResidues+numberResidues*0.03,
-                y0: hasMSA ? 3.5 : 1.5,
+                y0: -0.5,
                 y1: maxY,
-                fillcolor: backgroundTemplateColor,
+                fillcolor: backgroundQueryColor,
                 layer: 'below',
                 line: {
                     width: 0

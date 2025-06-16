@@ -23,6 +23,7 @@ function checkMode(){
         element2.classList.remove('hidden');
         element3.classList.remove('hidden');
     }
+    updatePlot();
 }
 
 async function handleFormSubmission(event) {
