@@ -154,12 +154,9 @@ def form_vairo():
                         f_out.write(f'>seq\n{fasta_info}\n')
                 config_str += f'- fasta_path: {seq_path}\n'
                 copies = seq_info.get('copies')
-                positions = seq_info.get('positions')
                 mutations = seq_info.get('mutations')
                 if copies is not None:
                     config_str += f"  num_of_copies: {copies}\n"
-                if positions is not None:
-                    config_str += f"  positions: {positions}\n"
                 if mutations is not None:
                     config_str += f"  mutations:\n"
                     for mutation_id, mutation_info in seq_info['mutations'].items():

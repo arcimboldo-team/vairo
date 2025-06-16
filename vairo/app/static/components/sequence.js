@@ -119,10 +119,6 @@ class sequenceTable extends HTMLElement {
                             Mandatory field
                         </div>
                     </div>
-                    <div class="col-md-auto">
-                        <label for="sequence-positions-${id}">Positions</label>
-                        <input type="text" class="form-control" name="sequence-positions-${id}" id="sequence-positions-${id}" name="sequence-positions-${id}" onchange="updatePlot()" placeholder="e.g. 1, 3, 5" title="Specify any position inside the query sequence.">
-                    </div>
                 </div>
                 <div class="mb-2">
                   <a class="link-opacity-100" style="display: inline-block; margin-top: 10px;" id="add-mutation-${id}" name="add-mutation-${id}" href="javascript:void(0)">Add sequence mutation</a>
