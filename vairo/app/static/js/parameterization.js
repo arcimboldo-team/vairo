@@ -6,6 +6,12 @@ window.addEventListener('DOMContentLoaded', event => {
     loadSessionData();
 });
 
+window.addEventListener('beforeunload', async event => {
+    const form = document.getElementById('vairo-form');
+    const formData = new FormData(form);
+    const results = await postData('/save-form-data', formData, true, true);
+});
+
 
 function checkMode(){
     var guidedRadio = document.getElementById('guided-radio');
@@ -30,8 +36,6 @@ async function handleFormSubmission(event) {
     event.preventDefault();
     clearErrors();
     const errors = await validateForm(event.target);
-    console.log(errors);
-    console.log(errors.length > 0);
     if (errors.length > 0) {
         displayErrors(errors);
         document.getElementById("error-container").scrollIntoView({ behavior: "smooth", block: "end" });
@@ -70,10 +74,7 @@ async function validateForm(form) {
 function displayErrors(errors) {
   const errorContainer = document.getElementById('error-container');
   const errorMessages = document.getElementById('error-messages');
-  console.log(errorContainer);
-  console.log(errorMessages);
   if (errorContainer && errorMessages) {
-    console.log('entra')
     let html = '<ul>';
     errors.forEach(error => {
       html += `<li>${error}</li>`;
@@ -125,6 +126,7 @@ async function loadSessionData() {
                 }
             }
         parameterizationFolderChanged();
+        databaseFolderChanged();
     } catch (error) {
         console.error('Error loading session data:', error);
     }
@@ -158,8 +160,8 @@ async function parameterizationFolderChanged() {
     const resultDict = await postData('/check-output', { folder: folderPath });
     if (resultDict.yml_exists || resultDict.html_exists) {
         updateValidationMessage('general-output', 'warning', 'Folder already exists, check Input and Output tab to see the input file and the results. The results will be overwritten.');
-        enableNavButtons(resultDict.yml_exists, resultDict.html_exists);
     }
+    enableNavButtons(resultDict.yml_exists, resultDict.html_exists);
 }
 
 async function databaseFolderChanged() {

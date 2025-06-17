@@ -22,6 +22,8 @@ from tools import utilities
 app = Flask(__name__)
 app.secret_key = 'secret'
 
+UPDATE_PATH = True
+
 def transform_dict(inputDict: dict):
     result = {}
     repeatedKeys = {}
@@ -390,10 +392,16 @@ def save_form_data():
 
 def save_session(input_dict: dict):
     session['form_data'] = input_dict
+    session.modified = True
 
 @app.route('/load-form-data', methods=['GET'])
 def load_form_data():
+    global UPDATE_PATH
     form_data = session.get('form_data', {})
+    if UPDATE_PATH:
+        form_data['general-output'] = os.getcwd()
+        UPDATE_PATH = False
+        session.modified = True
     return jsonify({'status': 'success', 'data': form_data})
 
 if __name__ == '__main__':
