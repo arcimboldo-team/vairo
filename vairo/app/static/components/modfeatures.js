@@ -211,7 +211,7 @@ function createOrganismPlot(infoDict){
 }
 
 function createTable(configurationDict, typeDiv){
-    const sortedKeys = Object.keys(configurationDict).sort((a, b) => inputDict[b].identity - inputDict[a].identity);
+    const sortedKeys = Object.keys(configurationDict).sort((a, b) => configurationDict[b].identity - configurationDict[a].identity);
     const table = document.createElement('table');
     table.classList.add('table', 'table-bordered', 'table-hover')
     const thead = document.createElement('thead');
@@ -233,13 +233,13 @@ function createTable(configurationDict, typeDiv){
         cell1.appendChild(document.createTextNode(key));
         row.appendChild(cell1);
         const cell2 = document.createElement('td');
-        cell2.appendChild(document.createTextNode(inputDict[key].global_identity));
+        cell2.appendChild(document.createTextNode(configurationDict[key].global_identity));
         row.appendChild(cell2);
         const cell3 = document.createElement('td');
-        cell3.appendChild(document.createTextNode(inputDict[key].identity));
+        cell3.appendChild(document.createTextNode(configurationDict[key].identity));
         row.appendChild(cell3);
         const cell4 = document.createElement('td');
-        cell4.appendChild(document.createTextNode(inputDict[key].coverage));
+        cell4.appendChild(document.createTextNode(configurationDict[key].coverage));
         row.appendChild(cell4);
         row.classList.add('table-row-hover');
         row.setAttribute('data-key', key);
