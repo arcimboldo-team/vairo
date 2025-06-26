@@ -40,8 +40,8 @@ sequences: List of sequences.
     positions (List[int], default None): Positions in the query sequence.
     name (str, default file name from fasta_path): Name of the sequence.
     mutations: List of mutations.
-        Format: 'aminoacid': residues. One-letter code of the amino acid, and the residues that will be mutated to this amino acid.
-        Example: 'G': 10, 20 
+        Format: 'aminoacid': residues. Three-letter code of the amino acid, and the residues that will be mutated to this amino acid.
+        Example: 'ALA': 10, 20 
     predict_region (range, default None): Predict a certain region of the sequence instead of the entire sequence.
 
 An already extracted library can be used as input. It can contain FASTA files or PDBs. It is possible to insert it into specific regions of the query sequence.
@@ -62,7 +62,9 @@ features:
   numbering_query: (List[int], default 1): Positions where the features will be placed. By default, it starts at position 1, but multiple positions can be specified (e.g., 1, 50, 100) and split the features.pkl using the numbering_features keyword.
   numbering_features: (List[ranges], default None): The specified ranges will be placed in the positions specified by numbering_query.
   positions: (range, default None): Insert the features.pkl in the query sequence. The position refers to the sequence position, whereas in numbering_query and numbering_features, it refers to the residue positions in the entire query sequence.
-
+  mutations: List of mutations.
+    Format: 'aminoacid': residues. Three-letter code of the amino acid, and the residues that will be mutated to this amino acid.
+    Example: 'ALA': 10, 20 
 
 Templates can be added to the templates section inside the features.pkl, as well as their sequences to the MSA. It is possible to add as many templates as the user requires.
 templates:

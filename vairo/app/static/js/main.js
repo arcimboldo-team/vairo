@@ -5,7 +5,7 @@ const aminoacidMap = {
   'SER': 'S', 'THR': 'T', 'VAL': 'V', 'TRP': 'W', 'TYR': 'Y',
 };
 const aminoacidKeys = Object.keys(aminoacidMap);
-const aminoacidSelect = aminoacidKeys.map((aminoacid) => `<option value="${aminoacidMap[aminoacid]}">${aminoacid}</option>`).join('');
+const aminoacidSelect = aminoacidKeys.map((aminoacid) => `<option value="${aminoacid}">${aminoacid}</option>`).join('');
 
 function convertToOneLetter(threeLetterCode) {
   return aminoacidMap[threeLetterCode] || '-';

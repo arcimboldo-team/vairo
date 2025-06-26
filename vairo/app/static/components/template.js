@@ -329,7 +329,7 @@ class ModificationComponent extends HTMLElement {
                         <label for="template-modify-delete-${this.templateID}-${this.modificationID}"> Delete residues</label>
                         <input type="text" class="form-control" id="template-modify-delete-${this.templateID}-${this.modificationID}" name="template-modify-delete-${this.templateID}-${this.modificationID}" placeholder="e.g. 1, 3-10" title="Select residue numbers to delete in the chain, the rest will be kept" onchange="updatePlot()">
                     </div>
-                    <div class=" col-md-auto" name="chain-div-${this.templateID}-${this.modificationID}">
+                    <div class="hidden col-md-auto" name="chain-div-${this.templateID}-${this.modificationID}">
                         <label for="template-modify-pos-${this.templateID}-${this.modificationID}">Position</label>
                         <select class="form-select" id="template-modify-pos-${this.templateID}-${this.modificationID}" name="template-modify-pos-${this.templateID}-${this.modificationID}" title="Choose position of the query sequence to insert the chain" onchange="updatePlot()">
                         </select>
