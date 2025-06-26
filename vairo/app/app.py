@@ -148,7 +148,6 @@ def form_vairo():
                     filename = secure_filename(file.filename)
                     seq_path = os.path.join(files_path, f'{seq_id}_{filename}')
                     file.save(seq_path)
-                    config_str += f'  name: {filename}\n'
                 else:
                     seq_path = os.path.join(files_path, f'sequence_{seq_id}.fasta')
                     fasta_info = seq_info.get('text')
@@ -191,14 +190,13 @@ def form_vairo():
                             chain = modify_info.get('where')
                             delete = modify_info.get('delete')
                             pos = modify_info.get('pos')
-                            modify_residues = True if modify_info.get('residues') is not None else False
                             config_str += f"    - chain: {chain}\n"
                             if delete is not None:
                                 config_str += f"      delete_residues: {delete}\n"
                             if pos is not None:
                                 config_str += f"      position: {pos}\n"
                             aminos = modify_info.get('amino')
-                            if aminos is not None and modify_residues:
+                            if aminos is not None:
                                 config_str += f"  mutations:\n"
                                 for amino_id, amino_info in aminos.items():
                                     pos = amino_info.get('pos')
@@ -206,7 +204,7 @@ def form_vairo():
                                     if pos is not None:
                                         config_str += f"      - numbering_residues: {pos}\n"
                                     if select == 'residue':
-                                        config_str += f"        mutate_with: {select}\n"
+                                        config_str += f"        mutate_with: {amino_info.get('resname')}\n"
                                     else:
                                         file = files_dict['template'][template_id]['modify'][modify_id]['amino'][
                                             amino_id].get('fasta')

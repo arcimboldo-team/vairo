@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
     {% include 'header.html' %}
-    <body style="overflow: hidden">
+    <body>
         {% include 'nav.html' %}
         <div class="layout-main">
             <main id="vairo-input">
@@ -28,6 +28,7 @@
                 </form>
             </main>
         </div>
+        {% include 'footer.html' %}
         <script src="{{ url_for('static', filename='js/main.js') }}"></script>
         <script src="{{ url_for('static', filename='js/input.js') }}"></script>
         <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>

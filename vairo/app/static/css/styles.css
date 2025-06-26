@@ -207,12 +207,14 @@ iframe {
   margin-top: 10px;
 }
 
-.textarea-input{
-    width: 100%;
-    height: 65vh;
+.textarea-input {
     border: none;
     outline: none;
     box-sizing: border-box;
+    field-sizing: content;
+    overflow: hidden;
+    resize: none;
+    min-height: 50px;
 }
 
 #menu .panel{position: relative}
