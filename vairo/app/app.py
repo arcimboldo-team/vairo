@@ -133,7 +133,7 @@ def form_vairo():
         files_path = os.path.join(output_path, 'param_files')
         if not os.path.exists(files_path):
             os.makedirs(files_path)
-    
+
         runaf2 = True if param_dict.get('runaf2') is not None else False
         config_str = f'mode: {param_dict.get("mode")}\n'
         config_str += f'output_dir: {output_path}\n'
@@ -146,7 +146,7 @@ def form_vairo():
                 if seq_info.get('input') == 'file':
                     file = files_dict['sequence'][seq_id].get('fasta')
                     filename = secure_filename(file.filename)
-                    seq_path = os.path.join(files_path, f'{seq_id}_{filename}')
+                    seq_path = os.path.join(files_path, f'sequence_{seq_id}_{filename}')
                     file.save(seq_path)
                 else:
                     seq_path = os.path.join(files_path, f'sequence_{seq_id}.fasta')
@@ -175,7 +175,7 @@ def form_vairo():
                     else:
                         file = files_dict['template'][template_id].get('file')
                         filename = secure_filename(file.filename)
-                        pdb_path = os.path.join(files_path, f'{template_id}_{filename}')
+                        pdb_path = os.path.join(files_path, f'template_{template_id}_{filename}')
                         file.save(pdb_path)
                     config_str += f"- pdb: {pdb_path}\n"
                     config_str += f"  add_to_msa: {'True' if template_info.get('addmsa') is not None else 'False'}\n"
@@ -206,12 +206,9 @@ def form_vairo():
                                     if select == 'residue':
                                         config_str += f"        mutate_with: {amino_info.get('resname')}\n"
                                     else:
-                                        file = files_dict['template'][template_id]['modify'][modify_id]['amino'][
-                                            amino_id].get('fasta')
-                                        filename = secure_filename(file.filename)
-                                        fasta_path = os.path.join(files_path,
-                                                                  f'{template_id}_{modify_id}_{amino_id}_{filename}')
-                                        file.save(fasta_path)
+                                        fasta_path = os.path.join(files_path, f'amino_{template_id}_{modify_id}_{amino_id}.fasta')
+                                        with open(fasta_path, 'w') as f_out:
+                                            f_out.write(f'>seq\n{amino_info.get("fasta")}\n')
                                         config_str += f"        mutate_with: {fasta_path}\n"
 
 
@@ -220,7 +217,7 @@ def form_vairo():
                 for feat_id, feat_info in param_dict['feature'].items():
                     file = files_dict['feature'][feat_id].get('pkl')
                     filename = secure_filename(file.filename)
-                    pkl_path = os.path.join(files_path, f'{feat_id}_{filename}')
+                    pkl_path = os.path.join(files_path, f'feat_pkl_{feat_id}_{filename}')
                     file.save(pkl_path)
                     config_str += f'- path: {pkl_path}\n'
                     config_str += f"  keep_msa: {'True' if feat_info.get('addmsa') is not None else 'False'}\n"
@@ -240,7 +237,7 @@ def form_vairo():
                         config_str += f"  msa_mask: {msa_mask}\n"
                     if sequence is not None:
                         filename = secure_filename(sequence.filename)
-                        feat_fasta_path = os.path.join(files_path, f'{feat_id}_{filename}')
+                        feat_fasta_path = os.path.join(files_path, f'feat_fasta_{feat_id}_{filename}')
                         sequence.save(feat_fasta_path)
                         config_str += f"  sequence: {feat_fasta_path}\n"
 
