@@ -459,13 +459,6 @@ def delete_old_html(input_path: str):
     [os.remove(os.path.join(input_path, path)) for path in os.listdir(input_path) if
      get_file_extension(path) == '.html']
 
-
-def check_format(string_in):
-    pattern = r"\d+-\d+"
-    match = re.match(pattern, string_in)
-    return bool(match)
-
-
 def check_input(global_dict: Dict):
     all_keys = []
     [all_keys.extend(list(value.keys())) for key, value in INPUT_PARAMETERS.items()]
@@ -473,7 +466,7 @@ def check_input(global_dict: Dict):
     def check_keys(data: Dict) -> str:
         if isinstance(data, dict):
             for key in data.keys():
-                if key not in all_keys and key.lower() != 'all' and len(key) != 1 and not check_format(key):
+                if key not in all_keys and key.lower() != 'all' and len(key) != 3:
                     raise Exception(f'Parameter {key} does not exist. Check the input file')
                 if data[key] is None:
                     raise Exception(f'Paramter {key} does not have any value. Comment it or add input')
@@ -596,9 +589,11 @@ def read_mutations_dict(input_mutations: list):
     for mutation in input_mutations:
         key = list(mutation.keys())[0]
         values = expand_residues(list(mutation.values())[0])
-        if key not in list(residue_constants.restype_1to3.keys()):
+        if key not in list(residue_constants.restype_3to1.keys()):
             raise Exception(
                 f'Mutation residues {"".join(values)} in {key} could not be possible. Residue {key} does not '
                 f'exist')
+        else:
+            key = residue_constants.restype_3to1[key]
         mutations_dict.setdefault(key, []).extend(values)
     return mutations_dict

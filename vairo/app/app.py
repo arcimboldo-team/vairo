@@ -153,18 +153,18 @@ def form_vairo():
                     fasta_info = seq_info.get('text')
                     with open(seq_path, 'w') as f_out:
                         f_out.write(f'>seq\n{fasta_info}\n')
-                config_str += f'- fasta_path: {seq_path}\n'
+                config_str += f'    - fasta_path: {seq_path}\n'
                 copies = seq_info.get('copies')
                 mutations = seq_info.get('mutations')
                 if copies is not None:
-                    config_str += f"  num_of_copies: {copies}\n"
+                    config_str += f"      num_of_copies: {copies}\n"
                 if mutations is not None:
-                    config_str += f"  mutations:\n"
+                    config_str += f"      mutations:\n"
                     for mutation_id, mutation_info in seq_info['mutations'].items():
                         res = mutation_info.get('res')
                         pos = mutation_info.get('pos')
                         if res is not None and pos is not None:
-                            config_str += f"    -'{res}': {pos}\n"
+                            config_str += f"        - '{res}': {pos}\n"
 
         if param_dict.get("mode") == 'guided':
             if 'template' in param_dict:
@@ -177,39 +177,39 @@ def form_vairo():
                         filename = secure_filename(file.filename)
                         pdb_path = os.path.join(files_path, f'template_{template_id}_{filename}')
                         file.save(pdb_path)
-                    config_str += f"- pdb: {pdb_path}\n"
-                    config_str += f"  add_to_msa: {'True' if template_info.get('addmsa') is not None else 'False'}\n"
-                    config_str += f"  add_to_templates: {'True' if template_info.get('addtemplates') is not None else 'False'}\n"
-                    config_str += f"  generate_multimer: {'True' if template_info.get('multimer') is not None else 'False'}\n"
-                    config_str += f"  aligned: {'True' if template_info.get('aligned') is not None else 'False'}\n"
+                    config_str += f"    - pdb: {pdb_path}\n"
+                    config_str += f"      add_to_msa: {'True' if template_info.get('addmsa') is not None else 'False'}\n"
+                    config_str += f"      add_to_templates: {'True' if template_info.get('addtemplates') is not None else 'False'}\n"
+                    config_str += f"      generate_multimer: {'True' if template_info.get('multimer') is not None else 'False'}\n"
+                    config_str += f"      aligned: {'True' if template_info.get('aligned') is not None else 'False'}\n"
 
                     modify = template_info.get('modify')
                     if modify is not None:
-                        config_str += f"  modifications:\n"
+                        config_str += f"      modifications:\n"
                         for modify_id, modify_info in template_info['modify'].items():
                             chain = modify_info.get('where')
                             delete = modify_info.get('delete')
                             pos = modify_info.get('pos')
-                            config_str += f"    - chain: {chain}\n"
+                            config_str += f"        - chain: {chain}\n"
                             if delete is not None:
-                                config_str += f"      delete_residues: {delete}\n"
-                            if pos is not None:
-                                config_str += f"      position: {pos}\n"
+                                config_str += f"          delete_residues: {delete}\n"
+                            if pos is not None and pos != 'ANY':
+                                config_str += f"          position: {pos}\n"
                             aminos = modify_info.get('amino')
                             if aminos is not None:
-                                config_str += f"  mutations:\n"
+                                config_str += f"          mutations:\n"
                                 for amino_id, amino_info in aminos.items():
                                     pos = amino_info.get('pos')
                                     select = amino_info.get('select')
                                     if pos is not None:
-                                        config_str += f"      - numbering_residues: {pos}\n"
+                                        config_str += f"            - numbering_residues: {pos}\n"
                                     if select == 'residue':
-                                        config_str += f"        mutate_with: {amino_info.get('resname')}\n"
+                                        config_str += f"              mutate_with: {amino_info.get('resname')}\n"
                                     else:
                                         fasta_path = os.path.join(files_path, f'amino_{template_id}_{modify_id}_{amino_id}.fasta')
                                         with open(fasta_path, 'w') as f_out:
                                             f_out.write(f'>seq\n{amino_info.get("fasta")}\n')
-                                        config_str += f"        mutate_with: {fasta_path}\n"
+                                        config_str += f"          mutate_with: {fasta_path}\n"
 
 
             if 'feature' in param_dict:
@@ -219,22 +219,22 @@ def form_vairo():
                     filename = secure_filename(file.filename)
                     pkl_path = os.path.join(files_path, f'feat_pkl_{feat_id}_{filename}')
                     file.save(pkl_path)
-                    config_str += f'- path: {pkl_path}\n'
-                    config_str += f"  keep_msa: {'True' if feat_info.get('addmsa') is not None else 'False'}\n"
-                    config_str += f"  keep_templates: {'True' if feat_info.get('addtemplates') is not None else 'False'}\n"
+                    config_str += f'    - path: {pkl_path}\n'
+                    config_str += f"      keep_msa: {'True' if feat_info.get('addmsa') is not None else 'False'}\n"
+                    config_str += f"      keep_templates: {'True' if feat_info.get('addtemplates') is not None else 'False'}\n"
                     pos = feat_info.get('pos')
                     regionfeat = feat_info.get('regionfeat')
                     regionquery = feat_info.get('regionquery')
                     msa_mask = feat_info.get('mask')
                     sequence = files_dict['feature'][feat_id].get('sequence')
                     if pos is not None:
-                        config_str += f"  positions: {pos}\n"
+                        config_str += f"      positions: {pos}\n"
                     if regionfeat is not None:
-                        config_str += f"  numbering_features: {regionfeat}\n"
+                        config_str += f"      numbering_features: {regionfeat}\n"
                     if regionquery is not None:
-                        config_str += f"  numbering_query: {regionquery}\n"
+                        config_str += f"      numbering_query: {regionquery}\n"
                     if msa_mask is not None:
-                        config_str += f"  msa_mask: {msa_mask}\n"
+                        config_str += f"      msa_mask: {msa_mask}\n"
                     if sequence is not None:
                         filename = secure_filename(sequence.filename)
                         feat_fasta_path = os.path.join(files_path, f'feat_fasta_{feat_id}_{filename}')
@@ -257,15 +257,15 @@ def form_vairo():
                         file = files_dict['library'][library_id].get('fasta')
                         filename = secure_filename(file.filename)
                         file.save(os.path.join(lib_path, filename))
-                    config_str += f"- path: {lib_path}\n"
-                    config_str += f"  add_to_msa: {'True' if library_info.get('addmsa') is not None else 'False'}\n"
-                    config_str += f"  add_to_templates: {'True' if library_info.get('addtemplates') is not None else 'False'}\n"
+                    config_str += f"    - path: {lib_path}\n"
+                    config_str += f"      add_to_msa: {'True' if library_info.get('addmsa') is not None else 'False'}\n"
+                    config_str += f"      add_to_templates: {'True' if library_info.get('addtemplates') is not None else 'False'}\n"
                     regionlib = library_info.get('lib')
                     regionquery = library_info.get('query')
                     if regionlib is not None:
-                        config_str += f"  numbering_library: {regionlib}\n"
+                        config_str += f"      numbering_library: {regionlib}\n"
                     if regionquery is not None:
-                        config_str += f"  numbering_query: {regionquery}\n"
+                        config_str += f"      numbering_query: {regionquery}\n"
 
         write_yml(output_path=session["yml_path"], output_str=config_str)
         return jsonify({'status': 'success'})

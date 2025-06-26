@@ -828,18 +828,16 @@ class MainStructure:
                 f_out.write(f'mosaic_partition: {",".join(map(str, txt_aux))}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_predicted_assembled.sequence_list:
-                f_out.write('-')
-                f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
+                f_out.write(f'- fasta_path: {sequence_in.fasta_path}\n')
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
                 if sequence_in.mutations_dict.items():
                     f_out.write(f'  mutations:\n')
                     for residue, values in sequence_in.mutations_dict.items():
-                        f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
+                        f_out.write(f'  - {residue}: {",".join(map(str, values))}\n')
             f_out.write(f'\nfeatures:\n')
-            f_out.write('-')
-            f_out.write(f' path: {features_path}\n')
+            f_out.write(f'- path: {features_path}\n')
             f_out.write(f'  keep_msa: -1\n')
             f_out.write(f'  keep_templates: -1\n')
         return yml_path
@@ -876,8 +874,7 @@ class MainStructure:
             if self.library_list:
                 f_out.write(f'\nappend_library:\n')
                 for library in self.library_list:
-                    f_out.write('-')
-                    f_out.write(f' path: {library.path}\n')
+                    f_out.write(f'- path: {library.path}\n')
                     f_out.write(f'  aligned: {library.aligned}\n')
                     if library.add_to_msa:
                         f_out.write(f'  add_to_msa: {library.add_to_msa}\n')
@@ -889,8 +886,7 @@ class MainStructure:
             if self.features_input:
                 f_out.write(f'\nfeatures:\n')
                 for feat in self.features_input:
-                    f_out.write('-')
-                    f_out.write(f' path: {feat.path}\n')
+                    f_out.write(f'- path: {feat.path}\n')
                     f_out.write(f'  keep_msa: {feat.keep_msa}\n')
                     f_out.write(f'  keep_templates: {feat.keep_templates}\n')
                     if feat.msa_mask:
@@ -904,11 +900,10 @@ class MainStructure:
                     if feat.mutate_residues:
                         f_out.write(f'  mutations:\n')
                         for residue, values in feat.mutate_residues.items():
-                            f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
+                            f_out.write(f'  - {residue}: {",".join(map(str, values))}\n')
             f_out.write(f'\nsequences:\n')
             for sequence_in in self.sequence_predicted_assembled.sequence_list:
-                f_out.write('-')
-                f_out.write(f' fasta_path: {sequence_in.fasta_path}\n')
+                f_out.write(f'- fasta_path: {sequence_in.fasta_path}\n')
                 f_out.write(f'  num_of_copies: {sequence_in.num_of_copies}\n')
                 new_positions = [position + 1 if position != -1 else position for position in sequence_in.positions]
                 f_out.write(f'  positions: {",".join(map(str, new_positions))}\n')
@@ -917,12 +912,11 @@ class MainStructure:
                 if sequence_in.mutations_dict.items():
                     f_out.write(f'  mutations:\n')
                     for residue, values in sequence_in.mutations_dict.items():
-                        f_out.write(f'  -{residue}: {",".join(map(str, values))}\n')
+                        f_out.write(f'  - {residue}: {",".join(map(str, values))}\n')
             if self.templates_list:
                 f_out.write(f'\ntemplates:\n')
                 for template_in in self.templates_list:
-                    f_out.write('-')
-                    f_out.write(f' pdb: {template_in.pdb_path}\n')
+                    f_out.write(f'- pdb: {template_in.pdb_path}\n')
                     f_out.write(f'  add_to_msa: {template_in.add_to_msa}\n')
                     f_out.write(f'  add_to_templates: {template_in.add_to_templates}\n')
                     f_out.write(f'  generate_multimer: {template_in.generate_multimer}\n')
