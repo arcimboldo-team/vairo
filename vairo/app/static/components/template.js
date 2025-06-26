@@ -416,7 +416,7 @@ class ModAminoacidsComponent extends HTMLElement {
                 </div>
                 <div id="modify-div-fasta-${this.id}" class="col-md-auto hidden">
                     <label for="template-modify-amino-fasta-${this.id}">Sequence</label>
-                    <textarea class="form-control" id="template-modify-amino-fasta-${this.id}" name="template-modify-amino-fasta-${this.id}" placeholder="e.g. MQQLRFLHYIDA" rows="1"></textarea>
+                    <textarea class="form-control" id="template-modify-amino-fasta-${this.id}" name="template-modify-amino-fasta-${this.id}" placeholder="e.g. MQQLRFLHYIDA" title="Sequence to replace" rows="1"></textarea>
                 </div>
                 <div id="modify-div-resname-${this.id}" class="col-md-auto">
                     <label for="template-modify-amino-resname-${this.id}">Type</label>
