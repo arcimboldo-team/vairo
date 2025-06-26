@@ -113,7 +113,7 @@ function getTemplateRestrictions(templateID){
         const changeAminoacids = div.querySelectorAll(`li[id^=modaminoacids-${templateID}-]`);
         changeAminoacids.forEach(change => {
             const positions = change.querySelector(`input[id^=template-modify-amino-pos-${templateID}]`).value.trim();
-            const sequence = change.querySelector(`input[id^=template-modify-amino-fasta-${templateID}-]`);
+            const sequence = change.querySelector(`textarea[id^=template-modify-amino-fasta-${templateID}-]`).value;
             const choose = change.querySelector(`select[id^=template-modify-amino-select-${templateID}-]`).value;
             if(positions && ((choose === "residue") || (choose === "fasta" && sequence.length > 0))){
                 const positionsArray = extendedNumbers(positions);
