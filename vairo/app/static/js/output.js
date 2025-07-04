@@ -22,10 +22,13 @@ function startPollingIfElementExists() {
             .then(response => response.json())
             .then(data => {
                 consecutiveFailures = 0;
-                console.log(data);
+                if (data.error === 'Finished') {
+                    console.log('Polling stopped: Finished');
+                    currentController.abort();
+                    return;
+                }
                 if (data.changed && data.content) {
                     document.getElementById('vairo-output-iframe').srcdoc = data.content;
-                    console.log(data.content);
                 }
             })
             .catch(error => {
@@ -33,7 +36,6 @@ function startPollingIfElementExists() {
                     console.log('Polling aborted - new instance started');
                     return;
                 }
-
                 consecutiveFailures++;
                 console.error('Error checking for updates:', error);
                 if (consecutiveFailures >= maxFailures) {
