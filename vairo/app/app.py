@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 
 target_directory = os.path.dirname(Path(__file__).absolute().parent.parent)
 sys.path.append(target_directory)
+
 from vairo import libs
 from libs import bioutils, features, utils, alphafold_classes
 from tools import utilities
@@ -23,6 +24,7 @@ app = Flask(__name__)
 app.secret_key = 'secret'
 
 UPDATE_PATH = True
+PROCESS = None
 
 def transform_dict(inputDict: dict):
     result = {}
@@ -81,7 +83,7 @@ def show_modfeaturesinfo():
 @app.route('/check-output', methods=['POST'])
 def check_output():
     folder = request.form.get('folder')
-    html_path = os.path.join(folder, 'output', 'output.html')
+    html_path = os.path.join(folder, 'output.html')
     yml_path = os.path.join(folder, 'config.yml')
     session['html_path'] = html_path
     session['yml_path'] = yml_path
@@ -116,10 +118,11 @@ def read_yml():
 
 @app.route('/run-vairo', methods=["POST"])
 def run_vairo():
-    run_vairo_path = os.path.join(target_directory, 'run_vairo.py')
+    run_vairo_path = os.path.join(target_directory, 'vairo', 'run_vairo.py')
     param_dict = transform_dict(request.form)
     write_yml(output_path=session['yml_path'], output_str=param_dict.get('text'))
-    #subprocess.Popen(["nq", run_vairo_path, session['yml_path']])
+    global PROCESS
+    PROCESS = subprocess.Popen([run_vairo_path, session['yml_path']])
     return jsonify({'status': 'success'})
 
 
@@ -181,7 +184,7 @@ def form_vairo():
                     config_str += f"      add_to_msa: {'True' if template_info.get('addmsa') is not None else 'False'}\n"
                     config_str += f"      add_to_templates: {'True' if template_info.get('addtemplates') is not None else 'False'}\n"
                     config_str += f"      generate_multimer: {'True' if template_info.get('multimer') is not None else 'False'}\n"
-                    config_str += f"      aligned: {'True' if template_info.get('aligned') is not None else 'False'}\n"
+                    config_str += f"      aligned: {'False' if template_info.get('aligned') is not None else 'True'}\n"
 
                     modify = template_info.get('modify')
                     if modify is not None:
@@ -325,7 +328,10 @@ def check_update():
             html_content = f.read()
         body_content = re.sub(r'<footer\b[^>]*>.*?</footer>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
     else:
-        body_content = None
+        if check_vairo_status():
+            body_content = None
+        else:
+            return jsonify({'changed': False, 'error': 'Finished'})
     return jsonify({
         'changed': changed,
         'content': body_content
@@ -398,6 +404,14 @@ def load_form_data():
         UPDATE_PATH = False
         session.modified = True
     return jsonify({'status': 'success', 'data': form_data})
+
+def check_vairo_status():
+    global PROCESS
+    if PROCESS is None or PROCESS is not None and PROCESS.poll() is not None:
+        PROCESS = None
+        return False
+    else:
+        return True
 
 if __name__ == '__main__':
     app.json.sort_keys = False
