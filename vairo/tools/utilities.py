@@ -524,6 +524,67 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
     return results_dict
 
 
+def lsqkab():
+    def extract_residue_ranges(res_list):
+        chain_dict = {}
+        for seq, start_resnum, chain_id in res_list:
+            end_resnum = start_resnum + len(seq) - 1
+            if chain_id not in chain_dict:
+                chain_dict[chain_id] = []
+            chain_dict[chain_id].append((start_resnum, end_resnum))
+        return chain_dict
+
+    def prepare_lsqkab_input(chain_res_ranges):
+        lines = []
+        for chain_id, ranges in chain_res_ranges.items():
+            for start, end in ranges:
+                lines.append(f'FIT RESIDUE CA {start} to {end} CHAIN {chain_id}')
+                lines.append(f'MATCH  {start} {end} CHAIN {chain_id}')
+        return lines
+
+    def write_lsqkab_input_file(lsqkab_input_lines, output_path, pdb1, pdb2):
+
+        with open(output_path, 'w') as f:
+            f.write('lsqkab ')
+            f.write(f'xyzinf {pdb1} ')
+            f.write(f'xyzinm {pdb2} ')
+            f.write('DELTAS deltas.out ')
+            f.write('xyzout output.pdb << END-lsqkab\n')
+            f.write('output deltas \n')
+            f.write('output XYZ \n')
+            for line in lsqkab_input_lines:
+                f.write(line + '\n')
+            f.write(f'end \n')
+            f.write(f'END-lsqkab')
+
+
+    pdb1 = '/localdata1/pep/md_lsqkab/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
+    pdb2 = '/localdata1/pep/md_lsqkab/BlueTetramerCrystal_clean_ABCD_rmLA_renumbered_super.pdb'
+    superpose_list = [('SAVAANTANNTPAIAGNL', 11, 'B'),
+                      ('SAVAANTANNTPAIAGNL', 11, 'D'),
+                      ('YAINTTDNSN', 142, 'B'),
+                      ('YAINTTDNSN', 142, 'D'),
+                      ('SVNADNQGQVNVANVVAAINSKYF', 169,'A'),
+                      ('SVNADNQGQVNVANVVAAINSKYF', 169,'C'),
+                      ('LKDQKIDVNSVGYFKAPHTFTV', 216,'A'),
+                      ('LKDQKIDVNSVGYFKAPHTFTV', 216,'C'),
+                      ('NVNFYDVTSGATVTNG', 151,'A'),
+                      ('NVNFYDVTSGATVTNG', 151,'B'),
+                      ('NVNFYDVTSGATVTNG', 151,'C'),
+                      ('NVNFYDVTSGATVTNG', 151,'D'),
+                      ('AAQYADKKLNTRTANT', 193,'A'),
+                      ('AAQYADKKLNTRTANT', 193,'B'),
+                      ('AAQYADKKLNTRTANT', 193,'C'),
+                      ('AAQYADKKLNTRTANT', 193,'D'),
+                      ]
+
+    residue_dict = extract_residue_ranges(superpose_list)
+    lsqkab_input = prepare_lsqkab_input(residue_dict)
+
+    # Step 2: Write LSQKAB input control file
+    input_card_file = "lsqkab_input.cards"
+    write_lsqkab_input_file(lsqkab_input, input_card_file, pdb1, pdb2)
+
 if __name__ == "__main__":
     print('Usage: utilities.py function input')
     print('Functions: write_features, print_features')

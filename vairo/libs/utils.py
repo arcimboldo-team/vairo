@@ -597,3 +597,11 @@ def read_mutations_dict(input_mutations: list):
             key = residue_constants.restype_3to1[key]
         mutations_dict.setdefault(key, []).extend(values)
     return mutations_dict
+
+
+
+
+
+
+
+
