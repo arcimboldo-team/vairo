@@ -72,8 +72,8 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int,
         f_in.write('title matching template and predictions \n')
         f_in.write('output deltas \n')
         f_in.write('output XYZ \n')
-        f_in.write(f'fit RESIDU CA {match_ini} TO {match_end} CHAIN A \n')
-        f_in.write(f'MATCH RESIDU {fit_ini} TO {fit_end} CHAIN A \n')
+        f_in.write(f'fit RESIDUE CA {match_ini} TO {match_end} CHAIN A \n')
+        f_in.write(f'MATCH RESIDUE {fit_ini} TO {fit_end} CHAIN A \n')
         f_in.write(f'end \n')
         f_in.write(f'END-lsqkab')
     subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
