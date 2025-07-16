@@ -17,6 +17,13 @@ import csv
 from alphafold.data import parsers, templates, mmcif_parsing
 from Bio.Blast import NCBIWWW
 from alphafold.common import residue_constants
+from Bio.PDB import PDBParser, PDBIO
+import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.ticker import FixedLocator
+import matplotlib.ticker as ticker
+from collections import defaultdict
+
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
@@ -525,6 +532,44 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
 
 
 def lsqkab():
+
+    def process_and_plot_results(results_dict, reference, plot_file, plot_title):
+        colors = ['b', 'y', 'm', 'g']
+        plt.figure(figsize=(12, 6))
+        reference_results = results_dict.get(reference, {})
+        for i, (model, pdbs) in enumerate(reference_results.items()):
+            sorted_items = sorted(pdbs.items(), key=lambda x: os.path.basename(x[0]))
+            y_vals = [float(rmsd) for _, rmsd in sorted_items]  # convert strings → float
+            x_vals = list(range(1, len(y_vals) + 1))
+            plt.plot(x_vals, y_vals, marker='o', linestyle='-', color=colors[i], label=utils.get_file_name(model))
+
+        ax = plt.gca()
+        ax.set_xlabel('MODELS')
+        ax.set_ylabel('RMSD')
+        ax.set_title(plot_title)
+        ax.grid(True)
+
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+        ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))
+        ax.xaxis.set_minor_locator(ticker.NullLocator())
+
+        plt.legend(title='Models')
+        plt.tight_layout()
+        plt.savefig(plot_file, dpi=300, bbox_inches='tight')
+
+    def split_models_in_pdb(pdb_path):
+        name = utils.get_file_name(pdb_path)
+        output_dir = os.path.join(os.getcwd(), name)
+        utils.create_dir(name, True)
+        structure = bioutils.get_structure(pdb_path)
+        io = PDBIO()
+        for model in structure:
+            io.set_structure(model)
+            out_file = os.path.join(output_dir, f"model_{model.id:03d}.pdb")
+            io.save(out_file)
+        return output_dir
+
+
     def extract_residue_ranges(res_list):
         chain_dict = {}
         for seq, start_resnum, chain_id in res_list:
@@ -542,9 +587,8 @@ def lsqkab():
                 lines.append(f'MATCH  {start} {end} CHAIN {chain_id}')
         return lines
 
-    def write_lsqkab_input_file(lsqkab_input_lines, output_path, pdb1, pdb2):
-
-        with open(output_path, 'w') as f:
+    def write_lsqkab_input_file(lsqkab_input_lines, pdb1, pdb2):
+        with open('lsqkab_input.cards', 'w') as f:
             f.write('lsqkab ')
             f.write(f'xyzinf {pdb1} ')
             f.write(f'xyzinm {pdb2} ')
@@ -556,10 +600,64 @@ def lsqkab():
                 f.write(line + '\n')
             f.write(f'end \n')
             f.write(f'END-lsqkab')
+        stdout, stderr = subprocess.Popen(['bash', 'lsqkab_input.cards'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+        text = stdout.decode('utf-8', errors='ignore')
+        lines = text.splitlines()
+        pattern = r"RMS\s+XYZ\s+DISPLACEMENT\s*=\s*([\d\.]+)"
+        for line in lines:
+            m = re.search(pattern, line)
+            if m:
+                rmsd = m.group(1)
+                return rmsd
+        return None
+
+    def rmsd_ca(atoms1, atoms2):
+        coords1 = np.array([a.get_coord() for a in atoms1])
+        coords2 = np.array([a.get_coord() for a in atoms2])
+        diff = coords1 - coords2
+        return np.sqrt(np.mean(np.sum(diff * diff, axis=1)))
+
+    def calculate_translation_dict(reference_numbering, reference_pdb, target_pdb):
+        reference_struct = bioutils.get_structure(reference_pdb)
+        target_struct = bioutils.get_structure(target_pdb)
+        reference_sequence = bioutils.extract_sequence_msa_from_pdb(reference_pdb)
+        target_sequence = bioutils.extract_sequence_msa_from_pdb(target_pdb)
+        translation_dict = defaultdict(list)
+
+        for reference_chain, segments in reference_numbering.items():
+            for query_start, query_end in segments:
+                query_ca = [reference_struct[0][reference_chain][i]['CA'] for i in range(query_start-1, query_end)]
+                query_seq = reference_sequence[reference_chain][query_start-1:query_end]
+                best_hit = None
+                for target_chain, target_chain_seq in target_sequence.items():
+                    target_start = target_chain_seq.find(query_seq)
+                    while target_start != -1:
+                        target_end = target_start + len(query_seq)
+                        target_ca = [
+                            target_struct[0][target_chain][res_id]['CA']
+                            for res_id in range(target_start+1, target_end+1)
+                        ]
+                        score = rmsd_ca(query_ca, target_ca)
+                        if best_hit is None or score < best_hit[3]:
+                            best_hit = (target_chain, target_start+1, target_end, score)
+                        target_start = target_chain_seq.find(query_seq, target_start + 1)
+                if best_hit is not None:
+                    translation_dict[best_hit[0]].append((best_hit[1], best_hit[2]))
+                else:
+                    print('error')
+                    sys.exit(1)
+        return translation_dict
+
+    #references = ['/home/jtvcri/work/test/md_eli/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb', '/home/jtvcri/work/test/md_eli/BlueTetramerCrystal_clean_ABCD_rmLA_renumbered_super.pdb']
+    #references = ['/home/jtvcri/work/test/md_eli/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb']
+
+    references = ['/home/jtvcri/work/test/md_eli/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb',
+                  '/home/jtvcri/work/test/md_eli/BlueTetramerCrystal.pdb']
+
+    models = ['/home/jtvcri/work/test/md_eli/frames_BTvairo_200.pdb',
+              '/home/jtvcri/work/test/md_eli/frames_BTxtal_200.pdb']
 
 
-    pdb1 = '/localdata1/pep/md_lsqkab/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
-    pdb2 = '/localdata1/pep/md_lsqkab/BlueTetramerCrystal_clean_ABCD_rmLA_renumbered_super.pdb'
     superpose_list = [('SAVAANTANNTPAIAGNL', 11, 'B'),
                       ('SAVAANTANNTPAIAGNL', 11, 'D'),
                       ('YAINTTDNSN', 142, 'B'),
@@ -578,12 +676,28 @@ def lsqkab():
                       ('AAQYADKKLNTRTANT', 193,'D'),
                       ]
 
-    residue_dict = extract_residue_ranges(superpose_list)
-    lsqkab_input = prepare_lsqkab_input(residue_dict)
+    reference_superpose_dict = extract_residue_ranges(superpose_list)
+    results_dict = {ref: {} for ref in references}
+    superpose_translation_dict = {ref: {} for ref in references}
+    superpose_translation_dict[references[0]] = reference_superpose_dict
 
-    # Step 2: Write LSQKAB input control file
-    input_card_file = "lsqkab_input.cards"
-    write_lsqkab_input_file(lsqkab_input, input_card_file, pdb1, pdb2)
+    for reference in references[1:]:
+        superpose_translation_dict[reference] = calculate_translation_dict(reference_superpose_dict, references[0], reference)
+
+    for model in models:
+        dir_path = split_models_in_pdb(model)
+        for reference in references:
+            results_dict[reference][model] = {}
+            lsqkab_input = prepare_lsqkab_input(superpose_translation_dict[reference])
+            for pdb in os.listdir(dir_path):
+                pdb_path = os.path.join(dir_path, pdb)
+                rmsd = write_lsqkab_input_file(lsqkab_input, reference, pdb_path)
+                results_dict[reference][model][pdb_path] = rmsd
+
+    print(results_dict)
+    process_and_plot_results(results_dict, references[0], 'reference_vairo','Reference Vairo')
+    print('second')
+    process_and_plot_results(results_dict, references[1], 'reference_crystal', 'Reference Crystal')
 
 if __name__ == "__main__":
     print('Usage: utilities.py function input')
