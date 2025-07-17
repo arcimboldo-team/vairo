@@ -120,11 +120,28 @@ def read_yml():
 
 @app.route('/run-vairo', methods=["POST"])
 def run_vairo():
-    run_vairo_path = os.path.join(target_directory, 'vairo', 'run_vairo.py')
     param_dict = transform_dict(request.form)
+
+    entrypoint = shutil.which('vairo')
+    script_file = os.path.join(target_directory,'vairo', 'run_vairo.py')
+
+    if entrypoint:
+        cmd = [entrypoint, session['yml_path']]
+    elif os.path.isfile(script_file):
+        cmd = [sys.executable, script_file, session['yml_path']]
+    else:
+        return jsonify({
+            'status': 'error',
+            'message': 'Cannot find VAIRO launcher'
+        }), 500
+
     write_yml(output_path=session['yml_path'], output_str=param_dict.get('text'))
     global PROCESS
-    PROCESS = subprocess.Popen([run_vairo_path, session['yml_path']])
+    PROCESS = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
     return jsonify({'status': 'success'})
 
 
@@ -415,7 +432,11 @@ def check_vairo_status():
     else:
         return True
 
-if __name__ == '__main__':
+def main():
     webbrowser.open_new("http://127.0.0.1:5000")
     app.json.sort_keys = False
     app.run()
+
+
+if __name__ == '__main__':
+    main()
