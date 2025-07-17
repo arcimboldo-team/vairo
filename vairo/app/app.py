@@ -9,6 +9,8 @@ import sys
 import tempfile
 import re
 from pathlib import Path
+import webbrowser
+
 
 from flask import Flask, render_template, request, jsonify, send_file, session
 from werkzeug.utils import secure_filename
@@ -414,5 +416,6 @@ def check_vairo_status():
         return True
 
 if __name__ == '__main__':
+    webbrowser.open_new("http://127.0.0.1:5000")
     app.json.sort_keys = False
     app.run()
