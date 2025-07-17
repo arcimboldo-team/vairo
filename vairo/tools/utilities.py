@@ -569,7 +569,6 @@ def lsqkab():
             io.save(out_file)
         return output_dir
 
-
     def extract_residue_ranges(res_list):
         results_list = []
         for seq, start_resnum, chain_id in res_list:
@@ -675,10 +674,7 @@ def lsqkab():
 
     reference_superpose_list = extract_residue_ranges(superpose_list)
     results_dict = {ref: {} for ref in references.values()}
-    superpose_translation_dict = {
-        ref: {} for ref in references.values()
-    }
-    superpose_translation_dict['reference'] = reference_superpose_list
+    superpose_translation_dict = {'reference': reference_superpose_list}
     superpose_translation_dict.update({
         key: calculate_translation_list(reference_superpose_list, references['reference'], ref)
         for key, ref in references.items()
