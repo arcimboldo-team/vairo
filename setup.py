@@ -101,6 +101,9 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
     ],
 
     # This field adds keywords for your project which will appear on the
@@ -119,7 +122,7 @@ setup(
     #   py_modules=["my_module"],
     #
     packages=['vairo', 'vairo.ALEPH', 'vairo.ALEPH.aleph',
-              'vairo.ALEPH.aleph.core'],
+              'vairo.ALEPH.aleph.core', 'vairo.app'],
     include_package_data=True,
     package_data={  # Optional
         'vairo': ['binaries/*', 'libs/*', 'templates/*', 'README.md'],
@@ -127,7 +130,9 @@ setup(
     entry_points={  # Optional
         'console_scripts': [
             'VAIRO=vairo.run_vairo:main',
-            'vairo=vairo.run_vairo:main'
+            'vairo=vairo.run_vairo:main',
+            'VAIRO-GUI=vairo.app:main',
+            'vairo-gui=vairo.app:main'
         ],
     },
     # This field lists other packages that your project depends on to run.
