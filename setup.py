@@ -121,18 +121,19 @@ setup(
     #
     #   py_modules=["my_module"],
     #
-    packages=['vairo', 'vairo.ALEPH', 'vairo.ALEPH.aleph',
-              'vairo.ALEPH.aleph.core', 'vairo.app'],
-    include_package_data=True,
-    package_data={  # Optional
-        'vairo': ['binaries/*', 'libs/*', 'templates/*', 'README.md'],
+    use_scm_version={  # ← enable Git-based versioning
+        "root": ".",  # project root
+        "relative_to": __file__,  # locate pyproject.toml
     },
+    setup_requires=["setuptools-scm"],
+    packages=find_packages(),          # now includes both 'libs' and 'vairo'
+    include_package_data=True,
     entry_points={  # Optional
         'console_scripts': [
             'VAIRO=vairo.run_vairo:main',
             'vairo=vairo.run_vairo:main',
-            'VAIRO-GUI=vairo.app:main',
-            'vairo-gui=vairo.app:main'
+            'VAIRO-GUI=vairo.app.app:main',
+            'vairo-gui=vairo.app.app:main'
         ],
     },
     # This field lists other packages that your project depends on to run.
@@ -142,29 +143,5 @@ setup(
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'absl-py==1.0.0',
-        'biopython==1.79',
-        'chex==0.0.7',
-        'dm-haiku==0.0.9',
-        'dm-tree==0.1.6',
-        'immutabledict==2.0.0',
-        'ml-collections==0.1.0',
-        'numpy==1.21.6',
-        'scipy==1.7.0',
-        'protobuf==3.20.1',
-        'pandas==1.3.4',
-        'tensorflow==2.9.0',
-        'tensorflow-cpu==2.9.0',
-        'matplotlib==3.6.2',
-        'python-igraph==0.9.10',
-        'pyyaml',
-        'future',
-        'csb',
-        'psutil',
-        'paramiko',
-        'scikit-learn',
-        'pickle5',
-        'jinja2',
-        'flask',
     ],
     python_requires='>=3.6')
