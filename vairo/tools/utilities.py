@@ -539,7 +539,7 @@ def lsqkab():
         reference_results = results_dict.get(reference, {})
         for i, (model, pdbs) in enumerate(reference_results.items()):
             sorted_items = sorted(pdbs.items(), key=lambda x: os.path.basename(x[0]))
-            y_vals = [float(rmsd) for _, rmsd in sorted_items]  # convert strings → float
+            y_vals = [float(rmsd) for _, rmsd in sorted_items]
             x_vals = list(range(1, len(y_vals) + 1))
             plt.plot(x_vals, y_vals, marker='o', linestyle='-', color=colors[i], label=utils.get_file_name(model))
 
@@ -571,20 +571,19 @@ def lsqkab():
 
 
     def extract_residue_ranges(res_list):
-        chain_dict = {}
+        results_list = []
         for seq, start_resnum, chain_id in res_list:
             end_resnum = start_resnum + len(seq) - 1
-            if chain_id not in chain_dict:
-                chain_dict[chain_id] = []
-            chain_dict[chain_id].append((start_resnum, end_resnum))
-        return chain_dict
+            results_list.append((chain_id, start_resnum, end_resnum))
+        return results_list
 
-    def prepare_lsqkab_input(chain_res_ranges):
+    def prepare_lsqkab_input(reference_ranges, target_ranges):
         lines = []
-        for chain_id, ranges in chain_res_ranges.items():
-            for start, end in ranges:
-                lines.append(f'FIT RESIDUE CA {start} to {end} CHAIN {chain_id}')
-                lines.append(f'MATCH  {start} {end} CHAIN {chain_id}')
+        for reference, target in zip(reference_ranges, target_ranges):
+            ref_chain, ref_start, ref_end = reference
+            target_chain, target_start, target_end = target
+            lines.append(f'FIT RESIDUE CA {ref_start} to {ref_end} CHAIN {ref_chain}')
+            lines.append(f'MATCH {target_start} {target_end} CHAIN {target_chain}')
         return lines
 
     def write_lsqkab_input_file(lsqkab_input_lines, pdb1, pdb2):
@@ -617,45 +616,43 @@ def lsqkab():
         diff = coords1 - coords2
         return np.sqrt(np.mean(np.sum(diff * diff, axis=1)))
 
-    def calculate_translation_dict(reference_numbering, reference_pdb, target_pdb):
+    def calculate_translation_list(reference_numbering, reference_pdb, target_pdb):
         reference_struct = bioutils.get_structure(reference_pdb)
         target_struct = bioutils.get_structure(target_pdb)
         reference_sequence = bioutils.extract_sequence_msa_from_pdb(reference_pdb)
         target_sequence = bioutils.extract_sequence_msa_from_pdb(target_pdb)
-        translation_dict = defaultdict(list)
+        translation_list = []
 
-        for reference_chain, segments in reference_numbering.items():
-            for query_start, query_end in segments:
-                query_ca = [reference_struct[0][reference_chain][i]['CA'] for i in range(query_start-1, query_end)]
-                query_seq = reference_sequence[reference_chain][query_start-1:query_end]
-                best_hit = None
-                for target_chain, target_chain_seq in target_sequence.items():
-                    target_start = target_chain_seq.find(query_seq)
-                    while target_start != -1:
-                        target_end = target_start + len(query_seq)
-                        target_ca = [
-                            target_struct[0][target_chain][res_id]['CA']
-                            for res_id in range(target_start+1, target_end+1)
-                        ]
-                        score = rmsd_ca(query_ca, target_ca)
-                        if best_hit is None or score < best_hit[3]:
-                            best_hit = (target_chain, target_start+1, target_end, score)
-                        target_start = target_chain_seq.find(query_seq, target_start + 1)
-                if best_hit is not None:
-                    translation_dict[best_hit[0]].append((best_hit[1], best_hit[2]))
-                else:
-                    print('error')
-                    sys.exit(1)
-        return translation_dict
+        for reference_chain, query_start, query_end in reference_numbering:
+            query_ca = [reference_struct[0][reference_chain][i]['CA'] for i in range(query_start-1, query_end)]
+            query_seq = reference_sequence[reference_chain][query_start-1:query_end]
+            best_hit = None
+            for target_chain, target_chain_seq in target_sequence.items():
+                target_start = target_chain_seq.find(query_seq)
+                while target_start != -1:
+                    target_end = target_start + len(query_seq)
+                    target_ca = [
+                        target_struct[0][target_chain][res_id]['CA']
+                        for res_id in range(target_start+1, target_end+1)
+                    ]
+                    score = rmsd_ca(query_ca, target_ca)
+                    if best_hit is None or score < best_hit[3]:
+                        best_hit = (target_chain, target_start+1, target_end, score)
+                    target_start = target_chain_seq.find(query_seq, target_start + 1)
+            if best_hit is not None:
+                translation_list.append((best_hit[0], best_hit[1], best_hit[2]))
+            else:
+                sys.exit(1)
+        return translation_list
 
     #references = ['/home/jtvcri/work/test/md_eli/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb', '/home/jtvcri/work/test/md_eli/BlueTetramerCrystal_clean_ABCD_rmLA_renumbered_super.pdb']
     #references = ['/home/jtvcri/work/test/md_eli/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb']
 
-    references = ['/home/jtvcri/work/test/md_eli/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb',
-                  '/home/jtvcri/work/test/md_eli/BlueTetramerCrystal.pdb']
+    references = {'reference': '/localdata1/pep/md_lsqkab/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb',
+                  'crystal': '/localdata1/pep/md_lsqkab/BlueTetramerCrystal.pdb'}
 
-    models = ['/home/jtvcri/work/test/md_eli/frames_BTvairo_200.pdb',
-              '/home/jtvcri/work/test/md_eli/frames_BTxtal_200.pdb']
+    models = {'reference': ['/localdata1/pep/md_lsqkab/frames_BTvairo_200.pdb',
+                            '/localdata1/pep/md_lsqkab/frames_BTxtal_200.pdb']}
 
 
     superpose_list = [('SAVAANTANNTPAIAGNL', 11, 'B'),
@@ -676,28 +673,31 @@ def lsqkab():
                       ('AAQYADKKLNTRTANT', 193,'D'),
                       ]
 
-    reference_superpose_dict = extract_residue_ranges(superpose_list)
-    results_dict = {ref: {} for ref in references}
-    superpose_translation_dict = {ref: {} for ref in references}
-    superpose_translation_dict[references[0]] = reference_superpose_dict
+    reference_superpose_list = extract_residue_ranges(superpose_list)
+    results_dict = {ref: {} for ref in references.values()}
+    superpose_translation_dict = {
+        ref: {} for ref in references.values()
+    }
+    superpose_translation_dict['reference'] = reference_superpose_list
+    superpose_translation_dict.update({
+        key: calculate_translation_list(reference_superpose_list, references['reference'], ref)
+        for key, ref in references.items()
+        if key != 'reference'
+    })
 
-    for reference in references[1:]:
-        superpose_translation_dict[reference] = calculate_translation_dict(reference_superpose_dict, references[0], reference)
+    for model_type, model_list in models.items():
+        for model_value in model_list:
+            dir_path = split_models_in_pdb(model_value)
+            for reference_type, reference_values in references.items():
+                results_dict[reference_values][model_value] = {}
+                lsqkab_input = prepare_lsqkab_input(superpose_translation_dict[model_type], superpose_translation_dict[reference_type])
+                for pdb in os.listdir(dir_path):
+                    pdb_path = os.path.join(dir_path, pdb)
+                    rmsd = write_lsqkab_input_file(lsqkab_input, reference_values, pdb_path)
+                    results_dict[reference_values][model_value][pdb_path] = rmsd
 
-    for model in models:
-        dir_path = split_models_in_pdb(model)
-        for reference in references:
-            results_dict[reference][model] = {}
-            lsqkab_input = prepare_lsqkab_input(superpose_translation_dict[reference])
-            for pdb in os.listdir(dir_path):
-                pdb_path = os.path.join(dir_path, pdb)
-                rmsd = write_lsqkab_input_file(lsqkab_input, reference, pdb_path)
-                results_dict[reference][model][pdb_path] = rmsd
-
-    print(results_dict)
-    process_and_plot_results(results_dict, references[0], 'reference_vairo','Reference Vairo')
-    print('second')
-    process_and_plot_results(results_dict, references[1], 'reference_crystal', 'Reference Crystal')
+    process_and_plot_results(results_dict, references['reference'], 'reference_vairo','Reference Vairo')
+    process_and_plot_results(results_dict, references['crystal'], 'reference_crystal', 'Reference Crystal')
 
 if __name__ == "__main__":
     print('Usage: utilities.py function input')
