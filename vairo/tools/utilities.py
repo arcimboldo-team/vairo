@@ -533,18 +533,18 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
 
 def lsqkab():
 
-    def process_and_plot_results(results_dict, reference, plot_file, plot_title):
-        colors = ['orange', 'blue', 'm', 'g']
+    def process_and_plot_results(reference_results, plot_file, plot_title):
+        colors = ['blue', 'orange', 'm', 'g']
         plt.figure(figsize=(12, 6))
         reference_results = results_dict.get(reference, {})
         for i, (model, pdbs) in enumerate(reference_results.items()):
             sorted_items = sorted(pdbs.items(), key=lambda x: os.path.basename(x[0]))
             y_vals = [float(rmsd) for _, rmsd in sorted_items]
             x_vals = list(range(1, len(y_vals) + 1))
-            plt.plot(x_vals, y_vals, marker='o', linestyle='-', color=colors[i], label=utils.get_file_name(model))
+            plt.plot(x_vals, y_vals, marker='o', linestyle='-', color=colors[i], label=model)
 
         ax = plt.gca()
-        ax.set_xlabel('MODELS')
+        ax.set_xlabel('Model Number')
         ax.set_ylabel('RMSD')
         ax.set_title(plot_title)
         ax.grid(True)
@@ -554,7 +554,7 @@ def lsqkab():
         ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))
         ax.xaxis.set_minor_locator(ticker.NullLocator())
 
-        plt.legend(title='Models')
+        plt.legend()
         plt.tight_layout()
         plt.savefig(plot_file, dpi=300, bbox_inches='tight')
 
@@ -647,14 +647,17 @@ def lsqkab():
 
 
 
+    reference = 'Crystal'
     input_dict = {
         'greengreen': {
+            'title': 'RMSD Interfaces; D1-D1 % Dimer Reference',
             'references':{
-                'reference': 'GreenTetramerCrystal_clean.pdb',
-                'vairo': 'greeboundDimer_super.pdb'
+                'Crystal': 'GreenTetramerCrystal_clean.pdb',
+                'VAIRO': 'greeboundDimer_super.pdb'
             },
             'frames': {
-                'vairo': ['frames_GGxtal_200.pdb', 'frames_GGvairo_200.pdb']
+                'VAIRO': [('Crystal D1-D1 Dimer trajectory', 'frames_GGxtal_200.pdb'),
+                          ('VAIRO D1-D1 Dimer trajectory','frames_GGvairo_200.pdb')]
             },
             'superpose_list': [('YNGKTYTANLKAD', 84, 'A'),
                               ('YNGKTYTANLKAD', 84, 'B'),
@@ -665,12 +668,14 @@ def lsqkab():
                               ]
         },
         'blueblue': {
+            'title': 'RMSD Interfaces; D2-D2 % Dimer Reference',
             'references': {
-                'reference': 'BlueTetramerCrystal.pdb',
-                'vairo': 'blueboundDimer_clean_cut4md_renumbered_super.pdb'
+                'Crystal': 'BlueTetramerCrystal.pdb',
+                'VAIRO': 'blueboundDimer_clean_cut4md_renumbered_super.pdb'
             },
             'frames': {
-                'vairo': ['frames_BBvairo_200.pdb', 'frames_BBxtal_200.pdb']
+                'VAIRO': [('Crystal D2-D2 Dimer trajectory', 'frames_BBxtal_200.pdb'),
+                          ('VAIRO D2-D2 Dimer trajectory', 'frames_BBvairo_200.pdb')]
             },
             'superpose_list': [('NVNFYDVTSGATVTNG', 199,'B'),
                                ('NVNFYDVTSGATVTNG', 199,'A'),
@@ -679,12 +684,14 @@ def lsqkab():
                               ]
         },
         'greenblue': {
+            'title': 'RMSD Interfaces; D1-D2 % Dimer Reference',
             'references': {
-                'reference': 'BlueTetramerCrystal.pdb',
-                'vairo': 'greenbluefromgbdMaskBlueNoNaiveT2_cut4md_clean_renumbered_super.pdb'
+                'Crystal': 'BlueTetramerCrystal.pdb',
+                'VAIRO': 'greenbluefromgbdMaskBlueNoNaiveT2_cut4md_clean_renumbered_super.pdb'
             },
             'frames': {
-                'vairo': ['frames_GBvairo2_200.pdb', 'frames_GBxtal2_200.pdb']
+                'VAIRO': [('Crystal D1-D2 Dimer trajectory', 'frames_GBxtal2_200.pdb'),
+                          ('VAIRO D1-D2 Dimer trajectory','frames_GBvairo2_200.pdb')]
             },
             'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'A'),
                        ('YAINTTDNSN', 190, 'A'),
@@ -693,12 +700,14 @@ def lsqkab():
                        ]
         },
         'greentetramer': {
+            'title': 'RMSD Interfaces; D1-D1/D1-D2 % Tetramer Reference',
             'references': {
-                'reference': 'GreenTetramerCrystal_clean.pdb',
-                'vairo': 'greentetramerTilefromPiecesgreenSeqMSAnomaskR0_clean_cut4md_renumbered_super.pdb'
+                'Crystal': 'GreenTetramerCrystal_clean.pdb',
+                'VAIRO': 'greentetramerTilefromPiecesgreenSeqMSAnomaskR0_clean_cut4md_renumbered_super.pdb'
             },
             'frames': {
-                'vairo': ['frames_GTxtal_200.pdb', 'frames_GTvairo_200.pdb']
+                'VAIRO': [('Crystal D1-D1/D1-D2 Tetramer trajectory', 'frames_GTxtal_200.pdb'),
+                          ('VAIRO D1-D1/D1-D2 Tetramer trajectory','frames_GTvairo_200.pdb')]
             },
             'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'A'),
                                ('SAVAANTANNTPAIAGNL', 59, 'E'),
@@ -723,12 +732,14 @@ def lsqkab():
                                 ]
         },
         'bluetetramer': {
+            'title': 'RMSD Interfaces; D2-D2/D1-D2 % Tetramer Reference',
             'references': {
-                'reference': 'BlueTetramerCrystal.pdb',
-                'vairo': 'blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
+                'Crystal': 'BlueTetramerCrystal.pdb',
+                'VAIRO': 'blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
             },
             'frames': {
-                'vairo': ['frames_BTxtal_200.pdb', 'frames_BTvairo_200.pdb'],
+                'VAIRO': [('Crystal D2-D2/D1-D2 Tetramer trajectory', 'frames_BTxtal_200.pdb'),
+                          ('VAIRO D2-D2/D1-D2 Tetramer trajectory', 'frames_BTvairo_200.pdb')],
             },
             'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'E'),
                        ('SAVAANTANNTPAIAGNL', 59, 'A'),
@@ -749,8 +760,8 @@ def lsqkab():
                        ]
         },
     }
-    #generate_list = ['bluetetramer', 'greentetramer', 'greenblue, 'greengreen', 'blueblue']
-    generate_list = ['greenblue']
+    generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greengreen', 'blueblue']
+    #generate_list = ['blueblue']
     for generate in generate_list:
         old_path = os.getcwd()
         path = os.path.join(os.getcwd(), generate)
@@ -760,26 +771,29 @@ def lsqkab():
         frames = input_dict[generate]['frames']
 
         reference_superpose_list = extract_residue_ranges(superpose_list)
-        results_dict = {ref: {} for ref in references.values()}
-        superpose_translation_dict = {'reference': reference_superpose_list}
+        results_dict = {ref: {} for ref in references.keys()}
+        superpose_translation_dict = {reference: reference_superpose_list}
         superpose_translation_dict.update({
-            key: calculate_translation_list(reference_superpose_list, references['reference'], ref)
+            key: calculate_translation_list(reference_superpose_list, references[reference], ref)
             for key, ref in references.items()
-            if key != 'reference'
+            if key != reference
         })
 
-        for frame_type, frame_list in frames.items():
-            for frame_value in frame_list:
+        for frame_type, frame_values in frames.items():
+            for frame_name, frame_value in frame_values:
                 dir_path = split_models_in_pdb(frame_value)
                 for reference_type, reference_values in references.items():
-                    results_dict[reference_values][frame_value] = {}
+                    results_dict[reference_type][frame_name] = {}
                     lsqkab_input = prepare_lsqkab_input(superpose_translation_dict[frame_type], superpose_translation_dict[reference_type])
                     for pdb in os.listdir(dir_path):
                         pdb_path = os.path.join(dir_path, pdb)
                         rmsd = write_lsqkab_input_file(lsqkab_input, reference_values, pdb_path)
-                        results_dict[reference_values][frame_value][pdb_path] = rmsd
-        process_and_plot_results(results_dict, references['reference'], 'reference_crystal','Reference Crystal')
-        process_and_plot_results(results_dict, references['vairo'], 'reference_vairo', 'Reference Vairo')
+                        results_dict[reference_type][frame_name][pdb_path] = rmsd
+
+        for ref in references:
+            title = input_dict[generate]['title'].replace('%', ref)
+            file = re.sub(r'[^\w\-]', '_', title)
+            process_and_plot_results(results_dict[ref], file, title)
         os.chdir(old_path)
 
 if __name__ == "__main__":
