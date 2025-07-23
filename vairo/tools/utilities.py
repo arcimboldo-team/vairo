@@ -681,16 +681,16 @@ def lsqkab():
         'greenblue': {
             'references': {
                 'reference': 'BlueTetramerCrystal.pdb',
-                'vairo': 'blueboundDimer_clean_cut4md_renumbered_super.pdb'
+                'vairo': 'greenbluefromgbdMaskBlueNoNaiveT2_cut4md_clean_renumbered_super.pdb'
             },
             'frames': {
-                'vairo': ['frames_BBvairo_200.pdb', 'frames_BBxtal_200.pdb']
+                'vairo': ['frames_GBvairo2_200.pdb', 'frames_GBxtal2_200.pdb']
             },
-            'superpose_list': [('NVNFYDVTSGATVTNG', 199, 'B'),
-                               ('NVNFYDVTSGATVTNG', 199, 'A'),
-                               ('AAQYADKKLNTRTANT', 241, 'B'),
-                               ('AAQYADKKLNTRTANT', 241, 'A'),
-                               ]
+            'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'A'),
+                       ('YAINTTDNSN', 190, 'A'),
+                       ('SVNADNQGQVNVANVVAAINSKYF', 217,'D'),
+                       ('LKDQKIDVNSVGYFKAPHTFTV', 264,'D'),
+                       ]
         },
         'greentetramer': {
             'references': {
@@ -749,8 +749,8 @@ def lsqkab():
                        ]
         },
     }
-    generate_list = ['bluetetramer', 'greentetramer']
-    #generate_list = ['greengreen']
+    #generate_list = ['bluetetramer', 'greentetramer', 'greenblue, 'greengreen', 'blueblue']
+    generate_list = ['greenblue']
     for generate in generate_list:
         old_path = os.getcwd()
         path = os.path.join(os.getcwd(), generate)
