@@ -651,7 +651,7 @@ def lsqkab():
         'greengreen': {
             'references':{
                 'reference': 'GreenTetramerCrystal_clean.pdb',
-                'vairo': 'greenboundDimerMASKblueNoNaiveTr1_clean_cut4md_renumbered_super.pdb'
+                'vairo': 'greeboundDimer_super.pdb'
             },
             'frames': {
                 'vairo': ['frames_GGxtal_200.pdb', 'frames_GGvairo_200.pdb']
@@ -736,6 +736,7 @@ def lsqkab():
         },
     }
     generate_list = ['greengreen', 'blueblue', 'bluetetramer', 'greemtetramer']
+    #generate_list = ['greengreen']
     for generate in generate_list:
         old_path = os.getcwd()
         path = os.path.join(os.getcwd(), generate)
@@ -763,7 +764,6 @@ def lsqkab():
                         pdb_path = os.path.join(dir_path, pdb)
                         rmsd = write_lsqkab_input_file(lsqkab_input, reference_values, pdb_path)
                         results_dict[reference_values][frame_value][pdb_path] = rmsd
-
         process_and_plot_results(results_dict, references['reference'], 'reference_crystal','Reference Crystal')
         process_and_plot_results(results_dict, references['vairo'], 'reference_vairo', 'Reference Vairo')
         os.chdir(old_path)
