@@ -534,7 +534,7 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
 def lsqkab():
 
     def process_and_plot_results(results_dict, reference, plot_file, plot_title):
-        colors = ['b', 'y', 'm', 'g']
+        colors = ['orange', 'blue', 'm', 'g']
         plt.figure(figsize=(12, 6))
         reference_results = results_dict.get(reference, {})
         for i, (model, pdbs) in enumerate(reference_results.items()):
@@ -644,33 +644,90 @@ def lsqkab():
                 sys.exit(1)
         return translation_list
 
-    #references = ['/home/jtvcri/work/test/md_eli/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb', '/home/jtvcri/work/test/md_eli/BlueTetramerCrystal_clean_ABCD_rmLA_renumbered_super.pdb']
-    #references = ['/home/jtvcri/work/test/md_eli/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb']
+    ##HEXAMER
 
-    references = {'reference': '/localdata1/pep/md_lsqkab/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb',
-                  'crystal': '/localdata1/pep/md_lsqkab/BlueTetramerCrystal.pdb'}
+    ####BLUE TETRAMER
+    references = {'reference': '/localdata1/pep/md_lsqkab/bluetetramer/BlueTetramerCrystal.pdb',
+                  'vairo': '/localdata1/pep/md_lsqkab/bluetetramer/blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'}
+    models = {'vairo': ['/localdata1/pep/md_lsqkab/bluetetramer/frames_BTvairo_200.pdb',
+                        '/localdata1/pep/md_lsqkab/bluetetramer/frames_BTxtal_200.pdb']}
 
-    models = {'reference': ['/localdata1/pep/md_lsqkab/frames_BTvairo_200.pdb',
-                            '/localdata1/pep/md_lsqkab/frames_BTxtal_200.pdb']}
+
+    #tetramer
+    #superpose_list = [('SAVAANTANNTPAIAGNL', 59, 'E'),
+    #                   ('SAVAANTANNTPAIAGNL', 59, 'A'),
+    #                   ('YAINTTDNSN', 190, 'E'),
+    #                   ('YAINTTDNSN', 190, 'A'),
+    #                   ('SVNADNQGQVNVANVVAAINSKYF', 217,'B'),
+    #                   ('SVNADNQGQVNVANVVAAINSKYF', 217,'D'),
+    #                   ('LKDQKIDVNSVGYFKAPHTFTV', 264,'B'),
+    #                   ('LKDQKIDVNSVGYFKAPHTFTV', 264,'D'),
+    #                   ('NVNFYDVTSGATVTNG', 199,'B'),
+    #                   ('NVNFYDVTSGATVTNG', 199,'D'),
+    #                   ('NVNFYDVTSGATVTNG', 199,'A'),
+    #                   ('NVNFYDVTSGATVTNG', 199,'E'),
+    #                   ('AAQYADKKLNTRTANT', 241,'B'),
+    #                   ('AAQYADKKLNTRTANT', 241,'D'),
+    #                   ('AAQYADKKLNTRTANT', 241,'A'),
+    #                   ('AAQYADKKLNTRTANT', 241 ,'E'),
+    #                   ]
+
+    #dimer
+    #   superpose_list = [
+    #                   ('NVNFYDVTSGATVTNG', 199,'B'),
+    #                   ('NVNFYDVTSGATVTNG', 199,'D'),
+    #                   ('NVNFYDVTSGATVTNG', 199,'A'),
+    #                   ('NVNFYDVTSGATVTNG', 199,'E'),
+    #                   ('AAQYADKKLNTRTANT', 241,'B'),
+    #                   ('AAQYADKKLNTRTANT', 241,'D'),
+    #                   ('AAQYADKKLNTRTANT', 241,'A'),
+    #                   ('AAQYADKKLNTRTANT', 241 ,'E'),
+    #                   ]
 
 
-    superpose_list = [('SAVAANTANNTPAIAGNL', 11, 'B'),
-                      ('SAVAANTANNTPAIAGNL', 11, 'D'),
-                      ('YAINTTDNSN', 142, 'B'),
-                      ('YAINTTDNSN', 142, 'D'),
-                      ('SVNADNQGQVNVANVVAAINSKYF', 169,'A'),
-                      ('SVNADNQGQVNVANVVAAINSKYF', 169,'C'),
-                      ('LKDQKIDVNSVGYFKAPHTFTV', 216,'A'),
-                      ('LKDQKIDVNSVGYFKAPHTFTV', 216,'C'),
-                      ('NVNFYDVTSGATVTNG', 151,'A'),
-                      ('NVNFYDVTSGATVTNG', 151,'B'),
-                      ('NVNFYDVTSGATVTNG', 151,'C'),
-                      ('NVNFYDVTSGATVTNG', 151,'D'),
-                      ('AAQYADKKLNTRTANT', 193,'A'),
-                      ('AAQYADKKLNTRTANT', 193,'B'),
-                      ('AAQYADKKLNTRTANT', 193,'C'),
-                      ('AAQYADKKLNTRTANT', 193,'D'),
-                      ]
+    ####GREEN TETRAMER
+    references = {'reference': '/localdata1/pep/md_lsqkab/greentetramer/GreenTetramerCrystal_clean.pdb',
+                    'vairo': '/localdata1/pep/md_lsqkab/greentetramer/greentetramerTilefromPiecesgreenSeqMSAnomaskR0_clean_cut4md_renumbered_super_allA.pdb'}
+
+    models = {'vairo': ['/localdata1/pep/MD_EZ/SLP/dodecahedron/rmsd/GG/frames_vairo/models/frames_GGvairo_200_allA.pdb',
+                        '/localdata1/pep/MD_EZ/SLP/dodecahedron/rmsd/GG/frames_xtal/models/frames_GGxtal_200_allA.pdb']}
+
+    #dimer
+    #superpose_list = [('SAVAANTANNTPAIAGNL', 59, 'A'),
+    #                   ('SAVAANTANNTPAIAGNL', 59, 'E'),
+    #                   ('YAINTTDNSN', 190, 'A'),
+    #                   ('YAINTTDNSN', 190, 'E'),
+    #                   ('SVNADNQGQVNVANVVAAINSKYF', 217, 'B'),
+    #                   ('SVNADNQGQVNVANVVAAINSKYF', 217, 'D'),
+    #                   ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'B'),
+    #                   ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'D'),
+    #                   ('YNGKTYTANLKAD', 84, 'A'),
+    #                   ('YNGKTYTANLKAD', 84, 'B'),
+    #                   ('YNGKTYTANLKAD', 84, 'D'),
+    #                   ('YNGKTYTANLKAD', 84, 'E'),
+    #                   ('DVSFNFGSEN', 128, 'A'),
+    #                   ('DVSFNFGSEN', 128, 'B'),
+    #                   ('DVSFNFGSEN', 128, 'D'),
+    #                   ('DVSFNFGSEN', 128, 'E'),
+    #                   ('LDQNGVASLTN', 173, 'A'),
+    #                   ('LDQNGVASLTN', 173, 'B'),
+    #                   ('LDQNGVASLTN', 173, 'D'),
+    #                   ('LDQNGVASLTN', 173, 'E'),
+    #                    ]
+
+    superpose_list = [('YNGKTYTANLKAD', 84, 'A'),
+                       ('YNGKTYTANLKAD', 84, 'B'),
+                       ('YNGKTYTANLKAD', 84, 'D'),
+                       ('YNGKTYTANLKAD', 84, 'E'),
+                       ('DVSFNFGSEN', 128, 'A'),
+                       ('DVSFNFGSEN', 128, 'B'),
+                       ('DVSFNFGSEN', 128, 'D'),
+                       ('DVSFNFGSEN', 128, 'E'),
+                       ('LDQNGVASLTN', 173, 'A'),
+                       ('LDQNGVASLTN', 173, 'B'),
+                       ('LDQNGVASLTN', 173, 'D'),
+                       ('LDQNGVASLTN', 173, 'E'),
+                        ]
 
     reference_superpose_list = extract_residue_ranges(superpose_list)
     results_dict = {ref: {} for ref in references.values()}
@@ -692,8 +749,8 @@ def lsqkab():
                     rmsd = write_lsqkab_input_file(lsqkab_input, reference_values, pdb_path)
                     results_dict[reference_values][model_value][pdb_path] = rmsd
 
-    process_and_plot_results(results_dict, references['reference'], 'reference_vairo','Reference Vairo')
-    process_and_plot_results(results_dict, references['crystal'], 'reference_crystal', 'Reference Crystal')
+    process_and_plot_results(results_dict, references['reference'], 'reference_crystal','Reference Crystal')
+    process_and_plot_results(results_dict, references['vairo'], 'reference_vairo', 'Reference Vairo')
 
 if __name__ == "__main__":
     print('Usage: utilities.py function input')
