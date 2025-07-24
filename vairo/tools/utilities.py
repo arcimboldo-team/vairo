@@ -536,7 +536,6 @@ def lsqkab():
     def process_and_plot_results(reference_results, plot_file, plot_title):
         colors = ['blue', 'orange', 'm', 'g']
         plt.figure(figsize=(12, 6))
-        reference_results = results_dict.get(reference, {})
         for i, (model, pdbs) in enumerate(reference_results.items()):
             sorted_items = sorted(pdbs.items(), key=lambda x: os.path.basename(x[0]))
             y_vals = [float(rmsd) for _, rmsd in sorted_items]
