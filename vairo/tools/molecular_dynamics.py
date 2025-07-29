@@ -370,6 +370,7 @@ def preprocess_run(input_pdb: str, mdp_folder: str):
     if os.path.exists(output_path):
         shutil.rmtree(output_path)
     os.mkdir(output_path)
+    os.chdir(output_path)
     shutil.copy2(input_pdb, output_path)
     shutil.copytree(mdp_folder, output_path, dirs_exist_ok=True)
     missing_files = [f for f in required_files if not os.path.exists(os.path.join(output_path, f))]
