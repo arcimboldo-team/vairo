@@ -364,8 +364,9 @@ def preprocess_run(input_pdb: str, mdp_folder: str):
             raise RuntimeError(f"Command failed: {' '.join(command)}")
 
 
+    base_name = utils.get_file_name(input_pdb)
     required_files = ["em1.mdp", "em2.mdp", "md.mdp", "npt.mdp", "nvt.mdp"]
-    output_path = os.path.join(os.getcwd(), 'prepared_gmx_files')
+    output_path = os.path.join(os.getcwd(), f'{base_name}_prepared_gmx_files')
     if os.path.exists(output_path):
         shutil.rmtree(output_path)
     os.mkdir(output_path)
@@ -375,7 +376,6 @@ def preprocess_run(input_pdb: str, mdp_folder: str):
     if missing_files:
         print('Missing .mdp files')
         sys.exit(1)
-    base_name = utils.get_file_name(input_pdb)
 
     # Step 1: pdb2gmx
     run_cmd(
@@ -450,7 +450,7 @@ if __name__ == "__main__":
     if args.command == "post":
         postprocess_run(args.input_path, args.suffix)
     elif args.command == 'pre':
-        preprocess_run(args.input_pdbs, args.mdp_folder)
+        preprocess_run(args.input_pdb, args.mdp_folder)
     elif args.command == "rmsd":
         generate_rmds_plots()
     elif args.command == 'pca':
