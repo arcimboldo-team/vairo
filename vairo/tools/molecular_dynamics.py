@@ -365,7 +365,7 @@ def preprocess_run(input_pdb: str, mdp_folder: str):
 
 
     required_files = ["em1.mdp", "em2.mdp", "md.mdp", "npt.mdp", "nvt.mdp"]
-    output_path = os.path.join(os.getcwd(), 'mdp_files')
+    output_path = os.path.join(os.getcwd(), 'prepared_gmx_files')
     if os.path.exists(output_path):
         shutil.rmtree(output_path)
     os.mkdir(output_path)
