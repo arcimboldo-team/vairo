@@ -12,6 +12,12 @@ from matplotlib.ticker import FixedLocator
 import matplotlib.ticker as ticker
 from Bio.PDB import PDBParser, PDBIO
 import numpy as np
+import mdtraj as md
+from itertools import combinations
+from sklearn.decomposition import PCA
+from matplotlib.colors import Normalize, ListedColormap, BoundaryNorm
+from matplotlib.cm import ScalarMappable
+
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
@@ -29,17 +35,17 @@ def generate_rmds_plots():
             plt.plot(x_vals, y_vals, marker='o', linestyle='-', color=colors[i], label=model)
 
         ax = plt.gca()
-        ax.set_xlabel('Model Number')
-        ax.set_ylabel('RMSD')
-        ax.set_title(plot_title)
+        ax.set_xlabel('Model Number', fontsize=20)
+        ax.set_ylabel('RMSD', fontsize=20)
+        ax.set_title(plot_title, fontsize=28, pad=20)
         ax.grid(True)
         ax.set_ylim(0, 10)
 
         ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
         ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))
         ax.xaxis.set_minor_locator(ticker.NullLocator())
-
-        plt.legend()
+        plt.tick_params(labelsize=12)
+        plt.legend(fontsize=16)
         plt.tight_layout()
         plt.savefig(plot_file, dpi=300, bbox_inches='tight')
 
@@ -216,7 +222,7 @@ def generate_rmds_plots():
                                ]
         },
         'bluetetramer': {
-            'title': 'RMSD Interfaces; D2-D2/D1-D2 % Tetramer Reference',
+            'title': 'RMSD Interfaces; D1-D1/D1-D2 % Tetramer Reference',
             'references': {
                 'Crystal': 'BlueTetramerCrystal.pdb',
                 'VAIRO': 'blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
@@ -243,9 +249,65 @@ def generate_rmds_plots():
                                ('AAQYADKKLNTRTANT', 241, 'E'),
                                ]
         },
+        'hexamerblue': {
+            'title': 'RMSD Interfaces; D2-D2/D1-D2 % Tetramer Reference',
+            'references': {
+                'Crystal': 'BlueTetramerCrystal.pdb',
+                'VAIRO': 'blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
+            },
+            'frames': {
+                'VAIRO': [('Crystal D1-D1/D1-D2 Hexamer trajectory', 'frames_HXxtal_200.pdb'),
+                          ('VAIRO D1-D1/D1-D2 Hexamer trajectory', 'frames_HXvairo_200.pdb')],
+            },
+            'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'E'),
+                               ('SAVAANTANNTPAIAGNL', 59, 'A'),
+                               ('YAINTTDNSN', 190, 'E'),
+                               ('YAINTTDNSN', 190, 'A'),
+                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'B'),
+                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'D'),
+                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'B'),
+                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'D'),
+                               ('NVNFYDVTSGATVTNG', 199, 'B'),
+                               ('NVNFYDVTSGATVTNG', 199, 'D'),
+                               ('NVNFYDVTSGATVTNG', 199, 'A'),
+                               ('NVNFYDVTSGATVTNG', 199, 'E'),
+                               ('AAQYADKKLNTRTANT', 241, 'B'),
+                               ('AAQYADKKLNTRTANT', 241, 'D'),
+                               ('AAQYADKKLNTRTANT', 241, 'A'),
+                               ('AAQYADKKLNTRTANT', 241, 'E'),
+                               ]
+        },
+        'hexamergreen': {
+            'title': 'RMSD Interfaces; D2-D2/D1-D2 % Tetramer Reference',
+            'references': {
+                'Crystal': 'GreenTetramerCrystal_clean.pdb',
+                'VAIRO': 'greentetramerTilefromPiecesgreenSeqMSAnomaskR0_clean_cut4md_renumbered_super.pdb'
+            },
+            'frames': {
+                'VAIRO': [('Crystal D2-D2/D1-D2 Tetramer trajectory', 'frames_HXxtal_200.pdb'),
+                          ('VAIRO D2-D2/D1-D2 Tetramer trajectory', 'frames_HXvairo_200.pdb')],
+            },
+            'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'E'),
+                               ('SAVAANTANNTPAIAGNL', 59, 'A'),
+                               ('YAINTTDNSN', 190, 'E'),
+                               ('YAINTTDNSN', 190, 'A'),
+                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'B'),
+                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'D'),
+                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'B'),
+                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'D'),
+                               ('NVNFYDVTSGATVTNG', 199, 'B'),
+                               ('NVNFYDVTSGATVTNG', 199, 'D'),
+                               ('NVNFYDVTSGATVTNG', 199, 'A'),
+                               ('NVNFYDVTSGATVTNG', 199, 'E'),
+                               ('AAQYADKKLNTRTANT', 241, 'B'),
+                               ('AAQYADKKLNTRTANT', 241, 'D'),
+                               ('AAQYADKKLNTRTANT', 241, 'A'),
+                               ('AAQYADKKLNTRTANT', 241, 'E'),
+                               ]
+        },
     }
-    generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greengreen', 'blueblue']
-    # generate_list = ['greenblue']
+    generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greengreen', 'blueblue', 'hexamergreen', 'hexamerblue']
+    generate_list = ['hexamergreen', 'hexamerblue']
     for generate in generate_list:
         old_path = os.getcwd()
         path = os.path.join(os.getcwd(), generate)
@@ -347,8 +409,102 @@ def postprocess_run(input_path: str, suffix: str):
         stdin="1\n",
     )
 
-def generate_pca_plots():
-    print('test')
+def generate_pca_plots(traj1_file: str, traj2_file: str, top1_file: str, top2_file: str, plot_name: str):
+    """Compare two trajectories with identical atom/residue numbering using .gro files."""
+
+    def remove_sol(top_file: str):
+        output_file = os.path.join(os.path.dirname(os.path.abspath(top_file)), f'{utils.get_file_name(top_file)}_nw.gro')
+        with open(top_file, "r") as f:
+            lines = f.readlines()
+        title = lines[0]
+        atoms = lines[2:-1]
+        box_line = lines[-1]
+        filtered_atoms = [line for line in atoms if "SOL" not in line]
+        new_count = len(filtered_atoms)
+        with open(output_file, "w+") as f:
+            f.write(title)
+            f.write(f"{new_count}\n")
+            f.writelines(filtered_atoms)
+            f.write(box_line)
+        return output_file
+
+    top1_file = remove_sol(top1_file)
+    top2_file = remove_sol(top2_file)
+
+    name = re.sub(r'[^\w\-]', '_', plot_name)
+    fig_name = f"{name}.png"
+
+    # Load trajectories (with identical topologies)
+    traj1 = md.load(traj1_file, top=top1_file)
+    traj2 = md.load(traj2_file, top=top2_file)
+
+    # Subsample 200 frames evenly from each trajectory
+    n_subsample = 200
+    idxs1 = np.linspace(0, traj1.n_frames - 1, n_subsample, dtype=int)
+    idxs2 = np.linspace(0, traj2.n_frames - 1, n_subsample, dtype=int)
+    traj1 = traj1[idxs1]
+    traj2 = traj2[idxs2]
+
+    # Select Cα atoms
+    ca_indices = traj1.topology.select('name CA')
+    ca_pairs = list(combinations(ca_indices, 2))
+
+    # Compute pairwise distances
+    distances1 = md.compute_distances(traj1, ca_pairs)
+    distances2 = md.compute_distances(traj2, ca_pairs)
+
+    # Combine and perform PCA
+    combined = np.vstack([distances1, distances2])
+    pca = PCA(n_components=2)
+    transformed = pca.fit_transform(combined)
+    explained_variance = [pca.explained_variance_ratio_[0], pca.explained_variance_ratio_[1]]
+
+    # Split results
+    traj1_trans = transformed[:n_subsample]
+    traj2_trans = transformed[n_subsample:]
+
+    # Create color gradients
+    cmap_blue = plt.get_cmap('Blues_r')
+    cmap_orange = plt.get_cmap('Oranges_r')
+    colors_traj1 = [cmap_blue(i / (n_subsample - 1)) for i in range(n_subsample)]
+    colors_traj2 = [cmap_orange(i / (n_subsample - 1)) for i in range(n_subsample)]
+
+    # Plot with progression colors
+    fig, ax = plt.subplots(figsize=(10, 7))
+    ax.scatter(traj1_trans[:, 0], traj1_trans[:, 1], c=range(n_subsample), cmap=cmap_blue, s=40,
+                     alpha=0.7, label=f'Crystal {plot_name} frames')
+    ax.scatter(traj2_trans[:, 0], traj2_trans[:, 1], c=range(n_subsample, 2 * n_subsample), cmap=cmap_orange,
+                     s=40, alpha=0.7, label=f'VAIRO {plot_name} frames')
+    # Plot first frame of each trajectory with a black cross
+    ax.scatter(traj1_trans[0, 0], traj1_trans[0, 1], marker='x', color='black', s=100, linewidths=2,
+               label='First frame')
+    ax.scatter(traj2_trans[0, 0], traj2_trans[0, 1], marker='x', color='black', s=100, linewidths=2,
+               )
+    # Add color progression arrows
+    if n_subsample > 10:
+        ax.arrow(traj1_trans[0, 0], traj1_trans[0, 1],
+                 traj1_trans[10, 0] - traj1_trans[0, 0], traj1_trans[10, 1] - traj1_trans[0, 1],
+                 color='darkblue', width=0.05, head_width=0.3)
+        ax.arrow(traj2_trans[0, 0], traj2_trans[0, 1],
+                 traj2_trans[10, 0] - traj2_trans[0, 0], traj2_trans[10, 1] - traj2_trans[0, 1],
+                 color='darkorange', width=0.05, head_width=0.3)
+
+    pc1_var = explained_variance[0] * 100
+    pc2_var = explained_variance[1] * 100
+    ax.set_xlabel(f'PC1 ({pc1_var:.1f}%)', fontsize=20)
+    ax.set_ylabel(f'PC2 ({pc2_var:.1f}%)', fontsize=20)
+    ax.set_title(f'PCA {plot_name} Cα–Cα Distance Matrices', fontsize=28, pad=20)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.legend(fontsize="14")
+    ax.grid(alpha=0.3)
+    plt.tight_layout()
+
+    split_colors = colors_traj1 + colors_traj2
+    split_cmap = ListedColormap(split_colors)
+    sm = ScalarMappable(cmap=split_cmap, norm=plt.Normalize(vmin=0, vmax=2 * n_subsample - 1))
+    cbar = plt.colorbar(sm, ax=ax, ticks=[])
+    cbar.set_label('Frame Index (Darkest: Start, Lightest: End)', fontsize=15)
+    plt.savefig(fig_name)
 
 def preprocess_run(input_pdb: str, mdp_folder: str):
     def run_cmd(command, input_text=None):
@@ -363,7 +519,6 @@ def preprocess_run(input_pdb: str, mdp_folder: str):
             print(f"Error: {result.stderr}")
             raise RuntimeError(f"Command failed: {' '.join(command)}")
 
-
     base_name = utils.get_file_name(input_pdb)
     required_files = ["em1.mdp", "em2.mdp", "md.mdp", "npt.mdp", "nvt.mdp"]
     output_path = os.path.join(os.getcwd(), f'{base_name}_prepared_gmx_files')
@@ -371,6 +526,10 @@ def preprocess_run(input_pdb: str, mdp_folder: str):
         shutil.rmtree(output_path)
     os.mkdir(output_path)
     shutil.copy(input_pdb, output_path)
+    file_name = os.path.basename(input_pdb)
+    output_pdb  = os.path.join(output_path, file_name)
+    bioutils.remove_hetatm(output_pdb, output_pdb)
+    bioutils.remove_hydrogens(output_pdb, output_pdb)
     shutil.copytree(mdp_folder, output_path, dirs_exist_ok=True)
     missing_files = [f for f in required_files if not os.path.exists(os.path.join(output_path, f))]
     if missing_files:
@@ -435,13 +594,17 @@ if __name__ == "__main__":
 
     parser_rmsd = subparsers.add_parser("rmsd", help="Generate RMSD plots")
     parser_pca = subparsers.add_parser("pca", help="Generate PCA plots")
+    parser_pca.add_argument("--traj_xtal", required=True, help="Trajectory XTAL file (.xtc)")
+    parser_pca.add_argument("--traj_vairo", required=True, help="Trajectory VAIRO file (.xtc)")
+    parser_pca.add_argument("--top_xtal", required=True, help="Topology XTAL file (.gro)")
+    parser_pca.add_argument("--top_vairo", required=True, help="Topology VAIRO file (.gro)")
+    parser_pca.add_argument("--name", required=True, help="Plot name")
     parser_pre = subparsers.add_parser("pre", help="Prepare files for GROMACS")
     parser_pre.add_argument("--input_pdb", required=True, help="Pdb file (.pdb)")
     parser_pre.add_argument("--mdp_folder", required=True, help=" MDPs folder (.mdps)")
     parser_post = subparsers.add_parser("post", help="Analyze the trajectory")
     parser_post.add_argument("--input_path", required=True, help="Trajectory file (.xtc)")
     parser_post.add_argument("--suffix", required=True, help="Suffix name")
-
 
 
     # Parse args
@@ -455,5 +618,5 @@ if __name__ == "__main__":
     elif args.command == "rmsd":
         generate_rmds_plots()
     elif args.command == 'pca':
-        generate_pca_plots()
+        generate_pca_plots(args.traj_xtal, args.traj_vairo, args.top_xtal, args.top_vairo, args.name)
 
