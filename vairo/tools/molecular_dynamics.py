@@ -79,7 +79,7 @@ def generate_rmds_plots():
             ref_chain, ref_start, ref_end = reference
             target_chain, target_start, target_end = target
             lines.append(f'FIT RESIDUE CA {target_start} to {target_end} CHAIN {target_chain}')
-            lines.append(f'MATCH {ref_start} to {ref_end} CHAIN {target_end}')
+            lines.append(f'MATCH {ref_start} to {ref_end} CHAIN {ref_chain}')
         return lines
 
     def write_lsqkab_input_file(lsqkab_input_lines, reference_pdb, target_pdb):
@@ -306,7 +306,7 @@ def generate_rmds_plots():
         },
     }
     generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greengreen', 'blueblue', 'hexamergreen', 'hexamerblue']
-    generate_list = ['greenblue']
+    generate_list = ['greengreen']
     for generate in generate_list:
         old_path = os.getcwd()
         path = os.path.join(os.getcwd(), generate)
