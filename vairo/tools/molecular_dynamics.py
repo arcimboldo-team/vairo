@@ -308,7 +308,6 @@ def generate_rmds_plots():
         },
     }
     generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greengreen', 'blueblue', 'hexamergreen', 'hexamerblue']
-    generate_list = ['greengreen']
     for generate in generate_list:
         old_path = os.getcwd()
         path = os.path.join(os.getcwd(), generate)
