@@ -78,15 +78,15 @@ def generate_rmds_plots():
         for reference, target in zip(reference_ranges, target_ranges):
             ref_chain, ref_start, ref_end = reference
             target_chain, target_start, target_end = target
-            lines.append(f'FIT RESIDUE CA {ref_start} to {ref_end} CHAIN {ref_chain}')
-            lines.append(f'MATCH {target_start} {target_end} CHAIN {target_chain}')
+            lines.append(f'FIT RESIDUE CA {target_start} to {target_end} CHAIN {target_chain}')
+            lines.append(f'MATCH {ref_start} to {ref_end} CHAIN {target_end}')
         return lines
 
-    def write_lsqkab_input_file(lsqkab_input_lines, pdb1, pdb2):
+    def write_lsqkab_input_file(lsqkab_input_lines, reference_pdb, target_pdb):
         with open('lsqkab_input.cards', 'w') as f:
             f.write('lsqkab ')
-            f.write(f'xyzinf {pdb1} ')
-            f.write(f'xyzinm {pdb2} ')
+            f.write(f'xyzinf {reference_pdb} ')
+            f.write(f'xyzinm {target_pdb} ')
             f.write('DELTAS deltas.out ')
             f.write('xyzout output.pdb << END-lsqkab\n')
             f.write('output deltas \n')
@@ -114,10 +114,16 @@ def generate_rmds_plots():
         return np.sqrt(np.mean(np.sum(diff * diff, axis=1)))
 
     def calculate_translation_list(reference_numbering, reference_pdb, target_pdb):
-        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
-            bioutils.run_gesamt(reference_pdb, target_pdb, tmp_file.name)
-            reference_struct = bioutils.get_structure(reference_pdb)
-            target_struct = bioutils.get_structure(tmp_file.name)
+        #with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
+        #    bioutils.run_gesamt(reference_pdb, target_pdb, tmp_file.name)
+        #    reference_struct = bioutils.get_structure(reference_pdb)
+        #    target_struct = bioutils.get_structure(tmp_file.name)
+
+        tmp_file = f'{utils.get_file_name(reference_pdb)}_{utils.get_file_name(target_pdb)}.pdb'
+        bioutils.run_gesamt(reference_pdb, target_pdb, tmp_file)
+        reference_struct = bioutils.get_structure(reference_pdb)
+        target_struct = bioutils.get_structure(tmp_file)
+
         reference_sequence = bioutils.extract_sequence_msa_from_pdb(reference_pdb)
         target_sequence = bioutils.extract_sequence_msa_from_pdb(target_pdb)
         translation_list = []
@@ -300,6 +306,7 @@ def generate_rmds_plots():
         },
     }
     generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greengreen', 'blueblue', 'hexamergreen', 'hexamerblue']
+    generate_list = ['greenblue']
     for generate in generate_list:
         old_path = os.getcwd()
         path = os.path.join(os.getcwd(), generate)
@@ -321,8 +328,7 @@ def generate_rmds_plots():
             superpose_frame_translation_dict = calculate_translation_list(reference_superpose_list, references[reference], first_model)
             for reference_type, reference_values in references.items():
                 results_dict[reference_type][frame_name] = {}
-                lsqkab_input = prepare_lsqkab_input(superpose_frame_translation_dict,
-                                                    superpose_translation_dict[reference_type])
+                lsqkab_input = prepare_lsqkab_input(superpose_translation_dict[reference_type], superpose_frame_translation_dict)
                 for pdb in os.listdir(dir_path):
                     pdb_path = os.path.join(dir_path, pdb)
                     rmsd = write_lsqkab_input_file(lsqkab_input, reference_values, pdb_path)
@@ -331,7 +337,7 @@ def generate_rmds_plots():
         for ref in references:
             title = input_dict[generate]['title'].replace('%', ref)
             file = re.sub(r'[^\w\-]', '_', title)
-            process_and_plot_results(results_dict[ref], file, title)
+            process_and_plot_results(results_dict[ref], f'{file}_{generate}', title)
         os.chdir(old_path)
 
 def postprocess_run(input_path: str, suffix: str):
