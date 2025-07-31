@@ -120,10 +120,12 @@ def generate_rmds_plots():
         #    target_struct = bioutils.get_structure(tmp_file.name)
 
         tmp_file = f'{utils.get_file_name(reference_pdb)}_{utils.get_file_name(target_pdb)}.pdb'
-        bioutils.run_gesamt(reference_pdb, target_pdb, tmp_file)
+        reference_chains = list(dict.fromkeys(item[0] for item in reference_numbering))
+        bioutils.run_gesamt(pdb_reference=reference_pdb, pdb_superposed=target_pdb, output_path=tmp_file,
+                            reference_chains=reference_chains)
+
         reference_struct = bioutils.get_structure(reference_pdb)
         target_struct = bioutils.get_structure(tmp_file)
-
         reference_sequence = bioutils.extract_sequence_msa_from_pdb(reference_pdb)
         target_sequence = bioutils.extract_sequence_msa_from_pdb(target_pdb)
         translation_list = []
