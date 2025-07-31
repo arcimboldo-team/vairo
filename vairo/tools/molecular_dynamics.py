@@ -7,6 +7,8 @@ import subprocess
 import os
 import sys
 import re
+import tempfile
+
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FixedLocator
 import matplotlib.ticker as ticker
@@ -55,11 +57,14 @@ def generate_rmds_plots():
         utils.create_dir(name, True)
         structure = bioutils.get_structure(pdb_path)
         io = PDBIO()
-        for model in structure:
+        first_model_path = None
+        for i, model in enumerate(structure):
             io.set_structure(model)
             out_file = os.path.join(output_dir, f"model_{model.id:03d}.pdb")
             io.save(out_file)
-        return output_dir
+            if i == 0:
+                first_model_path = out_file
+        return output_dir, first_model_path
 
     def extract_residue_ranges(res_list):
         results_list = []
@@ -109,8 +114,10 @@ def generate_rmds_plots():
         return np.sqrt(np.mean(np.sum(diff * diff, axis=1)))
 
     def calculate_translation_list(reference_numbering, reference_pdb, target_pdb):
-        reference_struct = bioutils.get_structure(reference_pdb)
-        target_struct = bioutils.get_structure(target_pdb)
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp_file:
+            bioutils.run_gesamt(reference_pdb, target_pdb, tmp_file.name)
+            reference_struct = bioutils.get_structure(reference_pdb)
+            target_struct = bioutils.get_structure(tmp_file.name)
         reference_sequence = bioutils.extract_sequence_msa_from_pdb(reference_pdb)
         target_sequence = bioutils.extract_sequence_msa_from_pdb(target_pdb)
         translation_list = []
@@ -145,10 +152,8 @@ def generate_rmds_plots():
                 'Crystal': 'GreenTetramerCrystal_clean.pdb',
                 'VAIRO': 'greeboundDimer_super.pdb'
             },
-            'frames': {
-                'VAIRO': [('Crystal D1-D1 Dimer trajectory', 'frames_GGxtal_200.pdb'),
-                          ('VAIRO D1-D1 Dimer trajectory', 'frames_GGvairo_200.pdb')]
-            },
+            'frames': [('Crystal D1-D1 Dimer trajectory', 'frames_GGxtal_200.pdb'),
+                          ('VAIRO D1-D1 Dimer trajectory', 'frames_GGvairo_200.pdb')],
             'superpose_list': [('YNGKTYTANLKAD', 84, 'A'),
                                ('YNGKTYTANLKAD', 84, 'B'),
                                ('DVSFNFGSEN', 128, 'A'),
@@ -163,10 +168,8 @@ def generate_rmds_plots():
                 'Crystal': 'BlueTetramerCrystal.pdb',
                 'VAIRO': 'blueboundDimer_clean_cut4md_renumbered_super.pdb'
             },
-            'frames': {
-                'VAIRO': [('Crystal D2-D2 Dimer trajectory', 'frames_BBxtal_200.pdb'),
-                          ('VAIRO D2-D2 Dimer trajectory', 'frames_BBvairo_200.pdb')]
-            },
+            'frames': [('Crystal D2-D2 Dimer trajectory', 'frames_BBxtal_200.pdb'),
+                          ('VAIRO D2-D2 Dimer trajectory', 'frames_BBvairo_200.pdb')],
             'superpose_list': [('NVNFYDVTSGATVTNG', 199, 'B'),
                                ('NVNFYDVTSGATVTNG', 199, 'A'),
                                ('AAQYADKKLNTRTANT', 241, 'B'),
@@ -179,10 +182,8 @@ def generate_rmds_plots():
                 'Crystal': 'BlueTetramerCrystal.pdb',
                 'VAIRO': 'greenbluefromgbdMaskBlueNoNaiveT2_cut4md_clean_renumbered_super.pdb'
             },
-            'frames': {
-                'VAIRO': [('Crystal D1-D2 Dimer trajectory', 'frames_GBxtal1_200.pdb'),
-                          ('VAIRO D1-D2 Dimer trajectory', 'frames_GBvairo1_200.pdb')]
-            },
+            'frames': [('Crystal D1-D2 Dimer trajectory', 'frames_GBxtal1_200.pdb'),
+                          ('VAIRO D1-D2 Dimer trajectory', 'frames_GBvairo1_200.pdb')],
             'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'A'),
                                ('YAINTTDNSN', 190, 'A'),
                                ('SVNADNQGQVNVANVVAAINSKYF', 217, 'D'),
@@ -195,10 +196,8 @@ def generate_rmds_plots():
                 'Crystal': 'GreenTetramerCrystal_clean.pdb',
                 'VAIRO': 'greentetramerTilefromPiecesgreenSeqMSAnomaskR0_clean_cut4md_renumbered_super.pdb'
             },
-            'frames': {
-                'VAIRO': [('Crystal D1-D1/D1-D2 Tetramer trajectory', 'frames_GTxtal_200.pdb'),
-                          ('VAIRO D1-D1/D1-D2 Tetramer trajectory', 'frames_GTvairo_200.pdb')]
-            },
+            'frames': [('Crystal D1-D1/D1-D2 Tetramer trajectory', 'frames_GTxtal_200.pdb'),
+                          ('VAIRO D1-D1/D1-D2 Tetramer trajectory', 'frames_GTvairo_200.pdb')],
             'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'A'),
                                ('SAVAANTANNTPAIAGNL', 59, 'E'),
                                ('YAINTTDNSN', 190, 'A'),
@@ -227,10 +226,8 @@ def generate_rmds_plots():
                 'Crystal': 'BlueTetramerCrystal.pdb',
                 'VAIRO': 'blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
             },
-            'frames': {
-                'VAIRO': [('Crystal D2-D2/D1-D2 Tetramer trajectory', 'frames_BTxtal_200.pdb'),
+            'frames': [('Crystal D2-D2/D1-D2 Tetramer trajectory', 'frames_BTxtal_200.pdb'),
                           ('VAIRO D2-D2/D1-D2 Tetramer trajectory', 'frames_BTvairo_200.pdb')],
-            },
             'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'E'),
                                ('SAVAANTANNTPAIAGNL', 59, 'A'),
                                ('YAINTTDNSN', 190, 'E'),
@@ -255,10 +252,9 @@ def generate_rmds_plots():
                 'Crystal': 'BlueTetramerCrystal.pdb',
                 'VAIRO': 'blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
             },
-            'frames': {
-                'VAIRO': [('Crystal D1-D1/D1-D2 Hexamer trajectory', 'frames_HXxtal_200.pdb'),
-                          ('VAIRO D1-D1/D1-D2 Hexamer trajectory', 'frames_HXvairo_200.pdb')],
-            },
+            'frames': [('Crystal Hexamer trajectory', 'frames_HXxtal_200.pdb'),
+                          ('VAIRO Hexamer trajectory', 'frames_HXvairo_200.pdb')]
+            ,
             'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'E'),
                                ('SAVAANTANNTPAIAGNL', 59, 'A'),
                                ('YAINTTDNSN', 190, 'E'),
@@ -283,10 +279,7 @@ def generate_rmds_plots():
                 'Crystal': 'GreenTetramerCrystal_clean.pdb',
                 'VAIRO': 'greentetramerTilefromPiecesgreenSeqMSAnomaskR0_clean_cut4md_renumbered_super.pdb'
             },
-            'frames': {
-                'VAIRO': [('Crystal D2-D2/D1-D2 Tetramer trajectory', 'frames_HXxtal_200.pdb'),
-                          ('VAIRO D2-D2/D1-D2 Tetramer trajectory', 'frames_HXvairo_200.pdb')],
-            },
+            'frames': [('Crystal Hexamer trajectory', 'frames_HXxtal_200.pdb'), ('VAIRO Hexamer trajectory', 'frames_HXvairo_200.pdb')],
             'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'E'),
                                ('SAVAANTANNTPAIAGNL', 59, 'A'),
                                ('YAINTTDNSN', 190, 'E'),
@@ -307,7 +300,6 @@ def generate_rmds_plots():
         },
     }
     generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greengreen', 'blueblue', 'hexamergreen', 'hexamerblue']
-    generate_list = ['hexamergreen', 'hexamerblue']
     for generate in generate_list:
         old_path = os.getcwd()
         path = os.path.join(os.getcwd(), generate)
@@ -324,18 +316,17 @@ def generate_rmds_plots():
             for key, ref in references.items()
             if key != reference
         })
-
-        for frame_type, frame_values in frames.items():
-            for frame_name, frame_value in frame_values:
-                dir_path = split_models_in_pdb(frame_value)
-                for reference_type, reference_values in references.items():
-                    results_dict[reference_type][frame_name] = {}
-                    lsqkab_input = prepare_lsqkab_input(superpose_translation_dict[frame_type],
-                                                        superpose_translation_dict[reference_type])
-                    for pdb in os.listdir(dir_path):
-                        pdb_path = os.path.join(dir_path, pdb)
-                        rmsd = write_lsqkab_input_file(lsqkab_input, reference_values, pdb_path)
-                        results_dict[reference_type][frame_name][pdb_path] = rmsd
+        for frame_name, frame_value in frames:
+            dir_path, first_model = split_models_in_pdb(frame_value)
+            superpose_frame_translation_dict = calculate_translation_list(reference_superpose_list, references[reference], first_model)
+            for reference_type, reference_values in references.items():
+                results_dict[reference_type][frame_name] = {}
+                lsqkab_input = prepare_lsqkab_input(superpose_frame_translation_dict,
+                                                    superpose_translation_dict[reference_type])
+                for pdb in os.listdir(dir_path):
+                    pdb_path = os.path.join(dir_path, pdb)
+                    rmsd = write_lsqkab_input_file(lsqkab_input, reference_values, pdb_path)
+                    results_dict[reference_type][frame_name][pdb_path] = rmsd
 
         for ref in references:
             title = input_dict[generate]['title'].replace('%', ref)
