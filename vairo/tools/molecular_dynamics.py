@@ -229,7 +229,7 @@ def generate_rmds_plots():
                                ]
         },
         'bluetetramer': {
-            'title': 'RMSD Interfaces; D1-D1/D1-D2 % Tetramer Reference',
+            'title': 'RMSD Interfaces; D2-D2/D1-D2 % Tetramer Reference',
             'references': {
                 'Crystal': 'BlueTetramerCrystal.pdb',
                 'VAIRO': 'blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
@@ -257,55 +257,60 @@ def generate_rmds_plots():
         'hexamerblue': {
             'title': 'RMSD Interfaces; D2-D2/D1-D2 % Tetramer Reference',
             'references': {
-                'Crystal': 'BlueTetramerCrystal.pdb',
-                'VAIRO': 'blueboundTetramerfromPiecesSeqgbTR1_clean_cut4md_renumbered_super.pdb'
+                'Crystal': 'HexamerCrystal_clean_rmLA_ABCDEF.pdb',
+                'VAIRO': 'ranked_0_mosaicAccumulative_cut4md.pdb'
             },
             'frames': [('Crystal Hexamer trajectory', 'frames_HXxtal_200.pdb'),
                           ('VAIRO Hexamer trajectory', 'frames_HXvairo_200.pdb')]
             ,
-            'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'E'),
-                               ('SAVAANTANNTPAIAGNL', 59, 'A'),
-                               ('YAINTTDNSN', 190, 'E'),
-                               ('YAINTTDNSN', 190, 'A'),
-                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'B'),
-                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'D'),
-                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'B'),
-                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'D'),
-                               ('NVNFYDVTSGATVTNG', 199, 'B'),
+            'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'D'),
+                               ('SAVAANTANNTPAIAGNL', 59, 'F'),
+                               ('YAINTTDNSN', 190, 'D'),
+                               ('YAINTTDNSN', 190, 'F'),
+                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'C'),
+                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'E'),
+                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'C'),
+                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'E'),
+                               ('NVNFYDVTSGATVTNG', 199, 'C'),
                                ('NVNFYDVTSGATVTNG', 199, 'D'),
-                               ('NVNFYDVTSGATVTNG', 199, 'A'),
                                ('NVNFYDVTSGATVTNG', 199, 'E'),
-                               ('AAQYADKKLNTRTANT', 241, 'B'),
+                               ('NVNFYDVTSGATVTNG', 199, 'F'),
+                               ('AAQYADKKLNTRTANT', 241, 'C'),
                                ('AAQYADKKLNTRTANT', 241, 'D'),
-                               ('AAQYADKKLNTRTANT', 241, 'A'),
                                ('AAQYADKKLNTRTANT', 241, 'E'),
+                               ('AAQYADKKLNTRTANT', 241, 'F'),
                                ]
         },
         'hexamergreen': {
-            'title': 'RMSD Interfaces; D2-D2/D1-D2 % Tetramer Reference',
+            'title': 'RMSD Interfaces; D1-D1/D1-D2 % Tetramer Reference',
             'references': {
-                'Crystal': 'GreenTetramerCrystal_clean.pdb',
-                'VAIRO': 'greentetramerTilefromPiecesgreenSeqMSAnomaskR0_clean_cut4md_renumbered_super.pdb'
+                'Crystal': 'HexamerCrystal_clean_rmLA_ABCDEF.pdb',
+                'VAIRO': 'ranked_0_mosaicAccumulative_cut4md.pdb'
             },
             'frames': [('Crystal Hexamer trajectory', 'frames_HXxtal_200.pdb'), ('VAIRO Hexamer trajectory', 'frames_HXvairo_200.pdb')],
-            'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'E'),
-                               ('SAVAANTANNTPAIAGNL', 59, 'A'),
-                               ('YAINTTDNSN', 190, 'E'),
-                               ('YAINTTDNSN', 190, 'A'),
-                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'B'),
-                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'D'),
-                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'B'),
-                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'D'),
-                               ('NVNFYDVTSGATVTNG', 199, 'B'),
-                               ('NVNFYDVTSGATVTNG', 199, 'D'),
-                               ('NVNFYDVTSGATVTNG', 199, 'A'),
-                               ('NVNFYDVTSGATVTNG', 199, 'E'),
-                               ('AAQYADKKLNTRTANT', 241, 'B'),
-                               ('AAQYADKKLNTRTANT', 241, 'D'),
-                               ('AAQYADKKLNTRTANT', 241, 'A'),
-                               ('AAQYADKKLNTRTANT', 241, 'E'),
+            'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'B'),
+                               ('SAVAANTANNTPAIAGNL', 59, 'D'),
+                               ('YAINTTDNSN', 190, 'B'),
+                               ('YAINTTDNSN', 190, 'D'),
+                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'A'),
+                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'C'),
+                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'A'),
+                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'C'),
+                               ('YNGKTYTANLKAD', 84, 'A'),
+                               ('YNGKTYTANLKAD', 84, 'B'),
+                               ('YNGKTYTANLKAD', 84, 'C'),
+                               ('YNGKTYTANLKAD', 84, 'D'),
+                               ('DVSFNFGSEN', 128, 'A'),
+                               ('DVSFNFGSEN', 128, 'B'),
+                               ('DVSFNFGSEN', 128, 'C'),
+                               ('DVSFNFGSEN', 128, 'D'),
+                               ('LDQNGVASLTN', 173, 'A'),
+                               ('LDQNGVASLTN', 173, 'B'),
+                               ('LDQNGVASLTN', 173, 'C'),
+                               ('LDQNGVASLTN', 173, 'D'),
                                ]
         },
+
     }
     generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greengreen', 'blueblue', 'hexamergreen', 'hexamerblue']
     for generate in generate_list:
