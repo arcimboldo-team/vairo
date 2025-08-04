@@ -43,7 +43,7 @@ def generate_rmds_plots():
         ax.grid(True)
         ax.set_ylim(0, 10)
 
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(10))
+        ax.xaxis.set_major_locator(ticker.FixedLocator(range(1, 202, 10)))
         ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%d'))
         ax.xaxis.set_minor_locator(ticker.NullLocator())
         plt.tick_params(labelsize=12)
@@ -198,6 +198,20 @@ def generate_rmds_plots():
                                ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'D'),
                                ]
         },
+        'greenblue1000': {
+            'title': 'RMSD Interfaces; D1-D2 % Dimer Reference',
+            'references': {
+                'Crystal': 'BlueTetramerCrystal.pdb',
+                'VAIRO': 'greenbluefromgbdMaskBlueNoNaiveT2_cut4md_clean_renumbered_super.pdb'
+            },
+            'frames': [('Crystal D1-D2 Dimer trajectory', 'frames_gb_crystal_1000.pdb'),
+                       ('VAIRO D1-D2 Dimer trajectory', 'frames_gb_vairo_1000.pdb')],
+            'superpose_list': [('SAVAANTANNTPAIAGNL', 59, 'A'),
+                               ('YAINTTDNSN', 190, 'A'),
+                               ('SVNADNQGQVNVANVVAAINSKYF', 217, 'D'),
+                               ('LKDQKIDVNSVGYFKAPHTFTV', 264, 'D'),
+                               ]
+        },
         'greentetramer': {
             'title': 'RMSD Interfaces; D1-D1/D1-D2 % Tetramer Reference',
             'references': {
@@ -312,7 +326,7 @@ def generate_rmds_plots():
         },
 
     }
-    generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greengreen', 'blueblue', 'hexamergreen', 'hexamerblue']
+    generate_list = ['bluetetramer', 'greentetramer', 'greenblue', 'greenblue1000', 'greengreen', 'blueblue', 'hexamergreen', 'hexamerblue']
     for generate in generate_list:
         old_path = os.getcwd()
         path = os.path.join(os.getcwd(), generate)
@@ -346,7 +360,7 @@ def generate_rmds_plots():
             process_and_plot_results(results_dict[ref], f'{file}_{generate}', title)
         os.chdir(old_path)
 
-def postprocess_run(input_path: str, suffix: str):
+def postprocess_run(input_path: str, suffix: str, num_ns: int):
     def gmx_run(cmd, stdin=""):
         result = subprocess.run(
             shlex.split(cmd),
@@ -402,15 +416,26 @@ def postprocess_run(input_path: str, suffix: str):
         f"gmx gyrate -s {return_path('md.tpr')} -f cluster_{suffix}.xtc "
         f"-o gyrate_{suffix}.xvg", stdin="1\n"
     )
-    gmx_run(
-        f"gmx trjconv -f cluster_{suffix}.xtc -b 0 -e 100000 "
-        f"-o traj_1000_{suffix}.xtc -skip 10"
-    )
-    gmx_run(
-        f"gmx trjconv -f traj_1000_{suffix}.xtc -s {return_path('md.tpr')} "
-        f"-o frames_{suffix}.pdb -skip 5",
-        stdin="1\n",
-    )
+    if num_ns == 1:
+        gmx_run(
+            f"gmx trjconv -f cluster_{suffix}.xtc -b 0 -e 100000 "
+            f"-o traj_1000_{suffix}.xtc -skip 10"
+        )
+        gmx_run(
+            f"gmx trjconv -f traj_1000_{suffix}.xtc -s {return_path('md.tpr')} "
+            f"-o frames_{suffix}.pdb -skip 5",
+            stdin="1\n",
+        )
+    elif num_ns == 1000:
+        gmx_run(
+            f"gmx trjconv -f cluster_{suffix}.xtc -b 0 -e 1000000 "
+            f"-o traj_reduced_{suffix}.xtc -skip 50"
+        )
+        gmx_run(
+            f"gmx trjconv -f traj_reduced_{suffix}.xtc -s {return_path('md.tpr')} "
+            f"-o frames_{suffix}.pdb -skip 10",
+            stdin="1\n",
+        )
 
 def generate_pca_plots(traj1_file: str, traj2_file: str, top1_file: str, top2_file: str, plot_name: str):
     """Compare two trajectories with identical atom/residue numbering using .gro files."""
@@ -608,6 +633,7 @@ if __name__ == "__main__":
     parser_post = subparsers.add_parser("post", help="Analyze the trajectory")
     parser_post.add_argument("--input_path", required=True, help="Trajectory file (.xtc)")
     parser_post.add_argument("--suffix", required=True, help="Suffix name")
+    parser_post.add_argument("--num_ns", required=True, help="Number of nanoseconds")
 
 
     # Parse args
@@ -615,7 +641,7 @@ if __name__ == "__main__":
 
     # Command routing
     if args.command == "post":
-        postprocess_run(args.input_path, args.suffix)
+        postprocess_run(args.input_path, args.suffix, args.num_ns)
     elif args.command == 'pre':
         preprocess_run(args.input_pdb, args.mdp_folder)
     elif args.command == "rmsd":
