@@ -146,6 +146,7 @@ def check_sequence_path(path_in: str) -> str:
             return path_in
         else:
             return extract_sequence(path_in)
+    return None
 
 
 def add_cryst_card_pdb(pdb_in_path: str, cryst_card: str) -> bool:
@@ -201,7 +202,7 @@ def extract_sequences(fasta_path: str) -> Dict:
     return dict([(rec.id, str(rec.seq)) for rec in records])
 
 
-def read_seqres(pdb_path: str) -> str:
+def read_seqres(pdb_path: str) -> List[str]:
     sequences = {}
     results_list = []
     with open(pdb_path) as f:
@@ -221,7 +222,7 @@ def read_seqres(pdb_path: str) -> str:
     return results_list
 
 
-def extract_sequence_from_file(file_path: str) -> List[str]:
+def extract_sequence_from_file(file_path: str) -> dict:
     results_dict = {}
     extension = utils.get_file_extension(file_path)
     if extension == '.cif':
@@ -1368,14 +1369,6 @@ def create_interface_domain(pdb_in_path: str, pdb_out_path: str, interface: Dict
 
     return add_domains_dict
 
-
-def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:
-    if length <= 0:
-        return []
-
-    combinated_list = list(itertools.product(*input_list))
-    trimmed_list = [sorted(element, key=lambda x: x[2])[:min(len(element), length)] for element in combinated_list if
-                    element]
 
 
 def calculate_auto_offset(input_list: List[List], length: int) -> List[int]:

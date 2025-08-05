@@ -232,7 +232,7 @@ class Features:
             self.append_new_template_features(template_dict)
         return len(template_dict['template_all_atom_positions'])
 
-    def cut_expand_features(self, query_sequence: int, modifications_list: List[int]):
+    def cut_expand_features(self, query_sequence: str, modifications_list: List[int]):
         new_features = Features(query_sequence=query_sequence)
         msa_dict = create_empty_msa_list(self.get_msa_length() - 1)
         ext_len = len(query_sequence)

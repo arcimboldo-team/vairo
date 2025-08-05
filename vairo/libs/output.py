@@ -137,9 +137,7 @@ class OutputStructure:
                 bioutils.shift_pdb(pdb_in_path=ranked.path, sequence_predicted_assembled=vairo_struct.sequence_predicted_assembled, 
                                    sequence_assembled=vairo_struct.sequence_assembled)
 
-            accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path,
-                                                                   spong_path=vairo_struct.binaries_paths.spong_path)
-            ranked.set_compactness(compactness)
+
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
             bioutils.split_chains_assembly(pdb_in_path=ranked.path,
                                            pdb_out_path=ranked.split_path,
@@ -155,6 +153,9 @@ class OutputStructure:
             if perc is not None:
                 perc = round(perc, 2)
             ranked.set_ramachandran(perc)
+            accepted_compactness, compactness = bioutils.run_spong(pdb_in_path=ranked.path,
+                                                                   spong_path=vairo_struct.binaries_paths.spong_path)
+            ranked.set_compactness(compactness)
             bioutils.remove_hydrogens(ranked.split_path, ranked.split_path)
             ranked.set_encoded(ranked.split_path)
             if accepted_ramachandran and accepted_compactness and ranked.plddt >= (PERCENTAGE_FILTER * max_plddt):
