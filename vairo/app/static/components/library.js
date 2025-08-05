@@ -229,12 +229,12 @@ class LibraryTable extends HTMLElement {
 
         <div class="form-group mb-2 row">
           <div class="col-md-auto">
-            <label for="library-lib-${id}">Library positions</label>
-            <input type="text" class="form-control" id="library-lib-${id}" name="library-lib-${id}" placeholder="e.g. 1, 3-10" title="Select the residue numbers from the library">
+            <label for="library-query-${id}">Query sequence positions</label>
+            <input type="text" class="form-control" id="library-query-${id}" name="library-query-${id}" placeholder="e.g. 1, 30" title="Select the positions to insert it in the query sequence">
           </div>
           <div class="col-md-auto">
-            <label for="library-query-${id}">Query sequence positions</label>
-            <input type="text" class="form-control" id="library-query-${id}" name="library-query-${id}" placeholder="e.g. 1, 3-10" title="Select the positions to insert it in the query sequence">
+            <label for="library-lib-${id}">Library positions</label>
+            <input type="text" class="form-control" id="library-lib-${id}" name="library-lib-${id}" placeholder="e.g. 1-10, 40-50" title="Select the residue numbers from the library">
           </div>
         </div>
       </fieldset>

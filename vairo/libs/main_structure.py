@@ -158,6 +158,7 @@ class MainStructure:
             numbering_library = utils.get_input_value(name='numbering_library', section='append_library',
                                                       input_dict=library)
 
+
             if os.path.exists(path):
                 self.library_list.append(structures.Library(path=path, aligned=aligned,
                                                             add_to_msa=add_to_msa,

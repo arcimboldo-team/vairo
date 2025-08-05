@@ -124,7 +124,7 @@ features:
       keep_templates (integer, default: -1) -1 = all templates; otherwise top X by coverage.
       msa_mask (range, default: null) Remove this residue range from the MSA.
       sequence (string, default: null) FASTA file to replace all template sequences.
-      numbering_query (list of ints, default: null) Insertion positions in the query sequence.
+      numbering_query (list of integers, default: null) Insertion positions in the query sequence.
       numbering_features (list of ranges, default: null) Map feature blocks into the positions given by numbering_query.
       positions (range, default: null) Inserts the features.pkl into the query sequence. The position refers to the sequence index, whereas in numbering_query and numbering_features, it refers to the residue positions in the entire query sequence.
       mutations (map) Map three-letter amino acid codes to residue indices. Example:
@@ -138,8 +138,8 @@ append_library:
     - path: (string, mandatory) Path to a directory, PDB, or FASTA file.
       add_to_msa (boolean, default: true) Append sequences to the MSA.
       add_to_templates (boolean, default: false) Append PDBs to the templates.
-      numbering_query (list of ints, default: null) Insertion positions in the query.
-      numbering_library (sequence range, default: null) Residue range from the library entry to insert.
+      numbering_query (list of integers, default: null) Insertion positions in the query.
+      numbering_library (list of ranges, default: null) Residue range from the library entry to insert.
 ```
 
 ### 7. Configuration file example
