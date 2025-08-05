@@ -1,82 +1,81 @@
 Usage: vairo [-h] [-check] input_path
 
 Flags:
- [-check]: Check the .bor information and if is well parsed.
+    -h Show help message and exit.
+    -check Validate .bor information to ensure it is correctly parsed.
 
-The configuration file must be in YAML format and can contain the following parameters:
+The configuration file must be in valid YAML. Below are all supported sections and parameters.
 
-Mandatory parameters:
-    mode (string): Options are {naive, guided}.
-    output_dir (string): Path to the results' directory.
-    af2_dbs_path (string): Path to the AlphaFold2 databases, which must be downloaded.
+Global parameters:
+Mandatory:
+    mode (string) Choose one of: naive, guided.
+    output_dir (string) Directory where results will be saved.
+    af2_dbs_path (string) Path to the AlphaFold2 databases (must be pre-downloaded).
 
-Optional parameters:
-    run_dir (string, default 'run'): Path to the directory where AlphaFold2 will be run.
-    glycines (integer, default 50): Number of glycines between sequence copies.
-    small_bfd (bool, default False): Use reduced bfd library.
-    run_af2 (bool, default True): Run AlphaFold2; can be used to generate a features.pkl without going further.
-    stop_after_msa (bool, default False): Run AlphaFold2 and stop it after generating the MSA.
-    reference (string, default ''): Existing pdbid or path to a pdb.
-    experimental_pdbs (List, default []): List of existing pdbid or paths to pdbs.
-    mosaic (integer, default None): Split the sequence into X partitions.
-    mosaic_partition (range, default None): Split the sequence by the number of residues.
-    mosaic_seq_partition (range, default None): Split the sequence by the number of sequences.
-    cluster_templates (bool, default False, True if naive): Cluster templates from preprocessed features.pkl.
-    cluster_templates_msa (int, default -1): Select a specific number of sequences to add to the new features.pkl MSA (-1 to add all sequences).
-    cluster_templates_msa_mask (range, default None): Delete specific residues from the MSA sequences.
-    cluster_templates_sequence (path, default None): Replace template sequence with sequence in path.
-    show_pymol (str, default None): Select regions to zoom in the pymol session using selection language in pymol, separated by commas.
+Optional:
+    run_dir (string, default: "run") Directory where AlphaFold2 jobs will run.
+    glycines (integer, default: 50) Number of glycine residues to insert between concatenated sequences.
+    small_bfd (boolean, default: false) Use reduced BFD library.
+    run_af2 (boolean, default: true) Run AlphaFold2 (otherwise stop after generating features.pkl file).
+    stop_after_msa (boolean, default: false) Run AlphaFold2 up to MSA generation, then exit.
+    reference (string, default: "") PDB ID or path to PDB file to be used as global reference.
+    experimental_pdbs (list of strings, default: []) List of PDB IDs or paths to PDB files for result comparison.
+    mosaic (integer, default: null) Split the sequence into X partitions.
+    mosaic_partition (range, default: null) Residue based partitioning.
+    mosaic_seq_partition (range, default: null) Sequence numbering partitioning.
+    cluster_templates (boolean, default: false - becomes true if mode: naive) Cluster templates from preprocessed features.pkl.
+    cluster_templates_msa (integer, default: -1) Number of sequences to add to the MSA (-1 = all).
+    cluster_templates_msa_mask (sequence range, default: null) Remove specific residues from MSA sequences.
+    cluster_templates_sequence (string path, default: null) Replace templates sequences using FASTA at given path.
+    show_pymol (string, default: null) Pymol selection string (comma-separated regions) to zoom into.
 
-Several sequences can be added to the query sequence. Each FASTA file can contain multiple copies of a sequence, which can be inserted at specific positions within the query sequence. All sequences will be concatenated using glycines.
-sequences: List of sequences.
-    - fasta_path (str, default None): Path to the FASTA file.
-      num_of_copies (int, default None): Number of copies of the same sequence.
-      positions (List[int], default None): Positions in the query sequence.
-      name (str, default file name from fasta_path): Name of the sequence.
-      mutations: List of mutations.
-        Format: 'aminoacid': residues. Three-letter code of the amino acid, and the residues that will be mutated to this amino acid.
-        Example: 'ALA': 10, 20
-      predict_region (range, default None): Predict a certain region of the sequence instead of the entire sequence.
+Define one or more sequences to generate the query sequence. All sequences will be concatenated using glycine linkers.
+sequences:
+    - fasta_path (string, mandatory) Path to the FASTA file.
+      num_of_copies (integer, default: 1) Number of copies of the sequence.
+      positions (list of integers, default: [], any position) Insertion position in the query.
+      name (string, default: file name from fasta_path) Sequence name.
+      predict_region (range, default: null) Predict only this subsequence instead of the full length.
+      mutations (map) Map three-letter amino acid codes to residue indices. Example:
+        - 'ALA': 10, 20
 
-An already extracted library can be used as input. It can contain FASTA files or PDBs. It is possible to insert it into specific regions of the query sequence.
-append_library:
-    - path: (string): Path to a folder, PDB, or FASTA. The folder can contain FASTA or PDB files as well.
-      add_to_msa: (bool, default True): Append the sequences of the PDB or FASTA files to the MSA.
-      add_to_templates: (bool, default False): Append the PDB files to the templates (only if they are PDBs).
-      numbering_query (List[int], default None): Positions of the query sequence where the library will be inserted.
-      numbering_library (range, default None): Positions of the library; those residues will be selected and inserted in the positions specified by the parameter numbering_query
-
-Multiple features.pkl files can be combined into a final features.pkl file. You can select the number of templates and sequences to be inserted, delete specific regions of the MSA, replace the sequences of the templates, and insert the feature.pkl file into specific regions of the query sequence.
-features:
-    - path: (mandatory, string): Path to a features.pkl
-      keep_msa: (int, default -1): Indicates the number of sequences to select from the MSA. If -1, it will use all the sequences. For any other value, it will use the X sequences that have more coverage with the query sequence.
-      keep_templates: (int, default -1): Indicates the number of templates to select from the features.pkl. If -1, it will use all the templates. For any other value, it will use the X templates that have more coverage with the query sequence.
-      msa_mask: (range, default None): Delete specific residues from the MSA.
-      sequence: (str, default None): Replace all the template sequences with the sequence in the specified path.
-      numbering_query: (List[int], default 1): Positions where the features will be placed. By default, it starts at position 1, but multiple positions can be specified (e.g., 1, 50, 100) and split the features.pkl using the numbering_features keyword.
-      numbering_features: (List[ranges], default None): The specified ranges will be placed in the positions specified by numbering_query.
-      positions: (range, default None): Insert the features.pkl in the query sequence. The position refers to the sequence position, whereas in numbering_query and numbering_features, it refers to the residue positions in the entire query sequence.
-      mutations: List of mutations.
-        Format: 'aminoacid': residues. Three-letter code of the amino acid, and the residues that will be mutated to this amino acid.
-        Example: 'ALA': 10, 20
-
-Templates can be added to the templates section inside the features.pkl, as well as their sequences to the MSA. It is possible to add as many templates as the user requires.
+Customize PDB templates for insertion into features.pkl.
 templates:
-    - pdb (str): Path to a PDB file or an existing PDB ID.
-      add_to_msa (bool, default False): Add the template's sequence to the MSA.
-      add_to_templates (bool, default True): Add the template to the features.pkl.
-      generate_multimer (bool, default True): Generate the multimer from the PDB.
-      strict (bool, default True): Check the E-values of the alignment. If activated, it will discard the template if the alignment E-values are below threshold.
-      aligned (bool, default False): If the template has already been aligned with the sequence, activate this to skip the alignment
-      legacy (bool, default False): If the template has been prepared (aligned and in one chain) to match the whole query sequence.
-      reference (str, default None): Reference to be used in order to insert it into the query sequence.
+    - pdb (string, mandatory) Path to a PDB file or existing PDB ID.
+      add_to_msa (boolean, default: false) Add the template’s sequence to the MSA.
+      add_to_templates (boolean, default: true) Include the template in features.pkl.
+      generate_multimer (boolean, default: true) Generate a multimeric assembly from the PDB.
+      strict (boolean, default: true) Discard templates with E-values below threshold.
+      aligned (boolean, default: false) Skip alignment if already aligned.
+      legacy (boolean, default: false) Use pre-aligned, single-chain template for the full query.
+      reference (string, default: null) Reference to be used in order to insert it into the query sequence.
+      modifications (List) Chain-level edits before/after alignment. Each modification can include:
+         - chain (string, mandatory) chain ID or All.
+           position (integer, default: null) Insertion position in query (if single chain).
+           maintain_residues (list of integers, default: null) Selected residues will be kept, and the rest will be deleted.
+           delete_residues (list of integers, default: null) Selected residues will be deleted, the rest will be kept.
+           when (string, default: after_alignment) before_alignment or after_alignment.
+           mutations (List) Modifications in the residues:
+              - numbering_residues (list of integers, mandatory) Residue positions where the mutations will be applied.
+                mutate_with (string, mandatory) The amino acid to mutate to, specified as a three‑letter code or as a FASTA file path.
 
-      modifications: List of modifications for the template. Modify a chain/chains in a PDB file with various options.
-         - chain (str, default None): Select different chains, a single chain or use the keyword All in order to modify all the chains in the PDB.
-           position (int, default None): Insert the chain (mandatory a single chain) into a specific sequence in the query sequence.
-           maintain_residues (List[int], default None): The selected residues will be kept, and the rest will be discarded.
-           delete_residues (List[int], default None): The selected residues will be discarded, the rest will be kept.
-           when (str, default 'after_alignment'): When the modification will be applied, 'before_alignment' or 'after_alignment'
-           mutations: List of mutations.
-              - numbering_residues (List[int], default None): Residues where the mutations will be applied
-                mutate_with (str, default None): The amino acid to mutate with, specified as a three-letter code or a FASTA file path.
+Merge or slice existing features.pkl files from other AlphaFold2 runs into your run.
+features:
+    - path (string, mandatory) Path to an existing features.pkl file.
+      keep_msa (integer, default: -1) -1 = all sequences; otherwise top X by coverage.
+      keep_templates (integer, default: -1) -1 = all templates; otherwise top X by coverage.
+      msa_mask (range, default: null) Remove this residue range from the MSA.
+      sequence (string, default: null) FASTA file to replace all template sequences.
+      numbering_query (list of ints, default: null) Insertion positions in the query sequence.
+      numbering_features (list of ranges, default: null) Map feature blocks into the positions given by numbering_query.
+      positions (range, default: null) Inserts the features.pkl into the query sequence. The position refers to the sequence index, whereas in numbering_query and numbering_features, it refers to the residue positions in the entire query sequence.
+      mutations (map) Map three-letter amino acid codes to residue indices. Example:
+        - 'ALA': 10, 20
+
+Append existing FASTA/PDB files from a library into your run.
+append_library:
+    - path: (string, mandatory) Path to a directory, PDB, or FASTA file.
+      add_to_msa (boolean, default: true) Append sequences to the MSA.
+      add_to_templates (boolean, default: false) Append PDBs to the templates.
+      numbering_query (list of ints, default: null) Insertion positions in the query.
+      numbering_library (sequence range, default: null) Residue range from the library entry to insert.
