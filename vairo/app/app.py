@@ -272,9 +272,13 @@ def form_vairo():
                     os.makedirs(lib_path)
                     if library_info.get('input') == 'folder':
                         lib_folder = files_dict['library'][library_id].get('folder')
-                        for file in lib_folder:
-                            filename = secure_filename(file.filename)
-                            file.save(os.path.join(lib_path, filename))
+                        if isinstance(lib_folder, list):
+                            for file in lib_folder:
+                                filename = secure_filename(file.filename)
+                                file.save(os.path.join(lib_path, filename))
+                        else:
+                            filename = secure_filename(lib_folder.filename)
+                            lib_folder.save(os.path.join(lib_path, filename))
                     else:
                         file = files_dict['library'][library_id].get('fasta')
                         filename = secure_filename(file.filename)
