@@ -416,7 +416,7 @@ def postprocess_run(input_path: str, suffix: str, num_ns: int):
         f"gmx gyrate -s {return_path('md.tpr')} -f cluster_{suffix}.xtc "
         f"-o gyrate_{suffix}.xvg", stdin="1\n"
     )
-    if num_ns == 1:
+    if int(num_ns) == 1:
         gmx_run(
             f"gmx trjconv -f cluster_{suffix}.xtc -b 0 -e 100000 "
             f"-o traj_1000_{suffix}.xtc -skip 10"
@@ -426,7 +426,7 @@ def postprocess_run(input_path: str, suffix: str, num_ns: int):
             f"-o frames_{suffix}.pdb -skip 5",
             stdin="1\n",
         )
-    elif num_ns == 1000:
+    elif int(num_ns) == 1000:
         gmx_run(
             f"gmx trjconv -f cluster_{suffix}.xtc -b 0 -e 1000000 "
             f"-o traj_reduced_{suffix}.xtc -skip 50"
