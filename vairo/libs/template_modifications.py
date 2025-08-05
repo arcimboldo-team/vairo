@@ -114,7 +114,7 @@ class TemplateModifications:
     def apply_mapping(self, mapping: Dict, chain: str = 'all'):
         # Change residues numbering by the ones in mapping
         for modification in self.modifications_list:
-            if (chain in [modification.chain, 'all'] or modification.chain == 'all'):
+            if chain in [modification.chain, 'all'] or modification.chain == 'all':
                 modification.apply_mapping(mapping)
 
     def check_position(self, chain: str = 'all'):

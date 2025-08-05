@@ -22,10 +22,9 @@ class Template:
         self.aligned: bool
         self.legacy: bool
         self.strict: bool
-        self.template_features: Optional[features.Features] = None
+        self.template_features: Optional[dict] = None
         self.results_path_position: List = [None] * num_of_copies
         self.template_chains_struct: template_chains.TemplateChainsList = template_chains.TemplateChainsList()
-        self.alignment_database: List[structures.AlignmentDatabase] = []
         self.selected_positions: bool = False
 
 
