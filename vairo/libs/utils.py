@@ -82,7 +82,7 @@ def get_file_name(path: str) -> str:
 
 def get_readme() -> str:
     # Get README.md file
-    return os.path.join(os.path.dirname(get_parent_folder(str(Path(__file__)))), 'README.md')
+    return os.path.join(os.path.dirname(get_parent_folder(str(Path(__file__)))), '..', 'README.md')
 
 
 def get_main_path() -> Path:
