@@ -1,19 +1,20 @@
-# VAIRO - Guiding structural model predictions with experimental information
+# VAIRO
+Guiding structural model predictions with experimental information
+
+-------------------
 
 ## Prerequisites
-| Requirement    |
-|----------------|
-| **AlphaFold2** |
-| **HH-suite**   |
-| **CCP4 suite** |
-| **ALEPH**      |
-| **maxit**      |
+* AlphaFold2
+* HH-suite
+* CCP4 suite
+* ALEPH
+* MAXIT
 
 -------------------
 
 ## Installation
 
-In order to install VAIRO and its interface VAIROGUI you need to run the installer script located at tools/install_vairo.sh. This script handles conda setup and installs all VAIRO dependencies within a dedicated environment.
+In order to install VAIRO and its interface VAIROGUI, you need to run the installer script located in tools/install_vairo.sh. This script handles conda setup and installs all VAIRO dependencies within a dedicated environment.
 
 Execute the installer script:
 ```
@@ -24,7 +25,7 @@ The script will:
 1. Check for an existing conda installation and install it if missing.
 2. Create and activate a conda environment for VAIRO.
 3. Install all Python and system dependencies required by VAIRO.
-4. Verify that system libraries like CUDA drivers or MaxIT are already present.
+4. Verify that system libraries like CUDA drivers or MAXIT are already present.
 
 -------------------
 
