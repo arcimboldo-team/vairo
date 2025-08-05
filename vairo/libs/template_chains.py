@@ -18,7 +18,7 @@ class TemplateChain:
         self.sequence = sequence
         self.modifications_list = modifications_list
         self.path_before_changes = None
-        self.alignment = structures.Alignment
+        self.alignment: structures.Alignment = None
         self.deleted_residues = []
         self.changed_residues = []
         self.fasta_residues = []
