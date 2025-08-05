@@ -795,7 +795,7 @@ def extract_features_info(pkl_in_path: str, regions_list: List):
                                                                                 template_seq.decode(),
                                                                                 regions_list)
         global_identity = bioutils.sequence_identity(feature.query_sequence, template_seq.decode())
-        coverage = (sum(1 for res in msa_seq if res != '-') / len(msa_seq) * 100)
+        coverage = (sum(1 for res in template_seq.decode() if res != '-') / len(template_seq.decode()) * 100)
         pdb_name = feature.template_features['template_domain_names'][i]
         with tempfile.NamedTemporaryFile() as temp_file:
             write_template_in_features(template_features=feature.template_features, template_code=pdb_name,
