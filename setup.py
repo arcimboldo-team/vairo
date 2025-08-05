@@ -132,8 +132,8 @@ setup(
         'console_scripts': [
             'VAIRO=vairo.run_vairo:main',
             'vairo=vairo.run_vairo:main',
-            'VAIRO-GUI=vairo.app.app:main',
-            'vairo-gui=vairo.app.app:main'
+            'VAIROGUI=vairo.app.app:main',
+            'vairogui=vairo.app.app:main'
         ],
     },
     # This field lists other packages that your project depends on to run.

@@ -86,8 +86,8 @@ wget -q -P "${path}"/alphafold/common/ https://git.scicore.unibas.ch/schwede/ope
 
 echo "******"
 echo "VAIRO HAS BEEN SUCCESSFULLY INSTALLED"
-echo "A conda environment with the name ""$env_name"" has been created. To run VAIRO, you must first activate the new environment (conda activate ""$env_name"") and type VAIRO-GUI. This will run the program and show the different options for creating a job."
+echo "A conda environment with the name ""$env_name"" has been created. To run VAIRO, you must first activate the new environment (conda activate ""$env_name"") and type VAIROGUI. This will run the program and show the different options for creating a job."
 echo "Before running VAIRO, please ensure that the libraries of AlphaFold2 are installed. If they have not been installed, please download them using the following script.: https://github.com/deepmind/alphafold/blob/v2.2.4/scripts/download_all_data.sh"
 echo "Run the following commands:"
 echo "conda activate ""$env_name"""
-echo "VAIRO-GUI"
+echo "VAIROGUI"
