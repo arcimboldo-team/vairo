@@ -433,28 +433,35 @@ class Features:
     def replace_sequence_template(self, sequence_in: str):
         # Replace the sequence for the new sequence
         if sequence_in:
+            seq_bytes = sequence_in.encode()
+            seq_len = len(sequence_in)
             for i in range(self.get_templates_length()):
-                self.template_features['template_sequence'][i] = sequence_in.encode()
-                for index, atoms_mask in enumerate(self.template_features['template_all_atom_masks'][i][0][:]):
+                target = self.template_features['template_sequence'][i]
+                self.template_features['template_sequence'][i] = (
+                        seq_bytes + target[seq_len:]
+                )
+                for index in range(seq_len):
                     aa_container = [0] * 22
                     aa_container[residue_constants.HHBLITS_AA_TO_ID[sequence_in[index]]] = 1
-                    self.template_features['template_aatype'][i][0][index] = aa_container
+                    self.template_features['template_aatype'][i][index] = aa_container
+
 
     def mutate_residues(self, mutation_dict: dict):
         if mutation_dict:
             for i in range(self.get_msa_length()):
                 for res, numbering in mutation_dict.items():
                     for value in numbering:
-                        self.msa_features['msa'][i][value - 1] = residue_constants.HHBLITS_AA_TO_ID[res]
+                        self.msa_features['msa'][i, value - 1] = residue_constants.HHBLITS_AA_TO_ID[res]
+
             for i in range(self.get_templates_length()):
-                sequence_in = self.template_features['template_sequence'][i].decode()
+                sequence_in = list(self.template_features['template_sequence'][i].decode())
                 for res, numbering in mutation_dict.items():
                     for value in numbering:
-                        sequence_in[value - 1] = residue_constants.HHBLITS_AA_TO_ID[res]
+                        sequence_in[value - 1] = res
                         aa_container = [0] * 22
                         aa_container[residue_constants.HHBLITS_AA_TO_ID[res]] = 1
-                        self.template_features['template_aatype'][i][0][value - 1] = aa_container
-                self.template_features['template_sequence'][i] = sequence_in.encode()
+                        self.template_features['template_aatype'][i][value - 1] = aa_container
+                self.template_features['template_sequence'][i] = "".join(sequence_in).encode()
 
 
 def create_empty_msa_list(length: int) -> Dict:
