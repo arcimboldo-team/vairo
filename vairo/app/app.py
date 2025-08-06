@@ -248,7 +248,7 @@ def form_vairo():
                     regionfeat = feat_info.get('regionfeat')
                     regionquery = feat_info.get('regionquery')
                     msa_mask = feat_info.get('mask')
-                    sequence = files_dict['feature'][feat_id].get('sequence')
+                    sequence = files_dict['feature'][feat_id].get('fasta')
                     if pos is not None:
                         config_str += f"      positions: {pos}\n"
                     if regionfeat is not None:
@@ -261,7 +261,7 @@ def form_vairo():
                         filename = secure_filename(sequence.filename)
                         feat_fasta_path = os.path.join(files_path, f'feat_fasta_{feat_id}_{filename}')
                         sequence.save(feat_fasta_path)
-                        config_str += f"  sequence: {feat_fasta_path}\n"
+                        config_str += f"      sequence: {feat_fasta_path}\n"
 
             if 'library' in param_dict:
                 config_str += 'append_library:\n'
