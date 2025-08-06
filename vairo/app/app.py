@@ -231,7 +231,7 @@ def form_vairo():
                                         fasta_path = os.path.join(files_path, f'amino_{template_id}_{modify_id}_{amino_id}.fasta')
                                         with open(fasta_path, 'w') as f_out:
                                             f_out.write(f'>seq\n{amino_info.get("fasta")}\n')
-                                        config_str += f"          mutate_with: {fasta_path}\n"
+                                        config_str += f"              mutate_with: {fasta_path}\n"
 
 
             if 'feature' in param_dict:
