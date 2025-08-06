@@ -399,15 +399,23 @@ async function updatePlot() {
 
 
             for (const [key, values] of Object.entries(librariesDict)) {
-                const positionLibrary =  document.getElementById(`library-query-${key}`).value;
+                const positionLibrary =  document.getElementById(`library-lib-${key}`).value;
+                const positionQuery =  document.getElementById(`library-query-${key}`).value;
+                let seqArray = Array(numberResidues).fill(0);
                 let positionLibraryArray = [];
-                if(positionLibrary !== ""){
-                    positionLibraryArray = extendedNumbers(positionLibrary).filter(num => num <= numberResidues-1);
+                if(positionLibrary.trim() !== "" && positionQuery.trim() !== ""){
+                    positionLibrarySplit = positionLibrary.split(',');
+                    const queryPositions = extendedNumbers(positionQuery);
+                    queryPositions.forEach((start, i) => {
+                        const rangeLength = extendedNumbers(positionLibrarySplit[i]).length;
+                        for (let j = 0; j < rangeLength; j++) {
+                            const pos = start + j;
+                            positionLibraryArray.push(pos);
+                        }
+                    });
                 } else {
                     positionLibraryArray = extendedNumbers(`1-${numberResidues-1}`);
                 }
-                const seqArray = Array(numberResidues).fill(0);
-
                 positionLibraryArray.forEach(index => seqArray[index-1] = 1);
                 arrayTemplates.push({
                     'name': `lib-${key}`,

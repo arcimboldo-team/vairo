@@ -24,6 +24,7 @@ class LibraryTable extends HTMLElement {
       ['addMsa', 'change', 'handleAddMsaChange'],
       ['addTemplates', 'change', 'handleAddTemplatesChange'],
       ['queryPositions', 'change', 'handleQueryChange'],
+      ['libraryPositions', 'change', 'handleQueryChange'],
     ];
   }
 
@@ -49,6 +50,7 @@ class LibraryTable extends HTMLElement {
       templatesDiv: this.querySelector(`#library-addtemplates-div-${id}`),
       libPositions: this.querySelector(`#library-lib-${id}`),
       queryPositions: this.querySelector(`#library-query-${id}`),
+      libraryPositions: this.querySelector(`#library-lib-${id}`),
       folderSection: this.querySelector(`#library-folder-section-${id}`),
       fastaSection: this.querySelector(`#library-fasta-section-${id}`),
     };
