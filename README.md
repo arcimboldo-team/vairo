@@ -18,7 +18,7 @@ In order to install VAIRO and its interface VAIROGUI, you need to run the instal
 
 Execute the installer script:
 ```
-bash tools/install_vairo.sh
+bash vairo/tools/install_vairo.sh
 ```
 
 The script will:
