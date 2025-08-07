@@ -57,7 +57,7 @@ setup(
     # This field corresponds to the "Description" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#description-optional
     long_description=long_description,  # Optional
-
+    long_description_content_type="text/markdown",
     # This should be a valid link to your project's main homepage.
 
     # This field corresponds to the "Home-Page" metadata field:
@@ -87,7 +87,6 @@ setup(
         'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
-        'Intended Audience :: Science/Research ',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
 
         # Pick your license as you wish
@@ -126,9 +125,9 @@ setup(
         "relative_to": __file__,  # locate pyproject.toml
     },
     setup_requires=["setuptools-scm"],
-    packages=find_packages(),          # now includes both 'libs' and 'vairo'
+    packages=find_packages(),
     include_package_data=True,
-    entry_points={  # Optional
+    entry_points={
         'console_scripts': [
             'VAIRO=vairo.run_vairo:main',
             'vairo=vairo.run_vairo:main',
@@ -136,6 +135,7 @@ setup(
             'vairogui=vairo.app.app:main'
         ],
     },
+    license_files = ('LICENSE'),
     # This field lists other packages that your project depends on to run.
     # Any package you put here will be installed by pip when your project is
     # installed, so they must be valid existing projects.
