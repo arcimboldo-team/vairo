@@ -1085,10 +1085,9 @@ def generate_multimer_chains(pdb_path: str, template_dict: Dict) -> Dict:
 def remove_hetatm(pdb_in_path: str, pdb_out_path: str):
     # Transform MSE HETATM to MSA ATOM
     # Remove HETATM from pdb
-
     class NonHetSelect(Select):
         def accept_residue(self, residue):
-            return 1 if residue.id[0] == " " else 0
+            return 1 if residue.id[0] == " " and residue.resname in residue_constants.restype_3to1.keys() else 0
 
     structure = get_structure(pdb_path=pdb_in_path)
     for res in structure[0].get_residues():
