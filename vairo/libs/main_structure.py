@@ -132,8 +132,11 @@ class MainStructure:
                 target_path = self.experimental_pdbs[-1]
                 with tempfile.TemporaryDirectory() as temp_dir:
                     try:
-                        bioutils.generate_multimer_from_pdb(target_path, temp_dir)
-                        shutil.copy2(temp_dir, target_path)
+                        shutil.copy2(target_path, temp_dir)
+                        file_name = os.path.basename(target_path)
+                        temp_file_path = os.path.join(temp_dir, file_name)
+                        bioutils.generate_multimer_from_pdb(temp_file_path, temp_file_path)
+                        shutil.copy2(temp_file_path, target_path)
                     except Exception as e:
                         logging.info(
                             f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
