@@ -126,8 +126,7 @@ class MainStructure:
         if experimental_string:
             experimental_list = experimental_string.replace(' ', '').split(',')
             for pdb in experimental_list:
-                pdb_path = bioutils.check_pdb(pdb,
-                                              f'{os.path.join(self.experimental_dir, utils.get_file_name(pdb))}.pdb')
+                pdb_path = bioutils.check_pdb(pdb, f'{os.path.join(self.experimental_dir, utils.get_file_name(pdb))}.pdb')
                 self.experimental_pdbs.append(os.path.join(self.experimental_dir, os.path.basename(pdb_path)))
                 target_path = self.experimental_pdbs[-1]
                 with tempfile.TemporaryDirectory() as temp_dir:

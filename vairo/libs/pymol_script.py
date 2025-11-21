@@ -52,15 +52,13 @@ cmd.set("valence", 'off')
 """
     i = 1
     if a_air.output.ranked_list:
-        pdb_list = [a_air.output.ranked_list[0]]
-        pdb_list.extend([experimental for experimental in a_air.output.experimental_list if
-                         experimental.name == a_air.output.best_experimental])
-        pdb_list.extend([ranked for ranked in a_air.output.ranked_list[1:] if ranked.filtered])
-        pdb_list.extend([experimental for experimental in a_air.output.experimental_list if
-                         experimental.name != a_air.output.best_experimental])
-        pdb_list.extend(a_air.output.templates_list)
-
-        for pdb_in in pdb_list:
+        pdb_list = set()
+        pdb_list.add(a_air.output.ranked_list[0])
+        pdb_list.update(experimental for experimental in a_air.output.experimental_list if experimental.name == a_air.output.best_experimental)
+        pdb_list.update(ranked for ranked in a_air.output.ranked_list[1:] if ranked.filtered)
+        pdb_list.update(experimental for experimental in a_air.output.experimental_list if experimental.name != a_air.output.best_experimental)
+        pdb_list.update(template for template in a_air.output.templates_list)
+        for pdb_in in list(pdb_list):
             script += f'cmd.load("{pdb_in.split_path}", "{pdb_in.name}")\n'
             if pdb_in in a_air.output.ranked_list:
                 script += (f'cmd.spectrum(expression="b", palette="rainbow_rev", selection="{pdb_in.name}", minimum=0, '

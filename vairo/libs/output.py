@@ -178,6 +178,7 @@ class OutputStructure:
 
         # Superpose the experimental pdb with all the rankeds and templates
         logging.error('Superposing experimental pdbs with predictions and templates')
+        self.experimental_list = []
         for experimental in vairo_struct.experimental_pdbs:
             self.experimental_list.append(structures.ExperimentalPdb(path=experimental))
             aux_dict = {}
