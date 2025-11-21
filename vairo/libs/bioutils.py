@@ -299,7 +299,8 @@ def erase_pisa(name: str) -> str:
 
 
 def read_remark_350(pdb_path: str) -> Tuple[List[str], List[List[List[Any]]]]:
-    pdb_text = open(pdb_path, 'r').read()
+    with open(pdb_path, 'r') as f:
+        pdb_text = f.read()
     match_biomolecules = [m.start() for m in
                           re.finditer(r'REMARK 350 BIOMOLECULE:', pdb_text)]  # to know how many biomolecules there are.
     if len(match_biomolecules) == 0:
