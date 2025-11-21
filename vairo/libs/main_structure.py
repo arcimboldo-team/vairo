@@ -3,6 +3,7 @@ import itertools
 import logging
 import os
 import shutil
+import tempfile
 from typing import List, Dict, Union
 from libs import alphafold_classes, bioutils, output, template, utils, features, sequence, structures, plots, \
     template_modifications
@@ -128,11 +129,14 @@ class MainStructure:
                 pdb_path = bioutils.check_pdb(pdb,
                                               f'{os.path.join(self.experimental_dir, utils.get_file_name(pdb))}.pdb')
                 self.experimental_pdbs.append(os.path.join(self.experimental_dir, os.path.basename(pdb_path)))
-                try:
-                    bioutils.generate_multimer_from_pdb(self.experimental_pdbs[-1], self.experimental_pdbs[-1])
-                except Exception as e:
-                    logging.info(
-                        f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
+                target_path = self.experimental_pdbs[-1]
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    try:
+                        bioutils.generate_multimer_from_pdb(target_path, temp_dir)
+                        shutil.copy2(temp_dir, target_path)
+                    except Exception as e:
+                        logging.info(
+                            f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
         sequence_prediced_list = []

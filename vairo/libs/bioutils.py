@@ -1022,7 +1022,6 @@ def split_pdb_in_chains(pdb_path: str, chain: str = None, output_dir: str = None
 
 
 def generate_multimer_from_pdb(pdb_in_path: str, pdb_out_path: str):
-    # Given a pdb_in, create the multimer and save it in pdb_out
     try:
         shutil.copy2(pdb_in_path, pdb_out_path)
     except:
