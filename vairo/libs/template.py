@@ -123,6 +123,15 @@ class Template:
                 bioutils.change_chain(pdb_in_path=pdb_path,
                                       pdb_out_path=new_pdb_path,
                                       offset=offset, chain='A')
+                if self.aligned and not self.legacy:
+                    current_seq_length = sequence_assembled.get_sequence_length(i)
+                    inf_cut = offset + current_seq_length
+                    delete_residues = template_modifications.TemplateModifications()
+                    delete_residues.append_modification(
+                        chains=['A'],
+                        delete_residues=[*range(inf_cut + 1, 10000 + 1, 1)]
+                    )
+                    delete_residues.modify_template(pdb_in_path=new_pdb_path, pdb_out_path=new_pdb_path, type_modify='delete')
                 merge_list.append(new_pdb_path)
         bioutils.merge_pdbs(list_of_paths_of_pdbs_to_merge=utils.sort_by_digit(merge_list),
                             merged_pdb_path=self.template_path)
@@ -166,8 +175,7 @@ class Template:
                     modifications_list = template_modifications.TemplateModifications(self.modifications_struct.get_modifications_by_chain(chain=chain))
                     for sequence_in in sequence_assembled.sequence_list:
                         for new_path in path_list:
-                            self.template_chains_struct.new_chain_sequence(path=new_path, sequence=sequence_in,
-                                                                           modifications_list=modifications_list)
+                            self.template_chains_struct.new_chain_sequence(path=new_path, sequence=sequence_in, modifications_list=modifications_list)
                 else:
                     modifications_list = self.modifications_struct.get_modifications_position_by_chain(chain=chain)
                     for i, (modification, chain_path) in enumerate(zip(modifications_list[:len(path_list)], path_list)):
@@ -293,8 +301,9 @@ class Template:
                 seq = self.template_chains_struct.get_old_sequence(path)
             else:
                 seq = ''
-            while len(seq) < sequence_list[i].length:
-                seq += '-'
+            target_length = sequence_list[i].length
+            seq = seq[:target_length]
+            seq = seq.ljust(target_length, '-')
             if i != len(sequence_list) - 1:
                 seq += '-' * glycines
             old_sequence.append(seq)
@@ -327,6 +336,7 @@ class Template:
         # Return the chain used in the result path position. If there is any, if not, return None
         return [utils.get_chain_and_number(path)[0] if path is not None else None for path
                 in self.results_path_position]
+
 
     def __repr__(self):
         # Print class

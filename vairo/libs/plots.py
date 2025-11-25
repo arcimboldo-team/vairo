@@ -269,7 +269,6 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
                         text += f' Aligned={aligned}({total_residues}) Evalue={evalue} Identity={identity}'
 
             legend_elements.append(text)
-
             if features_search is not None:
                 aligned_sequence, _ = bioutils.compare_sequences(a_air.sequence_assembled.sequence_mutated_assembled,
                                                                  features_search)
