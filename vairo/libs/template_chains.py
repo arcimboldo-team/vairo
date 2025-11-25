@@ -89,9 +89,7 @@ class TemplateChainsList:
         chain1, code1 = utils.get_chain_and_number(pdb_path)
         pdb_dirname = os.path.dirname(pdb_path)
         for template_chain in self.template_chains_list:
-            # if there is an alignment, we check the directory too, because it can be from different alignments
-            if pdb_dirname == os.path.dirname(
-                    template_chain.path) and chain1 == template_chain.chain and code1 == template_chain.code:
+            if pdb_dirname == os.path.dirname(template_chain.path) and chain1 == template_chain.chain and code1 == template_chain.code:
                 return template_chain
         return None
 
