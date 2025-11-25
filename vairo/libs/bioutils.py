@@ -533,11 +533,12 @@ def aleph_annotate(output_path: str, pdb_path: str) -> Union[None, Dict]:
 
 def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, output_dir: str) -> List:
     templates_cluster2 = []
-    templates_cluster = hinges(pdbs=pdbs,
-                               binaries_path=binaries_path,
-                               output_dir=os.path.join(output_dir, 'hinges'))
+    #templates_cluster = hinges(pdbs=pdbs,
+    #                           binaries_path=binaries_path,
+    #                           output_dir=os.path.join(output_dir, 'hinges'))
 
-    pdbs_accepted_list = [template_in for template_list in templates_cluster for template_in in template_list]
+    #pdbs_accepted_list = [template_in for template_list in templates_cluster for template_in in template_list]
+    pdbs_accepted_list = pdbs
     num_templates = len(pdbs_accepted_list)
 
 
@@ -554,7 +555,7 @@ def cc_and_hinges_analysis(pdbs: List[structures.Pdb], binaries_path: structures
     if templates_cluster2:
         return templates_cluster2, analysis_dict2
     else:
-        return templates_cluster, {}
+        return [pdbs_accepted_list], {}
 
 
 def hinges(pdbs: List[structures.Pdb], binaries_path: structures.BinariesPath, output_dir: str) -> List:
