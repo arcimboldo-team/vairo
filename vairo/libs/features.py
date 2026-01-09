@@ -221,6 +221,7 @@ class Features:
                         template_name = new_name
                         break
                     j += 1
+
             template_dict['template_all_atom_positions'][i] = new_templates['template_all_atom_positions'][i]
             template_dict['template_all_atom_masks'][i] = new_templates['template_all_atom_masks'][i]
             template_dict['template_aatype'][i] = new_templates['template_aatype'][i]
@@ -259,7 +260,7 @@ class Features:
                 (ext_len, residue_constants.atom_type_num, 3))
             template_dict['template_all_atom_masks'][i] = np.zeros(
                 (ext_len, residue_constants.atom_type_num))
-            template_dict['template_aatype'][i] = residue_constants.sequence_to_onehot('A' * ext_len,
+            template_dict['template_aatype'][i] = residue_constants.sequence_to_onehot('-' * ext_len,
                                                                                        residue_constants.HHBLITS_AA_TO_ID)
             template_dict['template_domain_names'][i] = self.template_features['template_domain_names'][i]
             template_dict['template_sum_probs'][i] = self.template_features['template_sum_probs'][i]
@@ -279,6 +280,7 @@ class Features:
             new_features.append_new_template_features(template_dict)
 
         return new_features
+
 
     def slice_features(self, ini: int, end: int) -> List:
         new_features = Features(query_sequence=self.query_sequence[ini:end])
@@ -307,6 +309,7 @@ class Features:
         if len(template_dict['template_all_atom_positions']) > 0:
             new_features.append_new_template_features(template_dict)
         return new_features
+
 
     def slicing_features(self, chunk_list: List) -> List:
         # This function will generate as many features
@@ -355,9 +358,12 @@ class Features:
         self.delete_linkers_regions(sequence_assembled)
 
 
-    def delete_linkers_regions(self, sequence_assembled):
+    def delete_linkers_regions(self, sequence_assembled, which='msa'):
         delete_positions = sequence_assembled.get_list_linker_numbering()
-        self.delete_residues_msa(delete_positions=delete_positions, starting=1)
+        if which == 'msa':
+            self.delete_residues_msa(delete_positions=delete_positions, starting=1)
+        else:
+            self.delete_residues_templates(delete_positions=delete_positions, starting=0)
 
 
     def delete_by_id(self, id_list: List[str]):
@@ -420,7 +426,6 @@ class Features:
             self.extra_info['msa_coverage'] = [0] * len(self.query_sequence)
 
     def delete_residues_msa(self, delete_positions: List[int], starting: int = 0):
-        # Delete the specifics residues in the msa.
         if delete_positions:
             for i in range(starting, self.get_msa_length()):
                 for delete in delete_positions:
@@ -429,6 +434,27 @@ class Features:
                         self.msa_features['deletion_matrix_int'][i][delete - 1] = 0
                     else:
                         break
+
+    def delete_residues_templates(self, delete_positions: List[int], starting: int = 0):
+        if delete_positions:
+            constant = residue_constants.sequence_to_onehot('-', residue_constants.HHBLITS_AA_TO_ID)
+            for i in range(starting, self.get_templates_length()):
+                seq_str = self.template_features['template_sequence'][i].decode('utf-8')
+                seq_list = list(seq_str)
+                seq_len = len(seq_list)
+                modified = False
+                for delete in delete_positions:
+                    idx = delete - 1
+                    if delete <= seq_len:
+                        modified = True
+                        self.template_features['template_all_atom_positions'][i][idx] = np.zeros((residue_constants.atom_type_num, 3))
+                        self.template_features['template_all_atom_masks'][i][idx] = np.zeros(residue_constants.atom_type_num)
+                        self.template_features['template_aatype'][i][idx] = constant
+                        seq_list[idx] = '-'
+                    else:
+                        break
+                if modified:
+                    self.template_features['template_sequence'][i] = "".join(seq_list).encode('utf-8')
 
     def replace_sequence_template(self, sequence_in: str):
         # Replace the sequence for the new sequence
@@ -523,7 +549,7 @@ def empty_msa_features(query_sequence):
 
 def empty_template_features(query_sequence):
     ln = (len(query_sequence) if isinstance(query_sequence, str) else sum(len(s) for s in query_sequence))
-    output_templates_sequence = "A" * ln
+    output_templates_sequence = "-" * ln
 
     templates_all_atom_positions = np.zeros((ln, residue_constants.atom_type_num, 3))
     templates_all_atom_masks = np.zeros((ln, residue_constants.atom_type_num))
