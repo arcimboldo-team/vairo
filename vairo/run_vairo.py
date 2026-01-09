@@ -148,6 +148,7 @@ def main():
                 num_templates = 0
                 lib_feat = lib_feat.cut_expand_features(query_sequence=a_air.sequence_assembled.sequence_assembled,
                                                         modifications_list=modifications_list)
+                lib_feat.delete_linkers_regions(sequence_assembled=a_air.sequence_assembled, which='templates')
                 if library.add_to_msa:
                     num_msa = a_air.feature.set_msa_features(new_msa=lib_feat.msa_features)
                 if library.add_to_templates:
