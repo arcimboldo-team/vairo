@@ -97,7 +97,7 @@ def run_lsqkab_superposition(fixed_pdb: str, moving_pdb: str, output_pdb: str = 
         if rmsd is not None and len_fixed > 0 and len_moving > 0:
             r0 = 3.0
             term_rmsd = 1 + (rmsd / r0) ** 2
-            qscore = (nalign ** 2) / (term_rmsd * len_fixed * len_moving)
+            qscore = round((nalign ** 2) / (term_rmsd * len_fixed * len_moving), 2)
     return rmsd, nalign, qscore
 
 def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ranges: list,

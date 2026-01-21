@@ -3,24 +3,13 @@ import os
 import shutil
 import sys
 from itertools import combinations
-from typing import Dict, List
+from typing import List, Dict, Tuple, Any
 import pandas as pd
 from ALEPH.aleph.core import ALEPH
 from libs import bioutils, utils, sequence, structures, plots
 
 PERCENTAGE_FILTER = 0.8
 QSCORE_MINIMUM = 0.3
-
-
-def get_best_ranked_by_template(cluster_list: List, ranked_list: List) -> Dict:
-    return_dict = {}
-    for i, cluster in enumerate(cluster_list):
-        ranked = next((ranked.path for ranked in ranked_list if f'cluster_{i}' in ranked.name), None)
-        if ranked is None:
-            ranked = ranked_list[0].path
-        return_dict.update(dict.fromkeys(cluster, ranked))
-    return return_dict
-
 
 class OutputStructure:
 
@@ -358,6 +347,10 @@ class OutputStructure:
                 bioutils.run_lsqkab_superposition(fixed_pdb=self.ranked_list[0].path,
                                                   moving_pdb=template.path,
                                                   output_pdb=template.split_path)
+
+
+
+
             bioutils.split_chains_assembly(pdb_in_path=template.split_path,
                                            pdb_out_path=template.split_path,
                                            sequence_assembled=sequence_assembled)
@@ -497,3 +490,13 @@ class OutputStructure:
                 f_in.write(df.to_markdown())
 
             f_in.write('\n\n')
+
+
+def get_best_ranked_by_template(cluster_list: List, ranked_list: List) -> Dict:
+    return_dict = {}
+    for i, cluster in enumerate(cluster_list):
+        ranked = next((ranked.path for ranked in ranked_list if f'cluster_{i}' in ranked.name), None)
+        if ranked is None:
+            ranked = ranked_list[0].path
+        return_dict.update(dict.fromkeys(cluster, ranked))
+    return return_dict
