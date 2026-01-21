@@ -596,10 +596,8 @@ class MainStructure:
                                              f'{utils.get_file_name(ranked.path)}_{num}-{i}_deltas.dat')
                     bioutils.run_lsqkab(pdb_inf_path=inf_path,
                                         pdb_inm_path=ranked.path,
-                                        fit_ini=inf_ini,
-                                        fit_end=inf_end,
-                                        match_ini=inm_ini,
-                                        match_end=inm_end,
+                                        fit_ranges=[(inf_ini, inf_end)],
+                                        match_ranges=[(inm_ini, inm_end)],
                                         pdb_out=pdb_out,
                                         delta_out=delta_out
                                         )
