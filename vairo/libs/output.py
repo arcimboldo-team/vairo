@@ -15,9 +15,9 @@ QSCORE_MINIMUM = 0.3
 def get_best_ranked_by_template(cluster_list: List, ranked_list: List) -> Dict:
     return_dict = {}
     for i, cluster in enumerate(cluster_list):
-        ranked = next((ranked.split_path for ranked in ranked_list if f'cluster_{i}' in ranked.name), None)
+        ranked = next((ranked.path for ranked in ranked_list if f'cluster_{i}' in ranked.name), None)
         if ranked is None:
-            ranked = ranked_list[0].split_path
+            ranked = ranked_list[0].path
         return_dict.update(dict.fromkeys(cluster, ranked))
     return return_dict
 
@@ -339,8 +339,7 @@ class OutputStructure:
             for i, ranked in enumerate(self.ranked_list):
                 for template in self.templates_list:
                     total_residues = bioutils.get_number_residues(template.split_path)
-                    rmsd, aligned_residues, quality_q = bioutils.gesamt_pdbs(pdb_reference=ranked.split_path,
-                                                                             pdb_superposed=template.split_path)
+                    rmsd, aligned_residues, quality_q = bioutils.run_lsqkab_superposition(fixed_pdb=ranked.path, moving_pdb=template.path)
                     if rmsd is not None:
                         rmsd = round(rmsd, 2)
                     ranked.add_template(
@@ -352,11 +351,16 @@ class OutputStructure:
 
         for template in self.templates_list:
             if best_ranked_dict and template.split_path in best_ranked_dict:
-                bioutils.gesamt_pdbs(pdb_reference=best_ranked_dict[template.split_path],
-                                     pdb_superposed=template.split_path, output_path=template.split_path)
+                bioutils.run_lsqkab_superposition(fixed_pdb=best_ranked_dict[template.split_path],
+                                                  moving_pdb=template.path,
+                                                  output_pdb=template.split_path)
             else:
-                bioutils.gesamt_pdbs(pdb_reference=self.ranked_list[0].split_path, pdb_superposed=template.split_path,
-                                     output_path=template.split_path)
+                bioutils.run_lsqkab_superposition(fixed_pdb=self.ranked_list[0].path,
+                                                  moving_pdb=template.path,
+                                                  output_pdb=template.split_path)
+            bioutils.split_chains_assembly(pdb_in_path=template.split_path,
+                                           pdb_out_path=template.split_path,
+                                           sequence_assembled=sequence_assembled)
 
         logging.error(
             'Analysing energies with openMM, interfaces with PISA and secondary structure information with ALEPH')

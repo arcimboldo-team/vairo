@@ -314,10 +314,8 @@ def merge_pdbs(pdb1_path: str, pdb2_path: str, inf_ini, inf_end, inm_ini, inm_en
 
     bioutils.run_lsqkab(pdb_inf_path=pdb1_path,
                         pdb_inm_path=pdb2_path,
-                        fit_ini=inf_ini,
-                        fit_end=inf_end,
-                        match_ini=inm_ini,
-                        match_end=inm_end,
+                        fit_ranges=[(inf_ini, inf_end)],
+                        match_ranges=[(inm_ini, inm_end)],
                         pdb_out=pdb_out,
                         delta_out=delta_out
                         )
@@ -415,6 +413,13 @@ def align_pdb(hhr_path: str, pdb_path: str, fasta_path: str):
 def delete_msas(pkl_in_path: str, pkl_out_path: str, delete_str: str):
     delete_list = list(map(int, delete_str.split(',')))
     features.delete_seq_from_msa(pkl_in_path=pkl_in_path, pkl_out_path=pkl_out_path, delete_list=delete_list)
+
+
+def delete_templates(pkl_in_path: str, pkl_out_path: str, delete_str: str):
+    delete_list = delete_str.split(',')
+    feat = features.create_features_from_file(pkl_in_path=pkl_in_path)
+    feat.delete_by_id(delete_list)
+    feat.write_pkl(pkl_out_path)
 
 
 def select_csv(pkl_in_path: str, csv_path: str, min_input: float, max_input: float):

@@ -57,27 +57,93 @@ def superposition_by_chains(pdb1_in_path: str, pdb2_in_path: str) -> Dict:
     return output_dict
 
 
-def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ini: int, fit_end: int, match_ini: int, match_end: int,
-               pdb_out: str, delta_out: str):
-    # Run the program lsqkab. Write the superposed pdb in pdbout and the deltas in delta_out.
-    # LSQKAB will match the CA atoms from the pdb_inf to fit in the pdb_inm.
+def run_lsqkab_superposition(fixed_pdb: str, moving_pdb: str, output_pdb: str = None, chain_id: str ='A'):
+    parser = PDBParser(QUIET=True)
+    fixed_struct = parser.get_structure('fixed', fixed_pdb)
+    moving_struct = parser.get_structure('moving', moving_pdb)
 
-    script_path = os.path.join(os.path.dirname(pdb_out), f'{utils.get_file_name(pdb_out)}_lsqkab.sh')
-    with open(script_path, 'w') as f_in:
-        f_in.write('lsqkab ')
-        f_in.write(f'xyzinf {utils.get_file_name(pdb_inf_path)} ')
-        f_in.write(f'xyzinm {utils.get_file_name(pdb_inm_path)} ')
-        f_in.write(f'DELTAS {utils.get_file_name(delta_out)} ')
-        f_in.write(f'xyzout {utils.get_file_name(pdb_out)} << END-lsqkab \n')
-        f_in.write('title matching template and predictions \n')
-        f_in.write('output deltas \n')
-        f_in.write('output XYZ \n')
-        f_in.write(f'fit RESIDUE CA {match_ini} TO {match_end} CHAIN A \n')
-        f_in.write(f'MATCH RESIDUE {fit_ini} TO {fit_end} CHAIN A \n')
-        f_in.write(f'end \n')
-        f_in.write(f'END-lsqkab')
-    subprocess.Popen(['bash', script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                     cwd=os.path.dirname(pdb_out)).communicate()
+    fixed_chain = fixed_struct[0][chain_id]
+    moving_chain = moving_struct[0][chain_id]
+
+    fixed_res_ids = {r.id[1] for r in fixed_chain if r.id[0] == ' '}
+    moving_res_ids = {r.id[1] for r in moving_chain if r.id[0] == ' '}
+
+    common_ids = sorted(list(fixed_res_ids & moving_res_ids))
+
+    ranges = []
+    start = common_ids[0]
+    prev = common_ids[0]
+
+    for res_id in common_ids[1:]:
+        if res_id != prev + 1:
+            ranges.append((start, prev))
+            start = res_id
+        prev = res_id
+    ranges.append((start, prev))
+    log_lsqkab = run_lsqkab(fixed_pdb, moving_pdb, ranges, ranges, output_pdb)
+
+    nalign = sum((end - start + 1) for start, end in ranges)
+    rmsd, qscore = None, 0.0
+    if log_lsqkab:
+        rmsd_match = re.search(r"RMS\s+XYZ\s+DISPLACEMENT\s*=\s*([\d\.]+)", log_lsqkab)
+        if rmsd_match:
+            rmsd = float(rmsd_match.group(1))
+        # --- 3. Calculate Q-Score ---
+        # Formula: Q = N_align^2 / ( (1 + (RMSD/R0)^2) * L_ref * L_mob )
+        # R0 is typically 3.0 Angstroms for general proteins
+        qscore = 0.0
+        len_fixed = len(fixed_res_ids)
+        len_moving = len(moving_res_ids)
+        if rmsd is not None and len_fixed > 0 and len_moving > 0:
+            r0 = 3.0
+            term_rmsd = 1 + (rmsd / r0) ** 2
+            qscore = (nalign ** 2) / (term_rmsd * len_fixed * len_moving)
+    return rmsd, nalign, qscore
+
+def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ranges: list,
+               match_ranges: list, pdb_out: str = None, delta_out: str = None):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_inf = os.path.basename(pdb_inf_path)
+        temp_inm = os.path.basename(pdb_inm_path)
+        temp_pdb_out = "output.pdb"
+        temp_delta_out = "deltas.txt"
+        script_name = "run_lsqkab.sh"
+        shutil.copy(pdb_inf_path, os.path.join(temp_dir, temp_inf))
+        shutil.copy(pdb_inm_path, os.path.join(temp_dir, temp_inm))
+        script_path = os.path.join(temp_dir, script_name)
+        with open(script_path, 'w') as f_in:
+            f_in.write('lsqkab ')
+            f_in.write(f'xyzinf {temp_inf} ')
+            f_in.write(f'xyzinm {temp_inm} ')
+            f_in.write(f'DELTAS {temp_delta_out} ')
+            f_in.write(f'xyzout {temp_pdb_out} << END-lsqkab \n')
+            f_in.write('title matching template and predictions \n')
+            f_in.write('output deltas \n')
+            f_in.write('output XYZ \n')
+            for (f_start, f_end), (m_start, m_end) in zip(fit_ranges, match_ranges):
+                f_in.write(f'fit RESIDUE CA {m_start} TO {m_end} CHAIN A \n')
+                f_in.write(f'MATCH RESIDUE {f_start} TO {f_end} CHAIN A \n')
+            f_in.write(f'end \n')
+            f_in.write(f'END-lsqkab')
+
+        try:
+            result = subprocess.run(
+                ['bash', script_name],
+                cwd=temp_dir,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            lsqkab_log = result.stdout
+        except subprocess.CalledProcessError as e:
+            print(f"LSQKAB failed: {e.stderr.decode()}")
+            return ''
+        if pdb_out and os.path.exists(os.path.join(temp_dir, temp_pdb_out)):
+            shutil.copy(os.path.join(temp_dir, temp_pdb_out), pdb_out)
+        if delta_out and os.path.exists(os.path.join(temp_dir, temp_delta_out)):
+            shutil.copy(os.path.join(temp_dir, temp_delta_out), delta_out)
+        return lsqkab_log
 
 
 def run_spong(pdb_in_path: str, spong_path: str) -> float:
