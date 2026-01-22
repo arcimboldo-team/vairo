@@ -569,6 +569,7 @@ def empty_template_features(query_sequence):
 
 def extract_template_features_from_pdb(query_sequence: str, hhr_path: str, cif_path: str, sequence_id: str,
                                        chain_id: str) -> List[str]:
+
     pdb_id = utils.get_file_name(cif_path)
     hhr_text = open(hhr_path, 'r').read()
     matches = re.finditer(r'No\s+\d+', hhr_text)

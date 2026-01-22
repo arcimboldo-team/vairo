@@ -209,7 +209,8 @@ class Template:
         for chain_struct in self.template_chains_struct.template_chains_list:
             alignment_chain_dir = os.path.join(chain_struct.sequence.alignment_dir, f'{chain_struct.chain}{chain_struct.code}')
             utils.create_dir(alignment_chain_dir, delete_if_exists=True)
-            hhr_path = self.template_chains_struct.set_same_alignment(chain_struct)
+            #hhr_path = self.template_chains_struct.set_same_alignment(chain_struct)
+            hhr_path = None
             extracted_chain, alignment_chain = hhsearch.run_hh(output_dir=alignment_chain_dir,
                                                                database_dir=template_database_dir,
                                                                chain_in_path=chain_struct.path,
