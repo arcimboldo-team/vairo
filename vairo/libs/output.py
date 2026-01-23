@@ -18,6 +18,7 @@ class OutputStructure:
         self.frobenius_path: str = f'{output_dir}/frobenius'
         self.sequence_path: str = os.path.join(self.frobenius_path, 'sequence.fasta')
         self.templates_path: str = f'{output_dir}/templates'
+        self.templates_lsqkab_path: str = f'{output_dir}/templates_lsqkab'
         self.interfaces_path: str = f'{output_dir}/interfaces'
         self.analysis_path: str = f'{self.plots_path}/analysis.txt'
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
@@ -51,6 +52,7 @@ class OutputStructure:
 
         utils.create_dir(dir_path=self.plots_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.templates_path, delete_if_exists=True)
+        utils.create_dir(dir_path=self.templates_lsqkab_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
 
@@ -128,9 +130,10 @@ class OutputStructure:
 
 
             ranked.set_split_path(os.path.join(self.rankeds_split_dir, os.path.basename(ranked.path)))
-            bioutils.split_chains_assembly(pdb_in_path=ranked.path,
-                                           pdb_out_path=ranked.split_path,
-                                           sequence_assembled=assembled_seq)
+            results_splitting = bioutils.split_chains_assembly(pdb_in_path=ranked.path,
+                                                               pdb_out_path=ranked.split_path,
+                                                               sequence_assembled=assembled_seq)
+            ranked.set_results_splitting(results_splitting)
             ranked.set_plddt()
 
         plots.plot_plddt(plot_path=self.plddt_plot_path, ranked_list=self.ranked_list)
@@ -340,20 +343,19 @@ class OutputStructure:
 
         for template in self.templates_list:
             if best_ranked_dict and template.split_path in best_ranked_dict:
-                bioutils.run_lsqkab_superposition(fixed_pdb=best_ranked_dict[template.split_path],
-                                                  moving_pdb=template.path,
-                                                  output_pdb=template.split_path)
+                best_ranked = best_ranked_dict[template.split_path]
             else:
-                bioutils.run_lsqkab_superposition(fixed_pdb=self.ranked_list[0].path,
-                                                  moving_pdb=template.path,
-                                                  output_pdb=template.split_path)
-
-
-
-
-            bioutils.split_chains_assembly(pdb_in_path=template.split_path,
-                                           pdb_out_path=template.split_path,
-                                           sequence_assembled=sequence_assembled)
+                best_ranked = self.ranked_list[0]
+            bioutils.run_lsqkab_superposition(fixed_pdb=best_ranked.path,
+                                              moving_pdb=template.path,
+                                              output_pdb=template.split_path)
+            results_splitting = bioutils.split_chains_assembly(pdb_in_path=template.split_path,
+                                                               pdb_out_path=template.split_path,
+                                                               sequence_assembled=sequence_assembled)
+            template.set_results_splitting(results_splitting)
+            pdb_out_path = os.path.join(self.templates_lsqkab_path, f'{template.name}.pdb')
+            bioutils.superpose_by_chain_lsqkab(fixed_pdb=best_ranked, moving_pdb=template, output_pdb=pdb_out_path)
+            template.set_lsqkab_path(pdb_out_path)
 
         logging.error(
             'Analysing energies with openMM, interfaces with PISA and secondary structure information with ALEPH')
@@ -495,8 +497,8 @@ class OutputStructure:
 def get_best_ranked_by_template(cluster_list: List, ranked_list: List) -> Dict:
     return_dict = {}
     for i, cluster in enumerate(cluster_list):
-        ranked = next((ranked.path for ranked in ranked_list if f'cluster_{i}' in ranked.name), None)
+        ranked = next((ranked for ranked in ranked_list if f'cluster_{i}' in ranked.name), None)
         if ranked is None:
-            ranked = ranked_list[0].path
+            ranked = ranked_list[0]
         return_dict.update(dict.fromkeys(cluster, ranked))
     return return_dict

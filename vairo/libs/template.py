@@ -47,7 +47,6 @@ class Template:
         self.template_originalseq_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template_originalseq.pdb'
         self.template_path = f'{os.path.join(self.template_chains_dir, self.pdb_id)}_template.pdb'
 
-
         self.add_to_msa = utils.get_input_value(name='add_to_msa', section='template', input_dict=parameters_dict)
         self.add_to_templates = utils.get_input_value(name='add_to_templates', section='template',
                                                       input_dict=parameters_dict)

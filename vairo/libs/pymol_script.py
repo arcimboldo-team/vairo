@@ -67,6 +67,13 @@ cmd.set("valence", 'off')
                 script += f'cmd.color("gray70", "{pdb_in.name}")\n'
             script += f'cmd.show_as("cartoon", "{pdb_in.name}")\n'
 
+            if pdb_in in a_air.output.templates_list:
+                name = f"{pdb_in.name}_lsqkab"
+                script += f'cmd.load("{pdb_in.lsqkab_path}", "{name}")\n'
+                script += f'cmd.color("gray70", "{name}")\n'
+                script += f'cmd.show_as("cartoon", "{name}")\n'
+
+
             if pdb_in.accepted_interfaces:
                 for interface in pdb_in.get_interfaces_with_path():
                     script += f'cmd.load("{interface.path}", "{utils.get_file_name(interface.path)}")\n'
