@@ -170,6 +170,7 @@ class Pdb:
         self.total_residues: int
         self.interfaces: List[Interface] = []
         self.accepted_interfaces: bool = False
+        self.results_splitting: Dict = {}
 
         self.path = path
         self.name = utils.get_file_name(path)
@@ -179,6 +180,9 @@ class Pdb:
 
     def set_split_path(self, path: str):
         self.split_path = path
+
+    def set_results_splitting(self, results: Dict):
+        self.results_splitting = results
 
     def set_compactness(self, compactness: float):
         self.compactness = compactness
@@ -215,6 +219,7 @@ class TemplateExtracted(Pdb):
         self.sequence_msa: str
         self.template: str = ''
         self.originalseq_path: str = ''
+        self.lsqkab_path: str = ''
 
     def set_template(self, template, originalseq_path: str):
         self.template = template
@@ -223,6 +228,9 @@ class TemplateExtracted(Pdb):
             shutil.copy2(self.template.template_originalseq_path, self.originalseq_path)
         else:
             shutil.copy2(self.split_path, self.originalseq_path)
+
+    def set_lsqkab_path(self, lsqkab_path: str):
+        self.lsqkab_path = lsqkab_path
 
     def add_percentage(self, percentage_list: List[float]):
         self.percentage_list = percentage_list

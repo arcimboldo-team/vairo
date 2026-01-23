@@ -57,6 +57,28 @@ def superposition_by_chains(pdb1_in_path: str, pdb2_in_path: str) -> Dict:
     return output_dict
 
 
+def superpose_by_chain_lsqkab(fixed_pdb: structures.Pdb, moving_pdb: structures.Pdb, output_pdb: str = None, chain_id: str ='A'):
+    #It requires a non split ranked and a split pdb.
+    #It will split the pdb in chains and superpose each chain to the non split ranked
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_inm = os.path.basename(moving_pdb.split_path)
+        moving_path = os.path.join(temp_dir, temp_inm)
+        shutil.copy(moving_pdb.split_path, moving_path)
+        result_chains = split_pdb_in_chains(pdb_path=moving_path)
+        pdb_list = []
+        for chain, chain_path in result_chains.items():
+            positions_chain = moving_pdb.results_splitting[chain]
+            fit_ranges = []
+            match_ranges = []
+            for match_ini, fit_ini in positions_chain.items():
+                fit_ranges.append((fit_ini, fit_ini))
+                match_ranges.append((match_ini, match_ini))
+            pdb_out = f'temp_{chain}.pdb'
+            run_lsqkab(fixed_pdb.path, chain_path, fit_ranges, match_ranges, pdb_out=pdb_out, pdb_inm_chain=chain)
+            pdb_list.append(pdb_out)
+        merge_pdbs(pdb_list, output_pdb)
+
+
 def run_lsqkab_superposition(fixed_pdb: str, moving_pdb: str, output_pdb: str = None, chain_id: str ='A'):
     parser = PDBParser(QUIET=True)
     fixed_struct = parser.get_structure('fixed', fixed_pdb)
@@ -100,8 +122,10 @@ def run_lsqkab_superposition(fixed_pdb: str, moving_pdb: str, output_pdb: str = 
             qscore = round((nalign ** 2) / (term_rmsd * len_fixed * len_moving), 2)
     return rmsd, nalign, qscore
 
+
 def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ranges: list,
-               match_ranges: list, pdb_out: str = None, delta_out: str = None):
+               match_ranges: list, pdb_out: str = None, delta_out: str = None, pdf_inf_chain: str = 'A',
+               pdb_inm_chain: str = 'A'):
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_inf = os.path.basename(pdb_inf_path)
         temp_inm = os.path.basename(pdb_inm_path)
@@ -121,8 +145,8 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ranges: list,
             f_in.write('output deltas \n')
             f_in.write('output XYZ \n')
             for (f_start, f_end), (m_start, m_end) in zip(fit_ranges, match_ranges):
-                f_in.write(f'fit RESIDUE CA {m_start} TO {m_end} CHAIN A \n')
-                f_in.write(f'MATCH RESIDUE {f_start} TO {f_end} CHAIN A \n')
+                f_in.write(f'fit RESIDUE CA {m_start} TO {m_end} CHAIN {pdb_inm_chain} \n')
+                f_in.write(f'MATCH RESIDUE {f_start} TO {f_end} CHAIN {pdf_inf_chain} \n')
             f_in.write(f'end \n')
             f_in.write(f'END-lsqkab')
 
