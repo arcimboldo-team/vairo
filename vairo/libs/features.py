@@ -332,7 +332,7 @@ class Features:
         # Trim the msa sequences that has a 50% percentage of it in the glycines part
 
         delete_msa = []
-        for i in range(self.get_msa_length()):
+        for i in range(1, self.get_msa_length()):
             sequence_in = self.msa_features['msa'][i]
             res_num, perc = sequence_assembled.get_percentage_sequence(sequence_in)
             length_sequence = len(sequence_in[sequence_in != 21]) * minimum_percentage

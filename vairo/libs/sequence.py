@@ -243,6 +243,7 @@ class SequenceAssembled:
                     result_list[pos] += 1
         for i, num in enumerate(result_list):
             perc_list[i] = result_list[i] / self.get_sequence_length(i)
+
         return result_list, perc_list
 
     def get_region_starting_shifts(self) -> List[int]:
