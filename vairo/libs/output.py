@@ -375,7 +375,7 @@ class OutputStructure:
             if sequence_assembled.total_copies > 1:
                 if pdb_in in self.experimental_list + self.templates_list + self.ranked_filtered_list:
                     if isinstance(pdb_in, structures.TemplateExtracted):
-                        interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.originalseq_path,
+                        interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.split_path,
                                                                                  self.interfaces_path)
                     else:
                         interfaces_data_list = bioutils.find_interface_from_pisa(pdb_in.split_path,
