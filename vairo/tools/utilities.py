@@ -17,18 +17,79 @@ import csv
 from alphafold.data import parsers, templates, mmcif_parsing
 from Bio.Blast import NCBIWWW
 from alphafold.common import residue_constants
-from Bio.PDB import PDBParser, PDBIO
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FixedLocator
-import matplotlib.ticker as ticker
-from collections import defaultdict
-
-
+from Bio.PDB import PDBParser, PDBIO, Structure, Model, Chain
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
 sys.path.append(target_directory)
 from vairo.libs import features, bioutils, plots, utils, structures, template_modifications, global_variables
+
+def shift_pdb(template_path, output_path, where, shift_amount):
+    parser = PDBParser(QUIET=True)
+    try:
+        original_structure = parser.get_structure('structure', template_path)
+    except Exception as e:
+        print(f"Error parsing file: {e}")
+        return
+
+    new_structure = Structure.Structure("renumbered")
+    for i, model in enumerate(original_structure):
+        new_model = Model.Model(model.id)
+        new_structure.add(new_model)
+        for chain in model:
+            new_chain = Chain.Chain(chain.id)
+            new_model.add(new_chain)
+            residues = list(chain)
+            if not residues:
+                continue
+            shift = shift_amount if where in [chain.id, 'all'] else 0
+            print(f"  Chain {chain.id}: shifting by {shift}...")
+            for res in residues:
+                res.parent = None
+                old_id = res.id
+                new_number = old_id[1] + int(shift)
+                res.id = (old_id[0], new_number, old_id[2])
+                new_chain.add(res)
+    io = PDBIO()
+    io.set_structure(original_structure)
+    try:
+        io.save(output_path)
+        print(f"Successfully saved renumbered PDB to: {output_path}")
+    except Exception as e:
+        print(f"Error saving file: {e}")
+
+
+def renumber_template(template_path, output_path):
+    parser = PDBParser(QUIET=True)
+    try:
+        original_structure = parser.get_structure("original", template_path)
+    except FileNotFoundError:
+        print(f"Error: Could not find file {template_path}")
+        return
+    new_structure = Structure.Structure("renumbered")
+    print(f"Processing {template_path}...")
+    for i, model in enumerate(original_structure):
+        new_model = Model.Model(model.id)
+        new_structure.add(new_model)
+        for chain in model:
+            new_chain = Chain.Chain(chain.id)
+            new_model.add(new_chain)
+            residues = list(chain)
+            if not residues:
+                continue
+            first_residue_num = residues[0].id[1]
+            offset = first_residue_num - 1
+            print(f"  Chain {chain.id}: Starts at {first_residue_num}. shifting by -{offset}...")
+            for res in residues:
+                res.parent = None
+                old_id = res.id
+                new_number = old_id[1] - offset
+                res.id = (old_id[0], new_number, old_id[2])
+                new_chain.add(res)
+
+    io = PDBIO()
+    io.set_structure(new_structure)
+    io.save(output_path)
+    print(f"Success! Renumbered PDB saved to: {output_path}")
 
 
 def write_features(features_path: str, output_dir: str = None):
@@ -534,6 +595,129 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
 
         print('================================')
     return results_dict
+
+
+def analyse_scwrl(fasta_path, template_path, num_steps):
+    scwrl_path = '/opt/scwrl4/Scwrl4'  # Ensure this path is correct
+    sequences = bioutils.extract_sequences(fasta_path)
+    sequence_template_dict = bioutils.extract_sequence_msa_from_pdb(template_path)
+    template_dict = {}
+
+    # Store results for ranking later: list of dictionaries
+    run_results = []
+
+    print(f"Loaded sequences: {sequences}")
+
+    # --- Pre-processing Template Logic (Kept as is) ---
+    for i, (chain, template_sequence) in enumerate(sequence_template_dict.items()):
+        first_pos = None
+        last_pos = None
+
+        for index, item in enumerate(sequence_template_dict[chain]):
+            if '-' not in item:
+                first_pos = index
+                break
+
+        for index in range(len(sequence_template_dict[chain]) - 1, -1, -1):
+            if '-' not in sequence_template_dict[chain][index]:
+                last_pos = index
+                break
+
+        # Safety check if sequence was empty
+        if first_pos is not None and last_pos is not None:
+            template_dict[chain] = (list(sequences.values())[i], first_pos, last_pos)
+
+    print(f"Template mapping: {template_dict}")
+
+    # --- Main Loop ---
+    for i in range(-int(num_steps), int(num_steps) + 1, 1):
+        general_sequence = ''
+
+        valid_step = True
+        for temp in template_dict.values():
+            try:
+                start_slice = temp[1] + i
+                end_slice = temp[2] + i + 1
+
+                if start_slice < 0:
+                    raise IndexError("Negative index resulting from shift")
+
+                segment = temp[0][start_slice: end_slice]
+                general_sequence += segment
+            except IndexError:
+                print(f"Warning: Index out of bounds at step {i}. Skipping this step.")
+                valid_step = False
+                break
+
+        if not valid_step:
+            continue
+
+        # Setup Directories
+        os.makedirs("results", exist_ok=True)
+        step_dir = os.path.join("results", f"step_{i}")
+        os.makedirs(step_dir, exist_ok=True)
+
+        new_fasta_path = os.path.join(step_dir, "new.fasta")
+        output_pdb_path = os.path.join(step_dir, f"model_step_{i}.pdb")
+
+        with open(new_fasta_path, 'w') as f:
+            f.write(general_sequence)
+
+        cmd = [
+            scwrl_path,
+            '-i', template_path,
+            '-o', output_pdb_path,
+            '-s', new_fasta_path
+        ]
+
+        print(f"Running SCWRL for step {i} (Seq Len: {len(general_sequence)})...")
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            print(result.stdout)
+            energy_match = re.search(r"Total minimal energy of the graph\s*=\s*([-\d\.]+)", result.stdout)
+            if energy_match:
+                energy_score = float(energy_match.group(1))
+                print(f"  -> Success. Energy: {energy_score}")
+
+                run_results.append({
+                    'step': i,
+                    'energy': energy_score,
+                    'pdb_path': output_pdb_path,
+                    'sequence': general_sequence
+                })
+            else:
+                print("  -> Warning: SCWRL ran but energy score could not be parsed.")
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error running SCWRL at step {i}:")
+            # print(e.stderr) # Uncomment to debug errors
+        except FileNotFoundError:
+            print(f"Error: Could not find executable '{scwrl_path}'.")
+            return
+
+    # --- Analysis and Ranking ---
+    print("\n" + "=" * 30)
+    print("ANALYSIS OF SCWRL RUNS")
+    print("=" * 30)
+
+    if not run_results:
+        print("No successful runs to analyze.")
+        return
+
+    ranked_results = sorted(run_results, key=lambda x: x['energy'])
+
+    print(f"{'Rank':<5} | {'Step':<5} | {'Energy':<12} | {'PDB File'}")
+    print("-" * 50)
+
+    for rank, res in enumerate(ranked_results, 1):
+        print(f"{rank:<5} | {res['step']:<5} | {res['energy']:<12.4f} | {res['pdb_path']}")
+
+    best_run = ranked_results[0]
+    print("-" * 50)
+    print(f"Best Alignment: Step {best_run['step']} with Energy {best_run['energy']}")
+
+    return ranked_results
 
 
 if __name__ == "__main__":

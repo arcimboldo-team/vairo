@@ -208,7 +208,7 @@ class OutputStructure:
             self.ranked_list = sorted_ranked_list
 
         if vairo_struct.feature is not None:
-            self.conservation_ranked_path = os.path.join(self.results_dir, f'{ranked.name}_conservation.pdb')
+            self.conservation_ranked_path = os.path.join(self.results_dir, f'{self.ranked_list[0].name}_conservation.pdb')
             bioutils.conservation_pdb(self.ranked_list[0].path, self.conservation_ranked_path,
                                       vairo_struct.feature.get_msa_sequences())
             bioutils.split_chains_assembly(pdb_in_path=self.conservation_ranked_path,
@@ -346,6 +346,7 @@ class OutputStructure:
                 best_ranked = best_ranked_dict[template.split_path]
             else:
                 best_ranked = self.ranked_list[0]
+
             bioutils.run_lsqkab_superposition(fixed_pdb=best_ranked.path,
                                               moving_pdb=template.path,
                                               output_pdb=template.split_path)
@@ -405,6 +406,11 @@ class OutputStructure:
             for ranked in self.ranked_list[1:]:
                 if len(ranked.interfaces) >= self.num_interfaces:
                     ranked.set_accepted_interfaces(True)
+
+            if len(self.templates_list) <= 2:
+                for template in self.templates_list:
+                    template.set_accepted_interfaces(True)
+
 
         self.select_templates()
         os.chdir(store_old_dir)
