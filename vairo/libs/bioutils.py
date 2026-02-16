@@ -93,15 +93,17 @@ def run_lsqkab_superposition(fixed_pdb: str, moving_pdb: str, output_pdb: str = 
     common_ids = sorted(list(fixed_res_ids & moving_res_ids))
 
     ranges = []
-    start = common_ids[0]
-    prev = common_ids[0]
+    ##start = common_ids[0]
+    #prev = common_ids[0]
+    #for res_id in common_ids[1:]:
+    #    if res_id != prev + 1:
+    #        ranges.append((start, prev))
+    #        start = res_id
+    #    prev = res_id
+    #ranges.append((start, prev))
+    for common in common_ids:
+        ranges.append((common, common))
 
-    for res_id in common_ids[1:]:
-        if res_id != prev + 1:
-            ranges.append((start, prev))
-            start = res_id
-        prev = res_id
-    ranges.append((start, prev))
     log_lsqkab = run_lsqkab(fixed_pdb, moving_pdb, ranges, ranges, output_pdb)
 
     nalign = sum((end - start + 1) for start, end in ranges)
@@ -163,6 +165,7 @@ def run_lsqkab(pdb_inf_path: str, pdb_inm_path: str, fit_ranges: list,
         except subprocess.CalledProcessError as e:
             print(f"LSQKAB failed: {e.stderr.decode()}")
             return ''
+
         if pdb_out and os.path.exists(os.path.join(temp_dir, temp_pdb_out)):
             shutil.copy(os.path.join(temp_dir, temp_pdb_out), pdb_out)
         if delta_out and os.path.exists(os.path.join(temp_dir, temp_delta_out)):
