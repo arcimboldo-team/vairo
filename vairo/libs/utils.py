@@ -404,8 +404,8 @@ def parse_pisa_interfaces(pisa_output: str) -> Dict:
                 chain2 = chain
                 res_chain2 = res_list
         elif 'Solvation energy kcal/mol' in line:
-            solvation1 = float(line.split('|')[1].replace(' ', ''))
-            solvation2 = float(line.split('|')[2].replace(' ', ''))
+            solvation1 = line.split('|')[1].replace(' ', '')
+            solvation2 = line.split('|')[2].replace(' ', '')
         elif 'SE gain, kcal/mol' in line:
             se_gain1 = line.split('|')[1].replace(' ', '')
             se_gain2 = line.split('|')[2].replace(' ', '')
