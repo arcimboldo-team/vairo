@@ -18,9 +18,11 @@ from alphafold.data import parsers, templates, mmcif_parsing
 from Bio.Blast import NCBIWWW
 from alphafold.common import residue_constants
 from Bio.PDB import PDBParser, PDBIO, Structure, Model, Chain
+
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
 sys.path.append(target_directory)
+
 from vairo.libs import features, bioutils, plots, utils, structures, template_modifications, global_variables
 
 def shift_pdb(template_path, output_path, where, shift_amount):
@@ -598,126 +600,243 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
 
 
 def analyse_scwrl(fasta_path, template_path, num_steps):
-    scwrl_path = '/opt/scwrl4/Scwrl4'  # Ensure this path is correct
+
+    scwrl_path = '/opt/scwrl4/Scwrl4'
     sequences = bioutils.extract_sequences(fasta_path)
     sequence_template_dict = bioutils.extract_sequence_msa_from_pdb(template_path)
     template_dict = {}
-
-    # Store results for ranking later: list of dictionaries
     run_results = []
 
     print(f"Loaded sequences: {sequences}")
 
-    # --- Pre-processing Template Logic (Kept as is) ---
     for i, (chain, template_sequence) in enumerate(sequence_template_dict.items()):
         first_pos = None
         last_pos = None
-
         for index, item in enumerate(sequence_template_dict[chain]):
             if '-' not in item:
                 first_pos = index
                 break
-
         for index in range(len(sequence_template_dict[chain]) - 1, -1, -1):
             if '-' not in sequence_template_dict[chain][index]:
                 last_pos = index
                 break
-
-        # Safety check if sequence was empty
         if first_pos is not None and last_pos is not None:
             template_dict[chain] = (list(sequences.values())[i], first_pos, last_pos)
-
     print(f"Template mapping: {template_dict}")
 
-    # --- Main Loop ---
+    interfaces_pdbs =  os.path.join(os.getcwd(), "interfaces_pdbs")
+    os.makedirs(interfaces_pdbs, exist_ok=True)
+
+    aleph_dir = os.path.join(os.getcwd(), "aleph")
+    os.makedirs(aleph_dir, exist_ok=True)
+
     for i in range(-int(num_steps), int(num_steps) + 1, 1):
         general_sequence = ''
-
         valid_step = True
+
         for temp in template_dict.values():
             try:
                 start_slice = temp[1] + i
                 end_slice = temp[2] + i + 1
-
-                if start_slice < 0:
-                    raise IndexError("Negative index resulting from shift")
-
+                if start_slice < 0: raise IndexError
                 segment = temp[0][start_slice: end_slice]
                 general_sequence += segment
             except IndexError:
-                print(f"Warning: Index out of bounds at step {i}. Skipping this step.")
+                print(f"Warning: Index out of bounds at step {i}. Skipping.")
                 valid_step = False
                 break
 
-        if not valid_step:
-            continue
+        if not valid_step: continue
 
-        # Setup Directories
+        # Directories
         os.makedirs("results", exist_ok=True)
-        step_dir = os.path.join("results", f"step_{i}")
+        step_dir = os.path.join(os.getcwd(), "results", f"step_{i}")
         os.makedirs(step_dir, exist_ok=True)
+        interfaces_dir = os.path.join(step_dir, "interfaces")
+        os.makedirs(interfaces_dir, exist_ok=True)
 
         new_fasta_path = os.path.join(step_dir, "new.fasta")
-        output_pdb_path = os.path.join(step_dir, f"model_step_{i}.pdb")
+        name = f"model_step_{i}"
+        output_pdb_path = os.path.join(step_dir, f"{name}.pdb")
 
         with open(new_fasta_path, 'w') as f:
             f.write(general_sequence)
 
-        cmd = [
-            scwrl_path,
-            '-i', template_path,
-            '-o', output_pdb_path,
-            '-s', new_fasta_path
-        ]
+        cmd = [scwrl_path, '-i', template_path, '-o', output_pdb_path, '-s', new_fasta_path]
+        print(f"Running SCWRL for step {i}...")
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        energy_match = re.search(r"Total minimal energy of the graph\s*=\s*([-\d\.]+)", result.stdout)
 
-        print(f"Running SCWRL for step {i} (Seq Len: {len(general_sequence)})...")
 
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            print(result.stdout)
-            energy_match = re.search(r"Total minimal energy of the graph\s*=\s*([-\d\.]+)", result.stdout)
-            if energy_match:
-                energy_score = float(energy_match.group(1))
-                print(f"  -> Success. Energy: {energy_score}")
+        results_dict, domains_dict = bioutils.aleph_annotate(output_path=aleph_dir, pdb_path=output_pdb_path)
 
-                run_results.append({
-                    'step': i,
-                    'energy': energy_score,
-                    'pdb_path': output_pdb_path,
-                    'sequence': general_sequence
-                })
-            else:
-                print("  -> Warning: SCWRL ran but energy score could not be parsed.")
+        if energy_match:
+            energy_score = float(energy_match.group(1))
+            print(f"  -> SCWRL Success. Energy: {energy_score}")
 
-        except subprocess.CalledProcessError as e:
-            print(f"Error running SCWRL at step {i}:")
-            # print(e.stderr) # Uncomment to debug errors
-        except FileNotFoundError:
-            print(f"Error: Could not find executable '{scwrl_path}'.")
-            return
+            print(f"  -> Running PISA analysis for step {i}...")
+            interfaces_data_list = bioutils.find_interface_from_pisa(output_pdb_path, interfaces_dir)
+            print(f"  -> Found {len(interfaces_data_list)} interfaces.")
 
-    # --- Analysis and Ranking ---
+            for interface in interfaces_data_list:
+                if not interface.chain1 in domains_dict or not interface.chain2 in domains_dict:
+                    continue
+                code = f'{interface.chain1}-{interface.chain2}'
+                dimers_path = os.path.join(interfaces_pdbs, f'{name}_{code}.pdb')
+                bioutils.create_interface_domain(pdb_in_path=output_pdb_path,
+                                                 pdb_out_path=dimers_path,
+                                                 interface=interface,
+                                                 domains_dict=domains_dict)
+                interface.set_structure(dimers_path)
+
+            run_results.append({
+                'step': i,
+                'scwrl_energy': energy_score,
+                'pdb_path': output_pdb_path,
+                'sequence': general_sequence,
+                'interfaces': interfaces_data_list
+            })
+        else:
+            print("  -> Warning: SCWRL energy parsing failed.")
+
+
+    # --- Analysis & Ranking ---
     print("\n" + "=" * 30)
-    print("ANALYSIS OF SCWRL RUNS")
+    print("ANALYSIS OF SCWRL RUNS & INTERFACES")
     print("=" * 30)
 
     if not run_results:
         print("No successful runs to analyze.")
         return
 
-    ranked_results = sorted(run_results, key=lambda x: x['energy'])
+    interfaces_by_type = collections.defaultdict(list)
 
-    print(f"{'Rank':<5} | {'Step':<5} | {'Energy':<12} | {'PDB File'}")
-    print("-" * 50)
+    for run in run_results:
+        for interface in run['interfaces']:
+            key = interface.name
+            interfaces_by_type[key].append({
+                'step': run['step'],
+                'scwrl_energy': run['scwrl_energy'],
+                'pisa_deltaG': interface.deltaG,
+                'interface_obj': interface
+            })
 
-    for rank, res in enumerate(ranked_results, 1):
-        print(f"{rank:<5} | {res['step']:<5} | {res['energy']:<12.4f} | {res['pdb_path']}")
+    for key in interfaces_by_type:
+        interfaces_by_type[key].sort(key=lambda x: x['pisa_deltaG'])
 
-    best_run = ranked_results[0]
-    print("-" * 50)
-    print(f"Best Alignment: Step {best_run['step']} with Energy {best_run['energy']}")
+    # Print Ranking Table
+    print(f"{'Interface':<10} | {'Rank':<5} | {'Step':<5} | {'Delta G':<10} | {'SCWRL E':<10}")
+    print("-" * 60)
 
-    return ranked_results
+    for key, ranked_list in interfaces_by_type.items():
+        print(f"--- Type: {key} ---")
+        for rank, data in enumerate(ranked_list, 1):
+            print(
+                f"{key:<10} | {rank:<5} | {data['step']:<5} | {data['pisa_deltaG']:<10.4f} | {data['scwrl_energy']:<10.4f}")
+
+    # --- 3. Generate PyMOL Script ---
+    print("\nGenerating PyMOL visualization script...")
+    generate_pymol_script(interfaces_by_type, "view_interfaces.pse")
+
+
+def generate_pymol_script(ranked_interfaces_dict, output_path):
+    """
+    Generates a PyMOL script to visualize the ranked interfaces.
+    """
+    script = """
+from pymol import cmd
+cmd.set("bg_rgb", "0xffffff")
+cmd.set("antialias", '2')
+cmd.set("ribbon_sampling", '10')
+cmd.set("hash_max", '220')
+cmd.set("dash_length", '0.10000')
+cmd.set("dash_gap", '0.30000')
+cmd.set("cartoon_sampling", '14')
+cmd.set("cartoon_loop_quality", '6.00000')
+cmd.set("cartoon_rect_length", '1.10000')
+cmd.set("cartoon_oval_length", '0.80000')
+cmd.set("cartoon_oval_quality", '10.00000')
+cmd.set("cartoon_tube_quality", '9.00000')
+cmd.set("dash_width", '3.00000')
+cmd.set("transparency", '0.60000')
+cmd.set("two_sided_lighting", '0')
+cmd.set("sculpt_vdw_weight", '0.45000')
+cmd.set("sculpt_field_mask", '2047')
+cmd.set("ray_shadow", 'off')
+cmd.set("auto_color_next", '2')
+cmd.set("button_mode_name", '3-Button Viewing')
+cmd.set("mouse_selection_mode", '2')
+cmd.set("cartoon_nucleic_acid_mode", '2')
+cmd.set("cartoon_putty_quality", '11.00000')
+cmd.set("cartoon_ring_mode", '1')
+cmd.set("cartoon_ladder_color", 'cyan')
+cmd.set("cartoon_nucleic_acid_color", 'cyan')
+cmd.set("ray_trace_mode", '1')
+cmd.set("sculpt_min_weight", '2.25000')
+cmd.set("mesh_negative_color", 'grey30')
+cmd.set("ray_transparency_oblique_power", '1.00000')
+cmd.set("movie_quality", '60')
+cmd.set("use_shaders", 'on')
+cmd.set("volume_bit_depth", '8')
+cmd.set("mesh_as_cylinders", 'on')
+cmd.set("line_as_cylinders", 'on')
+cmd.set("ribbon_as_cylinders", 'on')
+cmd.set("nonbonded_as_cylinders", 'on')
+cmd.set("nb_spheres_quality", '3')
+cmd.set("alignment_as_cylinders", 'on')
+cmd.set("dot_as_spheres", 'on')
+cmd.set("valence", 'off')
+"""
+
+    added_objs = []
+
+    for interface_type, interfaces in ranked_interfaces_dict.items():
+        for rank, data in enumerate(interfaces):
+            interface = data['interface_obj']
+            step = data['step']
+            obj_name = f"{interface_type}_step{step}_rank{rank}"
+            if interface.path and os.path.exists(interface.path):
+                script += f'cmd.load("{interface.path}", "{obj_name}")\n'
+                script += f'cmd.show_as("sticks", "{obj_name}")\n'
+                script += f'cmd.show("surface", "{obj_name}")\n'
+                script += f'cmd.set("transparency", "0.50000", "{obj_name}")\n'
+
+                script += f'cmd.color("lime", "resn ALA and {obj_name}")\n'
+                script += f'cmd.color("density", "resn ARG and {obj_name}")\n'
+                script += f'cmd.color("deepsalmon", "resn ASN and {obj_name}")\n'
+                script += f'cmd.color("warmpink", "resn ASP and {obj_name}")\n'
+                script += f'cmd.color("paleyellow", "resn CYS and {obj_name}")\n'
+                script += f'cmd.color("tv_red", "resn GLN and {obj_name}")\n'
+                script += f'cmd.color("ruby", "resn GLU and {obj_name}")\n'
+                script += f'cmd.color("slate", "resn HIS and {obj_name}")\n'
+                script += f'cmd.color("forest", "resn ILE and {obj_name}")\n'
+                script += f'cmd.color("smudge", "resn LEU and {obj_name}")\n'
+                script += f'cmd.color("deepblue", "resn LYS and {obj_name}")\n'
+                script += f'cmd.color("sand", "resn MET and {obj_name}")\n'
+                script += f'cmd.color("gray40", "resn PHE and {obj_name}")\n'
+                script += f'cmd.color("gray20", "resn PRO and {obj_name}")\n'
+                script += f'cmd.color("tv_orange", "resn SER and {obj_name}")\n'
+                script += f'cmd.color("brown", "resn THR and {obj_name}")\n'
+                script += f'cmd.color("palegreen", "resn TRP and {obj_name}")\n'
+                script += f'cmd.color("wheat", "resn TYR and {obj_name}")\n'
+                script += f'cmd.color("pink", "resn VAL and {obj_name}")\n'
+
+                if rank > 0:
+                    script += f'cmd.disable("{obj_name}")\n'
+
+                added_objs.append(obj_name)
+
+    script += f'cmd.save("{output_path}")\n'
+    script += 'cmd.quit()\n'
+
+    pymol_script_path = os.path.join("results", "temp.py")
+    with open(pymol_script_path, 'w') as f:
+        f.write(script)
+    cmd = 'which pymol'
+    subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+    cmd = f'pymol -ckq {pymol_script_path}'
+    out, err = subprocess.Popen(cmd, shell=True, env={}, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.STDOUT).communicate()
 
 
 if __name__ == "__main__":
