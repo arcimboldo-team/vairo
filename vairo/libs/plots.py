@@ -118,23 +118,22 @@ def plot_sequence(plot_path: str, a_air):
     ax_secondary = ax.secondary_xaxis('top')
     ax_secondary.set_xticks(
         ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in
-               range(a_air.sequence_assembled.total_copies - 1)], rotation=45)
+               range(a_air.sequence_assembled.total_copies - 1)])
     ax_secondary.set_xticks(
         ticks=list(ax_secondary.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i
-                                                 in range(a_air.sequence_assembled.total_copies)], rotation=45)
+                                                 in range(a_air.sequence_assembled.total_copies)])
     ax_secondary.set_xticklabels(
         labels=[1] * a_air.sequence_assembled.total_copies + [a_air.sequence_assembled.get_sequence_length(i) + 2 for i
-                                                              in range(a_air.sequence_assembled.total_copies - 1)],
-        rotation=45)
+                                                              in range(a_air.sequence_assembled.total_copies - 1)])
+    ax_secondary.tick_params(axis='x', rotation=45)
+
     ax.set_xticks(
         ticks=[a_air.sequence_assembled.get_starting_length(i) + 1 for i in
-               range(a_air.sequence_assembled.total_copies)],
-        rotation=45)
+               range(a_air.sequence_assembled.total_copies)])
     ax.set_xticks(
         ticks=list(ax.get_xticks()) + [a_air.sequence_assembled.get_finishing_length(i) + 2 for i
-                                       in range(a_air.sequence_assembled.total_copies)],
-        rotation=45)
-
+                                       in range(a_air.sequence_assembled.total_copies)])
+    ax.tick_params(axis='x', rotation=45)
     ax.tick_params('both', length=10, which='major')
     ax.tick_params('both', length=5, which='minor')
 
@@ -372,10 +371,9 @@ def plot_gantt(plot_type: str, plot_path: str, a_air, reduced: bool = False) -> 
     # cut_chunk = utils.remove_list_layer(cut_chunk)
     # ax.set_xticks(list(ax.get_xticks()) + [cut + 1 for cut in cut_chunk])
     ax.set_xticklabels(ax.get_xticks(), rotation=45)
-
-    ax1.set_xticks(rounded_partitions_aux, major=True)
+    ax1.set_xticks(rounded_partitions_aux)
     ax1.set_xticklabels(rounded_partitions_labels, rotation=45)
-    ax1.set_xticks(list(ax1.get_xticks()) + rounded_partitions_num, major=True)
+    ax1.set_xticks(list(ax1.get_xticks()) + rounded_partitions_num)
     ax1.set_xticks(generate_minor_ticks([1] + list(ax1.get_xticks()), step=1), minor=True)
     ax1.tick_params('x', length=7, which='major', labelsize='medium')
     ax1.tick_params('x', length=3, which='minor')

@@ -9,7 +9,7 @@ from libs import utils, bioutils, features, structures
 def create_a3m(fasta_path, databases, output_dir: str) -> str:
     path = os.path.join(output_dir, f'{utils.get_file_name(fasta_path)}.a3m')
     hhblits = alphafold.data.tools.hhblits.HHBlits(binary_path='hhblits',
-                                                   databases=[databases.bfd_db_path, databases.uniclust30_db_path])
+                                                   databases=[databases.bfd_db_path, databases.uniref30_db_path])
     result = hhblits.query(fasta_path)
     with open(path, 'w+') as f_in:
         f_in.write(result[0]['a3m'])
