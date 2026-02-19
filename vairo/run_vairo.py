@@ -9,11 +9,6 @@ import argparse
 import numpy
 from datetime import datetime
 import tensorflow.compat.v1 as tf
-
-alphafold_path = os.path.join(os.path.dirname(__file__), 'alphafold')
-if alphafold_path not in sys.path:
-    sys.path.append(alphafold_path)
-
 from libs import features, main_structure, utils, bioutils, pymol_script
 
 
