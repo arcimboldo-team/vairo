@@ -58,14 +58,14 @@ read -p "Enter the Conda environment name: " env_name
 conda create -y -n "$env_name" python=3.11
 conda activate "$env_name"
 conda install -y --quiet --channel nvidia cudatoolkit=11.8
-conda install -y -c conda-forge pdbfixer==1.8 openmm=8.0.0 cudnn=8.9 numpy=1.24.3
+conda install -y -c conda-forge pdbfixer==1.8 openmm=8.0.0 cudnn=8.9 numpy=1.24.2
 conda install -y -c bioconda bioconda hmmer hhsuite==3.3.0 kalign2
 pip3 install --no-cache-dir \
       jax==0.4.26 \
       jaxlib==0.4.26+cuda12.cudnn89 \
-      optax flax orbax-checkpoint docker absl-py==1.0.0 biopython==1.79 numpy==1.24.3 chex==0.1.86 dm-haiku==0.0.12 ml_dtypes==0.3.1 dm-tree==0.1.8 immutabledict==2.0.0 ml-collections==0.1.0 scipy==1.11.1 pandas==2.0.3 tensorflow==2.16.1 tensorflow-cpu==2.16.1 matplotlib==3.8 python-igraph pyyaml future csb psutil paramiko scikit-learn jinja2 flask -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+      optax flax orbax-checkpoint docker absl-py==1.0.0 biopython==1.79 numpy==1.24.2 chex==0.1.86 dm-haiku==0.0.12 ml_dtypes==0.3.1 dm-tree==0.1.8 immutabledict==2.0.0 ml-collections==0.1.0 scipy==1.11.1 pandas==2.0.3 tensorflow==2.16.1 tensorflow-cpu==2.16.1 matplotlib==3.8 python-igraph pyyaml future csb psutil paramiko scikit-learn jinja2 flask -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 conda clean --all --force-pkgs-dirs --yes
-pip install git+https://github.com/google-deepmind/alphafold
+pip install git+https://github.com/deepmind/alphafold.git@v2.3.2
 path=$(python -c "import site; print(site.getsitepackages()[0])")
 wget -q -P "${path}"/alphafold/common/ https://git.scicore.unibas.ch/schwede/openstructure/-/raw/7102c63615b64735c4941278d92b554ec94415f8/modules/mol/alg/src/stereo_chemical_props.txt
 
