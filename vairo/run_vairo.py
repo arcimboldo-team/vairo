@@ -7,8 +7,9 @@ import logging
 import yaml
 import argparse
 import numpy
+numpy.set_printoptions(legacy=False)
+numpy.set_printoptions = lambda *args, **kwargs: None
 from datetime import datetime
-import tensorflow.compat.v1 as tf
 
 alphafold_path = os.path.join(os.path.dirname(__file__), 'alphafold')
 if alphafold_path not in sys.path:
