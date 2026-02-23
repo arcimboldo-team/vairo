@@ -599,10 +599,10 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
     return results_dict
 
 
-def analyse_scwrl(fasta_path, template_path, num_steps):
-
+def analyse_scwrl(fasta_path, template_path, num_steps, target_chains):
     scwrl_path = '/opt/scwrl4/Scwrl4'
-    sequences = bioutils.extract_sequences(fasta_path)
+    sequences_dict = bioutils.extract_sequences(fasta_path)
+    sequences = list(sequences_dict.values())
     sequence_template_dict = bioutils.extract_sequence_msa_from_pdb(template_path)
     template_dict = {}
     run_results = []
@@ -612,19 +612,34 @@ def analyse_scwrl(fasta_path, template_path, num_steps):
     for i, (chain, template_sequence) in enumerate(sequence_template_dict.items()):
         first_pos = None
         last_pos = None
-        for index, item in enumerate(sequence_template_dict[chain]):
+
+        for index, item in enumerate(template_sequence):
             if '-' not in item:
                 first_pos = index
                 break
-        for index in range(len(sequence_template_dict[chain]) - 1, -1, -1):
-            if '-' not in sequence_template_dict[chain][index]:
+        for index in range(len(template_sequence) - 1, -1, -1):
+            if '-' not in template_sequence[index]:
                 last_pos = index
                 break
+
         if first_pos is not None and last_pos is not None:
-            template_dict[chain] = (list(sequences.values())[i], first_pos, last_pos)
+            if chain in target_chains:
+                template_dict[chain] = {
+                    'is_target': True,
+                    'seq': sequences[i],
+                    'first': first_pos,
+                    'last': last_pos
+                }
+            else:
+                wt_sequence = "".join([res for res in template_sequence if '-' not in res])
+                template_dict[chain] = {
+                    'is_target': False,
+                    'seq': wt_sequence
+                }
+
     print(f"Template mapping: {template_dict}")
 
-    interfaces_pdbs =  os.path.join(os.getcwd(), "interfaces_pdbs")
+    interfaces_pdbs = os.path.join(os.getcwd(), "interfaces_pdbs")
     os.makedirs(interfaces_pdbs, exist_ok=True)
 
     aleph_dir = os.path.join(os.getcwd(), "aleph")
@@ -634,17 +649,31 @@ def analyse_scwrl(fasta_path, template_path, num_steps):
         general_sequence = ''
         valid_step = True
 
-        for temp in template_dict.values():
-            try:
-                start_slice = temp[1] + i
-                end_slice = temp[2] + i + 1
-                if start_slice < 0: raise IndexError
-                segment = temp[0][start_slice: end_slice]
-                general_sequence += segment
-            except IndexError:
-                print(f"Warning: Index out of bounds at step {i}. Skipping.")
-                valid_step = False
-                break
+        for chain, temp in template_dict.items():
+            if temp['is_target']:
+                try:
+                    start_slice = temp['first'] + i
+                    end_slice = temp['last'] + i + 1
+
+                    if start_slice < 0:
+                        raise IndexError
+
+                    segment = temp['seq'][start_slice: end_slice]
+
+                    # Ensure segment matches exact template length (prevents silent truncation)
+                    expected_len = temp['last'] - temp['first'] + 1
+                    if len(segment) != expected_len:
+                        raise IndexError
+
+                    general_sequence += segment
+
+                except IndexError:
+                    print(f"Warning: Index out of bounds at step {i} for chain {chain}. Skipping.")
+                    valid_step = False
+                    break
+            else:
+                # Keep original sequence exactly as it is, no shifting applied
+                general_sequence += temp['seq']
 
         if not valid_step: continue
 
@@ -662,11 +691,11 @@ def analyse_scwrl(fasta_path, template_path, num_steps):
         with open(new_fasta_path, 'w') as f:
             f.write(general_sequence)
 
+        # 3. Run SCWRL
         cmd = [scwrl_path, '-i', template_path, '-o', output_pdb_path, '-s', new_fasta_path]
         print(f"Running SCWRL for step {i}...")
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         energy_match = re.search(r"Total minimal energy of the graph\s*=\s*([-\d\.]+)", result.stdout)
-
 
         results_dict, domains_dict = bioutils.aleph_annotate(output_path=aleph_dir, pdb_path=output_pdb_path)
 
@@ -698,7 +727,6 @@ def analyse_scwrl(fasta_path, template_path, num_steps):
             })
         else:
             print("  -> Warning: SCWRL energy parsing failed.")
-
 
     # --- Analysis & Ranking ---
     print("\n" + "=" * 30)
@@ -734,7 +762,7 @@ def analyse_scwrl(fasta_path, template_path, num_steps):
             print(
                 f"{key:<10} | {rank:<5} | {data['step']:<5} | {data['pisa_deltaG']:<10.4f} | {data['scwrl_energy']:<10.4f}")
 
-    # --- 3. Generate PyMOL Script ---
+    # --- Generate PyMOL Script ---
     print("\nGenerating PyMOL visualization script...")
     generate_pymol_script(interfaces_by_type, "view_interfaces.pse")
 
