@@ -58,21 +58,21 @@ read -p "Enter the Conda environment name: " env_name
 conda create -y -n "$env_name" python=3.11
 conda activate "$env_name"
 conda install -y --quiet --channel nvidia cudatoolkit=11.8
-conda install -y -c conda-forge pdbfixer==1.8 openmm=8.0.0 cudnn=8.9 numpy=1.24.3
-conda install -y -c bioconda bioconda hmmer hhsuite==3.3.0 kalign2
+conda install -y -c conda-forge pdbfixer==1.8 openmm=8.0.0 cudnn=8.9 numpy=1.24.3 libstdcxx-ng=12.1.0
+conda install -y -c bioconda hmmer hhsuite==3.3.0 kalign2
 pip3 install --no-cache-dir \
       jax==0.4.26 \
       jaxlib==0.4.26+cuda12.cudnn89 \
-      optax flax orbax-checkpoint docker absl-py==1.0.0 biopython==1.79 numpy==1.24.3 chex==0.1.86 dm-haiku==0.0.12 ml_dtypes==0.3.1 dm-tree==0.1.8 immutabledict==2.0.0 ml-collections==0.1.0 scipy==1.11.1 pandas==2.0.3 tensorflow==2.16.1 tensorflow-cpu==2.16.1 matplotlib==3.8 python-igraph pyyaml future csb psutil paramiko scikit-learn jinja2 flask -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+      optax flax orbax-checkpoint docker absl-py==1.0.0 biopython==1.79 numpy==1.24.3 chex==0.1.86 dm-haiku==0.0.12 ml_dtypes==0.3.1 dm-tree==0.1.8 immutabledict==2.0.0 ml-collections==0.1.0 scipy==1.11.1 pandas==2.0.3 tensorflow==2.16.1 tensorflow-cpu==2.16.1 matplotlib==3.8 python-igraph pyyaml future csb psutil paramiko scikit-learn jinja2 flask -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html setuptools==81
 conda clean --all --force-pkgs-dirs --yes
 
 
 echo "******"
 echo "VAIRO HAS BEEN SUCCESSFULLY INSTALLED"
 echo "A conda environment with the name ""$env_name"" has been created. To run VAIRO, you must first activate the new environment (conda activate ""$env_name"") and type VAIROGUI. This will run the program and show the different options for creating a job."
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 echo "Consider adding the following line to your ~/.bashrc or ~/.zshrc:"
-echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$CONDA_PREFIX/lib"
+echo "export LD_LIBRARY_PATH=\$CONDA_PREFIX/lib:\$LD_LIBRARY_PATH"
 echo "Before running VAIRO, please ensure that the libraries of AlphaFold2 are installed. If they have not been installed, please download them using the following script.: https://github.com/deepmind/alphafold/blob/v2.2.4/scripts/download_all_data.sh"
 echo "Run the following commands:"
 echo "conda activate ""$env_name"""
