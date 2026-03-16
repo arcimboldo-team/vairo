@@ -1385,25 +1385,26 @@ def find_interface_from_pisa(pdb_in_path: str, interfaces_path: str) -> List[Uni
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE).communicate()[0].decode('utf-8')
             interface_data = utils.parse_pisa_interfaces(serial_output)
-            new_interface = structures.Interface(name=f'{interface_data["chain1"]}-{interface_data["chain2"]}',
-                                                 res_chain1=interface_data["res_chain1"],
-                                                 res_chain2=interface_data["res_chain2"],
-                                                 chain1=interface_data["chain1"],
-                                                 chain2=interface_data["chain2"],
-                                                 se_gain1=float(interface_data['se_gain1']),
-                                                 se_gain2=float(interface_data['se_gain2']),
-                                                 solvation1=interface_data['solvation1'],
-                                                 solvation2=interface_data['solvation2'],
-                                                 area=float(interface['area']),
-                                                 deltaG=float(interface['deltaG']),
-                                                 nhb=int(interface['nhb']),
-                                                 )
+            if interface_data:
+                new_interface = structures.Interface(name=f'{interface_data["chain1"]}-{interface_data["chain2"]}',
+                                                     res_chain1=interface_data["res_chain1"],
+                                                     res_chain2=interface_data["res_chain2"],
+                                                     chain1=interface_data["chain1"],
+                                                     chain2=interface_data["chain2"],
+                                                     se_gain1=float(interface_data['se_gain1']),
+                                                     se_gain2=float(interface_data['se_gain2']),
+                                                     solvation1=interface_data['solvation1'],
+                                                     solvation2=interface_data['solvation2'],
+                                                     area=float(interface['area']),
+                                                     deltaG=float(interface['deltaG']),
+                                                     nhb=int(interface['nhb']),
+                                                     )
 
-            interface_data_list.append(new_interface)
-            pisa_output_txt = os.path.join(interfaces_path,
-                                           f'{utils.get_file_name(pdb_in_path)}_{interface_data["chain1"]}{interface_data["chain2"]}_interface.txt')
-            with open(pisa_output_txt, 'w') as f_out:
-                f_out.write(serial_output)
+                interface_data_list.append(new_interface)
+                pisa_output_txt = os.path.join(interfaces_path,
+                                               f'{utils.get_file_name(pdb_in_path)}_{interface_data["chain1"]}{interface_data["chain2"]}_interface.txt')
+                with open(pisa_output_txt, 'w') as f_out:
+                    f_out.write(serial_output)
 
     erase_pisa(name=tmp_name)
 
