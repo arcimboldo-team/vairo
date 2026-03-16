@@ -410,6 +410,12 @@ def parse_pisa_interfaces(pisa_output: str) -> Dict:
             se_gain1 = line.split('|')[1].replace(' ', '')
             se_gain2 = line.split('|')[2].replace(' ', '')
 
+    if chain1 and chain2 and chain1 > chain2:
+        chain1, chain2 = chain2, chain1
+        res_chain1, res_chain2 = res_chain2, res_chain1
+        solvation1, solvation2 = solvation2, solvation1
+        se_gain1, se_gain2 = se_gain2, se_gain1
+
     return {'solvation1': solvation1, 'solvation2': solvation2, 'se_gain1': se_gain1,
             'se_gain2': se_gain2, 'chain1': chain1, 'res_chain1': res_chain1,
             'chain2': chain2, 'res_chain2': res_chain2}
