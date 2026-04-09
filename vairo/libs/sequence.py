@@ -120,8 +120,9 @@ class SequenceAssembled:
             self.sequence_assembled += sequence_part + 'G' * self.glycines
             self.sequence_mutated_assembled += sequence_mutated_part + 'G' * self.glycines
 
-        self.sequence_assembled = self.sequence_assembled[:-self.glycines]
-        self.sequence_mutated_assembled = self.sequence_mutated_assembled[:-self.glycines]
+        if self.glycines > 0:
+            self.sequence_assembled = self.sequence_assembled[:-self.glycines]
+            self.sequence_mutated_assembled = self.sequence_mutated_assembled[:-self.glycines]
         self.length = len(self.sequence_assembled)
 
         if self.sequence_mutated_assembled != self.sequence_assembled:
