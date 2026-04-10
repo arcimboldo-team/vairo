@@ -602,7 +602,7 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
     return results_dict
 
 
-def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_product=True):
+def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_product=True, one_chain=False):
     """
     chain_steps_dict: dictionary mapping target chain IDs to their max num_steps.
                       Example: {'A': 2, 'B': -1} will do for A and [0, -1] for B.
@@ -610,10 +610,9 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
     scwrl_path = '/opt/scwrl4/Scwrl4'
     chain_steps_dict = ast.literal_eval(chain_steps_dict)
     sequences_dict = bioutils.extract_sequences(fasta_path)
-    sequences_dict = dict(sorted(sequences_dict.items()))
-    sequences = list(sequences_dict.values())
+    sequences_dict = dict(sequences_dict.items())
     sequence_template_dict = bioutils.extract_sequence_msa_from_pdb(template_path)
-    sequence_template_dict = dict(sorted(sequence_template_dict.items()))
+    sequence_template_dict = dict(sequence_template_dict.items())
 
     output_path = 'fixed.pdb'
     shutil.copy2(template_path, output_path)
@@ -622,7 +621,6 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
 
     template_dict = {}
     run_results = []
-    print(f"Loaded sequences: {sequences}")
 
     for i, (chain, template_sequence) in enumerate(sequence_template_dict.items()):
         first_pos = None
@@ -641,7 +639,7 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
             if chain in chain_steps_dict:
                 template_dict[chain] = {
                     'is_target': True,
-                    'seq': sequences[i],
+                    'seq': sequences_dict[chain],
                     'first': first_pos,
                     'last': last_pos
                 }
@@ -737,8 +735,6 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
         with open(new_fasta_path, 'w') as f:
             f.write(general_sequence)
 
-        cmd = [scwrl_path, '-i', template_path, '-o', output_pdb_path, '-s', new_fasta_path]
-
         if bor_file != '':
             try:
                 with open(bor_file, 'r') as file:
@@ -755,9 +751,10 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
                 print('Not possible to read bor file.')
 
         print(f"Running SCWRL for combination: {combo_name}...")
+        cmd = [scwrl_path, '-i', template_path, '-o', output_pdb_path, '-s', new_fasta_path]
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        energy_match = re.search(r"Total minimal energy of the graph\s*=\s*([-\d\.]+)", result.stdout)
 
+        energy_match = re.search(r"Total minimal energy of the graph\s*=\s*([-\d\.]+)", result.stdout)
         results_dict, domains_dict = bioutils.aleph_annotate(output_path=aleph_dir, pdb_path=output_pdb_path)
 
         if energy_match:
@@ -789,6 +786,21 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
             })
         else:
             print(f"  -> Warning: SCWRL energy parsing failed for {combo_name}.")
+
+        if one_chain:
+            with tempfile.TemporaryDirectory() as tmpdirname:
+                chain_dict = bioutils.split_pdb_in_chains(
+                    pdb_path=output_pdb_path,
+                    output_dir=tmpdirname
+                )
+                split_paths = list(chain_dict.values())
+                if split_paths:
+                    for path in split_paths:
+                        bioutils.change_chain(pdb_in_path=path, pdb_out_path=path, chain='A')
+                    bioutils.merge_pdbs_in_one_chain(
+                        list_of_paths_of_pdbs_to_merge=split_paths,
+                        pdb_out_path=output_pdb_path
+                    )
 
     # --- Analysis & Ranking ---
     print("\n" + "=" * 40)
