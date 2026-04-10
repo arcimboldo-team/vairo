@@ -159,7 +159,6 @@ def main():
                 if num_msa > 0:
                     logging.error(f'     Adding {num_msa} sequence/s to the MSA')
                 library.add_information(num_msa=num_msa, num_templates=num_templates)
-        
             features_list = a_air.partition_mosaic()
         else:
             a_air.generate_output()

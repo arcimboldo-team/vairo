@@ -14,10 +14,13 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import requests
 import csv
+import itertools
+import ast
 from alphafold.data import parsers, templates, mmcif_parsing
 from Bio.Blast import NCBIWWW
 from alphafold.common import residue_constants
 from Bio.PDB import PDBParser, PDBIO, Structure, Model, Chain
+import yaml
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 target_directory = os.path.abspath(os.path.join(current_directory, '..', '..'))
@@ -599,14 +602,26 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
     return results_dict
 
 
-def analyse_scwrl(fasta_path, template_path, num_steps, target_chains):
+def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_product=True):
+    """
+    chain_steps_dict: dictionary mapping target chain IDs to their max num_steps.
+                      Example: {'A': 2, 'B': -1} will do for A and [0, -1] for B.
+    """
     scwrl_path = '/opt/scwrl4/Scwrl4'
+    chain_steps_dict = ast.literal_eval(chain_steps_dict)
     sequences_dict = bioutils.extract_sequences(fasta_path)
+    sequences_dict = dict(sorted(sequences_dict.items()))
     sequences = list(sequences_dict.values())
     sequence_template_dict = bioutils.extract_sequence_msa_from_pdb(template_path)
+    sequence_template_dict = dict(sorted(sequence_template_dict.items()))
+
+    output_path = 'fixed.pdb'
+    shutil.copy2(template_path, output_path)
+    bioutils.run_pdbfixer(output_path, output_path)
+    template_path = output_path
+
     template_dict = {}
     run_results = []
-
     print(f"Loaded sequences: {sequences}")
 
     for i, (chain, template_sequence) in enumerate(sequence_template_dict.items()):
@@ -623,7 +638,7 @@ def analyse_scwrl(fasta_path, template_path, num_steps, target_chains):
                 break
 
         if first_pos is not None and last_pos is not None:
-            if chain in target_chains:
+            if chain in chain_steps_dict:
                 template_dict[chain] = {
                     'is_target': True,
                     'seq': sequences[i],
@@ -639,61 +654,107 @@ def analyse_scwrl(fasta_path, template_path, num_steps, target_chains):
 
     print(f"Template mapping: {template_dict}")
 
-    interfaces_pdbs = os.path.join(os.getcwd(), "interfaces_pdbs")
+    results_dir = os.path.join(os.getcwd(), "results")
+    os.makedirs(results_dir, exist_ok=True)
+
+    interfaces_pdbs = os.path.join(results_dir, "interfaces_pdbs")
     os.makedirs(interfaces_pdbs, exist_ok=True)
 
-    aleph_dir = os.path.join(os.getcwd(), "aleph")
+    aleph_dir = os.path.join(results_dir, "aleph")
     os.makedirs(aleph_dir, exist_ok=True)
 
-    for i in range(-int(num_steps), int(num_steps) + 1, 1):
+    chain_order = list(template_dict.keys())
+    step_ranges_list = []
+
+    for chain in chain_order:
+        if chain in chain_steps_dict:
+            num_steps = int(chain_steps_dict[chain])
+            if num_steps > 0:
+                step_ranges_list.append(list(range(0, num_steps + 1)))
+            elif num_steps < 0:
+                step_ranges_list.append(list(range(0, num_steps - 1, -1)))
+
+    if use_product:
+        all_combinations = list(itertools.product(*step_ranges_list))
+    else:
+        max_len = max((len(r) for r in step_ranges_list), default=0)
+
+        padded_ranges = [
+            r + [r[-1]] * (max_len - len(r)) if r else '' * max_len
+            for r in step_ranges_list
+        ]
+        all_combinations = list(zip(*padded_ranges))
+
+    print(f"Total combinatorial steps to evaluate: {len(all_combinations)}")
+
+    for combo in all_combinations:
+        current_steps = dict(zip(chain_order, combo))
+
         general_sequence = ''
         valid_step = True
+        step_name_parts = []
 
-        for chain, temp in template_dict.items():
-            if temp['is_target']:
+        for chain in chain_order:
+            temp = template_dict[chain]
+            shift = current_steps[chain]
+            if chain in chain_steps_dict:
+                step_name_parts.append(f"{chain}{shift}")
                 try:
-                    start_slice = temp['first'] + i
-                    end_slice = temp['last'] + i + 1
+                    expected_len = temp['last'] - temp['first'] + 1
+                    original_steps = int(chain_steps_dict[chain])
+                    if original_steps >= 0:
+                        start_slice = temp['first'] + shift
+                        end_slice = temp['last'] + shift + 1
+                    else:
+                        end_slice = len(temp['seq']) + shift
+                        start_slice = end_slice - expected_len
 
                     if start_slice < 0:
                         raise IndexError
 
                     segment = temp['seq'][start_slice: end_slice]
 
-                    # Ensure segment matches exact template length (prevents silent truncation)
-                    expected_len = temp['last'] - temp['first'] + 1
                     if len(segment) != expected_len:
                         raise IndexError
 
                     general_sequence += segment
-
                 except IndexError:
-                    print(f"Warning: Index out of bounds at step {i} for chain {chain}. Skipping.")
+                    print(f"Warning: Index out of bounds for chain {chain} at shift {shift}. Skipping combination.")
                     valid_step = False
                     break
             else:
-                # Keep original sequence exactly as it is, no shifting applied
                 general_sequence += temp['seq']
 
-        if not valid_step: continue
+        if not valid_step:
+            continue
 
-        # Directories
-        os.makedirs("results", exist_ok=True)
-        step_dir = os.path.join(os.getcwd(), "results", f"step_{i}")
-        os.makedirs(step_dir, exist_ok=True)
-        interfaces_dir = os.path.join(step_dir, "interfaces")
-        os.makedirs(interfaces_dir, exist_ok=True)
+        combo_name = "_".join(step_name_parts) if step_name_parts else "NM"
+        name = f"model_{combo_name}"
 
-        new_fasta_path = os.path.join(step_dir, "new.fasta")
-        name = f"model_step_{i}"
-        output_pdb_path = os.path.join(step_dir, f"{name}.pdb")
+        new_fasta_path = os.path.join(results_dir, f"{name}.fasta")
+        output_pdb_path = os.path.join(results_dir, f"{name}.pdb")
 
         with open(new_fasta_path, 'w') as f:
             f.write(general_sequence)
 
-        # 3. Run SCWRL
         cmd = [scwrl_path, '-i', template_path, '-o', output_pdb_path, '-s', new_fasta_path]
-        print(f"Running SCWRL for step {i}...")
+
+        if bor_file != '':
+            try:
+                with open(bor_file, 'r') as file:
+                    config = yaml.safe_load(file)
+                    if 'output_dir' in config:
+                        config['output_dir'] = os.path.join(results_dir, f"{name}_output")
+                    if 'templates' in config:
+                        if 'pdb' in config['templates'][0]:
+                            config['templates'][0]['pdb'] = os.path.join(results_dir, f"{name}.pdb")
+                output_bor_path = os.path.join(results_dir, f"{name}.bor")
+                with open(output_bor_path, 'w') as file:
+                    yaml.dump(config, file, default_flow_style=False, sort_keys=False)
+            except Exception as e:
+                print('Not possible to read bor file.')
+
+        print(f"Running SCWRL for combination: {combo_name}...")
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         energy_match = re.search(r"Total minimal energy of the graph\s*=\s*([-\d\.]+)", result.stdout)
 
@@ -703,8 +764,8 @@ def analyse_scwrl(fasta_path, template_path, num_steps, target_chains):
             energy_score = float(energy_match.group(1))
             print(f"  -> SCWRL Success. Energy: {energy_score}")
 
-            print(f"  -> Running PISA analysis for step {i}...")
-            interfaces_data_list = bioutils.find_interface_from_pisa(output_pdb_path, interfaces_dir)
+            print(f"  -> Running PISA analysis...")
+            interfaces_data_list = bioutils.find_interface_from_pisa(output_pdb_path, interfaces_pdbs)
             print(f"  -> Found {len(interfaces_data_list)} interfaces.")
 
             for interface in interfaces_data_list:
@@ -712,6 +773,7 @@ def analyse_scwrl(fasta_path, template_path, num_steps, target_chains):
                     continue
                 code = f'{interface.chain1}-{interface.chain2}'
                 dimers_path = os.path.join(interfaces_pdbs, f'{name}_{code}.pdb')
+
                 bioutils.create_interface_domain(pdb_in_path=output_pdb_path,
                                                  pdb_out_path=dimers_path,
                                                  interface=interface,
@@ -719,19 +781,19 @@ def analyse_scwrl(fasta_path, template_path, num_steps, target_chains):
                 interface.set_structure(dimers_path)
 
             run_results.append({
-                'step': i,
+                'combo_name': combo_name,
                 'scwrl_energy': energy_score,
                 'pdb_path': output_pdb_path,
                 'sequence': general_sequence,
                 'interfaces': interfaces_data_list
             })
         else:
-            print("  -> Warning: SCWRL energy parsing failed.")
+            print(f"  -> Warning: SCWRL energy parsing failed for {combo_name}.")
 
     # --- Analysis & Ranking ---
-    print("\n" + "=" * 30)
+    print("\n" + "=" * 40)
     print("ANALYSIS OF SCWRL RUNS & INTERFACES")
-    print("=" * 30)
+    print("=" * 40)
 
     if not run_results:
         print("No successful runs to analyze.")
@@ -743,7 +805,7 @@ def analyse_scwrl(fasta_path, template_path, num_steps, target_chains):
         for interface in run['interfaces']:
             key = interface.name
             interfaces_by_type[key].append({
-                'step': run['step'],
+                'combo_name': run['combo_name'],
                 'scwrl_energy': run['scwrl_energy'],
                 'pisa_deltaG': interface.deltaG,
                 'interface_obj': interface
@@ -753,18 +815,18 @@ def analyse_scwrl(fasta_path, template_path, num_steps, target_chains):
         interfaces_by_type[key].sort(key=lambda x: x['pisa_deltaG'])
 
     # Print Ranking Table
-    print(f"{'Interface':<10} | {'Rank':<5} | {'Step':<5} | {'Delta G':<10} | {'SCWRL E':<10}")
-    print("-" * 60)
+    print(f"{'Interface':<10} | {'Rank':<5} | {'Combination':<15} | {'Delta G':<10} | {'SCWRL E':<10}")
+    print("-" * 65)
 
     for key, ranked_list in interfaces_by_type.items():
         print(f"--- Type: {key} ---")
         for rank, data in enumerate(ranked_list, 1):
             print(
-                f"{key:<10} | {rank:<5} | {data['step']:<5} | {data['pisa_deltaG']:<10.4f} | {data['scwrl_energy']:<10.4f}")
+                f"{key:<10} | {rank:<5} | {data['combo_name']:<15} | {data['pisa_deltaG']:<10.4f} | {data['scwrl_energy']:<10.4f}")
 
     # --- Generate PyMOL Script ---
     print("\nGenerating PyMOL visualization script...")
-    generate_pymol_script(interfaces_by_type, "view_interfaces.pse")
+    # generate_pymol_script(interfaces_by_type, "view_interfaces.pse")
 
 
 def generate_pymol_script(ranked_interfaces_dict, output_path):
