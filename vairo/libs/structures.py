@@ -246,6 +246,7 @@ class Ranked(Pdb):
     def __init__(self, path: str):
         super().__init__(path=path)
         self.minimized_path: str
+        self.surface_path: str
         self.plddt: int
         self.superposition_templates: List[PdbRanked] = []
         self.superposition_experimental: List[PdbRanked] = []
@@ -254,6 +255,7 @@ class Ranked(Pdb):
         self.filtered: bool = False
         self.best: bool = False
         self.qscore: float
+        self.surface_dict: Dict = {}
         self.qscore_dict: Dict = {}
         self.encoded: bytes
 
@@ -280,6 +282,12 @@ class Ranked(Pdb):
 
     def set_minimized_path(self, path: str):
         self.minimized_path = path
+
+    def set_surface_path(self, path: str):
+        self.surface_path = path
+
+    def set_surface_comparision(self, surface_dict: Dict):
+        self.surface_dict = surface_dict
 
     def add_template(self, template: PdbRanked):
         self.superposition_templates.append(template)

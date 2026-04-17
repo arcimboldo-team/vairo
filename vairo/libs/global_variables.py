@@ -12,6 +12,14 @@ ATOM_TYPES = ['N', 'CA', 'C', 'CB', 'O', 'CG', 'CG1', 'CG2', 'OG', 'OG1', 'SG', 
 ATOM_ORDER = {atom_type: i for i, atom_type in enumerate(ATOM_TYPES)}
 ORDER_ATOM = {v: k for k, v in ATOM_ORDER.items()}
 
+MAX_SASA = {
+    'ALA': 129.0, 'ARG': 274.0, 'ASN': 195.0, 'ASP': 193.0,
+    'CYS': 167.0, 'GLN': 225.0, 'GLU': 223.0, 'GLY': 104.0,
+    'HIS': 224.0, 'ILE': 197.0, 'LEU': 201.0, 'LYS': 236.0,
+    'MET': 224.0, 'PHE': 240.0, 'PRO': 159.0, 'SER': 155.0,
+    'THR': 172.0, 'TRP': 285.0, 'TYR': 263.0, 'VAL': 174.0
+}
+
 RAMACHANDRAN_TABLE = \
     [
         [16, 45, 64, 51, 40, 39, 32, 38, 43, 63, 35, 4, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 2, 2, 0, 0, 0, 0, 0, 0, 0,
@@ -213,6 +221,10 @@ INPUT_PARAMETERS = {
             'default': None
         },
         'predict_region': {
+            'required': False,
+            'default': []
+        },
+        'surface_residues': {
             'required': False,
             'default': []
         }

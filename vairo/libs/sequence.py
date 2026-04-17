@@ -21,6 +21,7 @@ class Sequence:
         self.mutations_dict: Dict = {}
         self.alignment_dir: str
         self.predict_region: List[int] = []
+        self.surface_dict: Dict = {'buried': [], 'exposed': []}
 
         fasta_path = utils.get_input_value(name='fasta_path', section='sequence', input_dict=parameters_dict)
         positions = utils.get_input_value(name='positions', section='sequence', input_dict=parameters_dict)
@@ -34,6 +35,24 @@ class Sequence:
                 position = int(position) - 1 if int(position) != -1 else int(position)
                 self.positions.append(position)
             self.num_of_copies = len(self.positions)
+
+        surface_input = utils.get_input_value(name='surface_residues', section='sequence', input_dict=parameters_dict)
+
+        if surface_input:
+            items = str(surface_input).replace(' ', '').split(',')
+            for item in items:
+                if not item:
+                    continue
+                state_char = item[-1].lower()
+                res_num_str = item[:-1]
+                if res_num_str.isdigit() and state_char in ['b', 'e']:
+                    res_num = int(res_num_str)
+                    if state_char == 'b':
+                        self.surface_dict['buried'].append(res_num)
+                    elif state_char == 'e':
+                        self.surface_dict['exposed'].append(res_num)
+        self.surface_dict['buried'] = sorted(list(set(self.surface_dict['buried'])))
+        self.surface_dict['exposed'] = sorted(list(set(self.surface_dict['exposed'])))
 
         if self.num_of_copies == 0:
             raise Exception(f'Set num_of_copies or positions for sequence {fasta_path}')

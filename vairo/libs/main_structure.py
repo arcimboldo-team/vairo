@@ -391,6 +391,7 @@ class MainStructure:
             energies_dict = {}
             frobenius_dict = {}
             conclusion_dict = {}
+            surface_dict = {}
             interfaces_dict = {'interfaces': {}, 'pdbs': {}}
 
             for pdb_in in self.output.ranked_filtered_list + self.output.experimental_list + self.output.templates_list:
@@ -450,6 +451,9 @@ class MainStructure:
                             frobenius_plots_list.append(ordered_list.pop())
                         frobenius_dict[ranked.name] = frobenius_plots_list + ordered_list
 
+                if ranked.surface_dict:
+                    surface_dict[ranked.name] = ranked.surface_dict
+
             render_dict['bests_dict'] = {ranked.name: ranked for ranked in self.output.ranked_list if ranked.best}
             render_dict['filtered_dict'] = {ranked.name: ranked for ranked in self.output.ranked_filtered_list}
 
@@ -474,6 +478,8 @@ class MainStructure:
                 render_dict['interfaces_dict'] = interfaces_dict
             if frobenius_dict:
                 render_dict['frobenius_dict'] = frobenius_dict
+            if surface_dict:
+                render_dict['table']['surface_dict'] = surface_dict
 
             if self.output.experimental_dict:
                 new_dict = copy.deepcopy(self.output.experimental_dict)

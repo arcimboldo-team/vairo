@@ -517,7 +517,7 @@
                     {% for key, value in data.frobenius_dict.items() %}
                         <details class="details-frobenius"
                         {% if key == data.ranked_list[0].name %}
-                         openstruct
+                         open
                         {% endif %}
                         >
                         <summary class="summary-frobenius"> <h3 style="display:inline">{{ key }}</h3></summary>
@@ -814,6 +814,36 @@
                         {% endfor %}
                     </table>
                     <button onclick="hideValues('table_templates_rmsd', this)">Show all predictions</button>
+                {% endif %}
+                {% if 'surface_dict' in data.table %}
+                    <h3>Surface analysis</h3>
+                    <table id="table_surface">
+                        <tr>
+                            <th>Prediction</th>
+                            <th>Correct Buried</th>
+                            <th>Incorrect Buried</th>
+                            <th>Correct Exposed</th>
+                            <th>Incorrect Exposed</th>
+                            <th>Accuracy (%)</th>
+                        </tr>
+                        {% for key, value in data.table.surface_dict.items() %}
+                            {% if key in data.bests_dict %}
+                                <tr class="green-row">
+                            {% elif key in data.filtered_dict %}
+                                <tr class="blue-row">
+                            {% else %}
+                                <tr class="hide-row" style="display:none;">
+                            {% endif %}
+                                <td>{{ key }}</td>
+                                <td>{{ value.correct_buried | join(', ') }}</td>
+                                <td>{{ value.incorrect_buried | join(', ') }}</td>
+                                <td>{{ value.correct_exposed | join(', ') }}</td>
+                                <td>{{ value.incorrect_exposed | join(', ') }}</td>
+                                <td>{{ value.accuracy | round(2) }}%</td>
+                            </tr>
+                        {% endfor %}
+                    </table>
+                    <button onclick="hideValues('table_surface', this)">Show all predictions</button>
                 {% endif %}
                 {% if 'experimental_dict' in data.table %}
                     <h3>Superposition of experimental pdbs with predictions and templates (Q-Score (%), RMSD (<span>&#8491;</span>), superposed residues (total residues))</h3>

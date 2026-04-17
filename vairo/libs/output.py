@@ -7,6 +7,7 @@ from typing import List, Dict, Tuple, Any
 import pandas as pd
 from ALEPH.aleph.core import ALEPH
 from libs import bioutils, utils, sequence, structures, plots
+import string
 
 PERCENTAGE_FILTER = 0.8
 QSCORE_MINIMUM = 0.3
@@ -20,6 +21,7 @@ class OutputStructure:
         self.templates_path: str = f'{output_dir}/templates'
         self.templates_lsqkab_path: str = f'{output_dir}/templates_lsqkab'
         self.interfaces_path: str = f'{output_dir}/interfaces'
+        self.surfaces_path: str = f'{output_dir}/surfaces'
         self.analysis_path: str = f'{self.plots_path}/analysis.txt'
         self.plddt_plot_path: str = f'{self.plots_path}/plddt.png'
         self.sequence_plot_path: str = f'{self.plots_path}/sequence_plot.png'
@@ -55,6 +57,7 @@ class OutputStructure:
         utils.create_dir(dir_path=self.templates_lsqkab_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.interfaces_path, delete_if_exists=True)
         utils.create_dir(dir_path=self.frobenius_path, delete_if_exists=True)
+        utils.create_dir(dir_path=self.surfaces_path, delete_if_exists=True)
 
     def extract_results(self, vairo_struct, region_predicted):
         if region_predicted:
@@ -307,6 +310,26 @@ class OutputStructure:
         #    logging.error('Not possible to calculate the dendrogram with just one sample')
 
         # Generate CCANALYSIS plots, one without rankeds and another one with rankeds.
+
+        expected_surface_for_ranked = {'buried': set(), 'exposed': set()}
+        for idx, seq in enumerate(sequence_assembled.sequence_list_expanded):
+            chain_id = string.ascii_uppercase[idx]
+            for res_num in seq.surface_dict.get('buried', []):
+                expected_surface_for_ranked['buried'].add((chain_id, res_num))
+            for res_num in seq.surface_dict.get('exposed', []):
+                expected_surface_for_ranked['exposed'].add((chain_id, res_num))
+        has_expected_residues = bool(expected_surface_for_ranked['buried'] or expected_surface_for_ranked['exposed'])
+        for ranked in self.ranked_filtered_list:
+            ranked.set_surface_path(os.path.join(self.surfaces_path, f"{ranked.name}_surface.pdb"))
+            surface_results = bioutils.analyse_surface_residues(
+                pdb_in_path=ranked.split_path,
+                pdb_out_path=ranked.surface_path,
+                expected_surface=expected_surface_for_ranked
+            )
+            if has_expected_residues:
+                ranked.set_surface_comparision(surface_results)
+            else:
+                ranked.set_surface_comparision({})
 
         logging.error('Analysing results with hinges and ccanalysis')
         templates_cluster_list, analysis_dict = bioutils.cc_and_hinges_analysis(pdbs=self.templates_list,

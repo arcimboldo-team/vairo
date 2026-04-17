@@ -182,8 +182,7 @@ class Template:
                             self.modifications_struct.get_modifications_by_chain_and_position(
                                 chain=chain, position=modification.position))
                         self.template_chains_struct.new_chain_sequence(path=chain_path,
-                                                                       sequence=sequence_assembled.sequence_list_expanded[
-                                                                           modification.position],
+                                                                       sequence=sequence_assembled.sequence_list_expanded[modification.position],
                                                                        modifications_list=modification_pos_list)
 
         else:

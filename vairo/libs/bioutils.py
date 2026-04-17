@@ -1,5 +1,5 @@
 from collections import OrderedDict, defaultdict
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Set
 import copy, itertools, logging, os, re, shutil, subprocess, sys, tempfile
 import numpy as np
 import pandas as pd
@@ -7,6 +7,7 @@ import io
 from Bio import SeqIO
 from Bio.PDB import PDBIO, PDBList, PDBParser, Residue, Chain, Select, Selection, Structure, Model, PPBuilder, \
     Superimposer
+from Bio.PDB.SASA import ShrakeRupley
 from scipy.spatial import distance
 from sklearn.cluster import KMeans
 from ALEPH.aleph.core import ALEPH
@@ -14,6 +15,7 @@ from alphafold.common import residue_constants
 from alphafold.relax import cleanup, amber_minimize
 from simtk import unit
 from libs import hhsearch, structures, utils, plots, global_variables, sequence, template_modifications
+
 
 
 def download_pdb(pdb_id: str, pdb_path: str) -> str:
@@ -1558,6 +1560,57 @@ def calculate_coverage_scaled(query_seq: str, sequences: List[str]):
     new_sequences = utils.scale_values(sequences_coverage)
     return new_sequences
 
+
+def analyse_surface_residues(pdb_in_path: str, pdb_out_path: str, expected_surface: Dict[str, Set[Tuple[str, int]]]) -> Dict:
+    parser = PDBParser(QUIET=True)
+    structure = parser.get_structure('struct', pdb_in_path)
+    sr = ShrakeRupley()
+    sr.compute(structure, level="R")
+    calc_buried = set()
+    calc_exposed = set()
+    for model in structure:
+        for chain in model:
+            chain_id = chain.id
+            for res in chain:
+                res_name = res.resname
+                res_num = res.id[1]
+                res_key = (chain_id, res_num)
+                max_sasa = global_variables.MAX_SASA.get(res_name, 200.0)
+                if hasattr(res, 'sasa'):
+                    rsa = res.sasa / max_sasa
+                    is_buried = rsa < 0.20
+                    if is_buried:
+                        calc_buried.add(res_key)
+                        bfactor_val = 0.0
+                    else:
+                        calc_exposed.add(res_key)
+                        bfactor_val = 100.0
+                    for atom in res:
+                        atom.bfactor = bfactor_val
+
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(pdb_out_path)
+
+    exp_buried = expected_surface.get('buried', set())
+    exp_exposed = expected_surface.get('exposed', set())
+
+    correct_buried = exp_buried.intersection(calc_buried)
+    incorrect_buried = exp_buried.intersection(calc_exposed)
+
+    correct_exposed = exp_exposed.intersection(calc_exposed)
+    incorrect_exposed = exp_exposed.intersection(calc_buried)
+
+    total_expected = len(exp_buried) + len(exp_exposed)
+    accuracy = ((len(correct_buried) + len(correct_exposed)) / total_expected * 100) if total_expected > 0 else 0.0
+
+    return {
+        'correct_buried': [f"{res}{chain}" for chain, res in sorted(correct_buried)],
+        'incorrect_buried': [f"{res}{chain}" for chain, res in sorted(incorrect_buried)],
+        'correct_exposed': [f"{res}{chain}" for chain, res in sorted(correct_exposed)],
+        'incorrect_exposed': [f"{res}{chain}" for chain, res in sorted(incorrect_exposed)],
+        'accuracy': accuracy
+    }
 
 def shift_pdb(pdb_in_path: str, sequence_predicted_assembled, sequence_assembled):
     # Given a list of shifts, one for each chain, apply them to each chain and return de pdb.
