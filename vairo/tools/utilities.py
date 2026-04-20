@@ -602,13 +602,13 @@ def run_uniprot_blast(fasta_path: str, residues_list: List[int], use_server: boo
     return results_dict
 
 
-def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_product=True, one_chain=False):
+def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_product=True, one_chain=False, expected_surface=None):
     """
     chain_steps_dict: dictionary mapping target chain IDs to their max num_steps.
                       Example: {'A': 2, 'B': -1} will do for A and [0, -1] for B.
+    expected_surface: list of 'buried' and 'exposed': [A38e, B48b, A42e]
     """
     scwrl_path = '/opt/scwrl4/Scwrl4'
-    chain_steps_dict = ast.literal_eval(chain_steps_dict)
     sequences_dict = bioutils.extract_sequences(fasta_path)
     sequences_dict = dict(sequences_dict.items())
     sequence_template_dict = bioutils.extract_sequence_msa_from_pdb(template_path)
@@ -621,7 +621,6 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
 
     template_dict = {}
     run_results = []
-
     for i, (chain, template_sequence) in enumerate(sequence_template_dict.items()):
         first_pos = None
         last_pos = None
@@ -652,6 +651,7 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
 
     print(f"Template mapping: {template_dict}")
 
+
     results_dir = os.path.join(os.getcwd(), "results")
     os.makedirs(results_dir, exist_ok=True)
 
@@ -660,6 +660,23 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
 
     aleph_dir = os.path.join(results_dir, "aleph")
     os.makedirs(aleph_dir, exist_ok=True)
+
+    surface_pdbs_dir = os.path.join(results_dir, "surface_annotated_pdbs")
+    parsed_expected_surface = {'buried': set(), 'exposed': set()}
+    if expected_surface:
+        os.makedirs(surface_pdbs_dir, exist_ok=True)
+        for item in expected_surface:
+            try:
+                chain = item[0]
+                status = item[-1].lower()
+                res_num = int(item[1:-1])
+
+                if status == 'b':
+                    parsed_expected_surface['buried'].add((chain, res_num))
+                elif status == 'e':
+                    parsed_expected_surface['exposed'].add((chain, res_num))
+            except (IndexError, ValueError):
+                print(f"Warning: Could not parse expected surface item '{item}'")
 
     chain_order = list(template_dict.keys())
     step_ranges_list = []
@@ -757,9 +774,21 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
         energy_match = re.search(r"Total minimal energy of the graph\s*=\s*([-\d\.]+)", result.stdout)
         results_dict, domains_dict = bioutils.aleph_annotate(output_path=aleph_dir, pdb_path=output_pdb_path)
 
+        surface_data = None
         if energy_match:
             energy_score = float(energy_match.group(1))
             print(f"  -> SCWRL Success. Energy: {energy_score}")
+
+            if expected_surface:
+                print(f"  -> Running Surface Analysis...")
+                annotated_pdb_path = os.path.join(surface_pdbs_dir, f"{name}_surface_annotated.pdb")
+                print(parsed_expected_surface)
+                surface_data = bioutils.analyse_surface_residues(
+                    pdb_in_path=output_pdb_path,
+                    pdb_out_path=annotated_pdb_path,
+                    expected_surface=parsed_expected_surface
+                )
+                print(f"  -> Surface Accuracy: {surface_data['accuracy']:.2f}%")
 
             print(f"  -> Running PISA analysis...")
             interfaces_data_list = bioutils.find_interface_from_pisa(output_pdb_path, interfaces_pdbs)
@@ -782,7 +811,8 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
                 'scwrl_energy': energy_score,
                 'pdb_path': output_pdb_path,
                 'sequence': general_sequence,
-                'interfaces': interfaces_data_list
+                'interfaces': interfaces_data_list,
+                'surface': surface_data
             })
         else:
             print(f"  -> Warning: SCWRL energy parsing failed for {combo_name}.")
@@ -802,7 +832,6 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
                         pdb_out_path=output_pdb_path
                     )
 
-    # --- Analysis & Ranking ---
     print("\n" + "=" * 40)
     print("ANALYSIS OF SCWRL RUNS & INTERFACES")
     print("=" * 40)
@@ -810,6 +839,22 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
     if not run_results:
         print("No successful runs to analyze.")
         return
+
+    if expected_surface:
+        print("\n--- Surface Accuracy Ranking ---")
+        print(f"{'Combination':<20} | {'Accuracy (%)':<15} | {'Correct Buried':<15} | {'Correct Exposed':<15}")
+        print("-" * 72)
+
+        sorted_surface_runs = sorted(run_results, key=lambda x: x['surface']['accuracy'] if x['surface'] else 0,
+                                     reverse=True)
+
+        for run in sorted_surface_runs:
+            if run['surface']:
+                acc = run['surface']['accuracy']
+                cb_count = len(run['surface']['correct_buried'])
+                ce_count = len(run['surface']['correct_exposed'])
+                print(f"{run['combo_name']:<20} | {acc:<15.2f} | {cb_count:<15} | {ce_count:<15}")
+        print("\n")
 
     interfaces_by_type = collections.defaultdict(list)
 
@@ -820,21 +865,23 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
                 'combo_name': run['combo_name'],
                 'scwrl_energy': run['scwrl_energy'],
                 'pisa_deltaG': interface.deltaG,
-                'interface_obj': interface
+                'interface_obj': interface,
+                'surface_acc': run['surface']['accuracy'] if run.get('surface') else None
             })
 
     for key in interfaces_by_type:
         interfaces_by_type[key].sort(key=lambda x: x['pisa_deltaG'])
 
-    # Print Ranking Table
-    print(f"{'Interface':<10} | {'Rank':<5} | {'Combination':<15} | {'Delta G':<10} | {'SCWRL E':<10}")
-    print("-" * 65)
+    print(
+        f"{'Interface':<10} | {'Rank':<5} | {'Combination':<15} | {'Delta G':<10} | {'SCWRL E':<10} | {'Surf Acc %':<10}")
+    print("-" * 78)
 
     for key, ranked_list in interfaces_by_type.items():
         print(f"--- Type: {key} ---")
         for rank, data in enumerate(ranked_list, 1):
+            s_acc_str = f"{data['surface_acc']:.2f}" if data['surface_acc'] is not None else "N/A"
             print(
-                f"{key:<10} | {rank:<5} | {data['combo_name']:<15} | {data['pisa_deltaG']:<10.4f} | {data['scwrl_energy']:<10.4f}")
+                f"{key:<10} | {rank:<5} | {data['combo_name']:<15} | {data['pisa_deltaG']:<10.4f} | {data['scwrl_energy']:<10.4f} | {s_acc_str:<10}")
 
     # --- Generate PyMOL Script ---
     print("\nGenerating PyMOL visualization script...")
@@ -942,8 +989,27 @@ cmd.set("valence", 'off')
 
 
 if __name__ == "__main__":
-    print('Usage: utilities.py function input')
-    print('Functions: write_features, print_features')
-    logging.error = print
+    print('Usage: utilities.py function [positional_args] [key=value_args]')
+    import sys
+    import ast
     args = sys.argv
-    globals()[args[1]](*args[2:])
+    func_name = args
+    pos_args = []
+    kwargs = {}
+    for arg in args[2:]:
+        if '=' in arg:
+            key, value = arg.split('=', 1)
+            try:
+                kwargs[key] = ast.literal_eval(value)
+                print(f"Parsed kwarg: {key} -> {kwargs[key]}")
+            except (ValueError, SyntaxError):
+                kwargs[key] = value
+        else:
+            try:
+                parsed_arg = ast.literal_eval(arg)
+                pos_args.append(parsed_arg)
+            except (ValueError, SyntaxError):
+                pos_args.append(arg)
+
+    print(f"Executing: {func_name}")
+    globals()[func_name[1]](*pos_args, **kwargs)
