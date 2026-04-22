@@ -670,7 +670,6 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
                 chain = item[0]
                 status = item[-1].lower()
                 res_num = int(item[1:-1])
-
                 if status == 'b':
                     parsed_expected_surface['buried'].add((chain, res_num))
                 elif status == 'e':
@@ -682,12 +681,13 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
     step_ranges_list = []
 
     for chain in chain_order:
-        if chain in chain_steps_dict:
-            num_steps = int(chain_steps_dict[chain])
-            if num_steps > 0:
-                step_ranges_list.append(list(range(0, num_steps + 1)))
-            elif num_steps < 0:
-                step_ranges_list.append(list(range(0, num_steps - 1, -1)))
+        num_steps = int(chain_steps_dict.get(chain, 0))
+        if num_steps > 0:
+            step_ranges_list.append(list(range(0, num_steps + 1)))
+        elif num_steps < 0:
+            step_ranges_list.append(list(range(0, num_steps - 1, -1)))
+        else:
+            step_ranges_list.append([0])
 
     if use_product:
         all_combinations = list(itertools.product(*step_ranges_list))
@@ -702,9 +702,9 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
 
     print(f"Total combinatorial steps to evaluate: {len(all_combinations)}")
 
+
     for combo in all_combinations:
         current_steps = dict(zip(chain_order, combo))
-
         general_sequence = ''
         valid_step = True
         step_name_parts = []
@@ -782,7 +782,6 @@ def analyse_scwrl(fasta_path, template_path, chain_steps_dict, bor_file='', use_
             if expected_surface:
                 print(f"  -> Running Surface Analysis...")
                 annotated_pdb_path = os.path.join(surface_pdbs_dir, f"{name}_surface_annotated.pdb")
-                print(parsed_expected_surface)
                 surface_data = bioutils.analyse_surface_residues(
                     pdb_in_path=output_pdb_path,
                     pdb_out_path=annotated_pdb_path,
