@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 from libs import utils
@@ -138,16 +139,35 @@ cmd.set("valence", 'off')
         script += f'cmd.save("{a_air.output.pymol_session_path}")\n'
         script += 'cmd.quit()\n'
 
-        try:
-            with tempfile.TemporaryDirectory() as tmpdirname:
-                pymol_script = os.path.join(tmpdirname, 'script_pymol.py')
-                with open(pymol_script, 'w+') as f_out:
-                    f_out.write(script)
-                cmd = 'which pymol'
-                subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-                cmd = f'pymol -ckq {pymol_script}'
-                out, err = subprocess.Popen(cmd, shell=True, env={}, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                                            stderr=subprocess.STDOUT).communicate()
-        except Exception as e:
-            logging.error('Error creating a PyMOL session. PyMOL might not be in the path. Skipping.')
-            pass
+    pymol_exe = shutil.which("pymol")
+    if not pymol_exe:
+        logging.error("PyMOL executable not found in the current PATH. Skipping.")
+        return
+    try:
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            pymol_script = os.path.join(tmpdirname, 'script_pymol.py')
+            with open(pymol_script, 'w') as f_out:
+                f_out.write(script)
+            cmd = [pymol_exe, "-ckq", pymol_script]
+            process = subprocess.Popen(
+                cmd,
+                env=os.environ,  
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE
+            )
+            _, err = process.communicate()
+            if process.returncode != 0:
+                process = subprocess.Popen(
+                    cmd,
+                    env={},  
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                )
+                _, err = process.communicate()
+                if process.returncode != 0:
+                    logging.error(f"PyMOL execution failed with error: {err.decode('utf-8')}. Skipping.")
+                
+    except Exception as e:
+        logging.error(f"Error creating a PyMOL session: {e}. Skipping.")
