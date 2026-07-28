@@ -141,17 +141,17 @@ class MainStructure:
                 #            f'Not possible to generate the multimer for {utils.get_file_name(self.experimental_pdbs[-1])}')
 
         sequence_list = []
-        sequence_prediced_list = []
+        sequence_predicted_list = []
         logging.error('Building query sequence')
         for parameters_sequence in utils.get_input_value(name='sequences', section='global',
                                                          input_dict=parameters_dict):
             new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir, predicted=False)
             sequence_list.append(new_sequence)
             new_sequence = sequence.Sequence(parameters_sequence, self.input_dir, self.run_dir, predicted=True)
-            sequence_prediced_list.append(new_sequence)
+            sequence_predicted_list.append(new_sequence)
 
         self.sequence_assembled = sequence.SequenceAssembled(sequence_list, self.glycines)
-        self.sequence_predicted_assembled = sequence.SequenceAssembled(sequence_prediced_list, self.glycines)
+        self.sequence_predicted_assembled = sequence.SequenceAssembled(sequence_predicted_list, self.glycines)
 
         for library in utils.get_input_value(name='append_library', section='global', input_dict=parameters_dict):
             path = utils.get_input_value(name='path', section='append_library', input_dict=library)
