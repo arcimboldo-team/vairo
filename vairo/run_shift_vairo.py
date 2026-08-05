@@ -9,7 +9,8 @@ import logging
 import argparse
 from datetime import datetime
 import yaml
-from libs import utilities, utils, bioutils, analysis_shift_vairo
+from libs import utils, bioutils, analysis_shift_vairo
+from tools import utilities
 
 SHIFT_ONLY_KEYS = ('models', 'analysis', 'template', 'use_product')
 
