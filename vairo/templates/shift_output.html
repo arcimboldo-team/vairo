@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VAIRO - Shift analysis</title>
+{{ vairo_css }}
+<style type='text/css'>
+    /* shrink to content (not full width) and scroll only if genuinely wide */
+    table.shift-table { border-collapse: collapse; display: block; width: fit-content;
+                        max-width: 100%; overflow-x: auto; font-size: 13px; }
+    table.shift-table th, table.shift-table td { border: 1px solid #cccccc; padding: 2px 8px; text-align: right; white-space: nowrap; }
+    table.shift-table th { background: #eeeeee; cursor: pointer; text-align: center; }
+    table.shift-table td.tag, table.shift-table td.name { text-align: left; font-family: monospace; }
+    /* left-aligned prose cells (e.g. filtering stage labels) -- normal font, not monospace */
+    table.shift-table td.label { text-align: left; }
+    /* long comma lists (cluster members) must wrap and read left-to-right */
+    table.shift-table td.shift-list { text-align: left; white-space: normal; word-break: break-word;
+                                      max-width: 640px; font-family: monospace; font-size: 12px; }
+    /* collapsible tables show only the first 10 data rows until expanded; the
+       hiding is done in JS (applyCollapse) so it survives sorting and table quirks. */
+    button.expand-btn { margin: 6px 0; padding: 3px 12px; font-size: 13px; cursor: pointer;
+                        border: 1px solid #bbbbbb; border-radius: 4px; background: #f2f2f2; }
+    /* best-of-metric row highlights in the Best models table */
+    tr.template-row td { background: #cfe2ff; }   /* best RMSD to template */
+    .swatch-blue   { background: #cfe2ff; padding: 0 4px; border-radius: 3px; }
+    .plot-img { max-width: 100%; border: 1px solid #dddddd; margin: 6px 0; }
+    details.shift-details { margin: 6px 0; }
+    pre.yaml-block { background: #f7f7f7; border: 1px solid #cccccc; border-radius: 4px;
+                     padding: 10px 14px; font-size: 13px; line-height: 1.4; overflow-x: auto;
+                     white-space: pre; max-width: 100%; }
+</style>
+</head>
+<body id="init_body">
+<header id="header">
+    <h1 class="logo">VAIRO</h1>
+</header>
+<aside>
+    <div id="sidebar" class="nav-collapse">
+        <ul class="sidebar-menu">
+            <li name="summary" onclick="move_to(event)" class="sub-menu">Summary</li>
+            <li name="best_models" onclick="move_to(event)" class="sub-menu">Best models</li>
+            <li name="ranking" onclick="move_to(event)" class="sub-menu">Shift ranking</li>
+            {% if data.template_rows %}<li name="template_comparison" onclick="move_to(event)" class="sub-menu">Template comparison</li>{% endif %}
+            {% if data.comparison_refs %}<li name="comparison" onclick="move_to(event)" class="sub-menu">Experimental comparison</li>{% endif %}
+            {% if data.surface_rows %}<li name="surfaces" onclick="move_to(event)" class="sub-menu">Surfaces</li>{% endif %}
+            <li name="chain_stats" onclick="move_to(event)" class="sub-menu">Per-chain shifts</li>
+            <li name="funnel" onclick="move_to(event)" class="sub-menu">Filtering</li>
+            {% if data.cluster_rows or data.cluster_plots %}<li name="clustering" onclick="move_to(event)" class="sub-menu">Clustering</li>{% endif %}
+            {% if data.gif %}<li name="register_gif" onclick="move_to(event)" class="sub-menu">Register animation</li>{% endif %}
+            {% if data.runs %}<li name="runs" onclick="move_to(event)" class="sub-menu">Runs</li>{% endif %}
+            {% if data.plots %}<li name="plots" onclick="move_to(event)" class="sub-menu">Plots</li>{% endif %}
+            <li name="inputs" onclick="move_to(event)" class="sub-menu">Input</li>
+        </ul>
+    </div>
+</aside>
+<section id="container-main">
+
+<div id="summary" class="section-div">
+    <h2>Summary</h2>
+    {% if data.focus_desc %}<p>Shifts are ranked by <b>{{ data.focus_desc }}</b>.</p>{% endif %}
+    {% if not data.best_tag %}
+        <p class="red">No shift survived the filters. Check the thresholds below.</p>
+    {% else %}
+        <p><span class="green" style="font-weight:bold">Best model:</span> {{ data.best_model }}{% if data.best_detail %}, {{ data.best_detail }}{% endif %}.</p>
+        {% for t in data.template_bests %}
+        <p><span class="blue" style="font-weight:bold">Template {{ t.name }}:</span> {{ t.model }}, least-squares CA RMSD {{ t.rmsd }} &Aring;.</p>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<div id="best_models" class="section-div">
+    <h2>Best models</h2>
+    <p>Individual predicted models, ordered by {{ data.focus_desc or 'the focus metric' }}.
+       <span class="swatch-blue">Blue</span> marks the best RMSD to template.</p>
+    {% if data.model_rows %}
+    <table class="shift-table collapsible" id="model_table">
+        <tr>
+            <th onclick="sortShiftTable('model_table',0,false)">Model</th>
+            <th onclick="sortShiftTable('model_table',1,false)">Shift</th>
+            {% for col in data.model_cols %}<th onclick="sortShiftTable('model_table',{{ loop.index + 1 }},true)">{{ data.col_labels[col] }}</th>{% endfor %}
+        </tr>
+        {% for row in data.model_rows %}
+        <tr class="{{ 'green-row' if loop.index0 == 0 else row.rowclass }}">
+            <td class="name">{{ row.model }}</td>
+            <td class="tag">{{ row.tag }}</td>
+            {% for col in data.model_cols %}<td>{{ row.cells[col] }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    {% if data.model_rows|length > 10 %}<button class="expand-btn" onclick="toggleRows(this,'model_table')">Show all {{ data.model_rows|length }}</button>{% endif %}
+    {% else %}<p>No models in the final results.</p>{% endif %}
+</div>
+
+<div id="ranking" class="section-div">
+    <h2>Shift ranking</h2>
+    <p>One row per shift combination, ordered by {{ data.focus_desc or 'the focus metric' }}.</p>
+    {% if data.tag_rows %}
+    <table class="shift-table collapsible" id="tag_table">
+        <tr>
+            <th onclick="sortShiftTable('tag_table',0,false)">Shift</th>
+            {% for col in data.tag_cols %}<th onclick="sortShiftTable('tag_table',{{ loop.index }},true)">{{ data.tag_labels[col] }}</th>{% endfor %}
+        </tr>
+        {% for row in data.tag_rows %}
+        <tr class="{{ 'green-row' if loop.index0 == 0 else '' }}">
+            <td class="tag">{{ row.tag }}</td>
+            {% for col in data.tag_cols %}<td>{{ row.cells[col] }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    {% if data.tag_rows|length > 10 %}<button class="expand-btn" onclick="toggleRows(this,'tag_table')">Show all {{ data.tag_rows|length }}</button>{% endif %}
+    {% else %}<p>No shift-level results available.</p>{% endif %}
+</div>
+
+{% if data.template_rows %}
+<div id="template_comparison" class="section-div">
+    <h2>Template comparison</h2>
+    <p>Each model's global least-squares CA RMSD (&Aring;) to its own template
+       (one rigid fit over all chains). Also the quality filter: models above the cutoff are
+       discarded (see Filtering).</p>
+    <table class="shift-table collapsible" id="tmpl_table">
+        <thead>
+            <tr>
+                <th onclick="sortShiftTable('tmpl_table',0,false)">Model</th>
+                <th onclick="sortShiftTable('tmpl_table',1,true)">{{ data.template_group_name }} RMSD (&Aring;)</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in data.template_rows %}
+        <tr class="{{ 'green-row' if loop.first else '' }}">
+            <td class="name">{{ row.model }}</td><td>{{ row.rmsd }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% if data.template_rows|length > 10 %}<button class="expand-btn" onclick="toggleRows(this,'tmpl_table')">Show all {{ data.template_rows|length }}</button>{% endif %}
+</div>
+{% endif %}
+
+{% if data.comparison_refs %}
+<div id="comparison" class="section-div">
+    <h2>Experimental comparison</h2>
+    <p>Each model's CA RMSD (&Aring;) to every experimental structure.</p>
+    <table class="shift-table collapsible" id="cmp_table">
+        <thead>
+            <tr>
+                <th onclick="sortShiftTable('cmp_table',0,false)">Model</th>
+                {% for ref in data.comparison_refs %}<th onclick="sortShiftTable('cmp_table',{{ loop.index0 + 1 }},true)">{{ ref.name }} RMSD (&Aring;)</th>{% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in data.comparison_rows %}
+        <tr class="{{ 'green-row' if loop.first else '' }}">
+            <td class="name">{{ row.model }}</td>
+            {% for c in row.cells %}<td>{{ c.rmsd }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% if data.comparison_rows|length > 10 %}<button class="expand-btn" onclick="toggleRows(this,'cmp_table')">Show all {{ data.comparison_rows|length }}</button>{% endif %}
+</div>
+{% endif %}
+
+<div id="chain_stats" class="section-div">
+    <h2>Per-chain shift statistics</h2>
+    <p>For each chain, how its shift value affects the ranking metric (shown in parentheses) &mdash;
+       i.e. which shift each chain prefers.</p>
+    {% if data.chain_stats %}
+        {% for chain, info in data.chain_stats.items() %}
+        <h3>Chain {{ chain }}
+            <span style="font-weight:normal; font-size:13px; color:#666">({{ info.metric }})</span></h3>
+        <table class="shift-table">
+            <tr><th>Shift</th><th>models</th><th>mean</th><th>best</th></tr>
+            {% for r in info.rows %}
+            <tr class="{{ 'green-row' if r.best_of_chain else '' }}">
+                <td class="tag">{{ r.shift }}</td><td>{{ r.n }}</td>
+                <td>{{ r.mean }}</td><td>{{ r.best }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% endfor %}
+    {% else %}<p>No per-chain statistics available.</p>{% endif %}
+</div>
+
+<div id="funnel" class="section-div">
+    <h2>Filtering</h2>
+    <p>How many models survived each stage of the analysis.</p>
+    <table class="shift-table">
+        <tr><th>Stage</th><th>Models</th><th>Shifts</th><th>Fraction</th></tr>
+        {% for f in data.funnel %}
+        <tr>
+            <td class="label">{{ f.stage }}</td><td>{{ f.models }}</td><td>{{ f.tags }}</td>
+            <td>{{ f.pct }}%</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+{% if data.cluster_rows or data.cluster_plots %}
+<div id="clustering" class="section-div">
+    <h2>Clustering</h2>
+    <p>Models grouped by pairwise CA RMSD: which shifts converge to the same structure. Each row is a cluster with its number of models, the shifts they came from, and every ranked model in it.</p>
+    {% if data.cluster_rows %}
+    <table class="shift-table" id="cluster_table">
+        <tr>{% for c in data.cluster_cols %}<th onclick="sortShiftTable('cluster_table',{{ loop.index0 }},false)">{{ c }}</th>{% endfor %}</tr>
+        {% for row in data.cluster_rows %}
+        <tr class="{{ 'green-row' if loop.index0 == 0 else '' }}">
+            {% for c in data.cluster_cols %}<td class="{{ 'tag' if loop.first else ('shift-list' if c in ('shifts', 'models') else '') }}">{{ row[c] }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% for p in data.cluster_plots %}
+    <details class="shift-details" {% if loop.first %}open{% endif %}>
+        <summary><h3 style="display:inline">{{ p.title }}</h3></summary>
+        <img class="plot-img" src="data:image/png;base64,{{ p.encoded }}" alt="{{ p.title }}">
+    </details>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if data.surface_rows %}
+<div id="surfaces" class="section-div">
+    <h2>Surfaces</h2>
+    <p>How well each model reproduces the expected exposed/buried residues (SASA), as a
+       percentage of the residues listed.</p>
+    <table class="shift-table collapsible" id="surface_table">
+        <tr>
+            <th onclick="sortShiftTable('surface_table',0,false)">Model</th>
+            <th onclick="sortShiftTable('surface_table',1,true)">Surface accuracy (%)</th>
+        </tr>
+        {% for r in data.surface_rows %}
+        <tr class="{{ 'green-row' if loop.first else '' }}">
+            <td class="name">{{ r.model }}</td><td>{{ r.accuracy }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% if data.surface_rows|length > 10 %}<button class="expand-btn" onclick="toggleRows(this,'surface_table')">Show all {{ data.surface_rows|length }}</button>{% endif %}
+</div>
+{% endif %}
+
+{% if data.gif %}
+<div id="register_gif" class="section-div">
+    <h2>Register animation</h2>
+    <p>The sequence-alignment plot from every run, ordered by shift.</p>
+    <img class="plot-img" src="{{ data.gif }}" alt="Register animation across shifts">
+</div>
+{% endif %}
+
+{% if data.runs %}
+<div id="runs" class="section-div">
+    <h2>Runs</h2>
+    <p>The VAIRO prediction run behind each shift combination.</p>
+    <table class="shift-table collapsible" id="runs_table">
+        <tr><th>Shift</th><th>VAIRO report</th></tr>
+        {% for r in data.runs %}
+        <tr>
+            <td class="tag">{{ r.tag }}</td>
+            <td class="name">{% if r.html %}<a href="{{ r.html }}" target="_blank">{{ r.html }}</a>
+                {% else %}<span class="red">output.html not found</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% if data.runs|length > 10 %}<button class="expand-btn" onclick="toggleRows(this,'runs_table')">Show all {{ data.runs|length }}</button>{% endif %}
+</div>
+{% endif %}
+
+{% if data.plots %}
+<div id="plots" class="section-div">
+    <h2>Plots</h2>
+    {% for p in data.plots %}
+    <details class="shift-details" {% if loop.first %}open{% endif %}>
+        <summary><h3 style="display:inline">{{ p.title }}</h3></summary>
+        <img class="plot-img" src="data:image/png;base64,{{ p.encoded }}" alt="{{ p.title }}">
+    </details>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div id="inputs" class="section-div">
+    <h2>Input</h2>
+    {% if data.input_yaml %}
+    <p>The configuration file used for this run{% if data.input_yaml_name %} ({{ data.input_yaml_name }}){% endif %}:</p>
+    <pre class="yaml-block">{{ data.input_yaml }}</pre>
+    {% else %}<p>No configuration file was found for this run.</p>{% endif %}
+</div>
+
+</section>
+{{ vairo_js }}
+<script type="text/javascript">
+    var COLLAPSE_LIMIT = 10;
+    function dataRows(table) {
+        if (table.tHead) return Array.prototype.slice.call(table.tBodies[0].rows);
+        return Array.prototype.slice.call((table.tBodies[0] || table).rows).slice(1);
+    }
+    function applyCollapse(table) {
+        var rows = dataRows(table);
+        var showAll = table.classList.contains('show-all');
+        rows.forEach(function (r, i) {
+            r.style.display = (!showAll && i >= COLLAPSE_LIMIT) ? 'none' : '';
+        });
+    }
+    function toggleRows(btn, tableId) {
+        var table = document.getElementById(tableId);
+        var showAll = table.classList.toggle('show-all');
+        applyCollapse(table);
+        btn.textContent = showAll ? 'Show less' : (btn.dataset.label || 'Show all');
+    }
+    function sortShiftTable(tableId, col, numeric) {
+        var table = document.getElementById(tableId);
+        var rows = dataRows(table);
+        var asc = table.getAttribute('data-sort-col') != String(col) ||
+                  table.getAttribute('data-sort-asc') != 'true';
+        rows.sort(function (a, b) {
+            var x = a.cells[col].innerText.trim(), y = b.cells[col].innerText.trim();
+            if (numeric) {
+                var nx = parseFloat(x), ny = parseFloat(y);
+                if (isNaN(nx)) return 1;
+                if (isNaN(ny)) return -1;
+                return asc ? nx - ny : ny - nx;
+            }
+            return asc ? x.localeCompare(y) : y.localeCompare(x);
+        });
+        var body = table.tBodies[0] || table;
+        rows.forEach(function (r) { body.appendChild(r); });
+        table.setAttribute('data-sort-col', col);
+        table.setAttribute('data-sort-asc', asc);
+        applyCollapse(table);
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('table.collapsible').forEach(function (table) {
+            var btn = document.querySelector('button[onclick*="' + table.id + '"]');
+            if (btn) { btn.dataset.label = btn.textContent; }
+            applyCollapse(table);
+        });
+    });
+</script>
+</body>
+</html>

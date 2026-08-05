@@ -5,6 +5,8 @@ from libs import global_variables, bioutils, utils
 from Bio.PDB import Select, PDBIO
 from alphafold.common import residue_constants
 
+BACKBONE_ATOMS = {'N', 'CA', 'C', 'O', 'CB', 'OXT'}
+
 
 class ResidueMutate:
     def __init__(self, mutate_residues_number: List[int], mutate_with: str):
@@ -162,7 +164,6 @@ class TemplateModifications:
         return delete_list
 
     def modify_template(self, pdb_in_path: str, pdb_out_path: str, type_modify: List[str], when: str = ''):
-        # Change residues of chains specified in chain_res_dict
         structure = bioutils.get_structure(pdb_in_path)
         chains_struct = bioutils.get_chains(pdb_in_path)
         atoms_del_list = []
@@ -181,9 +182,9 @@ class TemplateModifications:
                     if 'mutate' in type_modify:
                         change_name = modify.get_change(resseq, when)
                         if change_name is not None:
-                            for atom in res:
-                                res.resname = change_name
-                                if not atom.name in residue_constants.residue_atoms[res.resname]:
+                            res.resname = change_name
+                            for atom in res: 
+                                if atom.name not in BACKBONE_ATOMS:
                                     atoms_del_list.append(atom.get_serial_number())
 
                     if 'bfactors' in type_modify:

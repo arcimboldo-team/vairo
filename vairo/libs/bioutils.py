@@ -377,6 +377,52 @@ def merge_pdbs_in_one_chain(list_of_paths_of_pdbs_to_merge: List[str], pdb_out_p
     io.save(pdb_out_path)
 
 
+def merge_all_chains_into_one(pdb_in_path: str, pdb_out_path: str, chain_offsets: dict = None):
+    """Collapse every chain of a PDB into a single chain 'A'. Pure Biopython (no
+    CCP4). Chain order in the input is the concatenation order.
+
+    chain_offsets: optional {chain_id: int}. When given, each residue KEEPS its
+        native number shifted by its chain's offset (new = residue_number +
+        offset). The native number already encodes which sequence residue it is,
+        and the offset carries the chain's position in the query plus its shift,
+        so the two segments sit continuously along the query: overlapping
+        positions share the number (duplicate dropped, kept once) and the gap
+        between segments stays as missing numbers (the loop, which varies with
+        the shift). When None, residues are renumbered 1..N."""
+    structure = get_structure(pdb_path=pdb_in_path)
+    model = structure[0]
+    new_chain = Chain.Chain('A')
+    count_res = 1
+    used_numbers = set()
+    collected = []                          # (number, residue), sorted before writing
+    for chain in list(model):
+        offset = (chain_offsets or {}).get(chain.id, 0)
+        for residue in list(chain.get_residues()):
+            if chain_offsets is not None:
+                number = residue.id[1] + offset
+                if number in used_numbers:      # overlap in the shared frame -> keep once
+                    continue
+                used_numbers.add(number)
+            else:
+                number = count_res
+                count_res += 1
+            new_res = copy.copy(residue)
+            new_res.parent = None
+            new_res.id = (' ', number, ' ')
+            collected.append((number, new_res))
+    # Emit residues in ascending number order, so the merged chain is well-ordered
+    # regardless of the input chain order (offset-based numbers can interleave).
+    for _, new_res in sorted(collected, key=lambda item: item[0]):
+        new_chain.add(new_res)
+        new_res.parent = new_chain
+    for cid in [c.id for c in list(model)]:
+        model.detach_child(cid)
+    model.add(new_chain)
+    io = PDBIO()
+    io.set_structure(structure)
+    io.save(pdb_out_path)
+
+
 def run_pisa(pdb_path: str) -> str:
     tmp_name = utils.generate_random_code(6)
     logging.info(f'Generating REMARK 350 for {pdb_path} with PISA.')
