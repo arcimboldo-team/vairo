@@ -627,13 +627,20 @@ def _grouped_combinations(step_ranges_list, chain_order, chain_groups):
 
 
 def generate_shift_models(fasta_path, template_path, chain_steps_dict, bor_file='', use_product=True,
-                          one_chain=False, output_dir=None, chain_query_offsets=None, chain_groups=None):
+                          one_chain=False, output_dir=None, chain_query_offsets=None, chain_groups=None,
+                          use_scwrl=False):
 
     sequences_dict = dict(bioutils.extract_sequences(fasta_path).items())
     sequence_template_dict = dict(bioutils.extract_sequence_msa_from_pdb(template_path).items())
 
     results_dir = output_dir if output_dir else os.path.join(os.getcwd(), "results")
     os.makedirs(results_dir, exist_ok=True)
+
+    scwrl_candidates = ('Scwrl4', 'SCWRL4', 'scwrl4', 'scwrl', 'SCWRL')
+    scwrl_path = next((shutil.which(name) for name in scwrl_candidates if shutil.which(name)), None)
+    if use_scwrl and not scwrl_path:
+        raise FileNotFoundError("use_scwrl is set but SCWRL was not found on PATH "
+                                f"(looked for {scwrl_candidates})")
 
     output_path = os.path.join(results_dir, 'fixed.pdb')
     shutil.copy2(template_path, output_path)
@@ -793,29 +800,34 @@ def generate_shift_models(fasta_path, template_path, chain_steps_dict, bor_file=
                 print('Not possible to read bor file.')
 
 
-        modifications = template_modifications.TemplateModifications()
-        for chain in chain_order:
-            if chain not in chain_steps_dict:
-                continue
-            temp = template_dict[chain]
-            expected_len = temp['last'] - temp['first'] + 1
-            start_slice = temp['first'] + current_steps[chain]
-            chain_seq = temp['seq'][start_slice: start_slice + expected_len]
-            mutations = []
-            for k, resseq in enumerate(chain_resnums.get(chain, [])):
-                if k >= len(chain_seq):
-                    break
-                three = residue_constants.restype_1to3.get(chain_seq[k])
-                if three:
-                    mutations.append(template_modifications.ResidueMutate(
-                        mutate_residues_number=[resseq], mutate_with=three))
-            if mutations:
-                modifications.append_chain_modification(
-                    template_modifications.ChainModifications(chain=chain, mutations=mutations))
+        if use_scwrl:
+            cmd = [scwrl_path, '-i', template_path, '-o', output_pdb_path, '-s', new_fasta_path]
+            subprocess.run(cmd, capture_output=True, text=True, check=True)
+            print(f"  -> SCWRL threaded {combo_name}")
+        else:
+            modifications = template_modifications.TemplateModifications()
+            for chain in chain_order:
+                if chain not in chain_steps_dict:
+                    continue
+                temp = template_dict[chain]
+                expected_len = temp['last'] - temp['first'] + 1
+                start_slice = temp['first'] + current_steps[chain]
+                chain_seq = temp['seq'][start_slice: start_slice + expected_len]
+                mutations = []
+                for k, resseq in enumerate(chain_resnums.get(chain, [])):
+                    if k >= len(chain_seq):
+                        break
+                    three = residue_constants.restype_1to3.get(chain_seq[k])
+                    if three:
+                        mutations.append(template_modifications.ResidueMutate(
+                            mutate_residues_number=[resseq], mutate_with=three))
+                if mutations:
+                    modifications.append_chain_modification(
+                        template_modifications.ChainModifications(chain=chain, mutations=mutations))
 
-        modifications.modify_template(pdb_in_path=template_path, pdb_out_path=output_pdb_path,
-                                      type_modify=['mutate'])
-        print(f"  -> threaded {combo_name}: mutated {len(modifications.modifications_list)} chain(s)")
+            modifications.modify_template(pdb_in_path=template_path, pdb_out_path=output_pdb_path,
+                                          type_modify=['mutate'])
+            print(f"  -> threaded {combo_name}: mutated {len(modifications.modifications_list)} chain(s)")
 
         run_results.append({'combo_name': combo_name, 'sequence': general_sequence})
 

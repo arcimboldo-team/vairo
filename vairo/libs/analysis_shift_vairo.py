@@ -1,31 +1,23 @@
 import os
 import re
+import io
 import copy
 import glob
+import base64
 import shutil
 import logging
 import itertools
-import io
-import base64
-from PIL import Image, ImageDraw
-from jinja2 import Environment, FileSystemLoader
+
 import numpy as np
 import pandas as pd
+from PIL import Image, ImageDraw, ImageFont
+from jinja2 import Environment, FileSystemLoader
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import pdist
 from Bio.PDB import PDBParser, PDBIO, Superimposer, Chain, Model, Structure
+
 from libs import bioutils
 
-
-
-def _read_structure(path):
-    return PDBParser(QUIET=True).get_structure('pdb', path)
-
-
-def _write_structure(structure, path):
-    io = PDBIO()
-    io.set_structure(structure)
-    io.save(path)
 
 METRIC_DIRECTION = {
     "rmsd_similar": True,
@@ -38,116 +30,29 @@ METRIC_DIRECTION = {
     "interface_energy": True,
 }
 
-METRIC_ORDER = ["rmsd_similar", "rmsd_different", "rmsd_template", "surface_accuracy", "plddt",
-                "rmsd_ref", "interface_area", "interface_energy"]
+METRIC_ORDER = ["rmsd_similar", "rmsd_different", "rmsd_template", "surface_accuracy",
+                "plddt", "rmsd_ref", "interface_area", "interface_energy"]
 
 
 def _lower_is_better(col):
     return METRIC_DIRECTION.get(col, True)
 
 
-def parse_tag(tag):
-    """'A2_B-1' -> {'A': 2, 'B': -1}. Unparsable -> {}."""
-    matchre = re.compile(r"^([A-Za-z]+)(-?\d+)$")
-    out = {}
-    for tok in str(tag).split("_"):
-        m = matchre.match(tok)
-        if m:
-            out[m.group(1)] = int(m.group(2))
-    return out
+def _read_structure(path):
+    return PDBParser(QUIET=True).get_structure("pdb", path)
 
 
-
-def _run_dirs(workdir):
-    for run_dir in sorted(glob.glob(os.path.join(workdir, "runs", "*"))):
-        if not os.path.isdir(run_dir):
-            continue
-        tmpls = [p for p in glob.glob(os.path.join(run_dir, "*.pdb"))]
-        template = tmpls[0] if tmpls else None
-        tag = os.path.splitext(os.path.basename(template))[0] if template else os.path.basename(run_dir)
-        if parse_tag(tag):
-            yield run_dir, tag, template
-
-
-def collect_models(workdir, ranks=(0, 1, 2, 3, 4), dest=None):
-    rows = []
-    for run_dir, tag, template in _run_dirs(workdir):
-        shifts = parse_tag(tag)
-        out_dir = os.path.join(run_dir, "output")
-        for rank in ranks:
-            src = os.path.join(out_dir, f"ranked_{rank}.pdb")
-            if not os.path.exists(src):
-                continue
-            if dest:
-                os.makedirs(dest, exist_ok=True)
-                dst = os.path.join(dest, f"ranked_{rank}_{tag}.pdb")
-                shutil.copy2(src, dst)
-                src = dst
-            row = {"model": os.path.basename(src), "tag": tag, "rank": rank,
-                   "pdb": src, "template": template}
-            row.update({f"shift_{c}": v for c, v in shifts.items()})
-            rows.append(row)
-
-    df = pd.DataFrame(rows)
-    logging.error(f"collect_models: {len(df)} models, {df['tag'].nunique() if len(df) else 0} shift combinations")
-    return df
-
-
-def collect_runs(workdir):
-    runs = []
-    for run_dir, tag, _ in _run_dirs(workdir):
-        html = os.path.join(run_dir, "output", "output.html")
-        runs.append({"tag": tag, "html": html if os.path.exists(html) else None})
-    logging.error(f"collect_runs: {len(runs)} runs, "
-                  f"{sum(1 for r in runs if r['html'])} with an output.html")
-    return runs
-
-
-def build_shift_gif(runs, outdir, filename="shift_alignment.gif", duration=150, plot_index=0):
-    png_re = re.compile(r'base64,([A-Za-z0-9+/=]+)"')
-
-    def _plot(html):
-        matches = png_re.findall(open(html).read())
-        if len(matches) <= plot_index:
-            return None
-        return Image.open(io.BytesIO(base64.b64decode(matches[plot_index]))).convert("RGB")
-
-    def _key(r):
-        s = parse_tag(r["tag"])
-        return (tuple(s[c] for c in sorted(s)), r["tag"])
-
-    frames = []
-    for r in sorted((r for r in (runs or []) if r.get("html")), key=_key):
-        try:
-            im = _plot(r["html"])
-        except Exception:
-            im = None
-        if im is not None:
-            frames.append((r["tag"], im))
-    if not frames:
-        logging.error("build_shift_gif: no alignment plots found; skipping")
-        return None
-
-    band = 46 
-    width = max(im.width for _, im in frames)
-    height = max(im.height for _, im in frames)
-
-    canvases = []
-    for tag, im in frames:
-        canvas = Image.new("RGB", (width, height + band), "white")
-        canvas.paste(im, ((width - im.width) // 2, band + (height - im.height) // 2))
-        ImageDraw.Draw(canvas).text((14, 9), f"shift {tag}", fill="black")
-        canvases.append(canvas)
-
-    path = os.path.join(outdir, filename)
-    canvases[0].save(path, save_all=True, append_images=canvases[1:],
-                     duration=duration, loop=0, optimize=True, disposal=2)
-    logging.error(f"build_shift_gif: {len(canvases)} frames -> {path}")
-    return path
+def _write_structure(structure, path):
+    writer = PDBIO()
+    writer.set_structure(structure)
+    writer.save(path)
 
 
 def _ca_map(structure):
-    return {(ch.id, res.id[1]): res["CA"] for ch in structure[0] for res in ch if res.id[0] == " " and "CA" in res}
+    """{(chain_id, resnum): CA atom} for every standard residue with a CA."""
+    return {(ch.id, res.id[1]): res["CA"]
+            for ch in structure[0] for res in ch
+            if res.id[0] == " " and "CA" in res}
 
 
 def _ca_atoms(path):
@@ -155,6 +60,7 @@ def _ca_atoms(path):
 
 
 def _chain_ca_maps(structure):
+    """{chain_id: {resnum: CA atom}} for every chain that has at least one CA."""
     out = {}
     for ch in structure[0]:
         cas = {res.id[1]: res["CA"] for res in ch if res.id[0] == " " and "CA" in res}
@@ -172,51 +78,133 @@ def _residue(structure, chain_id, resnum):
     return None
 
 
+def _chain_count(pdb):
+    return sum(1 for _ in _read_structure(pdb)[0])
+
+
 def _min_atom_distance(res_a, res_b, atom_names=None):
+    """Closest approach between two residues. With ``atom_names=(a, b)`` only those
+    named atoms are compared (e.g. ("SG", "SG") for a disulfide); otherwise every
+    non-hydrogen atom is. NaN when either residue/atom is missing."""
     if res_a is None or res_b is None:
         return float("nan")
-    def _sel(res, name):
+
+    def _select(res, name):
         if name:
             return [res[name]] if name in res else []
         return [a for a in res if a.element != "H"]
-    aa = _sel(res_a, atom_names[0] if atom_names else None)
-    bb = _sel(res_b, atom_names[1] if atom_names else None)
-    if not aa or not bb:
+
+    atoms_a = _select(res_a, atom_names[0] if atom_names else None)
+    atoms_b = _select(res_b, atom_names[1] if atom_names else None)
+    if not atoms_a or not atoms_b:
         return float("nan")
-    A = np.array([a.get_coord() for a in aa])
-    B = np.array([a.get_coord() for a in bb])
-    return float(np.sqrt(((A[:, None, :] - B[None, :, :]) ** 2).sum(-1)).min())
+    coords_a = np.array([a.get_coord() for a in atoms_a])
+    coords_b = np.array([a.get_coord() for a in atoms_b])
+    return float(np.sqrt(((coords_a[:, None, :] - coords_b[None, :, :]) ** 2).sum(-1)).min())
 
 
-def add_geometry_checks(df, distance_filters=None, disulfides=None):
-    # (col, chainA, resA, chainB, resB, atom_names, max, label) for each check
-    specs = []
-    for s in distance_filters or []:
-        ca, ra, cb, rb, mx = s[0], int(s[1]), s[2], int(s[3]), float(s[4])
-        specs.append((f"dist_{ca}{ra}_{cb}{rb}", ca, ra, cb, rb, None, mx,
-                      f"{ca}{ra}–{cb}{rb} within {mx:g} Å"))
-    for s in disulfides or []:
-        ca, ra, cb, rb = s[0], int(s[1]), s[2], int(s[3])
-        specs.append((f"ss_{ca}{ra}_{cb}{rb}", ca, ra, cb, rb, ("SG", "SG"), 2.5,
-                      f"disulfide {ca}{ra}–{cb}{rb} (SG–SG ≤ 2.5 Å)"))
-    if not specs:
-        return df, []
-    data = {spec[0]: [] for spec in specs}
-    for _, row in df.iterrows():
-        st = _read_structure(row["pdb"])
-        for col, ca, ra, cb, rb, atoms, _, _ in specs:
-            d = _min_atom_distance(_residue(st, ca, ra), _residue(st, cb, rb), atom_names=atoms)
-            data[col].append(round(d, 2) if np.isfinite(d) else float("nan"))
-    df = df.copy()
-    for col, vals in data.items():
-        df[col] = vals
-    filters = [(col, mx, label) for col, *_, mx, label in specs]
-    logging.error(f"add_geometry_checks: {[f[0] for f in filters]}")
-    return df, filters
+
+# A shift tag is chain-letter(s) + signed integer, joined by "_": e.g. "A2_B-1".
+_TAG_TOKEN_RE = re.compile(r"^([A-Za-z]+)(-?\d+)$")
+
+
+def parse_tag(tag):
+    """'A2_B-1' -> {'A': 2, 'B': -1}. Unparsable tokens are ignored ({} if none match)."""
+    out = {}
+    for token in str(tag).split("_"):
+        match = _TAG_TOKEN_RE.match(token)
+        if match:
+            out[match.group(1)] = int(match.group(2))
+    return out
+
+
+def _as_list(x):
+    """None/'' -> []; a single string -> [string]; anything else -> list(x)."""
+    if not x:
+        return []
+    return [x] if isinstance(x, str) else list(x)
+
+
+def _ref_column(kind, path):
+    """Column name for an RMSD-to-reference, e.g. ('similar', '/p/6R17.pdb') -> 'rmsd_similar_6R17'."""
+    base = re.sub(r"[^0-9A-Za-z]+", "_", os.path.splitext(os.path.basename(str(path)))[0])
+    return f"rmsd_{kind}_{base}"
+
+
+
+def _run_dirs(workdir):
+    """Yield (run_dir, tag, template_pdb) for each VAIRO run under workdir/runs/*."""
+    for run_dir in sorted(glob.glob(os.path.join(workdir, "runs", "*"))):
+        if not os.path.isdir(run_dir):
+            continue
+        templates = glob.glob(os.path.join(run_dir, "*.pdb"))
+        template = templates[0] if templates else None
+        tag = (os.path.splitext(os.path.basename(template))[0] if template
+               else os.path.basename(run_dir))
+        if parse_tag(tag):
+            yield run_dir, tag, template
+
+
+def collect_models(workdir, ranks=(0, 1, 2, 3, 4), dest=None):
+    """One row per (run, rank) prediction: model name, tag, rank, pdb path, template,
+    and a shift_<chain> column per shifted chain. Copies pdbs into `dest` if given."""
+    rows = []
+    for run_dir, tag, template in _run_dirs(workdir):
+        shifts = parse_tag(tag)
+        out_dir = os.path.join(run_dir, "output")
+        for rank in ranks:
+            src = os.path.join(out_dir, f"ranked_{rank}.pdb")
+            if not os.path.exists(src):
+                continue
+            if dest:
+                os.makedirs(dest, exist_ok=True)
+                dst = os.path.join(dest, f"ranked_{rank}_{tag}.pdb")
+                shutil.copy2(src, dst)
+                src = dst
+            row = {"model": os.path.basename(src), "tag": tag, "rank": rank,
+                   "pdb": src, "template": template}
+            row.update({f"shift_{chain}": shift for chain, shift in shifts.items()})
+            rows.append(row)
+
+    df = pd.DataFrame(rows)
+    logging.error(f"collect_models: {len(df)} models, "
+                  f"{df['tag'].nunique() if len(df) else 0} shift combinations")
+    return df
+
+
+def collect_runs(workdir):
+    """One dict per run: {'tag', 'html'} where html is the run's output.html (or None)."""
+    runs = []
+    for run_dir, tag, _ in _run_dirs(workdir):
+        html = os.path.join(run_dir, "output", "output.html")
+        runs.append({"tag": tag, "html": html if os.path.exists(html) else None})
+    logging.error(f"collect_runs: {len(runs)} runs, "
+                  f"{sum(1 for r in runs if r['html'])} with an output.html")
+    return runs
+
+
+
+def superpose(fixed_pdb, moving_pdb, output_pdb=None):
+    """Global least-squares (Kabsch) CA RMSD of moving_pdb onto fixed_pdb over their
+    common (chain, resnum) atoms. Optionally writes the superposed moving structure."""
+    fixed_struct = _read_structure(fixed_pdb)
+    moving_struct = _read_structure(moving_pdb)
+    fixed, moving = _ca_map(fixed_struct), _ca_map(moving_struct)
+    common = sorted(set(fixed) & set(moving))
+    if not common:
+        logging.error(f"  no common CA atoms: {os.path.basename(fixed_pdb)} vs "
+                      f"{os.path.basename(moving_pdb)}")
+        return float("nan")
+    sup = Superimposer()
+    sup.set_atoms([fixed[k] for k in common], [moving[k] for k in common])
+    if output_pdb:
+        sup.apply(list(moving_struct.get_atoms()))
+        _write_structure(moving_struct, output_pdb)
+    return round(float(sup.rms), 4)
 
 
 def add_template_rmsd(df, superposed_dir=None):
-    """Global least-squares (Kabsch) CA RMSD of each model to its template"""
+    """Global least-squares CA RMSD of each model to its own template."""
     if superposed_dir:
         os.makedirs(superposed_dir, exist_ok=True)
     rmsds = []
@@ -236,18 +224,22 @@ def add_template_rmsd(df, superposed_dir=None):
 
 
 def add_perchain_template_rmsd(df):
+    """Per-chain CA RMSD to the template (one column per chain, plus the worst-chain
+    value), fitting each chain on its own so a single bad chain is not averaged away."""
     per_row, chain_ids = [], set()
     for _, row in df.iterrows():
         vals = {}
-        tchains = _chain_ca_maps(_read_structure(row["template"]))
-        mchains = _chain_ca_maps(_read_structure(row["pdb"]))
-        for cid in set(tchains) & set(mchains):
-            common = sorted(set(tchains[cid]) & set(mchains[cid]))
+        template_chains = _chain_ca_maps(_read_structure(row["template"]))
+        model_chains = _chain_ca_maps(_read_structure(row["pdb"]))
+        for cid in set(template_chains) & set(model_chains):
+            common = sorted(set(template_chains[cid]) & set(model_chains[cid]))
             sup = Superimposer()
-            sup.set_atoms([tchains[cid][r] for r in common], [mchains[cid][r] for r in common])
+            sup.set_atoms([template_chains[cid][r] for r in common],
+                          [model_chains[cid][r] for r in common])
             vals[cid] = round(sup.rms, 4)
             chain_ids.add(cid)
         per_row.append(vals)
+
     df = df.copy()
     for cid in sorted(chain_ids):
         df[f"rmsd_template_{cid}"] = [v.get(cid, float("nan")) for v in per_row]
@@ -259,44 +251,9 @@ def add_perchain_template_rmsd(df):
     return df
 
 
-def apply_filter(df, col, thr, kind, label):
-    def _stage(frame):
-        return {"stage": label, "models": len(frame), "tags": int(frame["tag"].nunique())}
-    active = thr is not None and col in df.columns and (
-        (kind == "max" and np.isfinite(thr)) or (kind == "min" and thr > 0))
-    if not active:
-        return df, _stage(df)
-    n_before = len(df)
-    v = df[col].astype(float)
-    keep = v.isna() | (v <= thr if kind == "max" else v >= thr)
-    kept = df[keep].copy()
-    logging.error(f"apply_filter[{col}]: kept {len(kept)}/{n_before} "
-                  f"({'<=' if kind == 'max' else '>='} {thr:g}); {n_before - len(kept)} discarded")
-    if kept.empty:
-        logging.error(f"apply_filter[{col}]: nothing passed; keeping all so the report is not "
-                      f"empty -- relax the {col} cutoff if unexpected")
-        return df, _stage(df)
-    return kept, _stage(kept)
-
-
-def superpose(fixed_pdb, moving_pdb, output_pdb=None):
-    fixed_struct = _read_structure(fixed_pdb)
-    moving_struct = _read_structure(moving_pdb)
-    fixed, moving = _ca_map(fixed_struct), _ca_map(moving_struct)
-    common = sorted(set(fixed) & set(moving))
-    if not common:
-        logging.error(f"  no common CA atoms: {os.path.basename(fixed_pdb)} vs "
-                      f"{os.path.basename(moving_pdb)}")
-        return float("nan")
-    sup = Superimposer()
-    sup.set_atoms([fixed[k] for k in common], [moving[k] for k in common])
-    if output_pdb:
-        sup.apply(list(moving_struct.get_atoms()))
-        _write_structure(moving_struct, output_pdb)
-    return round(float(sup.rms), 4)
-
-
 def add_rmsd(df, against, column, superposed_dir=None):
+    """CA RMSD of each model against a reference. `against` is either a fixed pdb path
+    or the name of a df column holding a per-row reference path."""
     per_row = against in df.columns
     if not per_row and not (against and os.path.exists(str(against))):
         raise ValueError(f"reference not found: {against}")
@@ -311,11 +268,11 @@ def add_rmsd(df, against, column, superposed_dir=None):
             continue
         out = os.path.join(superposed_dir, row["model"]) if superposed_dir else None
         try:
-            r = superpose(str(target), row["pdb"], output_pdb=out)
+            rmsd = superpose(str(target), row["pdb"], output_pdb=out)
         except Exception as exc:
             logging.error(f"  {column} failed for {row['model']}: {exc}")
-            r = float("nan")
-        values.append(r)
+            rmsd = float("nan")
+        values.append(rmsd)
 
     df = df.copy()
     df[column] = values
@@ -323,12 +280,13 @@ def add_rmsd(df, against, column, superposed_dir=None):
 
 
 def add_plddt(df):
+    """Mean CA pLDDT (AlphaFold confidence, stored in the B-factor) per model."""
     vals = []
     for _, row in df.iterrows():
         try:
-            bs = [a.get_bfactor() for a in _read_structure(row["pdb"]).get_atoms()
-                  if a.get_name() == "CA"]
-            vals.append(round(float(np.mean(bs)), 2) if bs else float("nan"))
+            bfactors = [a.get_bfactor() for a in _read_structure(row["pdb"]).get_atoms()
+                        if a.get_name() == "CA"]
+            vals.append(round(float(np.mean(bfactors)), 2) if bfactors else float("nan"))
         except Exception as exc:
             logging.error(f"  plddt failed for {row['model']}: {exc}")
             vals.append(float("nan"))
@@ -339,12 +297,55 @@ def add_plddt(df):
     return df
 
 
+def add_geometry_checks(df, distance_filters=None, disulfides=None, pdb_col="pdb", chain_copies=None):
+    specs = []
+    for chain_a, res_a, chain_b, res_b, max_dist in (distance_filters or []):
+        chain_a, res_a, chain_b, res_b, max_dist = chain_a, int(res_a), chain_b, int(res_b), float(max_dist)
+        specs.append((f"dist_{chain_a}{res_a}_{chain_b}{res_b}",
+                      chain_a, res_a, chain_b, res_b, None, max_dist,
+                      f"{chain_a}{res_a}–{chain_b}{res_b} within {max_dist:g} Å"))
+    for chain_a, res_a, chain_b, res_b in (disulfides or []):
+        chain_a, res_a, chain_b, res_b = chain_a, int(res_a), chain_b, int(res_b)
+        specs.append((f"ss_{chain_a}{res_a}_{chain_b}{res_b}",
+                      chain_a, res_a, chain_b, res_b, ("SG", "SG"), 2.5,
+                      f"disulfide {chain_a}{res_a}–{chain_b}{res_b} (SG–SG ≤ 2.5 Å)"))
+    if not specs:
+        return df, []
+
+    def copy_pairs(chain_a, chain_b):
+        a_positions = chain_copies.get(chain_a, [chain_a]) if chain_copies else [chain_a]
+        b_positions = chain_copies.get(chain_b, [chain_b]) if chain_copies else [chain_b]
+        return list(zip(a_positions, b_positions))
+
+    columns = {spec[0]: [] for spec in specs}
+    for _, row in df.iterrows():
+        structure = _read_structure(row[pdb_col])
+        for col, chain_a, res_a, chain_b, res_b, atoms, _, _ in specs:
+            dists = [_min_atom_distance(_residue(structure, pa, res_a),
+                                        _residue(structure, pb, res_b), atom_names=atoms)
+                     for pa, pb in copy_pairs(chain_a, chain_b)]
+            dists = [d for d in dists if np.isfinite(d)]
+            columns[col].append(round(max(dists), 2) if dists else float("nan"))
+
+    df = df.copy()
+    for col, vals in columns.items():
+        df[col] = vals
+    filters = [(col, max_allowed, label) for col, *_, max_allowed, label in specs]
+    logging.error(f"add_geometry_checks: {[f[0] for f in filters]} on {pdb_col}"
+                  f"{' across all copies' if chain_copies else ''}")
+    return df, filters
+
+
 def _parse_surfaces(surfaces):
-    """['A38e', 'B48b'] -> {'buried': {(chain,res)}, 'exposed': {(chain,res)}}."""
+    """-> {'buried': {(chain, res)}, 'exposed': {(chain, res)}}. Each item is either a
+    [chain, res, 'b'|'e'] list (like distance_filters/disulfides) or a compact 'A38e' string."""
     expected = {"buried": set(), "exposed": set()}
     for item in surfaces or []:
         try:
-            chain, status, res = item[0], item[-1].lower(), int(item[1:-1])
+            if isinstance(item, (list, tuple)):
+                chain, res, status = str(item[0]), int(item[1]), str(item[2]).lower()
+            else:
+                chain, status, res = item[0], item[-1].lower(), int(item[1:-1])
             expected["buried" if status == "b" else "exposed"].add((chain, res))
         except (IndexError, ValueError):
             logging.error(f"  bad surface item, skipping: {item!r}")
@@ -352,158 +353,32 @@ def _parse_surfaces(surfaces):
 
 
 def add_surface(df, surfaces, workdir=None, pdb_col="pdb", chain_copies=None):
+    """Fraction of expected buried/exposed residues that come out correctly (SASA-based).
+    With `chain_copies`, the expected residues are replicated to every copy of each chain."""
     expected = _parse_surfaces(surfaces)
     if chain_copies:
-        expected = {kind: {(cid, res) for (ch, res) in resset
-                           for cid in chain_copies.get(ch, [ch])}
-                    for kind, resset in expected.items()}
+        expected = {kind: {(cid, res) for (chain, res) in residues
+                           for cid in chain_copies.get(chain, [chain])}
+                    for kind, residues in expected.items()}
     if not (expected["buried"] or expected["exposed"]):
         return df
+
     workdir = workdir or os.path.join(os.path.dirname(df.iloc[0]["pdb"]), "surfaces")
     os.makedirs(workdir, exist_ok=True)
-    acc = []
+    accuracies = []
     for _, row in df.iterrows():
         out = os.path.join(workdir, f"surface_{row['model']}")
         data = bioutils.analyse_surface_residues(row[pdb_col], out, expected)
-        acc.append(float(data.get("accuracy", float("nan"))))
+        accuracies.append(float(data.get("accuracy", float("nan"))))
     df = df.copy()
-    df["surface_accuracy"] = acc
-    logging.error(f"add_surface: {int(np.sum(np.isfinite(acc)))}/{len(df)} scored")
+    df["surface_accuracy"] = accuracies
+    logging.error(f"add_surface: {int(np.sum(np.isfinite(accuracies)))}/{len(df)} scored")
     return df
 
 
-def _best_fit(pred_cas, copy_cas):
-    """Best rigid fit of a predicted unit onto one template copy, matching chains by length
-    and geometry -- no assumption on chain order or labels, only CA positions and residue
-    numbers are used, so repeated subunits and differing threaded sequences both work.
-    `pred_cas`/`copy_cas` are {chain: {resnum: CA}}. Returns (rot, tran, pairing) or None."""
-    def by_length(cas):
-        groups = {}
-        for chain, atoms in cas.items():
-            groups.setdefault(len(atoms), []).append(chain)
-        return groups
-    pred_by_len, copy_by_len = by_length(pred_cas), by_length(copy_cas)
-
-    # per length: every way to pair its predicted chains with the copy's chains of that length
-    pairings_per_length = []
-    for length, preds in pred_by_len.items():
-        copies = copy_by_len.get(length, [])
-        if len(copies) != len(preds):
-            return None                            # unit and copy don't have matching chains
-        pairings_per_length.append([list(zip(preds, perm))
-                                    for perm in itertools.permutations(copies)])
-
-    best = None
-    for combo in itertools.product(*pairings_per_length):
-        pairing = [pair for group in combo for pair in group]
-        fixed, moving = [], []
-        for pc, cc in pairing:
-            for rn, ca in pred_cas[pc].items():
-                if rn in copy_cas[cc]:
-                    moving.append(ca)
-                    fixed.append(copy_cas[cc][rn])
-        if len(moving) < 3:
-            continue
-        sup = Superimposer()
-        sup.set_atoms(fixed, moving)              # fixed = copy, moving = prediction
-        if best is None or sup.rms < best[0]:
-            best = (sup.rms, sup.rotran, pairing)
-    if best is None:
-        return None
-    (rot, tran), pairing = best[1], best[2]
-    return rot, tran, pairing
-
-
-def build_assembly(df, template, outdir, pdb_col="pdb"):
-    """Expand each predicted unit into the full symmetric assembly defined by `template`.
-
-    `template` is K copies of the predicted n-chain unit, grouped copy-by-copy
-    (chains[0:n] = copy 0, [n:2n] = copy 1, ...). A fresh prediction is fitted onto each
-    copy (_best_fit). Copy 0 keeps the predicted chain ids (so the surface spec still
-    refers to them); the rest take the template copy's ids, remapped on clash. Writes the
-    assembly to `outdir` (path in df['assembly']) and returns (df, chain_copies), where
-    chain_copies maps each predicted chain to the ids it appears under across all copies
-    (e.g. {'A': ['A','E']}) -- used to replicate expected-surface residues onto every copy."""
-    os.makedirs(outdir, exist_ok=True)
-    tstruct = _read_structure(template)
-    tchains = [ch.id for ch in tstruct[0]]
-    tmpl_cas = _chain_ca_maps(tstruct)
-    n = len(_chain_ca_maps(_read_structure(df.iloc[0][pdb_col])))
-    K = len(tchains) // n if n else 0
-    if K < 2:
-        logging.error(f"build_assembly: template {len(tchains)} chains / unit {n} -> {K} "
-                      f"copies; nothing to expand, skipping")
-        return df, {}
-    copy_cas = [{c: tmpl_cas[c] for c in tchains[k * n:(k + 1) * n]} for k in range(K)]
-    pool = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-
-    paths, chain_copies = [], None
-    for _, row in df.iterrows():
-        try:
-            pred_struct = _read_structure(row[pdb_col])
-            pred = pred_struct[0]
-            pred_cas = _chain_ca_maps(pred_struct)
-            model, used, cc = Model.Model(0), set(), {c: [] for c in pred_cas}
-            for k in range(K):
-                fit = _best_fit(pred_cas, copy_cas[k])
-                if fit is None:
-                    raise ValueError(f"cannot match unit to template copy {k}")
-                rot, tran, pairing = fit
-                for pc, tc in pairing:
-                    ch = copy.deepcopy(pred[pc])
-                    ch.detach_parent()
-                    for atom in ch.get_atoms():
-                        atom.set_coord(np.dot(atom.get_coord(), rot) + tran)
-                    cid = pc if k == 0 else tc            # copy 0 keeps predicted ids
-                    while cid in used:                    # keep every chain id distinct
-                        cid = next(x for x in pool if x not in used and x not in pred_cas)
-                    used.add(cid)
-                    ch.id = cid
-                    model.add(ch)
-                    cc[pc].append(cid)
-            st = Structure.Structure("assembly")
-            st.add(model)
-            out = os.path.join(outdir, row["model"])
-            _write_structure(st, out)
-            paths.append(out)
-            chain_copies = chain_copies or cc
-        except Exception as exc:
-            logging.error(f"  assembly build failed for {row['model']}: {exc}")
-            paths.append(row[pdb_col])                    # fall back to the unit
-    df = df.copy()
-    df["assembly"] = paths
-    logging.error(f"build_assembly: {K} copies of {n} chains -> {n * K}-chain assemblies; "
-                  f"chain copies {chain_copies}")
-    return df, chain_copies
-
-
-def choose_focus(df):
-    """Pick the metric the ranking should focus on, by priority:
-      1. a "should resemble" reference    -> rmsd_similar   (lower is better)
-      2. only a "should differ" reference -> rmsd_different (higher is better)
-      3. otherwise                        -> rmsd_template  (global RMSD to the template, lower better)
-    Returns (column, ascending, human_description). surface_accuracy is intentionally NOT a
-    candidate: the expected surface is a filter (min_surface_accuracy discards models below
-    it), not a selection. rmsd_template is both a ranking metric and a filter.
-    """
-    def has(col):
-        return col in df.columns and df[col].notna().any()
-    for col, desc in (("rmsd_similar", "similarity to the reference the prediction should resemble"),
-                      ("rmsd_different", "difference from the reference the prediction should not resemble"),
-                      ("rmsd_template", "global least-squares RMSD to the template")):
-        if has(col):
-            return col, _lower_is_better(col), desc
-    return None, True, "no ranking metric available"
-
-
-
 def split_chains(pdb_in, pdb_out, split_resids):
-    """Cut a single-chain prediction into per-domain chains A, B, C, ...
-
-    `split_resids` are the last residues of each domain except the last, so
-    [64, 150] gives A=..64, B=65..150, C=151.. . False if <2 chains result.
-    Pure Biopython (reads/writes via _read_structure/_write_structure).
-    """
+    """Cut a single-chain pdb into chains A, B, ... at the given residue boundaries
+    (so PISA can find interfaces). Returns False if fewer than 2 chains result."""
     splits = sorted(int(s) for s in split_resids)
     model = _read_structure(pdb_in)[0]
     new_model = Model.Model(0)
@@ -526,29 +401,19 @@ def split_chains(pdb_in, pdb_out, split_resids):
     return True
 
 
-def _chain_count(pdb):
-    return sum(1 for _ in _read_structure(pdb)[0])
-
-
 def add_interface_metrics(df, split_resids, workdir=None, pdb_col="pdb"):
-    """Score all of each model's chain interfaces with PISA, reusing VAIRO's own
-    reader (bioutils.find_interface_from_pisa). Totals buried area and interface
-    deltaG over all interfaces of each model.
-
-    Models collected from a shift scan already come split into their query chains,
-    so PISA runs on them directly. Only a single-chain model (e.g. a one_chain /
-    glycine-assembled prediction) is first cut into domains by `split_resids`.
-    `pdb_col` selects which structure to score (e.g. "assembly" for the full assembly)."""
+    """Total PISA interface area / binding energy per model. Multi-chain models are
+    used directly; a single-chain model is first cut at `split_resids`."""
     workdir = workdir or os.path.join(os.path.dirname(df.iloc[0]["pdb"]), "interfaces")
     os.makedirs(workdir, exist_ok=True)
     areas, energies, counts = [], [], []
     for _, row in df.iterrows():
         interfaces = []
         if _chain_count(row[pdb_col]) >= 2:
-            pdb_for_pisa = row[pdb_col]                     # already multi-chain
+            pdb_for_pisa = row[pdb_col]
         elif split_resids and split_chains(row[pdb_col], os.path.join(workdir, row["model"]),
                                            split_resids):
-            pdb_for_pisa = os.path.join(workdir, row["model"])  # single chain -> cut to domains
+            pdb_for_pisa = os.path.join(workdir, row["model"])   # single chain -> cut to domains
         else:
             pdb_for_pisa = None
             logging.error(f"  {row['model']}: single chain, no usable split, skipping")
@@ -557,6 +422,7 @@ def add_interface_metrics(df, split_resids, workdir=None, pdb_col="pdb"):
                 interfaces = bioutils.find_interface_from_pisa(pdb_for_pisa, workdir) or []
             except Exception as exc:
                 logging.error(f"  PISA failed for {row['model']}: {exc}")
+
         if interfaces:
             areas.append(round(sum(i.area for i in interfaces), 3))
             energies.append(round(sum(i.deltaG for i in interfaces), 3))
@@ -573,16 +439,8 @@ def add_interface_metrics(df, split_resids, workdir=None, pdb_col="pdb"):
     return df
 
 
-
 def add_clusters(df, cutoff=5.0):
-    """Group models that are structurally the same (average linkage on RMSD).
-
-    Every model is first put in a common frame (superposed onto the first one),
-    then all pairwise RMSDs come from a single vectorised distance calculation:
-    for matched, pre-superposed atoms, RMSD == euclidean distance on the
-    flattened coordinates / sqrt(n_atoms). That keeps a 1900-model scan feasible.
-    """
-
+    """Group models that are structurally the same (average-linkage on pairwise CA RMSD)."""
     df = df.copy()
     paths = list(df["pdb"])
     if len(paths) < 2:
@@ -608,6 +466,136 @@ def add_clusters(df, cutoff=5.0):
     return df
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Assembly building
+#
+# Replicate each prediction (an n-chain unit) into a symmetric template made of K
+# such units, so packing-dependent metrics can be scored on the full assembly.
+# Each copy gets one rigid transform placing the whole prediction onto it.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _place_chain(chain, rotation, translation):
+    """A detached deep copy of `chain` with the rigid transform applied to every atom.
+    The parent is severed first so deepcopy does not clone the whole parent structure."""
+    saved_parent = chain.parent
+    chain.parent = None
+    placed = copy.deepcopy(chain)
+    chain.parent = saved_parent
+    for atom in placed.get_atoms():
+        atom.set_coord(atom.get_coord() @ rotation + translation)
+    return placed
+
+
+def _superpose_unit(prediction_cas, copy_cas, pairing):
+    """Fit the whole prediction onto one template copy in a single rigid move, using the
+    CA atoms of the paired chains together. Returns (rms, rotation, translation) or None."""
+    fixed, moving = [], []
+    for pred_chain, copy_chain in pairing:
+        for resnum, ca in prediction_cas[pred_chain].items():
+            if resnum in copy_cas[copy_chain]:
+                moving.append(ca)
+                fixed.append(copy_cas[copy_chain][resnum])
+    if len(moving) < 3:
+        return None
+    superposer = Superimposer()
+    superposer.set_atoms(fixed, moving)
+    rotation, translation = superposer.rotran
+    return superposer.rms, rotation, translation
+
+
+def _best_pairing(prediction_cas, copy_cas):
+    """Which predicted chain maps to which chain of this template copy. Tries every
+    same-length assignment and keeps the one with the lowest whole-unit RMSD. This is
+    computed per copy AND per model because equal-length chains can fit different
+    positions depending on the shift."""
+    pred_chains = list(prediction_cas)
+    candidates = [[cc for cc in copy_cas if len(copy_cas[cc]) == len(prediction_cas[pc])]
+                  for pc in pred_chains]
+    best = None
+    for choice in itertools.product(*candidates):
+        if len(set(choice)) != len(pred_chains):
+            continue
+        pairing = list(zip(pred_chains, choice))
+        fit = _superpose_unit(prediction_cas, copy_cas, pairing)
+        if fit and (best is None or fit[0] < best[0]):
+            best = (fit[0], pairing)
+    return best[1] if best else None
+
+
+def build_assembly(df, template, outdir, pdb_col="pdb"):
+    """Replicate each prediction into the assembly `template`, keeping its structure intact.
+    Returns (df with an 'assembly' path column, chain_copies) where chain_copies maps each
+    predicted chain to the list of template positions it fills, one per copy."""
+    os.makedirs(outdir, exist_ok=True)
+    if df.empty:
+        return df.assign(assembly=[]), {}
+
+    # Split the template into consecutive n-chain blocks, one per copy of the prediction.
+    template_cas = _chain_ca_maps(_read_structure(template))
+    template_chain_ids = list(template_cas)
+    n = len(_chain_ca_maps(_read_structure(df.iloc[0][pdb_col])))
+    copy_cas_list = [{c: template_cas[c] for c in template_chain_ids[i:i + n]}
+                     for i in range(0, len(template_chain_ids) - n + 1, n)]
+
+    assembly_paths, chain_copies = [], None
+    for _, row in df.iterrows():
+        pred_struct = _read_structure(row[pdb_col])
+        prediction, prediction_cas = pred_struct[0], _chain_ca_maps(pred_struct)
+        assembly = Model.Model(0)
+        placed_at = {chain: [] for chain in prediction_cas}
+        for copy_cas in copy_cas_list:
+            pairing = _best_pairing(prediction_cas, copy_cas)
+            if pairing is None:
+                continue
+            _, rotation, translation = _superpose_unit(prediction_cas, copy_cas, pairing)
+            for pred_chain, copy_chain in pairing:
+                placed = _place_chain(prediction[pred_chain], rotation, translation)
+                placed.id = copy_chain
+                assembly.add(placed)
+                placed_at[pred_chain].append(copy_chain)
+        structure = Structure.Structure("assembly")
+        structure.add(assembly)
+        out_path = os.path.join(outdir, row["model"])
+        _write_structure(structure, out_path)
+        assembly_paths.append(out_path)
+        chain_copies = chain_copies or placed_at
+
+    df = df.copy()
+    df["assembly"] = assembly_paths
+    logging.error(f"build_assembly: {len(copy_cas_list)} copies of {n} chains -> "
+                  f"{n * len(copy_cas_list)}-chain assemblies; chain copies {chain_copies}")
+    return df, chain_copies
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Filtering, scoring and summaries
+# ─────────────────────────────────────────────────────────────────────────────
+
+def apply_filter(df, col, thr, kind, label):
+    """Keep rows where col <= thr (kind='max') or col >= thr (kind='min'); NaNs always
+    pass. Returns (filtered_df, funnel_stage). If nothing passes, keeps everything so the
+    report is never empty. A no-op when the threshold is absent/infinite/zero."""
+    def _stage(frame):
+        return {"stage": label, "models": len(frame), "tags": int(frame["tag"].nunique())}
+
+    active = thr is not None and col in df.columns and (
+        (kind == "max" and np.isfinite(thr)) or (kind == "min" and thr > 0))
+    if not active:
+        return df, _stage(df)
+
+    n_before = len(df)
+    values = df[col].astype(float)
+    keep = values.isna() | (values <= thr if kind == "max" else values >= thr)
+    kept = df[keep].copy()
+    logging.error(f"apply_filter[{col}]: kept {len(kept)}/{n_before} "
+                  f"({'<=' if kind == 'max' else '>='} {thr:g}); {n_before - len(kept)} discarded")
+    if kept.empty:
+        logging.error(f"apply_filter[{col}]: nothing passed; keeping all so the report is not "
+                      f"empty -- relax the {col} cutoff if unexpected")
+        return df, _stage(df)
+    return kept, _stage(kept)
+
+
 def score_models(df, **thresholds):
     """Flag which models pass optional min_<col>/max_<col> thresholds (e.g.
     max_rmsd_template=5, min_surface_accuracy=80) in a `passed` column. Nothing
@@ -620,11 +608,31 @@ def score_models(df, **thresholds):
         kind, _, col = name.partition("_")
         if col not in df.columns or kind not in ("min", "max"):
             continue
-        v = df[col].astype(float)
-        keep &= v.notna() & ((v >= thr) if kind == "min" else (v <= thr))
+        values = df[col].astype(float)
+        keep &= values.notna() & ((values >= thr) if kind == "min" else (values <= thr))
     df["passed"] = keep
     logging.error(f"score_models: {int(keep.sum())}/{len(df)} models pass the thresholds")
     return df
+
+
+def choose_focus(df):
+    """Pick the metric the ranking should focus on, by priority:
+      1. a "should resemble" reference    -> rmsd_similar   (lower is better)
+      2. only a "should differ" reference -> rmsd_different (higher is better)
+      3. otherwise                        -> rmsd_template  (global RMSD to the template, lower better)
+    Returns (column, ascending, human_description). surface_accuracy is intentionally NOT a
+    candidate: the expected surface is a filter (min_surface_accuracy discards models below
+    it), not a selection. rmsd_template is both a ranking metric and a filter.
+    """
+    def has(col):
+        return col in df.columns and df[col].notna().any()
+
+    for col, desc in (("rmsd_similar", "similarity to the reference the prediction should resemble"),
+                      ("rmsd_different", "difference from the reference the prediction should not resemble"),
+                      ("rmsd_template", "global least-squares RMSD to the template")):
+        if has(col):
+            return col, _lower_is_better(col), desc
+    return None, True, "no ranking metric available"
 
 
 def summarise_shifts(df, focus_col=None, ascending=True):
@@ -659,53 +667,122 @@ def summarise_chains(df, metric=None):
         if not col.startswith("shift_"):
             continue
         chain = col[len("shift_"):]
-        for shift, g in df[[col, metric]].dropna().groupby(col)[metric]:
+        for shift, group in df[[col, metric]].dropna().groupby(col)[metric]:
             rows.append({"chain": chain, "shift": int(shift), "metric": metric,
-                         "models": len(g), "metric_mean": g.mean(),
-                         "metric_best": best(g)})
+                         "models": len(group), "metric_mean": group.mean(),
+                         "metric_best": best(group)})
     return pd.DataFrame(rows)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Report artefacts: alignment GIF and HTML report
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_shift_gif(runs, outdir, filename="shift_alignment.gif", duration=150, plot_index=0):
+    """Stitch each run's alignment plot (extracted from its output.html) into one GIF,
+    ordered by shift and captioned with the shift tag."""
+    png_re = re.compile(r'base64,([A-Za-z0-9+/=]+)"')
+
+    def _plot(html):
+        matches = png_re.findall(open(html).read())
+        if len(matches) <= plot_index:
+            return None
+        return Image.open(io.BytesIO(base64.b64decode(matches[plot_index]))).convert("RGB")
+
+    def _key(run):
+        shifts = parse_tag(run["tag"])
+        return tuple(shifts[c] for c in sorted(shifts)), run["tag"]
+
+    frames = []
+    for run in sorted((r for r in (runs or []) if r.get("html")), key=_key):
+        try:
+            im = _plot(run["html"])
+        except Exception:
+            im = None
+        if im is not None:
+            frames.append((run["tag"], im))
+    if not frames:
+        logging.error("build_shift_gif: no alignment plots found; skipping")
+        return None
+
+    band = 46
+    font = ImageFont.truetype("DejaVuSans-Bold.ttf", 26)
+    width = max(im.width for _, im in frames)
+    height = max(im.height for _, im in frames)
+
+    canvases = []
+    for tag, im in frames:
+        canvas = Image.new("RGB", (width, height + band), "white")
+        canvas.paste(im, ((width - im.width) // 2, band + (height - im.height) // 2))
+        ImageDraw.Draw(canvas).text((14, band // 2), f"shift {tag}", fill="black",
+                                    font=font, anchor="lm")
+        canvases.append(canvas)
+
+    path = os.path.join(outdir, filename)
+    canvases[0].save(path, save_all=True, append_images=canvases[1:],
+                     duration=duration, loop=0, optimize=True, disposal=2)
+    logging.error(f"build_shift_gif: {len(canvases)} frames -> {path}")
+    return path
+
+
+def _template_name(path):
+    """Human name for a template from its superposed path: the run-dir name with the
+    leading 'model_<n>_' stripped, falling back to the pdb basename."""
+    real = os.path.realpath(str(path))
+    return re.sub(r"^model_\d+_", "", os.path.basename(os.path.dirname(real))) \
+        or os.path.splitext(os.path.basename(real))[0]
+
+
+def _ref_name(ref):
+    return os.path.splitext(os.path.basename(str(ref)))[0]
+
+
+def _read_vairo_assets(tmpl_dir):
+    """Pull the <style> and <script> blocks out of VAIRO's output.html so the shift
+    report can reuse the same styling. Returns ('', '') if unavailable."""
+    try:
+        src = open(os.path.join(tmpl_dir, "output.html")).read()
+    except Exception:
+        return "", ""
+    css = "".join(re.findall(r"<style type=.text/css.>.*?</style>", src, re.S))
+    js = "".join(re.findall(r"<script.*?</script>", src, re.S))
+    return css, js
 
 
 def write_html_report(df, shifts, chains, outdir, reference="", thresholds=None,
                       runs=None, comparisons=None, focus=None, config_yml=None,
                       collected=None, funnel=None):
-
+    """Render the shift-analysis HTML report from the scored tables. `data` is the single
+    context dict handed to the Jinja template; each block below fills one section of it."""
     focus_col, focus_desc = focus or (None, None)
     focus_lower = _lower_is_better(focus_col) if focus_col else True
     output_html = os.path.join(outdir, "shift_analysis.html")
     tmpl_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "templates")
-    css = js = ""
-    try:
-        src = open(os.path.join(tmpl_dir, "output.html")).read()
-        css = "".join(re.findall(r"<style type=.text/css.>.*?</style>", src, re.S))
-        js = "".join(re.findall(r"<script.*?</script>", src, re.S))
-    except Exception:
-        pass
+    css, js = _read_vairo_assets(tmpl_dir)
 
     def fmt(v):
         if v is None or (isinstance(v, float) and pd.isna(v)):
             return ""
         return f"{v:.2f}" if isinstance(v, float) else str(v)
 
+    def cellfmt(v):
+        return fmt(float(v)) if v is not None and np.isfinite(v) else ""
+
     best = shifts.iloc[0] if len(shifts) else None
 
-    def _template_name(path):
-        real = os.path.realpath(str(path))
-        return re.sub(r"^model_\d+_", "", os.path.basename(os.path.dirname(real))) \
-            or os.path.splitext(os.path.basename(real))[0]
-    
-    _tmpl_names = {_template_name(p) for p in df["template"].dropna().unique()}
-    template_group_name = next(iter(_tmpl_names)) if len(_tmpl_names) == 1 else "Template"
-    _ref_name = lambda ref: os.path.splitext(os.path.basename(str(ref)))[0]
+    template_names = {_template_name(p) for p in df["template"].dropna().unique()}
+    template_group_name = next(iter(template_names)) if len(template_names) == 1 else "Template"
 
+    # --- per-model table columns (friendly labels; some cells pair two metrics) ---
     model_cols, col_labels, col_paired = [], {}, {}
+
     def _add_col(key, label, pair=None):
         if key in df.columns and df[key].notna().any():
             model_cols.append(key)
             col_labels[key] = label
             if pair and pair in df.columns:
                 col_paired[key] = pair
+
     for col, kind, ref in (comparisons or []):
         _add_col(col, f"rmsd {_ref_name(ref)} ({kind})")
     _add_col("rmsd_template", f"rmsd {template_group_name} (template)")
@@ -713,14 +790,14 @@ def write_html_report(df, shifts, chains, outdir, reference="", thresholds=None,
         _add_col(col, col)
     _add_col("interface_energy", "pisa_energies", "interface_area")   # cell = "energy (area)"
 
-    # Shift-ranking table: same friendly names on the aggregated _mean/_best columns.
-    _sim = [_ref_name(r) for c, k, r in (comparisons or []) if k == "similar"]
-    _dif = [_ref_name(r) for c, k, r in (comparisons or []) if k == "different"]
+    similar_names = [_ref_name(r) for c, k, r in (comparisons or []) if k == "similar"]
+    different_names = [_ref_name(r) for c, k, r in (comparisons or []) if k == "different"]
     pretty_base = {
-        "rmsd_similar": f"rmsd {_sim[0]} (similar)" if len(_sim) == 1 else "rmsd (best similar)",
-        "rmsd_different": f"rmsd {_dif[0]} (different)" if len(_dif) == 1 else "rmsd (best different)",
+        "rmsd_similar": f"rmsd {similar_names[0]} (similar)" if len(similar_names) == 1 else "rmsd (best similar)",
+        "rmsd_different": f"rmsd {different_names[0]} (different)" if len(different_names) == 1 else "rmsd (best different)",
         "rmsd_template": f"rmsd {template_group_name} (template)",
     }
+
     def _tag_label(col):
         for base, pretty in pretty_base.items():
             if col == f"{base}_mean":
@@ -728,6 +805,7 @@ def write_html_report(df, shifts, chains, outdir, reference="", thresholds=None,
             if col == f"{base}_best":
                 return f"{pretty} best"
         return col
+
     metric_cols = [c for c in shifts.columns if c not in ("tag", "models", "passed", "clusters")]
     tag_cols = ["models"] + metric_cols
     tag_labels = {"models": "models", **{c: _tag_label(c) for c in metric_cols}}
@@ -793,15 +871,16 @@ def write_html_report(df, shifts, chains, outdir, reference="", thresholds=None,
     collected_n, collected_tags = collected if collected else (len(df), df["tag"].nunique())
     data["funnel"].append({"stage": "collected", "models": collected_n,
                            "tags": collected_tags, "pct": 100.0})
-    for st in (funnel or []):
-        data["funnel"].append({**st,
-                               "pct": round(100.0 * st["models"] / max(collected_n, 1), 1)})
+    for stage in (funnel or []):
+        data["funnel"].append({**stage,
+                               "pct": round(100.0 * stage["models"] / max(collected_n, 1), 1)})
     if "passed" in df.columns:
         sub = df[df["passed"]]
         if len(sub) != len(df):
             data["funnel"].append({"stage": "passed thresholds", "models": len(sub),
                                    "tags": int(sub["tag"].nunique()),
                                    "pct": round(100.0 * len(sub) / max(collected_n, 1), 1)})
+
     if "cluster" in df.columns:
         data["cluster_cols"] = ["cluster", "members", "shifts", "models"]
         data["cluster_rows"] = [{"cluster": str(cid), "members": str(len(sub)),
@@ -810,14 +889,13 @@ def write_html_report(df, shifts, chains, outdir, reference="", thresholds=None,
                                 for cid, sub in df.groupby("cluster")]
 
     data["runs"] = []
-    for r in (runs or []):
-        href = os.path.relpath(r["html"], outdir) if r.get("html") else None
-        data["runs"].append({"tag": r["tag"], "html": href})
+    for run in (runs or []):
+        href = os.path.relpath(run["html"], outdir) if run.get("html") else None
+        data["runs"].append({"tag": run["tag"], "html": href})
 
     gif_path = build_shift_gif(runs, outdir)
     data["gif"] = os.path.basename(gif_path) if gif_path else None
 
-    cellfmt = lambda v: fmt(float(v)) if v is not None and np.isfinite(v) else ""
     refs = []
     for col, kind, ref in (comparisons or []):
         if col in df.columns and np.isfinite(df[col]).any():
@@ -851,8 +929,8 @@ def write_html_report(df, shifts, chains, outdir, reference="", thresholds=None,
     data["template_bests"] = []
     tmp = df[df["rmsd_template"].notna()].copy()
     tmp["template_name"] = tmp["template"].map(_template_name)
-    for name, g in tmp.groupby("template_name"):
-        b = g.loc[g["rmsd_template"].idxmin()]
+    for name, group in tmp.groupby("template_name"):
+        b = group.loc[group["rmsd_template"].idxmin()]
         data["template_bests"].append({
             "name": name, "model": b["model"], "rmsd": fmt(float(b["rmsd_template"]))})
 
@@ -866,23 +944,12 @@ def write_html_report(df, shifts, chains, outdir, reference="", thresholds=None,
 
 
 
-def _as_list(x):
-    if not x:
-        return []
-    return [x] if isinstance(x, str) else list(x)
-
-
-def _ref_column(kind, path):
-    base = re.sub(r"[^0-9A-Za-z]+", "_", os.path.splitext(os.path.basename(str(path)))[0])
-    return f"rmsd_{kind}_{base}"
-
 def run_analysis(workdir, reference=None, outdir=None, split_resids=None,
                  ranks=(0, 1, 2, 3, 4), cluster_cutoff=5.0,
                  positive_refs=None, negative_refs=None, surfaces=None,
                  max_rmsd_template=None, min_surface_accuracy=0.0,
                  distance_filters=None, disulfides=None, assembly_template=None,
                  config_yml=None, html=True, **thresholds):
-
 
     max_rmsd_template = float("inf") if max_rmsd_template is None else float(max_rmsd_template)
     min_surface_accuracy = float(min_surface_accuracy or 0.0)
@@ -893,8 +960,8 @@ def run_analysis(workdir, reference=None, outdir=None, split_resids=None,
     df = collect_models(workdir, ranks=ranks, dest=outdir)
     if df.empty:
         raise Exception(f"no models found under {workdir}")
-
     collected = (len(df), df["tag"].nunique())
+
     tmpl_sup_dir = None if _as_list(positive_refs) else os.path.join(outdir, "superposed", "template")
     df = add_template_rmsd(df, superposed_dir=tmpl_sup_dir)
     df = add_perchain_template_rmsd(df)
@@ -902,11 +969,6 @@ def run_analysis(workdir, reference=None, outdir=None, split_resids=None,
     df, stage = apply_filter(df, "rmsd_template_chain_max", max_rmsd_template, "max",
                              f"per-chain template CA RMSD ≤ {rlabel} Å")
     funnel = [stage]
-
-    df, geom_filters = add_geometry_checks(df, distance_filters, disulfides)
-    for col, mx, label in geom_filters:
-        df, stage = apply_filter(df, col, mx, "max", label)
-        funnel.append(stage)
 
     if reference:
         df = add_rmsd(df, reference, "rmsd_ref")
@@ -934,8 +996,15 @@ def run_analysis(workdir, reference=None, outdir=None, split_resids=None,
 
     pack_col, chain_copies = "pdb", None
     if assembly_template and os.path.exists(str(assembly_template)):
-        df, chain_copies = build_assembly(df, str(assembly_template), os.path.join(outdir, "assemblies"))
+        df, chain_copies = build_assembly(df, str(assembly_template),
+                                          os.path.join(outdir, "assemblies"))
         pack_col = "assembly"
+
+    df, geom_filters = add_geometry_checks(df, distance_filters, disulfides,
+                                           pdb_col=pack_col, chain_copies=chain_copies)
+    for col, mx, label in geom_filters:
+        df, stage = apply_filter(df, col, mx, "max", label)
+        funnel.append(stage)
 
     if surfaces:
         df = add_surface(df, surfaces, workdir=os.path.join(outdir, "surfaces"),
@@ -966,11 +1035,10 @@ def run_analysis(workdir, reference=None, outdir=None, split_resids=None,
                            if os.path.exists(p)), None)
     if html:
         write_html_report(df, shifts, chains, outdir, reference=reference or "",
-                            thresholds=dict(thresholds, split_resids=split_resids),
-                            runs=collect_runs(workdir), comparisons=comparisons,
-                            focus=(focus_col, focus_desc), config_yml=config_yml,
-                            collected=collected, funnel=funnel)
-
+                          thresholds=dict(thresholds, split_resids=split_resids),
+                          runs=collect_runs(workdir), comparisons=comparisons,
+                          focus=(focus_col, focus_desc), config_yml=config_yml,
+                          collected=collected, funnel=funnel)
 
     if len(shifts):
         logging.error(f"Best shift: {shifts.iloc[0]['tag']}")

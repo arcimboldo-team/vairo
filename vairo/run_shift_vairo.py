@@ -9,10 +9,10 @@ import logging
 import argparse
 from datetime import datetime
 import yaml
-from libs import utils, bioutils, analysis_shift_vairo
+from libs import features, utils, bioutils, analysis_shift_vairo
 from tools import utilities
 
-SHIFT_ONLY_KEYS = ('models', 'analysis', 'template', 'use_product')
+SHIFT_ONLY_KEYS = ('models', 'analysis', 'template', 'use_product', 'use_scwrl')
 
 FORCED_BASE_SETTINGS = {
     'run_af2': True,
@@ -219,8 +219,6 @@ def _parse_use_product(raw):
 
 
 def _run_analysis(input_load, workdir, input_path=None):
-    # The analysis always runs; the optional 'analysis:' block only adds configuration
-    # (references, surfaces, split residues, filter thresholds, ...).
     acfg = input_load.get('analysis') or {}
     split_resids = acfg.get('split_residues')
     if split_resids is None:
@@ -335,6 +333,7 @@ def main():
             use_product, chain_groups = _parse_use_product(
                 model.get('use_product', input_load.get('use_product', True)))
             one_chain = bool(model.get('one_chain', False))
+            use_scwrl = bool(model.get('use_scwrl', input_load.get('use_scwrl', False)))
             chain_query_offsets = None
             if one_chain:
                 chain_query_offsets = _chain_query_offsets(chain_to_fasta, query_seq)
@@ -358,7 +357,8 @@ def main():
             mode = f'grouped {chain_groups}' if chain_groups else ('product' if use_product else 'lineal')
 
             logging.error(f'Model {model_idx} ({model_name}): modifying chains {chain_steps_dict} '
-                          f'(one_chain={one_chain}, combos={mode})')
+                          f'(one_chain={one_chain}, combos={mode}, '
+                          f'{"SCWRL" if use_scwrl else "mutate+trim"})')
 
             model_configs = utilities.generate_shift_models(
                 fasta_path=combined_fasta,
@@ -369,7 +369,8 @@ def main():
                 chain_groups=chain_groups,
                 one_chain=one_chain,
                 chain_query_offsets=chain_query_offsets,
-                output_dir=gen_dir) or []
+                output_dir=gen_dir,
+                use_scwrl=use_scwrl) or []
 
 
             logging.error(f'Model {model_idx} ({model_name}): generated {len(model_configs)} VAIRO configs')

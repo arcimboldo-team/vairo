@@ -115,9 +115,7 @@
 {% if data.template_rows %}
 <div id="template_comparison" class="section-div">
     <h2>Template comparison</h2>
-    <p>Each model's global least-squares CA RMSD (&Aring;) to its own template
-       (one rigid fit over all chains). Also the quality filter: models above the cutoff are
-       discarded (see Filtering).</p>
+    <p>Each model's global least-squares CA RMSD (&Aring;) to its own template.</p>
     <table class="shift-table collapsible" id="tmpl_table">
         <thead>
             <tr>
@@ -163,8 +161,7 @@
 
 <div id="chain_stats" class="section-div">
     <h2>Per-chain shift statistics</h2>
-    <p>For each chain, how its shift value affects the ranking metric (shown in parentheses) &mdash;
-       i.e. which shift each chain prefers.</p>
+    <p>For each chain, how its shift value affects the ranking metric.</p>
     {% if data.chain_stats %}
         {% for chain, info in data.chain_stats.items() %}
         <h3>Chain {{ chain }}
